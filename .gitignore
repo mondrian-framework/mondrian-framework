@@ -1,0 +1,10 @@
+*.iml
+.idea
+node_modules
+build
+.npmrc
+.env
+.vscode
+insurances
+.env.development
+.env.production

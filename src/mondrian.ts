@@ -1,62 +1,98 @@
-import { FastifyRequest, fastify, RouteHandler, FastifyReply } from 'fastify'
+import { FastifyRequest, fastify, FastifyReply } from 'fastify'
+import { PartialDeep } from './utils'
 
-type Schema = { [k in string]: SchemaField }
-type SchemaField = { type: 'number' } | { type: 'string' } | { type: 'object'; schema: Schema | (() => Schema) }
-
-type GetSchema<S> = S extends Schema ? S : S extends () => infer R ? (R extends Schema ? R : never) : never
-type SchemaType<T> = GetSchema<T> extends infer S
-  ? S extends Schema
-    ? {
-        [K in keyof S]: S[K] extends {
-          type: 'object'
-          schema: infer SS
-        }
-          ? SchemaType<SS>
-          : S[K]['type'] extends 'string'
-          ? string
-          : S[K]['type'] extends 'number'
-          ? number
-          : never
-      }
-    : never
-  : never
-type SchemaTypeOutput<T> = GetSchema<T> extends infer S
-  ? S extends Schema
-    ? {
-        [K in keyof S]?: S[K] extends {
-          type: 'object'
-          schema: infer SS
-        }
-          ? SchemaTypeOutput<SS>
-          : S[K]['type'] extends 'string'
-          ? string
-          : S[K]['type'] extends 'number'
-          ? number
-          : never
-      }
-    : never
-  : never
-type Projection<T> = GetSchema<T> extends infer S
-  ? S extends Schema
-    ? {
-        [K in keyof S]?: S[K] extends { type: 'object'; schema: infer SS } ? Projection<SS> : true
-      }
-    : never
-  : never
-type Types = Record<string, Schema | (() => Schema)>
+type Type =
+  | { kind: 'object'; type: ObjectType }
+  | { kind: 'number' }
+  | { kind: 'string' }
+  | { kind: 'boolean' }
+  | { kind: 'date' }
+  | { kind: 'array-decorator'; type: LazyType }
+  | { kind: 'optional-decorator'; type: LazyType }
+type LazyType = Type | (() => Type)
+type ObjectType = { [K in string]: LazyType }
+type Types = Record<string, LazyType>
 type Operations = Record<string, Operation>
 
 export function types<const T extends Types>(types: T): T {
   return types
 }
-
-export function type<const S extends Schema>(schema: S): S {
-  return schema
+export function object<const T extends ObjectType>(type: T): { kind: 'object'; type: T } {
+  return { kind: 'object', type }
+}
+export function number(): { kind: 'number' } {
+  return { kind: 'number' }
+}
+export function string(): { kind: 'string' } {
+  return { kind: 'string' }
+}
+export function boolean(): { kind: 'boolean' } {
+  return { kind: 'boolean' }
+}
+export function date(): { kind: 'date' } {
+  return { kind: 'date' }
+}
+export function array<const T extends LazyType>(type: T): { kind: 'array-decorator'; type: T } {
+  return { kind: 'array-decorator', type }
+}
+export function optional<const T extends LazyType>(type: T): { kind: 'optional-decorator'; type: T } {
+  return { kind: 'optional-decorator', type }
 }
 
+type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
+
+export type Infer<T extends LazyType> = T extends () => infer LT ? InferType<LT> : InferType<T>
+
+type OptionalKeys<T extends ObjectType> = {
+  [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? K : never
+}[keyof T]
+type NonOptionalKeys<T extends ObjectType> = {
+  [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? never : K
+}[keyof T]
+
+type InferType<T> = T extends Type
+  ? T extends { kind: 'array-decorator'; type: infer ST }
+    ? ST extends LazyType
+      ? Infer<ST>[]
+      : never
+    : T extends { kind: 'optional-decorator'; type: infer ST }
+    ? ST extends LazyType
+      ? Infer<ST> | undefined
+      : never
+    : T extends { kind: 'string' }
+    ? string
+    : T extends { kind: 'number' }
+    ? number
+    : T extends { kind: 'boolean' }
+    ? boolean
+    : T extends { kind: 'date' }
+    ? Date
+    : T extends { kind: 'object'; type: infer ST }
+    ? ST extends ObjectType
+      ? Expand<
+          {
+            [K in NonOptionalKeys<ST>]: Infer<ST[K]>
+          } & {
+            [K in OptionalKeys<ST>]?: Infer<ST[K]>
+          }
+        >
+      : never
+    : never
+  : never
+
+type Projection<T> = T extends Date
+  ? true | undefined
+  : T extends (infer E)[]
+  ? Projection<E>
+  : T extends object
+  ? {
+      [K in keyof T]?: Projection<T[K]> | true
+    }
+  : true | undefined
+
 type Operation = {
-  input: Schema | (() => Schema)
-  output: Schema | (() => Schema)
+  input: LazyType
+  output: LazyType
   type: 'mutation' | 'query' | 'stream'
   options?: {
     rest?: {
@@ -85,19 +121,19 @@ type ModuleArgs<T extends Types, O extends Operations, Context> = {
   operations: O
   context: (req: FastifyRequest) => Promise<Context>
   resolvers: {
-    [K in keyof O]: {
-      f: (args: {
-        input: SchemaType<O[K]['input']>
-        fields: Projection<O[K]['output']>
-        context: Context
-      }) => Promise<SchemaTypeOutput<O[K]['output']>>
-    } & (O[K]['options'] extends { rest: { inputFrom: 'custom' } }
-      ? {
-          rest: {
-            input: (req: FastifyRequest) => Promise<SchemaType<O[K]['input']>>
-          }
-        }
-      : {})
+    [K in keyof O]: Infer<O[K]['input']> extends infer Input
+      ? Infer<O[K]['output']> extends infer Output
+        ? {
+            f: (args: { input: Input; fields: Projection<Output> | undefined; context: Context }) => Promise<PartialDeep<Output>>
+          } & (O[K]['options'] extends { rest: { inputFrom: 'custom' } }
+            ? {
+                rest: {
+                  input: (req: FastifyRequest) => Promise<Input>
+                }
+              }
+            : {})
+        : never
+      : never
   }
 }
 type ModuleOptions = {
@@ -154,14 +190,24 @@ class Module<const T extends Types, const O extends Operations, const Context> {
         </html>
         `
       })
-      server.get(`/api`, async (request, reply) => { return 'OPENAPI / SWAGGER'})
-      server.get(`/graphql`, async (request, reply) => { return 'GRAPHQL SANDBOX'})
+      server.get(`/api`, async (request, reply) => {
+        return 'OPENAPI / SWAGGER'
+      })
+      server.get(`/graphql`, async (request, reply) => {
+        return 'GRAPHQL SANDBOX'
+      })
     }
     const address = await server.listen({ port: opts.port ?? 3000 })
     return { address, opts, args: this.args }
   }
 }
 
+function lazyToType(t: LazyType): Type {
+  if(typeof t === 'function') {
+    return t()
+  }
+  return t
+}
 async function elabFastifyRestRequest<T extends Types, O extends Operations, Context>({
   request,
   reply,
@@ -176,14 +222,17 @@ async function elabFastifyRestRequest<T extends Types, O extends Operations, Con
   const operation = args.operations[name]
   const resolver = args.resolvers[name]
   const inputFrom = operation.options?.rest?.inputFrom ?? (request.method === 'GET' ? 'params' : 'body')
-  const input =
+  let input =
     inputFrom === 'custom'
       ? await (resolver as any).rest.input(request)
       : inputFrom === 'body'
       ? request.body
       : request.params
+  if(lazyToType(operation.input).kind === 'string' && inputFrom !== 'custom') {
+    input = Object.values(input)[0]
+  }
   const context = await args.context(request)
-  const result = await resolver.f({
+  const result = await (resolver.f as any)({
     fields: {} as any,
     context,
     input,

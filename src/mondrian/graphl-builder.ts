@@ -7,20 +7,27 @@ import { createSchema } from 'graphql-yoga'
 function typeToGqlType(
   name: string,
   t: LazyType,
-  typeMap: Record<string, string>,
-  typeRef: Map<Function, string>,
+  types: Record<string, LazyType>, //same as module
+  typeMap: Record<string, string>, //type name -> definition
+  typeRef: Map<Function, string>, // function -> type name
   isInput: boolean,
   isOptional: boolean,
   scalars: Record<string, CustomType>,
 ): string {
   const isRequired = isOptional ? '' : '!'
+  for (const [n, type] of Object.entries(types)) {
+    if (type === t) {
+      name = n
+    }
+  }
   if (typeof t === 'function') {
     const n = typeRef.get(t)
-    if (n && n !== name) {
+    if (n) {
       return `${n}${isRequired}`
     }
     typeRef.set(t, name)
   }
+
   const type = lazyToType(t)
   if (type.kind === 'string') {
     return `String${isRequired}`
@@ -36,14 +43,14 @@ function typeToGqlType(
     return `Int${isRequired}`
   }
   if (type.kind === 'array-decorator') {
-    return `[${typeToGqlType(name, type.type, typeMap, typeRef, isInput, false, scalars)}]${isRequired}`
+    return `[${typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, false, scalars)}]${isRequired}`
   }
   if (type.kind === 'optional-decorator') {
-    return typeToGqlType(name, type.type, typeMap, typeRef, isInput, true, scalars)
+    return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, true, scalars)
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {
-      const fieldType = typeToGqlType(`${name}_${fieldName}`, fieldT, typeMap, typeRef, isInput, false, scalars)
+      const fieldType = typeToGqlType(`${name}_${fieldName}`, fieldT, types, typeMap, typeRef, isInput, false, scalars)
       return `${fieldName}: ${fieldType}`
     })
     typeMap[name] = `${isInput ? 'input' : 'type'} ${name} {
@@ -69,12 +76,7 @@ function generateInputs<const T extends Types, const O extends Operations<T>, co
     ...Object.values(module.operations.mutations).map((q) => q.input),
   ])
   for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
-    if (typeof type === 'function') {
-      typeRef.set(type, name)
-    }
-  }
-  for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
-    typeToGqlType(name, type, typeMap, typeRef, true, false, scalarsMap)
+    typeToGqlType(name, type, module.types, typeMap, typeRef, true, false, scalarsMap)
   }
   return Object.values(typeMap).join('\n\n')
 }
@@ -95,12 +97,7 @@ function generateTypes<const T extends Types, const O extends Operations<T>, con
     ...Object.values(module.operations.mutations).map((q) => q.output),
   ])
   for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
-    if (typeof type === 'function') {
-      typeRef.set(type, name)
-    }
-  }
-  for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
-    typeToGqlType(name, type, typeMap, typeRef, false, false, scalarsMap)
+    typeToGqlType(name, type, module.types, typeMap, typeRef, false, false, scalarsMap)
   }
   return Object.values(typeMap).join('\n\n')
 }
@@ -140,15 +137,19 @@ function generateScalars<const T extends Types, const O extends Operations<T>, c
   return { scalarDefs, scalarResolvers }
 }
 
-function generateQuery<const T extends Types, const O extends Operations<T>, const Context>({
+function generateQueryOrMutation<const T extends Types, const O extends Operations<T>, const Context>({
   module,
   options,
+  type,
 }: {
+  type: 'queries' | 'mutations'
   module: Module<T, O, Context>
   options: ModuleRunnerOptions
 }) {
-  const queryResolvers = Object.fromEntries(
-    Object.entries(module.operations.queries).map(([operationName, operation]) => {
+  const ops = module.operations[type]
+  const rsvs = module.resolvers[type]
+  const resolvers = Object.fromEntries(
+    Object.entries(ops).map(([operationName, operation]) => {
       const gqlInputTypeName = operation.options?.graphql?.inputName ?? 'input'
       const resolver = (
         parent: unknown,
@@ -156,7 +157,7 @@ function generateQuery<const T extends Types, const O extends Operations<T>, con
         context: unknown,
         info: GraphQLResolveInfo,
       ) => {
-        return module.resolvers.queries[operationName].f({
+        return rsvs[operationName].f({
           context: context as any,
           fields: info as any, // TODO
           input: input[gqlInputTypeName],
@@ -165,15 +166,18 @@ function generateQuery<const T extends Types, const O extends Operations<T>, con
       return [operationName, resolver]
     }),
   )
-  const queryDefs = Object.entries(module.operations.queries)
+  const defs = Object.entries(ops)
     .map(([operationName, operation]) => {
-      return `${operationName}(${operation.options?.graphql?.inputName ?? 'input'}: ${operation.input}!): ${
-        operation.output
-      }!`
+      const inputType = lazyToType(module.types[operation.input])
+      const gqlInputType = typeToGqlType(operation.input, inputType, module.types, {}, new Map(), true, false, {})
+      const ouputType = lazyToType(module.types[operation.output])
+      const gqlOutputType = typeToGqlType(operation.output, ouputType, module.types, {}, new Map(), true, false, {})
+      return `${operationName}(${operation.options?.graphql?.inputName ?? 'input'}: ${gqlInputType}): ${gqlOutputType}`
     })
     .join('\n')
-  return { queryDefs, queryResolvers }
+  return { defs, resolvers }
 }
+
 export function buildGraphqlSchema<const T extends Types, const O extends Operations<T>, const Context>({
   module,
   options,
@@ -181,7 +185,12 @@ export function buildGraphqlSchema<const T extends Types, const O extends Operat
   module: Module<T, O, Context>
   options: ModuleRunnerOptions
 }): GraphQLSchema {
-  const { queryDefs, queryResolvers } = generateQuery({ module, options })
+  const { defs: queryDefs, resolvers: queryResolvers } = generateQueryOrMutation({ module, options, type: 'queries' })
+  const { defs: mutationDefs, resolvers: mutationResolvers } = generateQueryOrMutation({
+    module,
+    options,
+    type: 'mutations',
+  })
   const scalarsMap: Record<string, CustomType> = {}
   const typeDefs = generateTypes({ module, options, scalarsMap })
   const inputDefs = generateInputs({ module, options, scalarsMap })
@@ -194,12 +203,16 @@ export function buildGraphqlSchema<const T extends Types, const O extends Operat
   type Query {
     ${queryDefs}
   }
+  type Mutation {
+    ${mutationDefs}
+  }
   `
-  //console.log(schemaDefs)
+  console.log(schemaDefs)
   const schema = createSchema({
     typeDefs: schemaDefs,
     resolvers: {
       Query: queryResolvers,
+      Mutation: mutationResolvers,
       ...scalarResolvers,
     },
   })

@@ -1,50 +1,58 @@
 import m from './mondrian' //from '@twinlogix/mondrian/core'
 
-const UserId = m.string()
-type UserId = m.Infer<typeof UserId>
+//Ideas
+// - http: concept of default projection
 
-
-const GetInput = m.object({
-  id: m.string(),
-  date: m.scalars.timestamp,
+const Id = m.custom({
+  name: 'ID',
+  opts: {
+    decode(input) {
+      if (typeof input !== 'string') {
+        throw new Error('Invalid ID type')
+      }
+      return input
+    },
+    encode(input) {
+      return input
+    },
+    is(input) {
+      return typeof input === 'string'
+    },
+  },
 })
-type GetInput = m.Infer<typeof GetInput>
-
-//TYPES
-const Id = m.string()
 type Id = m.Infer<typeof Id>
+
 const User = () =>
   m.object({
-    id: UserId,
-    username: m.optional(m.optional(m.string())),
-    creationDate: m.scalars.timestamp,
-    likes: m.optional(m.number()),
-    embedded: m.optional(
-      m.object({
-        n: m.number(),
-      }),
-    ),
-    friend: m.optional(User),
-    embeddedWithRecursion: m.optional(
-      m.object({
-        user: m.array(User),
-      }),
-    ),
-    // type: m.literal(['PROFESSIONAL', 'CUSTOMER']),
-    /*username: m.string(),
-    live: m.boolean(),
-    metadata: m.unknown(),
-    friends: m.optional(m.array(m.union([User, m.nill()]))),
-    asd: m.custom({ decode: () => ({ asd: new Date() } as const) }),*/
+    id: Id,
+    username: m.string(),
+    password: m.string(),
+    registeredAt: m.scalars.timestamp,
+    posts: m.optional(m.array(Post)),
+    taggedPosts: m.optional(m.array(Post)),
   })
 type User = m.Infer<typeof User>
+
+const Post = () =>
+  m.object({
+    id: Id,
+    userId: Id,
+    user: User,
+    createdAt: m.scalars.timestamp,
+    content: m.string(),
+    tags: m.optional(m.array(Id)),
+  })
+type Post = m.Infer<typeof Post>
+
 const UserInput = m.object({
   username: m.string(),
   password: m.string(),
 })
 type UserInput = m.Infer<typeof UserInput>
+const UserOutput = m.optional(User)
+type UserOutput = m.Infer<typeof UserOutput>
 
-const types = m.types({ Id, User, UserInput, GetInput })
+const types = m.types({ Id, User, UserOutput, Post, UserInput })
 
 //OPERATIONS
 const register = m.operation({
@@ -54,18 +62,17 @@ const register = m.operation({
 })
 const getUser = m.operation({
   types,
-  input: 'GetInput',
-  output: 'User',
+  input: 'Id',
+  output: 'UserOutput',
   options: {
-    rest: { path: '/user/:id',  },
-    graphql: { inputName: 'asd' },
+    rest: { path: '/user/:id' },
+    graphql: { inputName: 'id' },
   },
 })
 const operations = m.operations({ mutations: { register }, queries: { user: getUser } })
 const context = m.context(async (req) => ({ userId: req.headers.id }))
 
-const db = new Map<string, User>()
-db.set('0', { id: '0', username: 'Default', creationDate: new Date() })
+const db = new Map<string, any>()
 const testModule = m.module({
   name: 'Test',
   types,
@@ -75,11 +82,11 @@ const testModule = m.module({
     queries: {
       user: {
         f: async ({ input, context }) => {
-          const user = db.get(input.id)
+          const user = db.get(input)
           if (!user) {
-            throw 'NOT FOUND'
+            return null
           }
-          return { ...user, creationDate: input.date }
+          return user
         },
       },
     },
@@ -87,8 +94,9 @@ const testModule = m.module({
       register: {
         f: async ({ input, fields, context }) => {
           const id = db.size.toString()
-          db.set(id, { id, username: input.username, creationDate: new Date() })
-          return { id, username: input.username, active: 'YES' }
+          const user: User = { id, ...input, registeredAt: new Date() }
+          db.set(id, user)
+          return user
         },
       },
     },
@@ -124,7 +132,7 @@ async function main() {
   })
   console.log(ins)
   const result = await skd.query.user({
-    input: { id: ins.id, date: new Date() },
+    input: ins.id,
     fields: { id: true, username: true },
     headers: { id: '1234' },
   })

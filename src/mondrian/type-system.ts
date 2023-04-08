@@ -131,10 +131,13 @@ export function array<const T extends LazyType>(type: T): { kind: 'array-decorat
 export function optional<const T extends LazyType>(type: T): { kind: 'optional-decorator'; type: T } {
   return { kind: 'optional-decorator', type }
 }
-export function custom<const T>(
-  name: string,
-  opts: { decode: (input: unknown) => T; encode: (input: T) => unknown; is: (input: unknown) => boolean },
-): {
+export function custom<const T>({
+  name,
+  opts,
+}: {
+  name: string
+  opts: { decode: (input: unknown) => T; encode: (input: T) => unknown; is: (input: unknown) => boolean }
+}): {
   kind: 'custom'
   name: string
   type: T

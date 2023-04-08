@@ -216,7 +216,8 @@ async function elabFastifyRestRequest<T extends Types, O extends Operations<T>, 
       : inputFrom === 'body'
       ? request.body
       : request.params
-  if (lazyToType(operation.types[operation.input]).kind === 'string' && inputFrom !== 'custom') {
+  const inputType = lazyToType(operation.types[operation.input])
+  if ((inputType.kind === 'string' || inputType.kind === 'custom') && inputFrom !== 'custom') {
     input = Object.values(input)[0]
   }
   const context = await module.context({ headers: request.headers })

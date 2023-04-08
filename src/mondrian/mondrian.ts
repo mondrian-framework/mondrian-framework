@@ -53,10 +53,7 @@ export type ResolverF<Input, Output, Context> = (args: {
   fields: Projection<Output> | undefined
   context: Context
 }) => Promise<PartialDeep<Output>>
-export type Module<T extends Types, O extends Operations<T>, Context> = {
-  name: string
-  types: T
-  operations: O
+export type Module<T extends Types, O extends Operations<T>, Context> = ModuleDefinition<T, O> & {
   context: (req: MondrianRequest) => Promise<Context>
   resolvers: {
     queries: {
@@ -131,7 +128,9 @@ export async function start<const T extends Types, const O extends Operations<T>
   module: Module<T, O, Context>,
   options: ModuleRunnerOptions,
 ): Promise<{ address: string; options: ModuleRunnerOptions; module: Module<T, O, Context> }> {
-  const server = fastify()
+  const server = fastify({
+    logger: false
+  })
 
   //REST
   for (const [opt, operations] of Object.entries(module.operations)) {
@@ -157,6 +156,10 @@ export async function start<const T extends Types, const O extends Operations<T>
   //GRAPHQL
   const yoga = createYoga<{ req: FastifyRequest; reply: FastifyReply }>({
     schema: buildGraphqlSchema({ module, options }),
+    context: ({ req }) => {
+      return module.context({ headers: req.headers })
+    },
+    logging: false
   })
   server.route({
     url: '/graphql',

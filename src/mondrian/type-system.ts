@@ -1,20 +1,25 @@
 import { Expand } from './utils'
 
 export type StringType = { kind: 'string'; opts?: { maxLength?: number; regex?: RegExp; minLength?: number } }
+export type CustomType = {
+  kind: 'custom'
+  type: unknown
+  name: string
+  opts: { decode: (input: unknown) => unknown; encode: (input: any) => unknown; is: (input: unknown) => boolean }
+}
 export type Type =
   | { kind: 'object'; type: ObjectType }
   | { kind: 'number' }
   | StringType
   | { kind: 'literal'; values: readonly string[] }
   | { kind: 'boolean' }
-  | { kind: 'date' }
   | { kind: 'null' }
   | { kind: 'unknown' }
   | { kind: 'undefined' }
   | { kind: 'array-decorator'; type: LazyType }
   | { kind: 'optional-decorator'; type: LazyType }
   | { kind: 'union'; types: LazyType[] }
-  | { kind: 'custom'; type: unknown }
+  | CustomType
 
 export type LazyType = Type | (() => Type)
 export type ObjectType = { [K in string]: LazyType }
@@ -37,8 +42,6 @@ type InferType<T> = T extends Type
     ? number
     : T extends { kind: 'boolean' }
     ? boolean
-    : T extends { kind: 'date' }
-    ? Date
     : T extends { kind: 'null' }
     ? null
     : T extends { kind: 'unknown' }
@@ -86,7 +89,7 @@ export type Projection<T> = T extends Date
         }
       | true
   : true | undefined
-  
+
 export function types<const T extends Types>(types: T): T {
   return types
 }
@@ -128,11 +131,45 @@ export function array<const T extends LazyType>(type: T): { kind: 'array-decorat
 export function optional<const T extends LazyType>(type: T): { kind: 'optional-decorator'; type: T } {
   return { kind: 'optional-decorator', type }
 }
-export function custom<const T>(opts: { decode: (input: unknown) => T; encode?: (input: T) => unknown }): {
+export function custom<const T>(
+  name: string,
+  opts: { decode: (input: unknown) => T; encode: (input: T) => unknown; is: (input: unknown) => boolean },
+): {
   kind: 'custom'
+  name: string
   type: T
+  opts: { decode: (input: unknown) => T; encode: (input: T) => unknown; is: (input: unknown) => boolean }
 } {
-  return { kind: 'custom', type: null } as { kind: 'custom'; type: T }
+  return { kind: 'custom', name, opts, type: null as T }
+}
+
+export const scalars: {
+  timestamp: {
+    kind: 'custom'
+    name: string
+    type: Date
+    opts: { decode: (input: unknown) => Date; encode: (input: Date) => unknown; is: (input: unknown) => boolean }
+  }
+} = {
+  timestamp: {
+    kind: 'custom',
+    name: 'DateTime',
+    opts: {
+      decode: (input) => {
+        if (typeof input === 'number') {
+          return new Date(input)
+        }
+        throw 'Invalid'
+      },
+      encode: (input) => {
+        return input.getTime()
+      },
+      is(input) {
+        return input instanceof Date
+      },
+    },
+    type: null as unknown as Date,
+  },
 }
 
 export function typecheck(type: LazyType, value: unknown): boolean {

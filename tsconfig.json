@@ -2,21 +2,20 @@
   "compilerOptions": {
     "module": "commonjs",
     "esModuleInterop": true,
-    "target": "ES5",
+    "incremental": true,
     "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "noErrorTruncation": false,
+    "target": "es6",
     "moduleResolution": "node",
     "sourceMap": true,
-    "sourceRoot": "./src",
-    "declaration": true,
-    "incremental": true,
-    "composite": true,
-    "skipLibCheck": true,
-    "outDir": "build"
+    "outDir": "build",
+    "baseUrl": "src",
+    "declaration": false,
+    "strict": true,
   },
+  "include": [
+    "src"
+  ],
   "exclude": [
-    "**/node_modules",
-    "build"
+    "node_modules"
   ]
 }

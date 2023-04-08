@@ -2,8 +2,14 @@ import m from './mondrian' //from '@twinlogix/mondrian/core'
 
 const UserId = m.string()
 type UserId = m.Infer<typeof UserId>
-const DateTime = m.string()
-type DateTime = m.Infer<typeof DateTime>
+
+
+const GetInput = m.object({
+  id: m.string(),
+  date: m.scalars.timestamp,
+})
+type GetInput = m.Infer<typeof GetInput>
+
 //TYPES
 const Id = m.string()
 type Id = m.Infer<typeof Id>
@@ -11,15 +17,19 @@ const User = () =>
   m.object({
     id: UserId,
     username: m.optional(m.optional(m.string())),
-    creationDate: DateTime,
-    likes: m.number(),
-    embedded: m.object({
-      n: m.number(),
-    }),
-    friend: User,
-    embeddedWithRecursion: m.object({
-      user: m.array(User),
-    }),
+    creationDate: m.scalars.timestamp,
+    likes: m.optional(m.number()),
+    embedded: m.optional(
+      m.object({
+        n: m.number(),
+      }),
+    ),
+    friend: m.optional(User),
+    embeddedWithRecursion: m.optional(
+      m.object({
+        user: m.array(User),
+      }),
+    ),
     // type: m.literal(['PROFESSIONAL', 'CUSTOMER']),
     /*username: m.string(),
     live: m.boolean(),
@@ -34,7 +44,7 @@ const UserInput = m.object({
 })
 type UserInput = m.Infer<typeof UserInput>
 
-const types = m.types({ Id, User, UserInput })
+const types = m.types({ Id, User, UserInput, GetInput })
 
 //OPERATIONS
 const register = m.operation({
@@ -44,18 +54,18 @@ const register = m.operation({
 })
 const getUser = m.operation({
   types,
-  input: 'Id',
+  input: 'GetInput',
   output: 'User',
   options: {
-    rest: { path: '/user/:id' },
-    graphql: { inputName: 'id' },
+    rest: { path: '/user/:id',  },
+    graphql: { inputName: 'asd' },
   },
 })
 const operations = m.operations({ mutations: { register }, queries: { user: getUser } })
 const context = m.context(async (req) => ({ userId: req.headers.id }))
 
-const db = new Map<string, { id: string; username: string }>()
-db.set('0', { id: '0', username: 'Default' })
+const db = new Map<string, User>()
+db.set('0', { id: '0', username: 'Default', creationDate: new Date() })
 const testModule = m.module({
   name: 'Test',
   types,
@@ -65,12 +75,11 @@ const testModule = m.module({
     queries: {
       user: {
         f: async ({ input, context }) => {
-          console.log(context)
-          const user = db.get(input)
+          const user = db.get(input.id)
           if (!user) {
             throw 'NOT FOUND'
           }
-          return user
+          return { ...user, creationDate: input.date }
         },
       },
     },
@@ -78,7 +87,7 @@ const testModule = m.module({
       register: {
         f: async ({ input, fields, context }) => {
           const id = db.size.toString()
-          db.set(id, { id, username: input.username })
+          db.set(id, { id, username: input.username, creationDate: new Date() })
           return { id, username: input.username, active: 'YES' }
         },
       },
@@ -115,7 +124,7 @@ async function main() {
   })
   console.log(ins)
   const result = await skd.query.user({
-    input: ins.id,
+    input: { id: ins.id, date: new Date() },
     fields: { id: true, username: true },
     headers: { id: '1234' },
   })

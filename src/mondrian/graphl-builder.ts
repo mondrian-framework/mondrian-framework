@@ -1,8 +1,7 @@
-import SchemaBuilder, { FieldRef, InputFieldRef, InputObjectRef, ObjectRef } from '@pothos/core'
-import { GraphQLSchema, buildSchema, buildClientSchema, GraphQLResolveInfo } from 'graphql'
+import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { Module, ModuleRunnerOptions, Operations } from './mondrian'
 import { lazyToType } from './utils'
-import { LazyType, Types } from './type-system'
+import { CustomType, LazyType, Types } from './type-system'
 import { createSchema } from 'graphql-yoga'
 
 function typeToGqlType(
@@ -11,7 +10,8 @@ function typeToGqlType(
   typeMap: Record<string, string>,
   typeRef: Map<Function, string>,
   isInput: boolean,
-  isOptional: boolean = false,
+  isOptional: boolean,
+  scalars: Record<string, CustomType>,
 ): string {
   const isRequired = isOptional ? '' : '!'
   if (typeof t === 'function') {
@@ -25,8 +25,9 @@ function typeToGqlType(
   if (type.kind === 'string') {
     return `String${isRequired}`
   }
-  if (type.kind === 'date') {
-    return `String${isRequired}` //TODO
+  if (type.kind === 'custom') {
+    scalars[type.name] = type
+    return `${type.name}${isRequired}`
   }
   if (type.kind === 'boolean') {
     return `Boolean${isRequired}`
@@ -35,14 +36,14 @@ function typeToGqlType(
     return `Int${isRequired}`
   }
   if (type.kind === 'array-decorator') {
-    return `[${typeToGqlType(name, type.type, typeMap, typeRef, isInput)}]${isRequired}`
+    return `[${typeToGqlType(name, type.type, typeMap, typeRef, isInput, false, scalars)}]${isRequired}`
   }
   if (type.kind === 'optional-decorator') {
-    return typeToGqlType(name, type.type, typeMap, typeRef, isInput, true)
+    return typeToGqlType(name, type.type, typeMap, typeRef, isInput, true, scalars)
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {
-      const fieldType = typeToGqlType(`${name}_${fieldName}`, fieldT, typeMap, typeRef, isInput)
+      const fieldType = typeToGqlType(`${name}_${fieldName}`, fieldT, typeMap, typeRef, isInput, false, scalars)
       return `${fieldName}: ${fieldType}`
     })
     typeMap[name] = `${isInput ? 'input' : 'type'} ${name} {
@@ -52,31 +53,41 @@ function typeToGqlType(
   return `${name}${isRequired}`
 }
 
-export function buildGraphqlSchema<const T extends Types, const O extends Operations<T>, const Context>({
+function generateInputs<const T extends Types, const O extends Operations<T>, const Context>({
   module,
   options,
+  scalarsMap,
 }: {
   module: Module<T, O, Context>
   options: ModuleRunnerOptions
-}): GraphQLSchema {
-  const Query = Object.fromEntries(
-    Object.entries(module.operations.queries).map(([operationName, operation]) => {
-      const gqlInputTypeName = operation.options?.graphql?.inputName ?? 'input'
-      const resolver = (
-        parent: unknown,
-        input: Record<string, unknown>,
-        context: unknown,
-        info: GraphQLResolveInfo,
-      ) => {
-        return module.resolvers.queries[operationName].f({
-          context: context as any, // TODO
-          fields: info as any, // TODO
-          input: input[gqlInputTypeName],
-        })
-      }
-      return [operationName, resolver]
-    }),
-  )
+  scalarsMap: Record<string, CustomType>
+}) {
+  const typeMap: Record<string, string> = {}
+  const typeRef: Map<Function, string> = new Map()
+  const usedTypes = new Set([
+    ...Object.values(module.operations.queries).map((q) => q.input),
+    ...Object.values(module.operations.mutations).map((q) => q.input),
+  ])
+  for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
+    if (typeof type === 'function') {
+      typeRef.set(type, name)
+    }
+  }
+  for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
+    typeToGqlType(name, type, typeMap, typeRef, true, false, scalarsMap)
+  }
+  return Object.values(typeMap).join('\n\n')
+}
+
+function generateTypes<const T extends Types, const O extends Operations<T>, const Context>({
+  module,
+  options,
+  scalarsMap,
+}: {
+  module: Module<T, O, Context>
+  options: ModuleRunnerOptions
+  scalarsMap: Record<string, CustomType>
+}) {
   const typeMap: Record<string, string> = {}
   const typeRef: Map<Function, string> = new Map()
   const usedTypes = new Set([
@@ -89,24 +100,114 @@ export function buildGraphqlSchema<const T extends Types, const O extends Operat
     }
   }
   for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
-    typeToGqlType(name, type, typeMap, typeRef, false)
+    typeToGqlType(name, type, typeMap, typeRef, false, false, scalarsMap)
   }
-  const types = Object.values(typeMap).join('\n\n')
-  const typeDefs = `${types}
+  return Object.values(typeMap).join('\n\n')
+}
+
+function generateScalars<const T extends Types, const O extends Operations<T>, const Context>({
+  module,
+  options,
+  scalarsMap,
+}: {
+  module: Module<T, O, Context>
+  options: ModuleRunnerOptions
+  scalarsMap: Record<string, CustomType>
+}) {
+  const scalarDefs = Object.values(scalarsMap)
+    .map((s) => `scalar ${s.name}`)
+    .join('\n')
+  const scalarResolvers = Object.fromEntries(
+    Object.values(scalarsMap).map((s) => {
+      return [
+        s.name,
+        new GraphQLScalarType({
+          name: s.name,
+          description: '',
+          serialize(input) {
+            const result = s.opts.encode(input)
+            return result
+          },
+          parseValue(input) {
+            const result = s.opts.decode(input)
+            return result
+          },
+          //TODO: how tell graphql sanbox what type to expect
+        }),
+      ] as const
+    }),
+  )
+  return { scalarDefs, scalarResolvers }
+}
+
+function generateQuery<const T extends Types, const O extends Operations<T>, const Context>({
+  module,
+  options,
+}: {
+  module: Module<T, O, Context>
+  options: ModuleRunnerOptions
+}) {
+  const queryResolvers = Object.fromEntries(
+    Object.entries(module.operations.queries).map(([operationName, operation]) => {
+      const gqlInputTypeName = operation.options?.graphql?.inputName ?? 'input'
+      const resolver = (
+        parent: unknown,
+        input: Record<string, unknown>,
+        context: unknown,
+        info: GraphQLResolveInfo,
+      ) => {
+        return module.resolvers.queries[operationName].f({
+          context: context as any,
+          fields: info as any, // TODO
+          input: input[gqlInputTypeName],
+        })
+      }
+      return [operationName, resolver]
+    }),
+  )
+  const queryDefs = Object.entries(module.operations.queries)
+    .map(([operationName, operation]) => {
+      return `${operationName}(${operation.options?.graphql?.inputName ?? 'input'}: ${operation.input}!): ${
+        operation.output
+      }!`
+    })
+    .join('\n')
+  return { queryDefs, queryResolvers }
+}
+export function buildGraphqlSchema<const T extends Types, const O extends Operations<T>, const Context>({
+  module,
+  options,
+}: {
+  module: Module<T, O, Context>
+  options: ModuleRunnerOptions
+}): GraphQLSchema {
+  const { queryDefs, queryResolvers } = generateQuery({ module, options })
+  const scalarsMap: Record<string, CustomType> = {}
+  const typeDefs = generateTypes({ module, options, scalarsMap })
+  const inputDefs = generateInputs({ module, options, scalarsMap })
+  const { scalarDefs, scalarResolvers } = generateScalars({ module, options, scalarsMap })
+
+  const schemaDefs = `
+  ${scalarDefs}
+  ${typeDefs}
+  ${inputDefs}
   type Query {
-      user(id: String!): User!
+    ${queryDefs}
   }
   `
-  console.log(typeDefs)
+  //console.log(schemaDefs)
   const schema = createSchema({
-    typeDefs,
+    typeDefs: schemaDefs,
     resolvers: {
-      Query,
+      Query: queryResolvers,
+      ...scalarResolvers,
     },
   })
-
   return schema
-  /*
+}
+
+/*
+  import SchemaBuilder, { FieldRef, InputFieldRef, InputObjectRef, ObjectRef } from '@pothos/core'
   const builder = new SchemaBuilder({})
 
   const gqpTypes: Record<string, ObjectRef<any, any>> = {}
@@ -187,4 +288,3 @@ export function buildGraphqlSchema<const T extends Types, const O extends Operat
   })
   return builder.toSchema()
   */
-}

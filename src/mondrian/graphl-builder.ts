@@ -40,6 +40,7 @@ function typeToGqlType(
     return `Boolean${isRequired}`
   }
   if (type.kind === 'number') {
+    //TODO: Float
     return `Int${isRequired}`
   }
   if (type.kind === 'array-decorator') {

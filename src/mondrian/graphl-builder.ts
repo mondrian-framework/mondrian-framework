@@ -1,6 +1,6 @@
 import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { Module, ModuleRunnerOptions, Operations } from './mondrian'
-import { lazyToType } from './utils'
+import { assertNever, lazyToType } from './utils'
 import { CustomType, LazyType, Types } from './type-system'
 import { createSchema } from 'graphql-yoga'
 
@@ -57,8 +57,18 @@ function typeToGqlType(
     typeMap[name] = `${isInput ? 'input' : 'type'} ${name} {
         ${fields.join('\n        ')}
     }`
+    return `${name}${isRequired}`
   }
-  return `${name}${isRequired}`
+  if (type.kind === 'literal') {
+    typeMap[name] = `enum ${name} {
+      ${type.values.join('\n        ')}
+    }`
+    return `${name}${isRequired}`
+  }
+  if (type.kind === 'union') {
+    throw new Error('Union not supported') //TODO
+  }
+  return assertNever(type)
 }
 
 function generateInputs<const T extends Types, const O extends Operations<T>, const Context>({

@@ -3,9 +3,8 @@ import { PartialDeep, lazyToType } from './utils'
 import { createYoga } from 'graphql-yoga'
 import { buildGraphqlSchema } from './graphl-builder'
 import { Infer, Projection, Types } from './type-system'
-import * as grpc from '@grpc/grpc-js'
-import * as grpcLoader from '@grpc/proto-loader'
-import wrapServerWithReflection from 'grpc-node-server-reflection'
+import { createGRPCServer } from './grpc'
+
 
 export type Operations<T extends Types> = Record<OperationNature, Record<string, Operation<T, string, string>>>
 
@@ -109,6 +108,11 @@ export type ModuleRunnerOptions = {
     enabled?: boolean
     path?: string
   }
+  grpc?: {
+    enabled?: boolean
+    port?: number
+    reflection?: boolean
+  }
   validation?: {
     input?: boolean
     output?: boolean
@@ -195,56 +199,8 @@ export async function start<const T extends Types, const O extends Operations<T>
   }
   const address = await server.listen({ port: options.port ?? 3000 })
 
-  const grpcSchema = {
-    nested: {
-      greeter: {
-        nested: {
-          HelloRequest: {
-            fields: {
-              name: {
-                type: 'string',
-                id: 1,
-              },
-            },
-          },
-          HelloResponse: {
-            fields: {
-              message: {
-                type: 'string',
-                id: 1,
-              },
-            },
-          },
-          Greeter: {
-            methods: {
-              SayHello: {
-                requestType: 'HelloRequest',
-                responseType: 'HelloResponse',
-              },
-            },
-          },
-        },
-      },
-    },
-  } as any
-
-  const packageDefinition = grpcLoader.fromJSON(grpcSchema)
-  const grpcServer = wrapServerWithReflection(new grpc.Server())
-
-  const protoDescriptor = grpc.loadPackageDefinition(packageDefinition)
-  const asd = protoDescriptor.greeter as any
-  grpcServer.addService(asd.Greeter.service, {
-    SayHello: (call: grpc.ServerUnaryCall<any, unknown>, callback: grpc.sendUnaryData<unknown>) => {
-      const headers = call.metadata.getMap()
-      const request = call.request
-      const response = { message: `Hello ${request.name}!` }
-      callback(null, response)
-    },
-  })
-  grpcServer.bindAsync('0.0.0.0:4001', grpc.ServerCredentials.createInsecure(), () => {
-    console.log('Server running at grpc://0.0.0.0:4001')
-    grpcServer.start()
-  })
+  //gRPC
+  await createGRPCServer({ module, options })
 
   return { address, options, module }
 }

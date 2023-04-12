@@ -13,9 +13,6 @@ export type Type =
   | StringType
   | { kind: 'literal'; values: readonly string[] }
   | { kind: 'boolean' }
-  | { kind: 'null' }
-  | { kind: 'unknown' }
-  | { kind: 'undefined' }
   | { kind: 'array-decorator'; type: LazyType }
   | { kind: 'optional-decorator'; type: LazyType }
   | { kind: 'union'; types: LazyType[] }
@@ -42,12 +39,6 @@ type InferType<T> = T extends Type
     ? number
     : T extends { kind: 'boolean' }
     ? boolean
-    : T extends { kind: 'null' }
-    ? null
-    : T extends { kind: 'unknown' }
-    ? unknown
-    : T extends { kind: 'undefined' }
-    ? undefined
     : T extends { kind: 'custom'; type: infer C }
     ? C
     : T extends { kind: 'literal'; values: infer V }
@@ -147,6 +138,18 @@ export function custom<const T>({
 }
 
 export const scalars: {
+  null: {
+    kind: 'custom'
+    name: string
+    type: null
+    opts: { decode: (input: unknown) => null; encode: (input: null) => unknown; is: (input: unknown) => boolean }
+  }
+  unknown: {
+    kind: 'custom'
+    name: string
+    type: unknown
+    opts: { decode: (input: unknown) => unknown; encode: (input: unknown) => unknown; is: (input: unknown) => boolean }
+  }
   timestamp: {
     kind: 'custom'
     name: string
@@ -159,10 +162,10 @@ export const scalars: {
     name: 'DateTime',
     opts: {
       decode: (input) => {
-        if (typeof input === 'number') {
-          return new Date(input)
+        if (typeof input !== 'number') {
+          throw new Error(`Invalid value, Date type expect a number but get: ${input}`)
         }
-        throw 'Invalid'
+        return new Date(input)
       },
       encode: (input) => {
         return input.getTime()
@@ -172,6 +175,31 @@ export const scalars: {
       },
     },
     type: null as unknown as Date,
+  },
+  unknown: {
+    kind: 'custom',
+    name: 'Unknown',
+    opts: {
+      decode: (input) => input,
+      encode: (input) => input,
+      is: () => true,
+    },
+    type: null,
+  },
+  null: {
+    kind: 'custom',
+    name: 'Null',
+    opts: {
+      decode: (input) => {
+        if (input !== null) {
+          throw new Error(`Invalid value, null type expect null but get: ${input}`)
+        }
+        return input
+      },
+      encode: (input) => input,
+      is: (input) => input === null,
+    },
+    type: null,
   },
 }
 
@@ -184,8 +212,6 @@ export function typecheck(type: LazyType, value: unknown): boolean {
     if (t.opts?.regex && !t.opts.regex.test(value)) return false
   } else if (t.kind === 'optional-decorator') {
     if (value !== undefined && !typecheck(t.type, value)) return false
-  } else if (t.kind === 'null') {
-    if (value !== null) return false
   } else if (t.kind === 'union') {
     if (t.types.every((u) => !typecheck(u, value))) return false
   } else if (t.kind === 'object') {
@@ -197,6 +223,8 @@ export function typecheck(type: LazyType, value: unknown): boolean {
   } else if (t.kind === 'array-decorator') {
     if (!Array.isArray(value)) return false
     if (value.some((e) => !typecheck(t.type, e))) return false
+  } else {
+    //TODO
   }
   return true
 }

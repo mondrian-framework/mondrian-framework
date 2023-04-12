@@ -22,6 +22,8 @@ const Id = m.custom({
 })
 type Id = m.Infer<typeof Id>
 
+const PostTag = m.literal(['A', 'B', 'C'])
+
 const User = () =>
   m.object({
     id: Id,
@@ -40,7 +42,7 @@ const Post = () =>
     user: User,
     createdAt: m.scalars.timestamp,
     content: m.string(),
-    tags: m.optional(m.array(Id)),
+    tags: m.optional(m.array(PostTag)),
   })
 type Post = m.Infer<typeof Post>
 
@@ -52,7 +54,7 @@ type UserInput = m.Infer<typeof UserInput>
 const UserOutput = m.optional(User)
 type UserOutput = m.Infer<typeof UserOutput>
 
-const types = m.types({ Id, User, UserOutput, Post, UserInput })
+const types = m.types({ Id, User, UserOutput, Post, UserInput, PostTag })
 
 //OPERATIONS
 const register = m.operation({
@@ -115,6 +117,11 @@ m.start(testModule, {
   http: {
     enabled: true,
     prefix: '/api',
+  },
+  grpc: {
+    enabled: true,
+    port: 4001,
+    reflection: true,
   },
 }).then(({ address, module }) => console.log(`Mondrian module "${module.name}" has started! ${address}`))
 

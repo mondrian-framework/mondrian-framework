@@ -16,3 +16,7 @@ export function lazyToType(t: LazyType): Type {
   }
   return t
 }
+
+export function assertNever(t: never): never {
+  throw new Error(`Unreachable`)
+}

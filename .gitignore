@@ -8,3 +8,4 @@ build
 insurances
 .env.development
 .env.production
+*.snap

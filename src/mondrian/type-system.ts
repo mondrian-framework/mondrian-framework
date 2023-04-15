@@ -1,14 +1,19 @@
-import { Expand } from './utils'
+import { Expand, assertNever } from './utils'
 
 export type StringType = { kind: 'string'; opts?: { maxLength?: number; regex?: RegExp; minLength?: number } }
 export type CustomType = {
   kind: 'custom'
   type: unknown
   name: string
-  opts: { decode: (input: unknown) => unknown; encode: (input: any) => unknown; is: (input: unknown) => boolean }
+  opts: {
+    decode: (input: unknown) => DecodeResult<unknown>
+    encode: (input: any) => unknown
+    is: (input: unknown) => boolean
+  }
 }
+export type ObjectType = { kind: 'object'; type: { [K in string]: LazyType }; opts?: { strict?: boolean } }
 export type Type =
-  | { kind: 'object'; type: ObjectType }
+  | ObjectType
   | { kind: 'number' }
   | StringType
   | { kind: 'literal'; values: readonly string[] }
@@ -19,7 +24,6 @@ export type Type =
   | CustomType
 
 export type LazyType = Type | (() => Type)
-export type ObjectType = { [K in string]: LazyType }
 export type Types = Record<string, LazyType>
 
 export type Infer<T extends LazyType> = T extends () => infer LT ? InferType<LT> : InferType<T>
@@ -50,7 +54,7 @@ type InferType<T> = T extends Type
       ? Infer<TS[number]>
       : never
     : T extends { kind: 'object'; type: infer ST }
-    ? ST extends ObjectType
+    ? ST extends ObjectType['type']
       ? Expand<
           {
             [K in NonOptionalKeys<ST>]: Infer<ST[K]>
@@ -62,10 +66,10 @@ type InferType<T> = T extends Type
     : never
   : never
 
-type OptionalKeys<T extends ObjectType> = {
+type OptionalKeys<T extends ObjectType['type']> = {
   [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? K : never
 }[keyof T]
-type NonOptionalKeys<T extends ObjectType> = {
+type NonOptionalKeys<T extends ObjectType['type']> = {
   [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? never : K
 }[keyof T]
 
@@ -84,8 +88,11 @@ export type Projection<T> = T extends Date
 export function types<const T extends Types>(types: T): T {
   return types
 }
-export function object<const T extends ObjectType>(type: T): { kind: 'object'; type: T } {
-  return { kind: 'object', type }
+export function object<const T extends ObjectType['type']>(
+  type: T,
+  opts?: ObjectType['opts'],
+): Omit<ObjectType, 'type'> & { type: T } {
+  return { kind: 'object', type, opts }
 }
 export function number(): { kind: 'number' } {
   return { kind: 'number' }
@@ -127,12 +134,12 @@ export function custom<const T>({
   opts,
 }: {
   name: string
-  opts: { decode: (input: unknown) => T; encode: (input: T) => unknown; is: (input: unknown) => boolean }
+  opts: { decode: (input: unknown) => DecodeResult<T>; encode: (input: T) => unknown; is: (input: unknown) => boolean }
 }): {
   kind: 'custom'
   name: string
   type: T
-  opts: { decode: (input: unknown) => T; encode: (input: T) => unknown; is: (input: unknown) => boolean }
+  opts: { decode: (input: unknown) => DecodeResult<T>; encode: (input: T) => unknown; is: (input: unknown) => boolean }
 } {
   return { kind: 'custom', name, opts, type: null as T }
 }
@@ -142,30 +149,42 @@ export const scalars: {
     kind: 'custom'
     name: string
     type: null
-    opts: { decode: (input: unknown) => null; encode: (input: null) => unknown; is: (input: unknown) => boolean }
+    opts: {
+      decode: (input: unknown) => DecodeResult<null>
+      encode: (input: null) => unknown
+      is: (input: unknown) => boolean
+    }
   }
   unknown: {
     kind: 'custom'
     name: string
     type: unknown
-    opts: { decode: (input: unknown) => unknown; encode: (input: unknown) => unknown; is: (input: unknown) => boolean }
+    opts: {
+      decode: (input: unknown) => DecodeResult<unknown>
+      encode: (input: unknown) => unknown
+      is: (input: unknown) => boolean
+    }
   }
   timestamp: {
     kind: 'custom'
     name: string
     type: Date
-    opts: { decode: (input: unknown) => Date; encode: (input: Date) => unknown; is: (input: unknown) => boolean }
+    opts: {
+      decode: (input: unknown) => DecodeResult<Date>
+      encode: (input: Date) => unknown
+      is: (input: unknown) => boolean
+    }
   }
 } = {
   timestamp: {
     kind: 'custom',
-    name: 'DateTime',
+    name: 'Timestamp',
     opts: {
       decode: (input) => {
         if (typeof input !== 'number') {
-          throw new Error(`Invalid value, Date type expect a number but get: ${input}`)
+          return { pass: false, errors: [{ path: '', value: input, error: 'Unix time expected (ms)' }] }
         }
-        return new Date(input)
+        return { pass: true, value: new Date(input) }
       },
       encode: (input) => {
         return input.getTime()
@@ -180,7 +199,7 @@ export const scalars: {
     kind: 'custom',
     name: 'Unknown',
     opts: {
-      decode: (input) => input,
+      decode: (input) => ({ pass: true, value: input }),
       encode: (input) => input,
       is: () => true,
     },
@@ -192,9 +211,9 @@ export const scalars: {
     opts: {
       decode: (input) => {
         if (input !== null) {
-          throw new Error(`Invalid value, null type expect null but get: ${input}`)
+          return { pass: false, errors: [{ path: '', value: input, error: 'Null expected' }] }
         }
-        return input
+        return { pass: true, value: input }
       },
       encode: (input) => input,
       is: (input) => input === null,
@@ -203,28 +222,109 @@ export const scalars: {
   },
 }
 
-export function typecheck(type: LazyType, value: unknown): boolean {
-  const t = typeof type === 'function' ? type() : type
+export function parse<const T extends LazyType>(type: T, value: unknown): DecodeResult<InferType<T>> {
+  const result = parseInternal(type, value, '.')
+  return result as DecodeResult<InferType<T>>
+}
+type DecodeResult<T> =
+  | { pass: true; value: T }
+  | { pass: false; errors: { path: string; error: string; value: unknown }[] }
+function parseInternal(type: unknown, value: unknown, path: string): DecodeResult<unknown> {
+  const t = (typeof type === 'function' ? type() : type) as Type
   if (t.kind === 'string') {
-    if (typeof value !== 'string') return false
-    if (t.opts?.maxLength && value.length > t.opts.maxLength) return false
-    if (t.opts?.minLength && value.length < t.opts.minLength) return false
-    if (t.opts?.regex && !t.opts.regex.test(value)) return false
-  } else if (t.kind === 'optional-decorator') {
-    if (value !== undefined && !typecheck(t.type, value)) return false
-  } else if (t.kind === 'union') {
-    if (t.types.every((u) => !typecheck(u, value))) return false
-  } else if (t.kind === 'object') {
-    if (typeof value !== 'object') return false
-    if (!value) return false
-    for (const [key, subtype] of Object.entries(t.type)) {
-      if (!typecheck(subtype, (value as Record<string, unknown>)[key])) return false
+    if (typeof value !== 'string') {
+      return { pass: false, errors: [{ path, error: `String expected`, value }] }
     }
+    if (t.opts?.maxLength && value.length > t.opts.maxLength) {
+      return {
+        pass: false,
+        errors: [{ path, error: `String longer than max length (${value.length}/${t.opts.maxLength})`, value }],
+      }
+    }
+    if (t.opts?.minLength && value.length < t.opts.minLength) {
+      return {
+        pass: false,
+        errors: [{ path, error: `String shorter than min length (${value.length}/${t.opts.minLength})`, value }],
+      }
+    }
+    if (t.opts?.regex && !t.opts.regex.test(value)) {
+      return { pass: false, errors: [{ path, error: `String regex mismatch (${t.opts.regex.source})`, value }] }
+    }
+    return { pass: true, value }
+  } else if (t.kind === 'number') {
+    if (typeof value !== 'number') {
+      return { pass: false, errors: [{ path, error: `Number expected`, value }] }
+    }
+    return { pass: true, value }
+  } else if (t.kind === 'boolean') {
+    if (typeof value !== 'boolean') {
+      return { pass: false, errors: [{ path, error: `Boolean expected`, value }] }
+    }
+    return { pass: true, value }
+  } else if (t.kind === 'optional-decorator') {
+    if (value === undefined) {
+      return { pass: true, value }
+    }
+    const result = parseInternal(t.type, value, path)
+    if (!result.pass) {
+      return { pass: false, errors: [...result.errors, { path, error: `Undefined expected`, value }] }
+    }
+    return { pass: true, value: result.value as any }
+  } else if (t.kind === 'union') {
+    const errors: { path: string; error: string; value: unknown }[] = []
+    for (const u of t.types) {
+      const result = parseInternal(u, value, path)
+      if (result.pass) {
+        return result
+      }
+      errors.push(...result.errors)
+    }
+    return { pass: false, errors }
+  } else if (t.kind === 'object') {
+    if (typeof value !== 'object' || !value) {
+      return { pass: false, errors: [{ path, error: `Object expected`, value }] }
+    }
+    const obj = value as Record<string, unknown>
+    const ret: Record<string, unknown> = t.opts?.strict === false ? {} : { ...value }
+    for (const [key, subtype] of Object.entries(t.type)) {
+      const result = parseInternal(subtype, obj[key], `${path}${key}.`)
+      if (!result.pass) {
+        return result
+      }
+      ret[key] = result.value
+    }
+    return { pass: true, value: ret }
   } else if (t.kind === 'array-decorator') {
-    if (!Array.isArray(value)) return false
-    if (value.some((e) => !typecheck(t.type, e))) return false
+    if (!Array.isArray(value)) {
+      return { pass: false, errors: [{ path, error: `Array expected`, value }] }
+    }
+    const values: unknown[] = []
+    for (let i = 0; i < value.length; i++) {
+      const result = parseInternal(t.type, value[i], `${path}${i}.`)
+      if (!result.pass) {
+        return result
+      }
+      values.push(result.value)
+    }
+    return { pass: true, value: values }
+  } else if (t.kind === 'literal') {
+    if (typeof value !== 'string' || !t.values.includes(value)) {
+      return {
+        pass: false,
+        errors: [{ path, error: `Literal expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value }],
+      }
+    }
+    return { pass: true, value }
+  } else if (t.kind === 'custom') {
+    if (!t.opts.is(value)) {
+      const result = t.opts.decode(value)
+      if (!result.pass) {
+        return { pass: false, errors: result.errors.map((e) => ({ ...e, path: `${path}${e.path}` })) }
+      }
+      return result
+    }
+    return { pass: true, value }
   } else {
-    //TODO
+    assertNever(t)
   }
-  return true
 }

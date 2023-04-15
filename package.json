@@ -13,7 +13,8 @@
     "@types/node": "18.15.5",
     "dotenv": "16.0.3",
     "prettier": "2.8.6",
-    "typescript": "5.0.2"
+    "typescript": "5.0.2",
+    "vitest": "0.30.1"
   },
   "dependencies": {
     "@grpc/grpc-js": "1.8.13",

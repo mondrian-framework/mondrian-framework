@@ -8,9 +8,9 @@ const Id = m.custom({
   opts: {
     decode(input) {
       if (typeof input !== 'string') {
-        throw new Error('Invalid ID type')
+        return { pass: false, errors: [{ path: '.', value: input, error: 'ID expected' }] }
       }
-      return input
+      return { pass: true, value: input }
     },
     encode(input) {
       return input

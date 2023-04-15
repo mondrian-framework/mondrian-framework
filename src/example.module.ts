@@ -51,10 +51,14 @@ const UserInput = m.object({
   password: m.string(),
 })
 type UserInput = m.Infer<typeof UserInput>
+const UserFind = m.object({
+  id: Id,
+})
+type UserFind = m.Infer<typeof UserFind>
 const UserOutput = m.optional(User)
 type UserOutput = m.Infer<typeof UserOutput>
 
-const types = m.types({ Id, User, UserOutput, Post, UserInput, PostTag })
+const types = m.types({ Id, User, UserOutput, Post, UserFind, UserInput, PostTag })
 
 //OPERATIONS
 const register = m.operation({
@@ -64,7 +68,7 @@ const register = m.operation({
 })
 const getUser = m.operation({
   types,
-  input: 'Id',
+  input: 'UserFind',
   output: 'UserOutput',
   options: {
     rest: { path: '/user/:id' },
@@ -84,7 +88,7 @@ const testModule = m.module({
     queries: {
       user: {
         f: async ({ input, context }) => {
-          const user = db.get(input)
+          const user = db.get(input.id)
           if (!user) {
             return null
           }
@@ -139,7 +143,7 @@ async function main() {
   })
   console.log(ins)
   const result = await skd.query.user({
-    input: ins.id,
+    input: { id: ins.id },
     fields: { id: true, username: true },
     headers: { id: '1234' },
   })

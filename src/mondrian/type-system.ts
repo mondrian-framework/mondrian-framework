@@ -1,17 +1,25 @@
 import { Expand, assertNever } from './utils'
 
-export type StringType = { kind: 'string'; opts?: { maxLength?: number; regex?: RegExp; minLength?: number } }
+export type StringType = {
+  kind: 'string'
+  opts?: { maxLength?: number; regex?: RegExp; minLength?: number }
+}
+type JSONType = string | number | boolean | null | undefined | { [K in string]: JSONType } | JSONType[]
 export type CustomType = {
   kind: 'custom'
   type: unknown
   name: string
   opts: {
     decode: (input: unknown) => DecodeResult<unknown>
-    encode: (input: any) => unknown
+    encode: (input: any) => JSONType
     is: (input: unknown) => boolean
   }
 }
-export type ObjectType = { kind: 'object'; type: { [K in string]: LazyType }; opts?: { strict?: boolean } }
+export type ObjectType = {
+  kind: 'object'
+  type: { [K in string]: LazyType }
+  opts?: { strict?: boolean }
+}
 export type Type =
   | ObjectType
   | { kind: 'number' }
@@ -134,12 +142,12 @@ export function custom<const T>({
   opts,
 }: {
   name: string
-  opts: { decode: (input: unknown) => DecodeResult<T>; encode: (input: T) => unknown; is: (input: unknown) => boolean }
+  opts: { decode: (input: unknown) => DecodeResult<T>; encode: (input: T) => JSONType; is: (input: unknown) => boolean }
 }): {
   kind: 'custom'
   name: string
   type: T
-  opts: { decode: (input: unknown) => DecodeResult<T>; encode: (input: T) => unknown; is: (input: unknown) => boolean }
+  opts: { decode: (input: unknown) => DecodeResult<T>; encode: (input: T) => JSONType; is: (input: unknown) => boolean }
 } {
   return { kind: 'custom', name, opts, type: null as T }
 }
@@ -151,17 +159,7 @@ export const scalars: {
     type: null
     opts: {
       decode: (input: unknown) => DecodeResult<null>
-      encode: (input: null) => unknown
-      is: (input: unknown) => boolean
-    }
-  }
-  unknown: {
-    kind: 'custom'
-    name: string
-    type: unknown
-    opts: {
-      decode: (input: unknown) => DecodeResult<unknown>
-      encode: (input: unknown) => unknown
+      encode: (input: null) => null
       is: (input: unknown) => boolean
     }
   }
@@ -171,7 +169,17 @@ export const scalars: {
     type: Date
     opts: {
       decode: (input: unknown) => DecodeResult<Date>
-      encode: (input: Date) => unknown
+      encode: (input: Date) => number
+      is: (input: unknown) => boolean
+    }
+  }
+  datetime: {
+    kind: 'custom'
+    name: string
+    type: Date
+    opts: {
+      decode: (input: unknown) => DecodeResult<Date>
+      encode: (input: Date) => string
       is: (input: unknown) => boolean
     }
   }
@@ -195,15 +203,25 @@ export const scalars: {
     },
     type: null as unknown as Date,
   },
-  unknown: {
+  datetime: {
     kind: 'custom',
-    name: 'Unknown',
+    name: 'DateTime',
     opts: {
-      decode: (input) => ({ pass: true, value: input }),
-      encode: (input) => input,
-      is: () => true,
+      decode: (input) => {
+        const time = Date.parse(typeof input === 'string' ? input : '')
+        if (Number.isNaN(time)) {
+          return { pass: false, errors: [{ path: '', value: input, error: 'ISO date expected' }] }
+        }
+        return { pass: true, value: new Date(time) }
+      },
+      encode: (input) => {
+        return input.toISOString()
+      },
+      is(input) {
+        return input instanceof Date
+      },
     },
-    type: null,
+    type: null as unknown as Date,
   },
   null: {
     kind: 'custom',

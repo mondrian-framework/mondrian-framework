@@ -4,7 +4,10 @@ import { createYoga } from 'graphql-yoga'
 import { buildGraphqlSchema } from './graphl-builder'
 import { Infer, Projection, Types } from './type-system'
 import { createGRPCServer } from './grpc'
-
+import { getAbsoluteFSPath } from 'swagger-ui-dist'
+import { fastifyStatic } from '@fastify/static'
+import path from 'path'
+import fs from 'fs'
 
 export type Operations<T extends Types> = Record<OperationNature, Record<string, Operation<T, string, string>>>
 
@@ -27,6 +30,7 @@ type Operation<T extends Types, I extends keyof T, O extends keyof T> = {
   }
 }
 
+//function
 export function operation<const T extends Types, const I extends keyof T, const O extends keyof T>(
   operation: Operation<T, I, O>,
 ): Operation<T, I, O> {
@@ -138,6 +142,210 @@ export async function start<const T extends Types, const O extends Operations<T>
   const server = fastify({
     logger: false,
   })
+  server.register(fastifyStatic, {
+    root: getAbsoluteFSPath(),
+    prefix: '/api/doc', // optional: default '/'
+  })
+  const indexContent = fs
+    .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
+    .toString()
+    .replace('https://petstore.swagger.io/v2/swagger.json', 'http://127.0.0.1:4000/api/doc/schema.json')
+  server.get('/api/doc/swagger-initializer.js', (req, res) => res.send(indexContent))
+  server.get('/api/doc', (req, res) => {
+    res.redirect('/api/doc/index.html')
+  })
+  server.get('/api/doc/schema.json', () => {
+    return {
+      openapi: '3.0.0',
+      info: {
+        version: '1.0.0',
+        title: 'Swagger Petstore',
+        license: {
+          name: 'MIT',
+        },
+      },
+      servers: [
+        {
+          url: 'http://127.0.0.1:4000/api',
+        },
+      ],
+      paths: {
+        '/pets': {
+          get: {
+            summary: 'List all pets',
+            operationId: 'listPets',
+            tags: ['pets'],
+            parameters: [
+              {
+                name: 'limit',
+                in: 'query',
+                description: 'How many items to return at one time (max 100)',
+                required: false,
+                schema: {
+                  type: 'integer',
+                  maximum: 100,
+                  format: 'int32',
+                },
+              },
+            ],
+            responses: {
+              '200': {
+                description: 'A paged array of pets',
+                headers: {
+                  'x-next': {
+                    description: 'A link to the next page of responses',
+                    schema: {
+                      type: 'string',
+                    },
+                  },
+                },
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Pets',
+                    },
+                  },
+                },
+              },
+              default: {
+                description: 'unexpected error',
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Error',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          post: {
+            summary: 'Create a pet',
+            operationId: 'createPets',
+            tags: ['pets'],
+            responses: {
+              '201': {
+                description: 'Null response',
+              },
+              default: {
+                description: 'unexpected error',
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Error',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        '/pets/{petId}': {
+          get: {
+            summary: 'Info for a specific pet',
+            operationId: 'showPetById',
+            tags: ['pets'],
+            parameters: [
+              {
+                name: 'petId',
+                in: 'path',
+                required: true,
+                description: 'The id of the pet to retrieve',
+                schema: {
+                  type: 'string',
+                },
+              },
+            ],
+            responses: {
+              '200': {
+                description: 'Expected response to a valid request',
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Pet',
+                    },
+                  },
+                },
+              },
+              default: {
+                description: 'unexpected error',
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Error',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      components: {
+        schemas: {
+          Pet: {
+            type: 'object',
+            required: ['id', 'name'],
+            properties: {
+              id: {
+                type: 'integer',
+                format: 'int64',
+              },
+              name: {
+                type: 'string',
+              },
+              tag: {
+                type: 'string',
+              },
+            },
+          },
+          Pets: {
+            type: 'array',
+            maxItems: 100,
+            items: {
+              $ref: '#/components/schemas/Pet',
+            },
+          },
+          Error: {
+            type: 'object',
+            required: ['code', 'message'],
+            properties: {
+              code: {
+                type: 'integer',
+                format: 'int32',
+              },
+              message: {
+                type: 'string',
+              },
+            },
+          },
+        },
+      },
+    }
+  })
+
+  /*
+  await server.register(fastifySwaggerUI, {
+    routePrefix: '/api/doc',
+    uiConfig: {
+      docExpansion: 'full',
+      deepLinking: false,
+    },
+    uiHooks: {
+      onRequest: function (request, reply, next) {
+        next()
+      },
+      preHandler: function (request, reply, next) {
+        next()
+      },
+    },
+    staticCSP: true,
+    transformStaticCSP: (header) => header,
+    transformSpecification: (swaggerObject, request, reply) => {
+      return swaggerObject
+    },
+    transformSpecificationClone: true,
+  })*/
 
   //REST
   for (const [opt, operations] of Object.entries(module.operations)) {
@@ -190,6 +398,7 @@ export async function start<const T extends Types, const O extends Operations<T>
           <body>
             <list>
             <li> <a href="${address}/api">REST API</a> </li>
+            <li> <a href="${address}/api/doc">REST API DOCUMENTATION</a> </li>
             <li> <a href="${address}/graphql">GRAPHQL API</a> </li>
             </list>
           </body>

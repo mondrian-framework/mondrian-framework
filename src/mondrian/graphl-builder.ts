@@ -59,14 +59,20 @@ function typeToGqlType(
     }`
     return `${name}${isRequired}`
   }
-  if (type.kind === 'literal') {
+  if (type.kind === 'enumarator') {
     typeMap[name] = `enum ${name} {
       ${type.values.join('\n        ')}
     }`
     return `${name}${isRequired}`
   }
-  if (type.kind === 'union') {
-    throw new Error('Union not supported') //TODO
+  if (type.kind === 'union-operator') {
+    typeMap[name] = `union ${name} = ${type.types
+      .map((t, i) => typeToGqlType(`${name}_Union_${i}`, t, types, typeMap, typeRef, isInput, true, scalars))
+      .join(' | ')}`
+    return `${name}${isRequired}`
+  }
+  if (type.kind === 'null') {
+    throw new Error('Null not supported') //TODO
   }
   return assertNever(type)
 }
@@ -133,11 +139,11 @@ function generateScalars<const T extends Types, const O extends Operations<T>, c
           name: s.name,
           description: '',
           serialize(input) {
-            const result = s.opts.encode(input)
+            const result = s.encode(input, s.opts)
             return result
           },
           parseValue(input) {
-            const result = s.opts.decode(input)
+            const result = s.decode(input, s.opts)
             return result
           },
           //TODO: how tell graphql sanbox what type to expect

@@ -1,5 +1,7 @@
 import { LazyType, Type } from './type-system'
 
+export type JSONType = string | number | boolean | null | undefined | { [K in string]: JSONType } | JSONType[]
+
 export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
 
 export type PartialDeep<T> = T extends Date

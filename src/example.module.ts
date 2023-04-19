@@ -1,59 +1,54 @@
 import m from './mondrian' //from '@twinlogix/mondrian/core'
 
-//Ideas
-// - http: concept of default projection
-
 const Id = m.custom({
   name: 'ID',
-  opts: {
-    decode(input) {
-      if (typeof input !== 'string') {
-        return { pass: false, errors: [{ path: '.', value: input, error: 'ID expected' }] }
-      }
-      return { pass: true, value: input }
-    },
-    encode(input) {
-      return input
-    },
-    is(input) {
-      return typeof input === 'string'
-    },
+  decode(input) {
+    if (typeof input !== 'string') {
+      return { pass: false, errors: [{ path: '', value: input, error: 'ID expected' }] }
+    }
+    if (input.length === 0) {
+      return { pass: false, errors: [{ path: '', value: input, error: 'Empty ID is not valid' }] }
+    }
+    return { pass: true, value: input }
+  },
+  encode(input) {
+    return input
+  },
+  is(input) {
+    return typeof input === 'string' && input.length > 0
   },
 })
 type Id = m.Infer<typeof Id>
 
-const PostTag = m.literal(['A', 'B', 'C'])
+const PostTag = m.enumarator(['A', 'B', 'C'])
+type PostTag = m.Infer<typeof PostTag>
 
 const User = () =>
   m.object({
     id: Id,
     username: m.string(),
     password: m.string(),
-    registeredAt: m.scalars.timestamp,
+    registeredAt: m.timestamp(),
     posts: m.optional(m.array(Post)),
     taggedPosts: m.optional(m.array(Post)),
   })
 type User = m.Infer<typeof User>
-
 const Post = () =>
   m.object({
     id: Id,
     userId: Id,
     user: User,
-    createdAt: m.scalars.timestamp,
+    createdAt: m.datetime(),
     content: m.string(),
     tags: m.optional(m.array(PostTag)),
   })
 type Post = m.Infer<typeof Post>
-
 const UserInput = m.object({
   username: m.string(),
   password: m.string(),
 })
 type UserInput = m.Infer<typeof UserInput>
-const UserFind = m.object({
-  id: Id,
-})
+const UserFind = m.object({ id: Id })
 type UserFind = m.Infer<typeof UserFind>
 const UserOutput = m.optional(User)
 type UserOutput = m.Infer<typeof UserOutput>
@@ -71,7 +66,6 @@ const getUser = m.operation({
   input: 'UserFind',
   output: 'UserOutput',
   options: {
-    rest: { path: '/user/:id' },
     graphql: { inputName: 'id' },
   },
 })
@@ -122,11 +116,11 @@ m.start(testModule, {
     enabled: true,
     prefix: '/api',
   },
-  grpc: {
+  /*grpc: {
     enabled: true,
     port: 4001,
     reflection: true,
-  },
+  },*/
 }).then(({ address, module }) => console.log(`Mondrian module "${module.name}" has started! ${address}`))
 
 async function main() {

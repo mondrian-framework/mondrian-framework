@@ -48,6 +48,7 @@ function generateType(
   if (type.kind === 'custom') {
     return { id: 0, type: 'string', rule }
   }
+
   if (type.kind === 'number') {
     return { id: 0, type: 'double', rule }
   }
@@ -72,12 +73,15 @@ function generateType(
     typeMap[name] = { fields }
     return { id: 0, type: name, rule }
   }
-  if (type.kind === 'literal') {
+  if (type.kind === 'enumarator') {
     typeMap[name] = { values: Object.fromEntries(type.values.map((v, i) => [v, i])) }
     return { id: 0, type: name, rule }
   }
-  if (type.kind === 'union') {
+  if (type.kind === 'union-operator') {
     throw new Error('Union not supported') //TODO
+  }
+  if (type.kind === 'null') {
+    throw new Error('Null not supported') //TODO
   }
 
   return assertNever(type)

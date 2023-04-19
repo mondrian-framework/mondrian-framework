@@ -8,8 +8,8 @@ describe('type-system', () => {
       b: m.string(),
       c: m.optional(m.string()),
       d: m.optional(m.array(m.union([m.string(), m.number()]))),
-      e: m.optional(m.literal(['A', 'B'])),
-      f: m.optional(m.scalars.timestamp)
+      e: m.optional(m.enumarator(['A', 'B'])),
+      f: m.optional(m.timestamp())
     })
     parseTrue(MyType, { a: 123, b: '', f: new Date() })
     parseTrue(MyType, { a: 123, b: '', f: new Date().getTime() })
@@ -24,11 +24,11 @@ describe('type-system', () => {
 })
 
 function parseFalse(type: m.LazyType, value: unknown) {
-  const result = m.parse<any>(type, value)
+  const result = m.decode<any>(type, value)
   expect(result.pass).to.be.false
 }
 
 function parseTrue(type: m.LazyType, value: unknown) {
-  const result = m.parse<any>(type, value)
+  const result = m.decode<any>(type, value)
   expect(result.pass).to.be.true
 }

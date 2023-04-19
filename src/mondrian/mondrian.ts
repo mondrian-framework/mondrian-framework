@@ -1,13 +1,14 @@
 import { FastifyRequest, fastify, FastifyReply } from 'fastify'
-import { PartialDeep, lazyToType } from './utils'
+import { JSONType, PartialDeep, lazyToType } from './utils'
 import { createYoga } from 'graphql-yoga'
 import { buildGraphqlSchema } from './graphl-builder'
-import { Infer, Projection, Types } from './type-system'
+import { Infer, Projection, Types, decode, decodeInternal, encode, encodeInternal } from './type-system'
 import { createGRPCServer } from './grpc'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import { fastifyStatic } from '@fastify/static'
 import path from 'path'
 import fs from 'fs'
+import { OpenAPIV3 } from 'openapi-types'
 
 export type Operations<T extends Types> = Record<OperationNature, Record<string, Operation<T, string, string>>>
 
@@ -135,6 +136,106 @@ export function moduleDefinition<const T extends Types, const O extends Operatio
   return module
 }
 
+function openapiSpecification<const T extends Types, const O extends Operations<T>, const Context>({
+  module,
+  options,
+}: {
+  module: Module<T, O, Context>
+  options: ModuleRunnerOptions
+}): OpenAPIV3.Document {
+  const paths: OpenAPIV3.PathsObject = {}
+  for (const [opt, operations] of Object.entries(module.operations)) {
+    const operationNature = opt as OperationNature
+    for (const [operationName, operation] of Object.entries(operations)) {
+      const path = `${operation.options?.rest?.path ?? `/${operationName}`}`
+      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'get' : 'post')
+      const operationObj: OpenAPIV3.OperationObject = {
+        parameters: [
+          {
+            name: 'input',
+            in: 'query',
+            required: true,
+            style: 'deepObject',
+            explode: true,
+            schema: {
+              $ref: '#/components/schemas/Pet',
+            },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Success',
+            content: {
+              [operation.output]: {
+                schema: {
+                  $ref: '#/components/schemas/Pet',
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Validation error',
+          },
+        },
+      }
+      paths[path] = {
+        summary: operationName,
+        [method]: operationObj,
+      }
+    }
+  }
+  return {
+    openapi: '3.0.0',
+    info: {
+      version: '1.0.0', //TODO
+      title: module.name,
+      license: { name: 'MIT' }, //TODO
+    },
+    servers: [{ url: 'http://127.0.0.1:4000/api' }], //TODO
+    paths,
+    components: {
+      schemas: {
+        Pet: {
+          type: 'object',
+          required: ['id', 'name'],
+          properties: {
+            id: {
+              type: 'integer',
+              format: 'int64',
+            },
+            name: {
+              type: 'string',
+            },
+            tag: {
+              type: 'string',
+            },
+          },
+        },
+        Pets: {
+          type: 'array',
+          maxItems: 100,
+          items: {
+            $ref: '#/components/schemas/Pet',
+          },
+        },
+        Error: {
+          type: 'object',
+          required: ['code', 'message'],
+          properties: {
+            code: {
+              type: 'integer',
+              format: 'int32',
+            },
+            message: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
+  }
+}
+
 export async function start<const T extends Types, const O extends Operations<T>, const Context>(
   module: Module<T, O, Context>,
   options: ModuleRunnerOptions,
@@ -154,198 +255,8 @@ export async function start<const T extends Types, const O extends Operations<T>
   server.get('/api/doc', (req, res) => {
     res.redirect('/api/doc/index.html')
   })
-  server.get('/api/doc/schema.json', () => {
-    return {
-      openapi: '3.0.0',
-      info: {
-        version: '1.0.0',
-        title: 'Swagger Petstore',
-        license: {
-          name: 'MIT',
-        },
-      },
-      servers: [
-        {
-          url: 'http://127.0.0.1:4000/api',
-        },
-      ],
-      paths: {
-        '/pets': {
-          get: {
-            summary: 'List all pets',
-            operationId: 'listPets',
-            tags: ['pets'],
-            parameters: [
-              {
-                name: 'limit',
-                in: 'query',
-                description: 'How many items to return at one time (max 100)',
-                required: false,
-                schema: {
-                  type: 'integer',
-                  maximum: 100,
-                  format: 'int32',
-                },
-              },
-            ],
-            responses: {
-              '200': {
-                description: 'A paged array of pets',
-                headers: {
-                  'x-next': {
-                    description: 'A link to the next page of responses',
-                    schema: {
-                      type: 'string',
-                    },
-                  },
-                },
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: '#/components/schemas/Pets',
-                    },
-                  },
-                },
-              },
-              default: {
-                description: 'unexpected error',
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: '#/components/schemas/Error',
-                    },
-                  },
-                },
-              },
-            },
-          },
-          post: {
-            summary: 'Create a pet',
-            operationId: 'createPets',
-            tags: ['pets'],
-            responses: {
-              '201': {
-                description: 'Null response',
-              },
-              default: {
-                description: 'unexpected error',
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: '#/components/schemas/Error',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        '/pets/{petId}': {
-          get: {
-            summary: 'Info for a specific pet',
-            operationId: 'showPetById',
-            tags: ['pets'],
-            parameters: [
-              {
-                name: 'petId',
-                in: 'path',
-                required: true,
-                description: 'The id of the pet to retrieve',
-                schema: {
-                  type: 'string',
-                },
-              },
-            ],
-            responses: {
-              '200': {
-                description: 'Expected response to a valid request',
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: '#/components/schemas/Pet',
-                    },
-                  },
-                },
-              },
-              default: {
-                description: 'unexpected error',
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: '#/components/schemas/Error',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      components: {
-        schemas: {
-          Pet: {
-            type: 'object',
-            required: ['id', 'name'],
-            properties: {
-              id: {
-                type: 'integer',
-                format: 'int64',
-              },
-              name: {
-                type: 'string',
-              },
-              tag: {
-                type: 'string',
-              },
-            },
-          },
-          Pets: {
-            type: 'array',
-            maxItems: 100,
-            items: {
-              $ref: '#/components/schemas/Pet',
-            },
-          },
-          Error: {
-            type: 'object',
-            required: ['code', 'message'],
-            properties: {
-              code: {
-                type: 'integer',
-                format: 'int32',
-              },
-              message: {
-                type: 'string',
-              },
-            },
-          },
-        },
-      },
-    }
-  })
-
-  /*
-  await server.register(fastifySwaggerUI, {
-    routePrefix: '/api/doc',
-    uiConfig: {
-      docExpansion: 'full',
-      deepLinking: false,
-    },
-    uiHooks: {
-      onRequest: function (request, reply, next) {
-        next()
-      },
-      preHandler: function (request, reply, next) {
-        next()
-      },
-    },
-    staticCSP: true,
-    transformStaticCSP: (header) => header,
-    transformSpecification: (swaggerObject, request, reply) => {
-      return swaggerObject
-    },
-    transformSpecificationClone: true,
-  })*/
+  const spec = openapiSpecification({ module, options })
+  server.get('/api/doc/schema.json', () => spec)
 
   //REST
   for (const [opt, operations] of Object.entries(module.operations)) {
@@ -363,9 +274,6 @@ export async function start<const T extends Types, const O extends Operations<T>
         )
       }
     }
-    /*server.get(`/api`, async (request, reply) => {
-      return 'OPENAPI / SWAGGER'
-    })*/
   }
 
   //GRAPHQL
@@ -429,22 +337,26 @@ async function elabFastifyRestRequest<T extends Types, O extends Operations<T>, 
 }): Promise<unknown> {
   const operation = module.operations[operationType][operationName]
   const resolver = module.resolvers[operationType][operationName]
-  const inputFrom = operation.options?.rest?.inputFrom ?? (request.method === 'GET' ? 'params' : 'body')
-  let input =
+  const inputFrom = operation.options?.rest?.inputFrom ?? (request.method === 'GET' ? 'query' : 'body')
+  const input =
     inputFrom === 'custom'
-      ? await (resolver as any).rest.input(request)
+      ? 'rest' in resolver
+        ? await resolver.rest.input(request)
+        : null
       : inputFrom === 'body'
       ? request.body
-      : request.params
-  const inputType = lazyToType(operation.types[operation.input])
-  if ((inputType.kind === 'string' || inputType.kind === 'custom') && inputFrom !== 'custom') {
-    input = Object.values(input)[0]
+      : request.query
+  const decoded = decodeInternal(operation.types[operation.input], input, '/')
+  if (!decoded.pass) {
+    reply.status(400)
+    return { errors: decoded.errors }
   }
   const context = await module.context({ headers: request.headers })
-  const result = await (resolver.f as any)({
-    fields: {} as any,
+  const result = await resolver.f({
+    fields: undefined,
     context,
-    input,
+    input: decoded.value,
   })
-  return result
+  const encoded = encodeInternal(operation.types[operation.output], result as JSONType)
+  return encoded
 }

@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "npx tsc && node build/src/user.module.js"
+    "start": "npx tsc && node build/src/user.module.js",
+    "test": "npx vitest run"
   },
   "author": "",
   "license": "ISC",
@@ -25,6 +26,7 @@
     "graphql-yoga": "3.8.0",
     "swagger-ui-dist": "4.18.2",
     "@fastify/static": "6.10.1",
-    "@sinclair/typebox": "0.27.8"
+    "@sinclair/typebox": "0.27.8",
+    "openapi-types": "12.1.0"
   }
 }

@@ -8,11 +8,11 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import { fastifyStatic } from '@fastify/static'
 import path from 'path'
 import fs from 'fs'
-import { OpenAPIV3 } from 'openapi-types'
+import { openapiSpecification } from './openapi'
 
 export type Operations<T extends Types> = Record<OperationNature, Record<string, Operation<T, string, string>>>
 
-type OperationNature = 'mutations' | 'queries'
+export type OperationNature = 'mutations' | 'queries'
 type Operation<T extends Types, I extends keyof T, O extends keyof T> = {
   types: T
   input: I
@@ -82,11 +82,7 @@ export type Module<T extends Types, O extends Operations<T>, Context> = ModuleDe
       [K in keyof O['mutations']]: Infer<T[O['mutations'][K]['input']]> extends infer Input
         ? Infer<T[O['mutations'][K]['output']]> extends infer Output
           ? {
-              f: (args: {
-                input: Input
-                fields: Projection<Output> | undefined
-                context: Context
-              }) => Promise<PartialDeep<Output>>
+              f: ResolverF<Input, Output, Context>
             } & (O['mutations'][K]['options'] extends { rest: { inputFrom: 'custom' } }
               ? {
                   rest: {
@@ -136,105 +132,9 @@ export function moduleDefinition<const T extends Types, const O extends Operatio
   return module
 }
 
-function openapiSpecification<const T extends Types, const O extends Operations<T>, const Context>({
-  module,
-  options,
-}: {
-  module: Module<T, O, Context>
-  options: ModuleRunnerOptions
-}): OpenAPIV3.Document {
-  const paths: OpenAPIV3.PathsObject = {}
-  for (const [opt, operations] of Object.entries(module.operations)) {
-    const operationNature = opt as OperationNature
-    for (const [operationName, operation] of Object.entries(operations)) {
-      const path = `${operation.options?.rest?.path ?? `/${operationName}`}`
-      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'get' : 'post')
-      const operationObj: OpenAPIV3.OperationObject = {
-        parameters: [
-          {
-            name: 'input',
-            in: 'query',
-            required: true,
-            style: 'deepObject',
-            explode: true,
-            schema: {
-              $ref: '#/components/schemas/Pet',
-            },
-          },
-        ],
-        responses: {
-          '200': {
-            description: 'Success',
-            content: {
-              [operation.output]: {
-                schema: {
-                  $ref: '#/components/schemas/Pet',
-                },
-              },
-            },
-          },
-          '400': {
-            description: 'Validation error',
-          },
-        },
-      }
-      paths[path] = {
-        summary: operationName,
-        [method]: operationObj,
-      }
-    }
-  }
-  return {
-    openapi: '3.0.0',
-    info: {
-      version: '1.0.0', //TODO
-      title: module.name,
-      license: { name: 'MIT' }, //TODO
-    },
-    servers: [{ url: 'http://127.0.0.1:4000/api' }], //TODO
-    paths,
-    components: {
-      schemas: {
-        Pet: {
-          type: 'object',
-          required: ['id', 'name'],
-          properties: {
-            id: {
-              type: 'integer',
-              format: 'int64',
-            },
-            name: {
-              type: 'string',
-            },
-            tag: {
-              type: 'string',
-            },
-          },
-        },
-        Pets: {
-          type: 'array',
-          maxItems: 100,
-          items: {
-            $ref: '#/components/schemas/Pet',
-          },
-        },
-        Error: {
-          type: 'object',
-          required: ['code', 'message'],
-          properties: {
-            code: {
-              type: 'integer',
-              format: 'int32',
-            },
-            message: {
-              type: 'string',
-            },
-          },
-        },
-      },
-    },
-  }
-}
+
+
+
 
 export async function start<const T extends Types, const O extends Operations<T>, const Context>(
   module: Module<T, O, Context>,
@@ -345,7 +245,7 @@ async function elabFastifyRestRequest<T extends Types, O extends Operations<T>, 
         : null
       : inputFrom === 'body'
       ? request.body
-      : request.query
+      : (request.query as Record<string, unknown>).input
   const decoded = decodeInternal(operation.types[operation.input], input, '/')
   if (!decoded.pass) {
     reply.status(400)
@@ -359,4 +259,8 @@ async function elabFastifyRestRequest<T extends Types, O extends Operations<T>, 
   })
   const encoded = encodeInternal(operation.types[operation.output], result as JSONType)
   return encoded
+}
+
+function decodeQueryObject() {
+
 }

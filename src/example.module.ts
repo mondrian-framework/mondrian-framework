@@ -37,7 +37,7 @@ const Post = () =>
   m.object({
     id: Id,
     userId: Id,
-    user: User,
+    //user: User,
     createdAt: m.datetime(),
     content: m.string(),
     tags: m.optional(m.array(PostTag)),
@@ -48,7 +48,7 @@ const UserInput = m.object({
   password: m.string(),
 })
 type UserInput = m.Infer<typeof UserInput>
-const UserFind = m.object({ id: Id })
+const UserFind = Id //m.object({ id: Id })
 type UserFind = m.Infer<typeof UserFind>
 const UserOutput = m.optional(User)
 type UserOutput = m.Infer<typeof UserOutput>
@@ -82,7 +82,7 @@ const testModule = m.module({
     queries: {
       user: {
         f: async ({ input, context }) => {
-          const user = db.get(input.id)
+          const user = db.get(input)
           if (!user) {
             return null
           }
@@ -137,7 +137,7 @@ async function main() {
   })
   console.log(ins)
   const result = await skd.query.user({
-    input: { id: ins.id },
+    input: ins.id,
     fields: { id: true, username: true },
     headers: { id: '1234' },
   })

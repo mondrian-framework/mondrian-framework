@@ -24,7 +24,7 @@
     "fastify": "4.15.0",
     "graphql": "16.6.0",
     "graphql-yoga": "3.8.0",
-    "swagger-ui-dist": "4.18.2",
+    "swagger-ui-dist": "5.0.0-alpha.6",
     "@fastify/static": "6.10.1",
     "@sinclair/typebox": "0.27.8",
     "openapi-types": "12.1.0"

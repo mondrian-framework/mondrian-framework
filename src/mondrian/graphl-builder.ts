@@ -1,7 +1,7 @@
 import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
-import { Module, ModuleRunnerOptions, Operations } from './mondrian'
+import { GenericModule, ModuleRunnerOptions } from './mondrian'
 import { assertNever, lazyToType } from './utils'
-import { CustomType, LazyType, Types } from './type-system'
+import { CustomType, LazyType } from './type-system'
 import { createSchema } from 'graphql-yoga'
 
 function typeToGqlType(
@@ -72,17 +72,28 @@ function typeToGqlType(
     return `${name}${isRequired}`
   }
   if (type.kind === 'null') {
-    throw new Error('Null not supported') //TODO
+    scalars['Null'] = {
+      decode: (input) =>
+        input === null
+          ? { pass: true, value: null }
+          : { pass: false, errors: [{ path: '', error: 'Null expected', value: input }] },
+      encode: (input) => input,
+      is: (input) => input === null,
+      kind: 'custom',
+      name: 'Null',
+      type: null,
+    }
+    return `Null${isRequired}`
   }
   return assertNever(type)
 }
 
-function generateInputs<const T extends Types, const O extends Operations<T>, const Context>({
+function generateInputs({
   module,
   options,
   scalarsMap,
 }: {
-  module: Module<T, O, Context>
+  module: GenericModule
   options: ModuleRunnerOptions
   scalarsMap: Record<string, CustomType>
 }) {
@@ -98,12 +109,12 @@ function generateInputs<const T extends Types, const O extends Operations<T>, co
   return Object.values(typeMap).join('\n\n')
 }
 
-function generateTypes<const T extends Types, const O extends Operations<T>, const Context>({
+function generateTypes({
   module,
   options,
   scalarsMap,
 }: {
-  module: Module<T, O, Context>
+  module: GenericModule
   options: ModuleRunnerOptions
   scalarsMap: Record<string, CustomType>
 }) {
@@ -119,12 +130,12 @@ function generateTypes<const T extends Types, const O extends Operations<T>, con
   return Object.values(typeMap).join('\n\n')
 }
 
-function generateScalars<const T extends Types, const O extends Operations<T>, const Context>({
+function generateScalars({
   module,
   options,
   scalarsMap,
 }: {
-  module: Module<T, O, Context>
+  module: GenericModule
   options: ModuleRunnerOptions
   scalarsMap: Record<string, CustomType>
 }) {
@@ -154,13 +165,13 @@ function generateScalars<const T extends Types, const O extends Operations<T>, c
   return { scalarDefs, scalarResolvers }
 }
 
-function generateQueryOrMutation<const T extends Types, const O extends Operations<T>, const Context>({
+function generateQueryOrMutation({
   module,
   options,
   type,
 }: {
   type: 'queries' | 'mutations'
-  module: Module<T, O, Context>
+  module: GenericModule
   options: ModuleRunnerOptions
 }) {
   const ops = module.operations[type]
@@ -195,11 +206,11 @@ function generateQueryOrMutation<const T extends Types, const O extends Operatio
   return { defs, resolvers }
 }
 
-export function buildGraphqlSchema<const T extends Types, const O extends Operations<T>, const Context>({
+export function buildGraphqlSchema({
   module,
   options,
 }: {
-  module: Module<T, O, Context>
+  module: GenericModule
   options: ModuleRunnerOptions
 }): GraphQLSchema {
   const { defs: queryDefs, resolvers: queryResolvers } = generateQueryOrMutation({ module, options, type: 'queries' })

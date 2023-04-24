@@ -48,6 +48,7 @@ export type LazyType = Type | (() => Type)
 export type Types = Record<string, LazyType>
 
 export type Infer<T extends LazyType> = T extends () => infer LT ? InferType<LT> : InferType<T>
+export type InferReturn<T extends LazyType> = T extends () => infer LT ? InferReturnType<LT> : InferReturnType<T>
 
 type InferType<T> = T extends Type
   ? T extends { kind: 'array-decorator'; type: infer ST }
@@ -85,6 +86,42 @@ type InferType<T> = T extends Type
             [K in OptionalKeys<ST>]?: Infer<ST[K]>
           }
         >
+      : never
+    : never
+  : never
+
+type InferReturnType<T> = T extends Type
+  ? T extends { kind: 'array-decorator'; type: infer ST }
+    ? ST extends LazyType
+      ? InferReturn<ST>[]
+      : never
+    : T extends { kind: 'optional-decorator'; type: infer ST }
+    ? ST extends LazyType
+      ? InferReturn<ST> | undefined
+      : never
+    : T extends { kind: 'string' }
+    ? string
+    : T extends { kind: 'number' }
+    ? number
+    : T extends { kind: 'boolean' }
+    ? boolean
+    : T extends { kind: 'null' }
+    ? null
+    : T extends { kind: 'custom'; type: infer C }
+    ? C
+    : T extends { kind: 'enumarator'; values: infer V }
+    ? V extends readonly string[]
+      ? V[number]
+      : never
+    : T extends { kind: 'union-operator'; types: infer TS }
+    ? TS extends Array<any>
+      ? InferReturn<TS[number]>
+      : never
+    : T extends { kind: 'object'; type: infer ST }
+    ? ST extends ObjectType['type']
+      ? Expand<{
+          [K in keyof ST]?: InferReturn<ST[K]>
+        }>
       : never
     : never
   : never
@@ -128,6 +165,9 @@ export function enumarator<const V extends readonly [string, ...string[]]>(value
 }
 export function boolean(): BooleanType {
   return { kind: 'boolean' }
+}
+export function nullable<const T extends LazyType>(type: T): { kind: 'union-operator'; types: [T, { kind: 'null' }] } {
+  return { kind: 'union-operator', types: [type, { kind: 'null' }] }
 }
 export function nill(): NullType {
   return { kind: 'null' }
@@ -271,10 +311,11 @@ export function decodeInternal(type: LazyType, value: unknown, path: string): De
     }
     return { pass: true, value }
   } else if (t.kind === 'number') {
-    if (typeof value !== 'number') {
+    const v = Number(value)
+    if (Number.isNaN(v)) {
       return { pass: false, errors: [{ path, error: `Number expected`, value }] }
     }
-    return { pass: true, value }
+    return { pass: true, value: v }
   } else if (t.kind === 'boolean') {
     if (typeof value !== 'boolean') {
       return { pass: false, errors: [{ path, error: `Boolean expected`, value }] }

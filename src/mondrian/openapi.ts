@@ -1,7 +1,220 @@
 import { OpenAPIV3_1 } from 'openapi-types'
-import { Module, ModuleRunnerOptions, OperationNature, Operations } from './mondrian'
-import { LazyType, Types } from './type-system'
-import { assertNever, lazyToType } from './utils'
+import { GenericModule, ModuleRunnerOptions, OperationNature } from './mondrian'
+import { LazyType, Types, decodeInternal, encodeInternal } from './type-system'
+import { JSONType, assertNever, lazyToType } from './utils'
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { randomUUID } from 'crypto'
+
+export function attachRestMethods({
+  module,
+  options,
+  server,
+}: {
+  module: GenericModule
+  options: ModuleRunnerOptions
+  server: FastifyInstance
+}): void {
+  for (const [opt, operations] of Object.entries(module.operations)) {
+    const operationNature = opt as OperationNature
+    for (const [operationName, operation] of Object.entries(operations)) {
+      const path = `${options.http?.prefix}${operation.options?.rest?.path ?? `/${operationName}`}`
+      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'GET' : 'POST')
+      if (method === 'GET') {
+        server.get(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options }),
+        )
+      } else if (method === 'POST') {
+        server.post(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options }),
+        )
+      } else if (method === 'PUT') {
+        server.put(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options }),
+        )
+      } else if (method === 'DELETE') {
+        server.delete(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options }),
+        )
+      } else if (method === 'PATCH') {
+        server.patch(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options }),
+        )
+      }
+    }
+  }
+}
+
+async function elabFastifyRestRequest({
+  request,
+  reply,
+  operationName,
+  module,
+  operationNature,
+  options,
+}: {
+  request: FastifyRequest
+  reply: FastifyReply
+  operationName: string
+  operationNature: OperationNature
+  module: GenericModule
+  options: ModuleRunnerOptions
+}): Promise<unknown> {
+  const operationId = randomUUID().split('-').join('')
+  reply.header('operation-id', operationId)
+  const operation = module.operations[operationNature][operationName]
+  const resolver = module.resolvers[operationNature][operationName]
+  const inputFrom = request.method === 'GET' ? 'query' : 'body'
+  const input =
+    inputFrom === 'body' ? request.body : decodeQueryObject(request.query as Record<string, unknown>, 'input')
+  const decoded = decodeInternal(operation.types[operation.input], input, '/')
+  if (!decoded.pass) {
+    if (options.http?.logger) {
+      console.log(`[REST-MODULE / ${operationNature}.${operationName}]: Bad request. ID: ${operationId}`)
+    }
+    reply.status(400)
+    return { errors: decoded.errors }
+  }
+  const startMs = new Date().getTime()
+  const context = await module.context({ headers: request.headers })
+  const result = await resolver.f({
+    fields: undefined,
+    context,
+    input: decoded.value,
+  })
+  const encoded = encodeInternal(operation.types[operation.output], result as JSONType)
+  if (options.http?.logger) {
+    console.log(
+      `[REST-MODULE / ${operationNature}.${operationName}]: ${request.method} ${request.routerPath} Completed in ${
+        new Date().getTime() - startMs
+      } ms. ID: ${operationId}`,
+    )
+  }
+  return encoded
+}
+
+/**
+ * FROM { "input[id]": "id", "input[meta][info]": 123 }
+ * TO   { id: "id", meta: { info: 123 } }
+ */
+function decodeQueryObject(input: Record<string, unknown>, prefix: string) {
+  const output = {}
+  for (const [key, value] of Object.entries(input)) {
+    const path = key.replace(prefix, '').replace('][', '.').replace('[', '').replace(']', '')
+    setTraversingValue(value, path, output)
+  }
+  return output
+}
+
+function setTraversingValue(value: unknown, path: string, object: Record<string, unknown>) {
+  const [head, ...tail] = path.split('.')
+  if (tail.length === 0) {
+    object[head] = value
+    return
+  }
+  if (!object[head]) {
+    object[head] = {}
+  }
+  setTraversingValue(value, tail.join('.'), object[head] as Record<string, unknown>)
+}
+
+export function openapiSpecification({
+  module,
+  options,
+}: {
+  module: GenericModule
+  options: ModuleRunnerOptions
+}): OpenAPIV3_1.Document {
+  const paths: OpenAPIV3_1.PathsObject = {}
+  const components = openapiComponents({ module, options })
+  for (const [opt, operations] of Object.entries(module.operations)) {
+    const operationNature = opt as OperationNature
+    for (const [operationName, operation] of Object.entries(operations)) {
+      const path = `${operation.options?.rest?.path ?? `/${operationName}`}`
+      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'get' : 'post')
+      const operationObj: OpenAPIV3_1.OperationObject = {
+        parameters:
+          method === 'get'
+            ? [
+                {
+                  name: 'input',
+                  in: 'query',
+                  required: true,
+                  style: 'deepObject',
+                  explode: true,
+                  schema: {
+                    $ref: `#/components/schemas/${operation.input}`,
+                  },
+                },
+              ]
+            : undefined,
+        requestBody:
+          method !== 'get'
+            ? {
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: `#/components/schemas/${operation.input}`,
+                    },
+                  },
+                },
+              }
+            : undefined,
+        responses: {
+          '200': {
+            description: 'Success',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: `#/components/schemas/${operation.output}`,
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Validation error',
+          },
+        },
+        tags: [module.name],
+      }
+      paths[path] = {
+        summary: operationName,
+        [method]: operationObj,
+      }
+    }
+  }
+  return {
+    openapi: '3.1.0',
+    info: {
+      version: '1.0.0', //TODO
+      title: module.name,
+      license: { name: 'MIT' }, //TODO
+    },
+    servers: [{ url: `http://127.0.0.1:4000${options.http?.prefix ?? '/api'}` }], //TODO
+    paths,
+    components,
+    tags: [{ name: module.name }],
+  }
+}
+
+function openapiComponents({
+  module,
+  options,
+}: {
+  module: GenericModule
+  options: ModuleRunnerOptions
+}): OpenAPIV3_1.ComponentsObject {
+  const schemas: Record<string, OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject> = {}
+  const typeMap: Record<string, OpenAPIV3_1.SchemaObject> = {}
+  const typeRef: Map<Function, string> = new Map()
+  for (const [name, type] of Object.entries(module.types)) {
+    const result = typeToSchemaObject(name, type, module.types, typeMap, typeRef)
+    schemas[name] = result
+  }
+  for (const [name, type] of Object.entries(typeMap)) {
+    schemas[name] = type
+  }
+  return { schemas }
+}
 
 function typeToSchemaObject(
   name: string,
@@ -98,101 +311,4 @@ function typeToSchemaObject(
     return { type: 'null' }
   }
   return assertNever(type)
-}
-
-function openapiComponents<const T extends Types, const O extends Operations<T>, const Context>({
-  module,
-  options,
-}: {
-  module: Module<T, O, Context>
-  options: ModuleRunnerOptions
-}): OpenAPIV3_1.ComponentsObject {
-  const schemas: Record<string, OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject> = {}
-  const typeMap: Record<string, OpenAPIV3_1.SchemaObject> = {}
-  const typeRef: Map<Function, string> = new Map()
-  for (const [name, type] of Object.entries(module.types)) {
-    const result = typeToSchemaObject(name, type, module.types, typeMap, typeRef)
-    schemas[name] = result
-  }
-  for (const [name, type] of Object.entries(typeMap)) {
-    schemas[name] = type
-  }
-  return { schemas }
-}
-
-export function openapiSpecification<const T extends Types, const O extends Operations<T>, const Context>({
-  module,
-  options,
-}: {
-  module: Module<T, O, Context>
-  options: ModuleRunnerOptions
-}): OpenAPIV3_1.Document {
-  const paths: OpenAPIV3_1.PathsObject = {}
-  const components = openapiComponents({ module, options })
-  for (const [opt, operations] of Object.entries(module.operations)) {
-    const operationNature = opt as OperationNature
-    for (const [operationName, operation] of Object.entries(operations)) {
-      const path = `${operation.options?.rest?.path ?? `/${operationName}`}`
-      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'get' : 'post')
-      const operationObj: OpenAPIV3_1.OperationObject = {
-        parameters:
-          method === 'get'
-            ? [
-                {
-                  name: 'input',
-                  in: 'query',
-                  required: true,
-                  style: 'deepObject',
-                  explode: true,
-                  schema: {
-                    $ref: `#/components/schemas/${operation.input}`,
-                  },
-                },
-              ]
-            : undefined,
-        requestBody:
-          method !== 'get'
-            ? {
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: `#/components/schemas/${operation.input}`,
-                    },
-                  },
-                },
-              }
-            : undefined,
-        responses: {
-          '200': {
-            description: 'Success',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: `#/components/schemas/${operation.output}`,
-                },
-              },
-            },
-          },
-          '400': {
-            description: 'Validation error',
-          },
-        },
-      }
-      paths[path] = {
-        summary: operationName,
-        [method]: operationObj,
-      }
-    }
-  }
-  return {
-    openapi: '3.1.0',
-    info: {
-      version: '1.0.0', //TODO
-      title: module.name,
-      license: { name: 'MIT' }, //TODO
-    },
-    servers: [{ url: 'http://127.0.0.1:4000/api' }], //TODO
-    paths,
-    components,
-  }
 }

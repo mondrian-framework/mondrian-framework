@@ -48,9 +48,9 @@ const UserInput = m.object({
   password: m.string(),
 })
 type UserInput = m.Infer<typeof UserInput>
-const UserFind = Id //m.object({ id: Id })
+const UserFind = m.object({ id: Id, b: m.number(), c: m.optional(m.object({ a: m.number() })) })
 type UserFind = m.Infer<typeof UserFind>
-const UserOutput = m.optional(User)
+const UserOutput = m.nullable(User)
 type UserOutput = m.Infer<typeof UserOutput>
 
 const types = m.types({ Id, User, UserOutput, Post, UserFind, UserInput, PostTag })
@@ -70,6 +70,7 @@ const getUser = m.operation({
   },
 })
 const operations = m.operations({ mutations: { register }, queries: { user: getUser } })
+
 const context = m.context(async (req) => ({ userId: req.headers.id }))
 
 const db = new Map<string, any>()
@@ -82,7 +83,7 @@ const testModule = m.module({
     queries: {
       user: {
         f: async ({ input, context }) => {
-          const user = db.get(input)
+          const user = db.get(input.id) as User | null
           if (!user) {
             return null
           }
@@ -103,6 +104,8 @@ const testModule = m.module({
   },
 })
 
+// https://github.com/microsoft/TypeScript/issues/53514
+// @ts-ignore
 m.start(testModule, {
   port: 4000,
   sanbox: {
@@ -115,6 +118,7 @@ m.start(testModule, {
   http: {
     enabled: true,
     prefix: '/api',
+    logger: true
   },
   /*grpc: {
     enabled: true,
@@ -137,7 +141,7 @@ async function main() {
   })
   console.log(ins)
   const result = await skd.query.user({
-    input: ins.id,
+    input: { id: ins.id, b: 1 },
     fields: { id: true, username: true },
     headers: { id: '1234' },
   })

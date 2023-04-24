@@ -4,13 +4,6 @@ export type JSONType = string | number | boolean | null | undefined | { [K in st
 
 export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
 
-export type PartialDeep<T> = T extends Date
-  ? Date | undefined
-  : T extends object
-  ? {
-      [K in keyof T]?: PartialDeep<T[K]>
-    }
-  : T
 
 export function lazyToType(t: LazyType): Type {
   if (typeof t === 'function') {

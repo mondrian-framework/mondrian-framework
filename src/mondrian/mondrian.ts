@@ -1,14 +1,13 @@
 import { FastifyRequest, fastify, FastifyReply } from 'fastify'
-import { JSONType, PartialDeep, lazyToType } from './utils'
 import { createYoga } from 'graphql-yoga'
 import { buildGraphqlSchema } from './graphl-builder'
-import { Infer, Projection, Types, decode, decodeInternal, encode, encodeInternal } from './type-system'
+import { Infer, InferReturn, Projection, Types } from './type-system'
 import { createGRPCServer } from './grpc'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import { fastifyStatic } from '@fastify/static'
 import path from 'path'
 import fs from 'fs'
-import { openapiSpecification } from './openapi'
+import { attachRestMethods, openapiSpecification } from './openapi'
 
 export type Operations<T extends Types> = Record<OperationNature, Record<string, Operation<T, string, string>>>
 
@@ -21,7 +20,6 @@ type Operation<T extends Types, I extends keyof T, O extends keyof T> = {
     rest?: {
       method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
       path?: string
-      inputFrom?: 'body' | 'params' | 'custom'
     }
     graphql?: {
       name?: string
@@ -59,22 +57,45 @@ export type ResolverF<Input, Output, Context> = (args: {
   input: Input
   fields: Projection<Output> | undefined
   context: Context
-}) => Promise<PartialDeep<Output>>
+}) => Promise<Output>
+
+export function resolver< Input,  Output,  Context>(f: ResolverF<Input, Output, Context>): {
+  f:  ResolverF<Input, Output, Context>
+} {
+  return {
+    f
+  }
+}
+
+export type GenericModule = {
+  name: string
+  types: Types
+  operations: Record<OperationNature, Record<string, Operation<Types, string, string>>>
+  context: (req: MondrianRequest) => Promise<unknown>
+  resolvers: {
+    queries: Record<
+      string,
+      {
+        f: ResolverF<unknown, unknown, any>
+      }
+    >
+    mutations: Record<
+      string,
+      {
+        f: ResolverF<unknown, unknown, any>
+      }
+    >
+  }
+}
 export type Module<T extends Types, O extends Operations<T>, Context> = ModuleDefinition<T, O> & {
   context: (req: MondrianRequest) => Promise<Context>
   resolvers: {
     queries: {
       [K in keyof O['queries']]: Infer<T[O['queries'][K]['input']]> extends infer Input
-        ? Infer<T[O['queries'][K]['output']]> extends infer Output
+        ? InferReturn<T[O['queries'][K]['output']]> extends infer Output
           ? {
               f: ResolverF<Input, Output, Context>
-            } & (O['queries'][K]['options'] extends { rest: { inputFrom: 'custom' } }
-              ? {
-                  rest: {
-                    input: (req: FastifyRequest) => Promise<Input>
-                  }
-                }
-              : {})
+            }
           : never
         : never
     }
@@ -83,13 +104,7 @@ export type Module<T extends Types, O extends Operations<T>, Context> = ModuleDe
         ? Infer<T[O['mutations'][K]['output']]> extends infer Output
           ? {
               f: ResolverF<Input, Output, Context>
-            } & (O['mutations'][K]['options'] extends { rest: { inputFrom: 'custom' } }
-              ? {
-                  rest: {
-                    input: (req: FastifyRequest) => Promise<Input>
-                  }
-                }
-              : {})
+            }
           : never
         : never
     }
@@ -104,6 +119,7 @@ export type ModuleRunnerOptions = {
   http?: {
     enabled: boolean
     prefix: string
+    logger?: boolean
   }
   graphql?: {
     enabled?: boolean
@@ -132,10 +148,6 @@ export function moduleDefinition<const T extends Types, const O extends Operatio
   return module
 }
 
-
-
-
-
 export async function start<const T extends Types, const O extends Operations<T>, const Context>(
   module: Module<T, O, Context>,
   options: ModuleRunnerOptions,
@@ -159,29 +171,12 @@ export async function start<const T extends Types, const O extends Operations<T>
   server.get('/api/doc/schema.json', () => spec)
 
   //REST
-  for (const [opt, operations] of Object.entries(module.operations)) {
-    const operationNature = opt as OperationNature
-    for (const [operationName, operation] of Object.entries(operations)) {
-      const path = `${options.http?.prefix}${operation.options?.rest?.path ?? `/${operationName}`}`
-      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'GET' : 'POST')
-      if (method === 'GET') {
-        server.get(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, operationName, operationType: operationNature, module }),
-        )
-      } else if (method === 'POST') {
-        server.post(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, operationName, operationType: operationNature, module }),
-        )
-      }
-    }
-  }
+  attachRestMethods({ module, options, server })
 
   //GRAPHQL
   const yoga = createYoga<{ req: FastifyRequest; reply: FastifyReply }>({
     schema: buildGraphqlSchema({ module, options }),
-    context: ({ req }) => {
-      return module.context({ headers: req.headers })
-    },
+    context: ({ req }) => module.context({ headers: req.headers }),
     logging: false,
   })
   server.route({
@@ -220,47 +215,4 @@ export async function start<const T extends Types, const O extends Operations<T>
   await createGRPCServer({ module, options })
 
   return { address, options, module }
-}
-
-async function elabFastifyRestRequest<T extends Types, O extends Operations<T>, Context>({
-  request,
-  reply,
-  operationName,
-  module,
-  operationType,
-}: {
-  request: FastifyRequest
-  reply: FastifyReply
-  operationName: string
-  operationType: OperationNature
-  module: Module<T, O, Context>
-}): Promise<unknown> {
-  const operation = module.operations[operationType][operationName]
-  const resolver = module.resolvers[operationType][operationName]
-  const inputFrom = operation.options?.rest?.inputFrom ?? (request.method === 'GET' ? 'query' : 'body')
-  const input =
-    inputFrom === 'custom'
-      ? 'rest' in resolver
-        ? await resolver.rest.input(request)
-        : null
-      : inputFrom === 'body'
-      ? request.body
-      : (request.query as Record<string, unknown>).input
-  const decoded = decodeInternal(operation.types[operation.input], input, '/')
-  if (!decoded.pass) {
-    reply.status(400)
-    return { errors: decoded.errors }
-  }
-  const context = await module.context({ headers: request.headers })
-  const result = await resolver.f({
-    fields: undefined,
-    context,
-    input: decoded.value,
-  })
-  const encoded = encodeInternal(operation.types[operation.output], result as JSONType)
-  return encoded
-}
-
-function decodeQueryObject() {
-
 }

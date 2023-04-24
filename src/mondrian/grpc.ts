@@ -2,7 +2,7 @@ import * as grpc from '@grpc/grpc-js'
 import * as grpcLoader from '@grpc/proto-loader'
 import wrapServerWithReflection from 'grpc-node-server-reflection'
 import { LazyType, Types } from './type-system'
-import { Module, ModuleRunnerOptions, Operations } from './mondrian'
+import { GenericModule, ModuleRunnerOptions } from './mondrian'
 import { HandleCall } from '@grpc/grpc-js/build/src/server-call'
 import { assertNever, lazyToType } from './utils'
 
@@ -99,11 +99,11 @@ function generateTypes(
   return typeMap as Record<string, protobuf.IEnum | protobuf.IType | protobuf.IOneOf>
 }
 
-function generateProtobufSchema<const T extends Types, const O extends Operations<T>, const Context>({
+function generateProtobufSchema({
   module,
   options,
 }: {
-  module: Module<T, O, Context>
+  module: GenericModule
   options: ModuleRunnerOptions
 }): protobuf.INamespace {
   const usedTypes = new Set<string>()
@@ -165,13 +165,7 @@ function generateProtobufSchema<const T extends Types, const O extends Operation
   }
 }
 
-function generateGrpcResolvers<const T extends Types, const O extends Operations<T>, const Context>({
-  module,
-  options,
-}: {
-  module: Module<T, O, Context>
-  options: ModuleRunnerOptions
-}): {
+function generateGrpcResolvers({ module, options }: { module: GenericModule; options: ModuleRunnerOptions }): {
   Query: grpc.UntypedServiceImplementation
   Mutation: grpc.UntypedServiceImplementation
 } {
@@ -213,11 +207,11 @@ function generateGrpcResolvers<const T extends Types, const O extends Operations
   }
 }
 
-export async function createGRPCServer<const T extends Types, const O extends Operations<T>, const Context>({
+export async function createGRPCServer({
   module,
   options,
 }: {
-  module: Module<T, O, Context>
+  module: GenericModule
   options: ModuleRunnerOptions
 }): Promise<void> {
   if (!options.grpc?.enabled) return

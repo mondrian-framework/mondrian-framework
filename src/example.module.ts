@@ -1,13 +1,19 @@
 import m from './mondrian' //from '@twinlogix/mondrian/core'
 
+process.env.STARTING_ID = '123'
+const envs = m.envs({
+  STARTING_ID: m.number(),
+  MONGODB_URL: m.defaul(m.string(), 'mock'),
+})
+
 const Id = m.custom({
   name: 'ID',
   decode(input) {
     if (typeof input !== 'string') {
-      return { pass: false, errors: [{ path: '', value: input, error: 'ID expected' }] }
+      return { pass: false, errors: [{ value: input, error: 'ID expected' }] }
     }
     if (input.length === 0) {
-      return { pass: false, errors: [{ path: '', value: input, error: 'Empty ID is not valid' }] }
+      return { pass: false, errors: [{ value: input, error: 'Empty ID is not valid' }] }
     }
     return { pass: true, value: input }
   },
@@ -20,7 +26,7 @@ const Id = m.custom({
 })
 type Id = m.Infer<typeof Id>
 
-const PostTag = m.enumarator(['A', 'B', 'C'])
+const PostTag = m.enumerator(['A', 'B', 'C'])
 type PostTag = m.Infer<typeof PostTag>
 
 const User = () =>
@@ -43,12 +49,16 @@ const Post = () =>
     tags: m.optional(m.array(PostTag)),
   })
 type Post = m.Infer<typeof Post>
+const CursedType = () => m.array(m.union([CursedType, m.string()]))
+type CursedType = m.Infer<typeof CursedType>
+
 const UserInput = m.object({
   username: m.string(),
   password: m.string(),
+  v: m.optional(CursedType),
 })
 type UserInput = m.Infer<typeof UserInput>
-const UserFind = m.object({ id: Id, b: m.number(), c: m.optional(m.object({ a: m.number() })) })
+const UserFind = m.object({ id: Id, b: m.defaul(m.number(), 123), c: m.optional(m.object({ a: m.number() })) })
 type UserFind = m.Infer<typeof UserFind>
 const UserOutput = m.nullable(User)
 type UserOutput = m.Infer<typeof UserOutput>
@@ -71,7 +81,7 @@ const getUser = m.operation({
 })
 const operations = m.operations({ mutations: { register }, queries: { user: getUser } })
 
-const context = m.context(async (req) => ({ userId: req.headers.id }))
+const context = m.context(async (req) => ({ userId: req.headers.id, envs }))
 
 const db = new Map<string, any>()
 const testModule = m.module({
@@ -94,7 +104,7 @@ const testModule = m.module({
     mutations: {
       register: {
         f: async ({ input, fields, context }) => {
-          const id = db.size.toString()
+          const id = (db.size + envs.STARTING_ID).toString()
           const user: User = { id, ...input, registeredAt: new Date() }
           db.set(id, user)
           return user
@@ -104,8 +114,6 @@ const testModule = m.module({
   },
 })
 
-// https://github.com/microsoft/TypeScript/issues/53514
-// @ts-ignore
 m.start(testModule, {
   port: 4000,
   sanbox: {
@@ -114,11 +122,12 @@ m.start(testModule, {
   graphql: {
     enabled: true,
     path: '/graphql',
+    logger: true,
   },
   http: {
     enabled: true,
     prefix: '/api',
-    logger: true
+    logger: true,
   },
   /*grpc: {
     enabled: true,
@@ -142,10 +151,18 @@ async function main() {
   console.log(ins)
   const result = await skd.query.user({
     input: { id: ins.id, b: 1 },
-    fields: { id: true, username: true },
+    fields: true,
     headers: { id: '1234' },
   })
   console.log(result)
 }
 
 main().then(() => {})
+
+/*
+TODO:
+  - module merging
+  - sdk remote call
+  - IfC
+  - projection
+*/

@@ -1,7 +1,7 @@
 import { FastifyRequest, fastify, FastifyReply } from 'fastify'
 import { createYoga } from 'graphql-yoga'
 import { buildGraphqlSchema } from './graphl-builder'
-import { Infer, InferReturn, Projection, Types } from './type-system'
+import { Infer, InferReturn, ObjectType, Projection, Types } from './type-system'
 import { createGRPCServer } from './grpc'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import { fastifyStatic } from '@fastify/static'
@@ -59,11 +59,13 @@ export type ResolverF<Input, Output, Context> = (args: {
   context: Context
 }) => Promise<Output>
 
-export function resolver< Input,  Output,  Context>(f: ResolverF<Input, Output, Context>): {
-  f:  ResolverF<Input, Output, Context>
+export function resolver<Input, Output, Context>(
+  f: ResolverF<Input, Output, Context>,
+): {
+  f: ResolverF<Input, Output, Context>
 } {
   return {
-    f
+    f,
   }
 }
 
@@ -124,6 +126,7 @@ export type ModuleRunnerOptions = {
   graphql?: {
     enabled?: boolean
     path?: string
+    logger?: boolean
   }
   grpc?: {
     enabled?: boolean
@@ -155,44 +158,46 @@ export async function start<const T extends Types, const O extends Operations<T>
   const server = fastify({
     logger: false,
   })
-  server.register(fastifyStatic, {
-    root: getAbsoluteFSPath(),
-    prefix: '/api/doc', // optional: default '/'
-  })
-  const indexContent = fs
-    .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
-    .toString()
-    .replace('https://petstore.swagger.io/v2/swagger.json', 'http://127.0.0.1:4000/api/doc/schema.json')
-  server.get('/api/doc/swagger-initializer.js', (req, res) => res.send(indexContent))
-  server.get('/api/doc', (req, res) => {
-    res.redirect('/api/doc/index.html')
-  })
-  const spec = openapiSpecification({ module, options })
-  server.get('/api/doc/schema.json', () => spec)
-
   //REST
-  attachRestMethods({ module, options, server })
-
+  if (options.http?.enabled) {
+    server.register(fastifyStatic, {
+      root: getAbsoluteFSPath(),
+      prefix: '/api/doc', // optional: default '/'
+    })
+    const indexContent = fs
+      .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
+      .toString()
+      .replace('https://petstore.swagger.io/v2/swagger.json', 'http://127.0.0.1:4000/api/doc/schema.json')
+    server.get('/api/doc/swagger-initializer.js', (req, res) => res.send(indexContent))
+    server.get('/api/doc', (req, res) => {
+      res.redirect('/api/doc/index.html')
+    })
+    const spec = openapiSpecification({ module, options })
+    server.get('/api/doc/schema.json', () => spec)
+    attachRestMethods({ module, options, server })
+  }
   //GRAPHQL
-  const yoga = createYoga<{ req: FastifyRequest; reply: FastifyReply }>({
-    schema: buildGraphqlSchema({ module, options }),
-    context: ({ req }) => module.context({ headers: req.headers }),
-    logging: false,
-  })
-  server.route({
-    url: '/graphql',
-    method: ['GET', 'POST', 'OPTIONS'],
-    handler: async (req, reply) => {
-      // Second parameter adds Fastify's `req` and `reply` to the GraphQL Context
-      const response = await yoga.handleNodeRequest(req, { req, reply })
-      response.headers.forEach((value, key) => {
-        reply.header(key, value)
-      })
-      reply.status(response.status)
-      reply.send(response.body)
-      return reply
-    },
-  })
+  if (options.graphql?.enabled) {
+    const yoga = createYoga<{ req: FastifyRequest; reply: FastifyReply }>({
+      schema: buildGraphqlSchema({ module, options }),
+      context: ({ req }) => module.context({ headers: req.headers }),
+      logging: false,
+    })
+    server.route({
+      url: '/graphql',
+      method: ['GET', 'POST', 'OPTIONS'],
+      handler: async (req, reply) => {
+        // Second parameter adds Fastify's `req` and `reply` to the GraphQL Context
+        const response = await yoga.handleNodeRequest(req, { req, reply })
+        response.headers.forEach((value, key) => {
+          reply.header(key, value)
+        })
+        reply.status(response.status)
+        reply.send(response.body)
+        return reply
+      },
+    })
+  }
   if (options.sanbox?.enabled) {
     server.get(options.sanbox?.path ?? '/', async (request, reply) => {
       reply.type('text/html')

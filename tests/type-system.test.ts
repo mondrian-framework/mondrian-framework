@@ -8,7 +8,7 @@ describe('type-system', () => {
       b: m.string(),
       c: m.optional(m.string()),
       d: m.optional(m.array(m.union([m.string(), m.number()]))),
-      e: m.optional(m.enumarator(['A', 'B'])),
+      e: m.optional(m.enumerator(['A', 'B'])),
       f: m.optional(m.timestamp())
     })
     parseTrue(MyType, { a: 123, b: '', f: new Date() })

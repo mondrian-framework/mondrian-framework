@@ -61,7 +61,7 @@ function generateType(
     }
     return generateType(name, type.type, types, typeMap, typeRef, isOptional, true)
   }
-  if (type.kind === 'optional-decorator') {
+  if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return generateType(name, type.type, types, typeMap, typeRef, true, isArray)
   }
   if (type.kind === 'object') {
@@ -73,7 +73,7 @@ function generateType(
     typeMap[name] = { fields }
     return { id: 0, type: name, rule }
   }
-  if (type.kind === 'enumarator') {
+  if (type.kind === 'enumerator') {
     typeMap[name] = { values: Object.fromEntries(type.values.map((v, i) => [v, i])) }
     return { id: 0, type: name, rule }
   }

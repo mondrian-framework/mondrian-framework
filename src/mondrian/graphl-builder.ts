@@ -1,8 +1,10 @@
 import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { GenericModule, ModuleRunnerOptions } from './mondrian'
 import { assertNever, lazyToType } from './utils'
-import { CustomType, LazyType } from './type-system'
+import { CustomType, LazyType, encode } from './type-system'
 import { createSchema } from 'graphql-yoga'
+import { randomUUID } from 'crypto'
+import { decode } from './decoder'
 
 function typeToGqlType(
   name: string,
@@ -46,7 +48,7 @@ function typeToGqlType(
   if (type.kind === 'array-decorator') {
     return `[${typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, false, scalars)}]${isRequired}`
   }
-  if (type.kind === 'optional-decorator') {
+  if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, true, scalars)
   }
   if (type.kind === 'object') {
@@ -59,13 +61,28 @@ function typeToGqlType(
     }`
     return `${name}${isRequired}`
   }
-  if (type.kind === 'enumarator') {
+  if (type.kind === 'enumerator') {
     typeMap[name] = `enum ${name} {
       ${type.values.join('\n        ')}
     }`
     return `${name}${isRequired}`
   }
   if (type.kind === 'union-operator') {
+    if (
+      (type.types.length === 2 && lazyToType(type.types[0]).kind === 'null') ||
+      lazyToType(type.types[1]).kind === 'null'
+    ) {
+      return typeToGqlType(
+        name,
+        lazyToType(type.types[0]).kind === 'null' ? type.types[1] : type.types[0],
+        types,
+        typeMap,
+        typeRef,
+        isInput,
+        true,
+        scalars,
+      )
+    }
     typeMap[name] = `union ${name} = ${type.types
       .map((t, i) => typeToGqlType(`${name}_Union_${i}`, t, types, typeMap, typeRef, isInput, true, scalars))
       .join(' | ')}`
@@ -150,12 +167,10 @@ function generateScalars({
           name: s.name,
           description: '',
           serialize(input) {
-            const result = s.encode(input, s.opts)
-            return result
+            return input
           },
           parseValue(input) {
-            const result = s.decode(input, s.opts)
-            return result
+            return input
           },
           //TODO: how tell graphql sanbox what type to expect
         }),
@@ -179,17 +194,37 @@ function generateQueryOrMutation({
   const resolvers = Object.fromEntries(
     Object.entries(ops).map(([operationName, operation]) => {
       const gqlInputTypeName = operation.options?.graphql?.inputName ?? 'input'
-      const resolver = (
+      const resolver = async (
         parent: unknown,
         input: Record<string, unknown>,
         context: unknown,
         info: GraphQLResolveInfo,
       ) => {
-        return rsvs[operationName].f({
+        const operationId = randomUUID().split('-').join('')
+        //reply.header('operation-id', operationId) //TODO
+        const decoded = decode(operation.types[operation.input], input[gqlInputTypeName], { cast: true })
+        if (!decoded.pass) {
+          if (options.graphql?.logger) {
+            console.log(`[GQL-MODULE / ${type}.${operationName}]: Bad request. ID: ${operationId}`)
+          }
+          //reply.status(400)
+          throw new Error(`Invalid input: ${JSON.stringify(decoded.errors)}`)
+        }
+        const startMs = new Date().getTime()
+        const result = await rsvs[operationName].f({
           context: context as any,
           fields: info as any, // TODO
-          input: input[gqlInputTypeName],
+          input: decoded.value,
         })
+        const encoded = encode(operation.types[operation.output], result)
+        if (options.graphql?.logger) {
+          console.log(
+            `[GQL-MODULE / ${type}.${operationName}]: Completed in ${
+              new Date().getTime() - startMs
+            } ms. ID: ${operationId}`,
+          )
+        }
+        return encoded
       }
       return [operationName, resolver]
     }),

@@ -1,9 +1,10 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { GenericModule, ModuleRunnerOptions, OperationNature } from './mondrian'
-import { LazyType, Types, decodeInternal, encodeInternal } from './type-system'
-import { JSONType, assertNever, lazyToType } from './utils'
+import { LazyType, Types, encode } from './type-system'
+import { assertNever, lazyToType } from './utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { randomUUID } from 'crypto'
+import { decode } from './decoder'
 
 export function attachRestMethods({
   module,
@@ -66,7 +67,7 @@ async function elabFastifyRestRequest({
   const inputFrom = request.method === 'GET' ? 'query' : 'body'
   const input =
     inputFrom === 'body' ? request.body : decodeQueryObject(request.query as Record<string, unknown>, 'input')
-  const decoded = decodeInternal(operation.types[operation.input], input, '/')
+  const decoded = decode(operation.types[operation.input], input, { cast: false })
   if (!decoded.pass) {
     if (options.http?.logger) {
       console.log(`[REST-MODULE / ${operationNature}.${operationName}]: Bad request. ID: ${operationId}`)
@@ -81,7 +82,7 @@ async function elabFastifyRestRequest({
     context,
     input: decoded.value,
   })
-  const encoded = encodeInternal(operation.types[operation.output], result as JSONType)
+  const encoded = encode(operation.types[operation.output], result)
   if (options.http?.logger) {
     console.log(
       `[REST-MODULE / ${operationNature}.${operationName}]: ${request.method} ${request.routerPath} Completed in ${
@@ -259,13 +260,19 @@ function typeToSchemaObject(
   }
   if (type.kind === 'number') {
     //TODO: Float
-    return { type: 'number' }
+    return {
+      type: 'number',
+      maximum: type.opts?.maximum,
+      minimum: type.opts?.minimum,
+      exclusiveMaximum: type.opts?.exclusiveMaximum,
+      exclusiveMinimum: type.opts?.exclusiveMinimum,
+    }
   }
   if (type.kind === 'array-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { type: 'array', items: subtype }
   }
-  if (type.kind === 'optional-decorator') {
+  if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return {
       allOf: [typeToSchemaObject(name, type.type, types, typeMap, typeRef), { type: 'null', description: 'optional' }],
     }
@@ -300,7 +307,7 @@ function typeToSchemaObject(
     }
     return object
   }
-  if (type.kind === 'enumarator') {
+  if (type.kind === 'enumerator') {
     return { type: 'string', enum: type.values as unknown as string[] }
   }
   if (type.kind === 'union-operator') {

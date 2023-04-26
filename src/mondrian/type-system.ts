@@ -1,10 +1,14 @@
+import { DecodeResult, decode } from './decoder'
 import { Expand, JSONType, assertNever, lazyToType } from './utils'
 
 export type StringType = { kind: 'string'; opts?: { maxLength?: number; regex?: RegExp; minLength?: number } }
-export type NumberType = { kind: 'number'; opts?: {} }
+export type NumberType = {
+  kind: 'number'
+  opts?: { exclusiveMaximum?: number; exclusiveMinimum?: number; minimum?: number; maximum?: number }
+}
 export type BooleanType = { kind: 'boolean'; opts?: {} }
 export type EnumeratorType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]> = {
-  kind: 'enumarator'
+  kind: 'enumerator'
   values: V
 }
 export type NullType = { kind: 'null' }
@@ -17,6 +21,7 @@ export type ObjectType = {
 }
 export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType }
 export type OptionalDecorator = { kind: 'optional-decorator'; type: LazyType }
+export type DefaultDecorator = { kind: 'default-decorator'; type: LazyType; opts: { default?: unknown } }
 export type UnionOperator = { kind: 'union-operator'; types: LazyType[] }
 export type Type =
   | NumberType
@@ -28,6 +33,7 @@ export type Type =
   | ObjectType
   | ArrayDecorator
   | OptionalDecorator
+  | DefaultDecorator
   | UnionOperator
 
 export type CustomType<
@@ -47,84 +53,96 @@ export type CustomType<
 export type LazyType = Type | (() => Type)
 export type Types = Record<string, LazyType>
 
-export type Infer<T extends LazyType> = T extends () => infer LT ? InferType<LT> : InferType<T>
-export type InferReturn<T extends LazyType> = T extends () => infer LT ? InferReturnType<LT> : InferReturnType<T>
+export type Infer<T extends LazyType> = [T] extends [() => infer LT] ? InferType<LT> : InferType<T>
+export type InferReturn<T extends LazyType> = [T] extends [() => infer LT] ? InferReturnType<LT> : InferReturnType<T>
 
-type InferType<T> = T extends Type
-  ? T extends { kind: 'array-decorator'; type: infer ST }
-    ? ST extends LazyType
-      ? Infer<ST>[]
-      : never
-    : T extends { kind: 'optional-decorator'; type: infer ST }
-    ? ST extends LazyType
-      ? Infer<ST> | undefined
-      : never
-    : T extends { kind: 'string' }
-    ? string
-    : T extends { kind: 'number' }
-    ? number
-    : T extends { kind: 'boolean' }
-    ? boolean
-    : T extends { kind: 'null' }
-    ? null
-    : T extends { kind: 'custom'; type: infer C }
-    ? C
-    : T extends { kind: 'enumarator'; values: infer V }
-    ? V extends readonly string[]
-      ? V[number]
-      : never
-    : T extends { kind: 'union-operator'; types: infer TS }
-    ? TS extends Array<any>
-      ? Infer<TS[number]>
-      : never
-    : T extends { kind: 'object'; type: infer ST }
-    ? ST extends ObjectType['type']
-      ? Expand<
-          {
-            [K in NonOptionalKeys<ST>]: Infer<ST[K]>
-          } & {
-            [K in OptionalKeys<ST>]?: Infer<ST[K]>
-          }
-        >
+type InferUnionType<TS extends LazyType[]> = TS extends [infer H, ...infer T]
+  ? H extends LazyType
+    ? T extends LazyType[]
+      ? Infer<H> | InferUnionType<T>
       : never
     : never
   : never
 
-type InferReturnType<T> = T extends Type
-  ? T extends { kind: 'array-decorator'; type: infer ST }
-    ? ST extends LazyType
-      ? InferReturn<ST>[]
-      : never
-    : T extends { kind: 'optional-decorator'; type: infer ST }
-    ? ST extends LazyType
-      ? InferReturn<ST> | undefined
-      : never
-    : T extends { kind: 'string' }
-    ? string
-    : T extends { kind: 'number' }
-    ? number
-    : T extends { kind: 'boolean' }
-    ? boolean
-    : T extends { kind: 'null' }
-    ? null
-    : T extends { kind: 'custom'; type: infer C }
-    ? C
-    : T extends { kind: 'enumarator'; values: infer V }
-    ? V extends readonly string[]
-      ? V[number]
-      : never
-    : T extends { kind: 'union-operator'; types: infer TS }
-    ? TS extends Array<any>
-      ? InferReturn<TS[number]>
-      : never
-    : T extends { kind: 'object'; type: infer ST }
-    ? ST extends ObjectType['type']
-      ? Expand<{
-          [K in keyof ST]?: InferReturn<ST[K]>
-        }>
-      : never
+type InferType<T> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Infer<ST>[]
     : never
-  : never
+  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Infer<ST> | undefined
+    : never
+  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Infer<ST>
+    : never
+  : [T] extends [{ kind: 'string' }]
+  ? string
+  : [T] extends [{ kind: 'number' }]
+  ? number
+  : [T] extends [{ kind: 'boolean' }]
+  ? boolean
+  : [T] extends [{ kind: 'null' }]
+  ? null
+  : [T] extends [{ kind: 'custom'; type: infer C }]
+  ? C
+  : [T] extends [{ kind: 'enumerator'; values: infer V }]
+  ? V extends readonly string[]
+    ? V[number]
+    : never
+  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
+  ? TS extends Array<any>
+    ? InferUnionType<TS>
+    : never
+  : [T] extends [{ kind: 'object'; type: infer ST }]
+  ? ST extends ObjectType['type']
+    ? Expand<
+        {
+          [K in NonOptionalKeys<ST>]: Infer<ST[K]>
+        } & {
+          [K in OptionalKeys<ST>]?: Infer<ST[K]>
+        }
+      >
+    : never
+  : unknown
+
+type InferReturnType<T> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Infer<ST>[]
+    : never
+  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Infer<ST> | undefined
+    : never
+  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Infer<ST>
+    : never
+  : [T] extends [{ kind: 'string' }]
+  ? string
+  : [T] extends [{ kind: 'number' }]
+  ? number
+  : [T] extends [{ kind: 'boolean' }]
+  ? boolean
+  : [T] extends [{ kind: 'null' }]
+  ? null
+  : [T] extends [{ kind: 'custom'; type: infer C }]
+  ? C
+  : [T] extends [{ kind: 'enumerator'; values: infer V }]
+  ? V extends readonly string[]
+    ? V[number]
+    : never
+  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
+  ? TS extends Array<any>
+    ? Infer<TS[number]>
+    : never
+  : [T] extends [{ kind: 'object'; type: infer ST }]
+  ? ST extends ObjectType['type']
+    ? Expand<{
+        [K in keyof ST]?: InferReturn<ST[K]>
+      }>
+    : never
+  : unknown
 
 type OptionalKeys<T extends ObjectType['type']> = {
   [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? K : never
@@ -149,8 +167,8 @@ export function types<const T extends Types>(types: T): T {
   return types
 }
 
-export function number(): { kind: 'number' } {
-  return { kind: 'number' }
+export function number(opts?: NumberType['opts']): NumberType {
+  return { kind: 'number', opts }
 }
 export function string(opts?: StringType['opts']): StringType {
   return { kind: 'string', opts }
@@ -160,8 +178,8 @@ export function union<const T1 extends LazyType, const T2 extends LazyType, cons
 ): { kind: 'union-operator'; types: [T1, T2, ...TS] } {
   return { kind: 'union-operator', types }
 }
-export function enumarator<const V extends readonly [string, ...string[]]>(values: V): EnumeratorType<V> {
-  return { kind: 'enumarator', values }
+export function enumerator<const V extends readonly [string, ...string[]]>(values: V): EnumeratorType<V> {
+  return { kind: 'enumerator', values }
 }
 export function boolean(): BooleanType {
   return { kind: 'boolean' }
@@ -183,6 +201,12 @@ export function array<const T extends LazyType>(type: T): { kind: 'array-decorat
 }
 export function optional<const T extends LazyType>(type: T): { kind: 'optional-decorator'; type: T } {
   return { kind: 'optional-decorator', type }
+}
+export function defaul<const T extends LazyType>(
+  type: T,
+  value: Infer<T>,
+): { kind: 'default-decorator'; type: T; opts: { default: unknown } } {
+  return { kind: 'default-decorator', type, opts: { default: value } }
 }
 export function custom<const T, const N extends string>(
   custom: Omit<CustomType<T, N>, 'kind' | 'type' | 'opts'>,
@@ -233,10 +257,9 @@ export function datetime(opts?: DatetimeType['opts']): DatetimeType {
 }
 
 export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
-  //@ts-ignore
-  return encodeInternal(type, value)
+  return encodeInternal(type, value as JSONType)
 }
-export function encodeInternal(type: LazyType, value: JSONType): JSONType {
+function encodeInternal(type: LazyType, value: JSONType): JSONType {
   const t = lazyToType(type)
   if (t.kind === 'optional-decorator') {
     if (value === undefined) {
@@ -244,17 +267,23 @@ export function encodeInternal(type: LazyType, value: JSONType): JSONType {
     }
     return encode(t.type, value)
   }
+  if (t.kind === 'default-decorator') {
+    return encode(t.type, value)
+  }
   if (t.kind === 'array-decorator') {
     const results = []
-    for (const v of value as Array<unknown>) {
-      results.push(encode(t.type, v))
+    for (const v of value as Array<JSONType>) {
+      results.push(encodeInternal(t.type, v))
     }
     return results
   }
   if (t.kind === 'object') {
     const ret: { [K in string]: JSONType } = {}
     for (const [key, v] of Object.entries(value as object)) {
-      ret[key] = encode(t.type[key], v)
+      const subtype = t.type[key]
+      if (subtype) {
+        ret[key] = encode(subtype, v)
+      }
     }
     return ret
   }
@@ -271,7 +300,7 @@ export function encodeInternal(type: LazyType, value: JSONType): JSONType {
   }
   if (
     t.kind === 'boolean' ||
-    t.kind === 'enumarator' ||
+    t.kind === 'enumerator' ||
     t.kind === 'null' ||
     t.kind === 'number' ||
     t.kind === 'string'
@@ -280,116 +309,15 @@ export function encodeInternal(type: LazyType, value: JSONType): JSONType {
   }
   assertNever(t)
 }
-export function decode<const T extends LazyType>(type: T, value: unknown): DecodeResult<InferType<T>> {
-  const result = decodeInternal(type, value, '/')
-  return result as DecodeResult<InferType<T>>
-}
-type DecodeResult<T> =
-  | { pass: true; value: T }
-  | { pass: false; errors: { path: string; error: string; value: unknown }[] }
 
-export function decodeInternal(type: LazyType, value: unknown, path: string): DecodeResult<unknown> {
-  const t = lazyToType(type)
-  if (t.kind === 'string') {
-    if (typeof value !== 'string') {
-      return { pass: false, errors: [{ path, error: `String expected`, value }] }
-    }
-    if (t.opts?.maxLength && value.length > t.opts.maxLength) {
-      return {
-        pass: false,
-        errors: [{ path, error: `String longer than max length (${value.length}/${t.opts.maxLength})`, value }],
-      }
-    }
-    if (t.opts?.minLength && value.length < t.opts.minLength) {
-      return {
-        pass: false,
-        errors: [{ path, error: `String shorter than min length (${value.length}/${t.opts.minLength})`, value }],
-      }
-    }
-    if (t.opts?.regex && !t.opts.regex.test(value)) {
-      return { pass: false, errors: [{ path, error: `String regex mismatch (${t.opts.regex.source})`, value }] }
-    }
-    return { pass: true, value }
-  } else if (t.kind === 'number') {
-    const v = Number(value)
-    if (Number.isNaN(v)) {
-      return { pass: false, errors: [{ path, error: `Number expected`, value }] }
-    }
-    return { pass: true, value: v }
-  } else if (t.kind === 'boolean') {
-    if (typeof value !== 'boolean') {
-      return { pass: false, errors: [{ path, error: `Boolean expected`, value }] }
-    }
-    return { pass: true, value }
-  } else if (t.kind === 'null') {
-    if (value !== null) {
-      return { pass: false, errors: [{ path, error: `Null expected`, value }] }
-    }
-    return { pass: true, value }
-  } else if (t.kind === 'optional-decorator') {
-    if (value === undefined) {
-      return { pass: true, value }
-    }
-    const result = decodeInternal(t.type, value, path)
-    if (!result.pass) {
-      return { pass: false, errors: [...result.errors, { path, error: `Undefined expected`, value }] }
-    }
-    return { pass: true, value: result.value as any }
-  } else if (t.kind === 'union-operator') {
-    const errors: { path: string; error: string; value: unknown }[] = []
-    for (const u of t.types) {
-      const result = decodeInternal(u, value, path)
-      if (result.pass) {
-        return result
-      }
-      errors.push(...result.errors)
-    }
-    return { pass: false, errors }
-  } else if (t.kind === 'object') {
-    if (typeof value !== 'object' || !value) {
-      return { pass: false, errors: [{ path, error: `Object expected`, value }] }
-    }
-    const obj = value as Record<string, unknown>
-    const ret: Record<string, unknown> = t.opts?.strict === false ? {} : { ...value }
-    for (const [key, subtype] of Object.entries(t.type)) {
-      const result = decodeInternal(subtype, obj[key], `${path}${key}/`)
-      if (!result.pass) {
-        return result
-      }
-      ret[key] = result.value
-    }
-    return { pass: true, value: ret }
-  } else if (t.kind === 'array-decorator') {
-    if (!Array.isArray(value)) {
-      return { pass: false, errors: [{ path, error: `Array expected`, value }] }
-    }
-    const values: unknown[] = []
-    for (let i = 0; i < value.length; i++) {
-      const result = decodeInternal(t.type, value[i], `${path}${i}/`)
-      if (!result.pass) {
-        return result
-      }
-      values.push(result.value)
-    }
-    return { pass: true, value: values }
-  } else if (t.kind === 'enumarator') {
-    if (typeof value !== 'string' || !t.values.includes(value)) {
-      return {
-        pass: false,
-        errors: [{ path, error: `enumarator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value }],
-      }
-    }
-    return { pass: true, value }
-  } else if (t.kind === 'custom') {
-    if (!t.is(value, t.opts)) {
-      const result = t.decode(value, t.opts)
-      if (!result.pass) {
-        return { pass: false, errors: result.errors.map((e) => ({ ...e, path: `${path}${e.path}` })) }
-      }
-      return result
-    }
-    return { pass: true, value }
-  } else {
-    assertNever(t)
+export function envs<const T extends ObjectType['type']>(properties: T): Infer<{ kind: 'object'; type: T }> {
+  const obj: Record<string, unknown> = {}
+  for (const key of Object.keys(properties)) {
+    obj[key] = process.env[key]
   }
+  const result = decode({ kind: 'object', type: properties }, obj, { cast: true })
+  if (!result.pass) {
+    throw new Error(`Invalid envs: ${JSON.stringify(result.errors)}`)
+  }
+  return result.value as any
 }

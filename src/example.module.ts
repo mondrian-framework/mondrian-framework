@@ -55,7 +55,7 @@ type CursedType = m.Infer<typeof CursedType>
 const UserInput = m.object({
   username: m.string(),
   password: m.string(),
-  v: m.optional(CursedType),
+  //v: m.optional(CursedType),
 })
 type UserInput = m.Infer<typeof UserInput>
 const UserFind = m.object({ id: Id, b: m.defaul(m.number(), 123), c: m.optional(m.object({ a: m.number() })) })
@@ -134,30 +134,32 @@ m.start(testModule, {
     port: 4001,
     reflection: true,
   },*/
-}).then(({ address, module }) => console.log(`Mondrian module "${module.name}" has started! ${address}`))
+}).then(({ address, module }) => {
+  console.log(`Mondrian module "${module.name}" has started! ${address}`)
+  main().then(() => {})
+})
 
 async function main() {
-  const skd = m.sdk({
+  /*const sdk2 = m.sdk({
     module: testModule,
     defaultHeaders: {
       Authorization: 'api-key',
     },
-  })
-  const ins = await skd.mutation.register({
+  })*/
+  const sdk = m.sdk({ module: testModule, endpoint: 'http://127.0.0.1:4000' })
+  const ins = await sdk.mutation.register({
     input: { password: '1234', username: 'Mario' },
     fields: { id: true, username: true },
     headers: { id: '1234' },
   })
   console.log(ins)
-  const result = await skd.query.user({
+  const result = await sdk.query.user({
     input: { id: ins.id, b: 1 },
     fields: true,
     headers: { id: '1234' },
   })
   console.log(result)
 }
-
-main().then(() => {})
 
 /*
 TODO:

@@ -1,6 +1,7 @@
 import { decode } from './decoder'
-import { Operations, Module, ModuleDefinition } from './mondrian'
+import { Operations, Module, ModuleDefinition, Operation, OperationNature } from './mondrian'
 import { Infer, Projection, Types, encode } from './type-system'
+import { encodeQueryObject } from './utils'
 
 type SDK<T extends Types, O extends Operations<T>> = {
   query: {
@@ -50,36 +51,29 @@ export function sdk<const T extends Types, const O extends Operations<T>>({
     }): SDK<T, O> {
   if ('endpoint' in args) {
     const queries = Object.fromEntries(
-      Object.entries(module.operations.queries).map(([query, body]) => {
-        const wrapper = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
-          const url = `${args.endpoint}/`
-          const response = await fetch(url, { headers: defaultHeaders })
-          const result = decode(module.types[query], response.body)
-          return result
-        }
-        return [query, wrapper]
+      Object.entries(module.operations.queries).map(([operationName, operation]) => {
+        const resolver = handleRemoteCall({
+          module,
+          defaultHeaders,
+          endpoint: args.endpoint,
+          operation,
+          operationName,
+          operationNature: 'queries',
+        })
+        return [operationName, resolver]
       }),
     )
     const mutations = Object.fromEntries(
-      Object.entries(module.operations.mutations).map(([mutation, body]) => {
-        const wrapper = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
-          const url = `${args.endpoint}/api/${body.options?.rest?.path ?? mutation}`
-          const response = await fetch(url, {
-            headers: { ...defaultHeaders, 'content-type': 'application/json' },
-            method: body.options?.rest?.method ?? 'post',
-            body: JSON.stringify(encode(module.types[body.input], input)),
-          })
-          const json = await response.json()
-          if (response.status === 200) {
-            const result = decode(module.types[body.output], json)
-            if (result.pass) {
-              return result.value
-            }
-            throw new Error(JSON.stringify(result.errors))
-          }
-          throw new Error(JSON.stringify(json))
-        }
-        return [mutation, wrapper]
+      Object.entries(module.operations.mutations).map(([operationName, operation]) => {
+        const resolver = handleRemoteCall({
+          module,
+          defaultHeaders,
+          endpoint: args.endpoint,
+          operation,
+          operationName,
+          operationNature: 'mutations',
+        })
+        return [operationName, resolver]
       }),
     )
     return {
@@ -113,4 +107,42 @@ export function sdk<const T extends Types, const O extends Operations<T>>({
     } as SDK<T, O>
   }
   throw new Error('Unrechable')
+}
+
+function handleRemoteCall<const T extends Types, const O extends Operations<T>>({
+  module,
+  defaultHeaders,
+  endpoint,
+  operationName,
+  operation,
+  operationNature,
+}: {
+  module: ModuleDefinition<T, O>
+  defaultHeaders: Record<string, string> | undefined
+  endpoint: string
+  operationName: string
+  operation: Operation<T, string, string>
+  operationNature: OperationNature
+}) {
+  const resolver = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
+    const url = `${endpoint}/api/${operation.options?.rest?.path ?? operationName}`
+    const method = operation.options?.rest?.method ?? (operationNature === 'mutations' ? 'post' : 'get')
+    const encodedInput = encode(module.types[operation.input], input)
+    const realUrl = method === 'get' ? `${url}?${encodeQueryObject(encodedInput, 'input')}` : url
+    const response = await fetch(realUrl, {
+      headers: { 'content-type': 'application/json', ...defaultHeaders },
+      method: method,
+      body: method !== 'get' ? JSON.stringify(encodedInput) : undefined,
+    })
+    const json = await response.json()
+    if (response.status === 200) {
+      const result = decode(module.types[operation.output], json)
+      if (result.pass) {
+        return result.value
+      }
+      throw new Error(JSON.stringify(result.errors))
+    }
+    throw new Error(JSON.stringify(json))
+  }
+  return resolver
 }

@@ -99,12 +99,26 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
       if (!enrichedResult.pass) {
         return enrichedResult
       }
-      ret[key] = enrichedResult.value
+      if (enrichedResult.value !== undefined) {
+        ret[key] = enrichedResult.value
+      }
     }
     return { pass: true, value: ret }
   } else if (t.kind === 'array-decorator') {
     if (!Array.isArray(value)) {
+      if(cast) {
+        if(typeof value === 'object' && value && Object.keys(value).every(v => !Number.isNaN(Number(v)))) {
+          const keys = Object.keys(value)
+          value = []
+          for(let i = 0; i < keys.length; i++) {
+            //TODO
+          }
+        }else {
+          return error(`Array expected`, value)
+          }
+      } else {
       return error(`Array expected`, value)
+      }
     }
     const values: unknown[] = []
     for (let i = 0; i < value.length; i++) {
@@ -144,7 +158,7 @@ function assertString(value: unknown, cast: boolean): DecodeResult<string> {
       return success(value.toString())
     }
     if (typeof value === 'boolean') {
-      return success(value ? "true" : "false")
+      return success(value ? 'true' : 'false')
     }
   }
   return error(`String expected`, value)

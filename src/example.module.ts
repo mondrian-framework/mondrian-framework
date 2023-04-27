@@ -58,7 +58,7 @@ const UserInput = m.object({
   //v: m.optional(CursedType),
 })
 type UserInput = m.Infer<typeof UserInput>
-const UserFind = m.object({ id: Id, b: m.defaul(m.number(), 123), c: m.optional(m.object({ a: m.number() })) })
+const UserFind = m.object({ id: Id, b: m.defaul(m.number(), 123), c: m.optional(m.array(m.object({ a: m.number() }))) })
 type UserFind = m.Infer<typeof UserFind>
 const UserOutput = m.nullable(User)
 type UserOutput = m.Infer<typeof UserOutput>
@@ -154,7 +154,7 @@ async function main() {
   })
   console.log(ins)
   const result = await sdk.query.user({
-    input: { id: ins.id, b: 1 },
+    input: { id: ins.id, b: 1, c: [{ a: 1 }, { a: 2 }] },
     fields: true,
     headers: { id: '1234' },
   })

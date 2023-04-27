@@ -12,7 +12,7 @@ import { attachRestMethods, openapiSpecification } from './openapi'
 export type Operations<T extends Types> = Record<OperationNature, Record<string, Operation<T, string, string>>>
 
 export type OperationNature = 'mutations' | 'queries'
-type Operation<T extends Types, I extends keyof T, O extends keyof T> = {
+export type Operation<T extends Types, I extends keyof T, O extends keyof T> = {
   types: T
   input: I
   output: O

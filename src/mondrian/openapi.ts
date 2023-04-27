@@ -1,7 +1,7 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { GenericModule, ModuleRunnerOptions, OperationNature } from './mondrian'
 import { LazyType, Types, encode } from './type-system'
-import { assertNever, lazyToType } from './utils'
+import { assertNever, decodeQueryObject, lazyToType } from './utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { randomUUID } from 'crypto'
 import { decode } from './decoder'
@@ -67,7 +67,7 @@ async function elabFastifyRestRequest({
   const inputFrom = request.method === 'GET' ? 'query' : 'body'
   const input =
     inputFrom === 'body' ? request.body : decodeQueryObject(request.query as Record<string, unknown>, 'input')
-  const decoded = decode(operation.types[operation.input], input, { cast: false })
+  const decoded = decode(operation.types[operation.input], input, { cast: inputFrom !== 'body' })
   if (!decoded.pass) {
     if (options.http?.logger) {
       console.log(`[REST-MODULE / ${operationNature}.${operationName}]: Bad request. ID: ${operationId}`)
@@ -91,31 +91,6 @@ async function elabFastifyRestRequest({
     )
   }
   return encoded
-}
-
-/**
- * FROM { "input[id]": "id", "input[meta][info]": 123 }
- * TO   { id: "id", meta: { info: 123 } }
- */
-function decodeQueryObject(input: Record<string, unknown>, prefix: string) {
-  const output = {}
-  for (const [key, value] of Object.entries(input)) {
-    const path = key.replace(prefix, '').replace('][', '.').replace('[', '').replace(']', '')
-    setTraversingValue(value, path, output)
-  }
-  return output
-}
-
-function setTraversingValue(value: unknown, path: string, object: Record<string, unknown>) {
-  const [head, ...tail] = path.split('.')
-  if (tail.length === 0) {
-    object[head] = value
-    return
-  }
-  if (!object[head]) {
-    object[head] = {}
-  }
-  setTraversingValue(value, tail.join('.'), object[head] as Record<string, unknown>)
 }
 
 export function openapiSpecification({

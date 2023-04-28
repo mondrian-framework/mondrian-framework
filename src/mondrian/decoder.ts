@@ -1,4 +1,4 @@
-import { Infer, LazyType, NumberType, StringType } from './type-system'
+import { ArrayDecorator, Infer, LazyType, NumberType, StringType } from './type-system'
 import { assertNever, lazyToType } from './utils'
 
 export type DecodeResult<T> =
@@ -42,19 +42,35 @@ function enrichErrors<T>(result: DecodeResult<T>, key: string): DecodeResult<T> 
   return result
 }
 
-function concat<T, K>(result: DecodeResult<T>, f: (v: T) => DecodeResult<K>): DecodeResult<K> {
-  if (result.pass) {
-    return f(result.value)
+function concat2<V1, V2>(v1: DecodeResult<V1>, f1: (v: V1) => DecodeResult<V2>): DecodeResult<V2> {
+  if (!v1.pass) {
+    return v1
   }
-  return result
+  const v2 = f1(v1.value)
+  return v2
+}
+function concat3<V1, V2, V3>(
+  v1: DecodeResult<V1>,
+  f1: (v: V1) => DecodeResult<V2>,
+  f2: (v: V2) => DecodeResult<V3>,
+): DecodeResult<V3> {
+  if (!v1.pass) {
+    return v1
+  }
+  const v2 = f1(v1.value)
+  if (!v2.pass) {
+    return v2
+  }
+  const v3 = f2(v2.value)
+  return v3
 }
 
 function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeResult<unknown> {
   const t = lazyToType(type)
   if (t.kind === 'string') {
-    return concat(assertString(value, cast), (value) => checkStringOptions(value, t.opts))
+    return concat2(assertString(value, cast), (value) => checkStringOptions(value, t.opts))
   } else if (t.kind === 'number') {
-    return concat(assertNumber(value, cast), (value) => checkNumberOptions(value, t.opts))
+    return concat2(assertNumber(value, cast), (value) => checkNumberOptions(value, t.opts))
   } else if (t.kind === 'boolean') {
     return assertBoolean(value, cast)
   } else if (t.kind === 'null') {
@@ -105,31 +121,11 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
     }
     return { pass: true, value: ret }
   } else if (t.kind === 'array-decorator') {
-    if (!Array.isArray(value)) {
-      if(cast) {
-        if(typeof value === 'object' && value && Object.keys(value).every(v => !Number.isNaN(Number(v)))) {
-          const keys = Object.keys(value)
-          value = []
-          for(let i = 0; i < keys.length; i++) {
-            //TODO
-          }
-        }else {
-          return error(`Array expected`, value)
-          }
-      } else {
-      return error(`Array expected`, value)
-      }
-    }
-    const values: unknown[] = []
-    for (let i = 0; i < value.length; i++) {
-      const result = decodeInternal(t.type, value[i], cast)
-      const enrichedResult = enrichErrors(result, i.toString())
-      if (!enrichedResult.pass) {
-        return enrichedResult
-      }
-      values.push(enrichedResult.value)
-    }
-    return { pass: true, value: values }
+    return concat3(
+      assertArray(value, cast),
+      (value) => checkArrayOptions(value, t.opts),
+      (value) => decodeArrayElements(value, t, cast),
+    )
   } else if (t.kind === 'enumerator') {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
@@ -175,6 +171,51 @@ function checkStringOptions(value: string, opts: StringType['opts']): DecodeResu
     return error(`String regex mismatch (${opts.regex.source})`, value)
   }
   return success(value)
+}
+
+function assertArray(value: unknown, cast: boolean): DecodeResult<unknown[]> {
+  if (Array.isArray(value)) {
+    return success(value)
+  }
+  if (cast && typeof value === 'object' && value) {
+    // { 0: "a", 1: "b" } -> ["a", "b"]
+    const keys = Object.keys(value)
+    if (keys.some((v) => Number.isNaN(Number(v)))) {
+      return error(`Number expected`, value)
+    }
+    const array: unknown[] = []
+    for (let i = 0; i < keys.length; i++) {
+      const index = Number(keys[i])
+      if (index !== i) {
+        return error(`Number expected`, value)
+      }
+      array.push((value as Record<string, unknown>)[keys[i]])
+    }
+    if (array.length === keys.length) {
+      return success(array)
+    }
+  }
+  return error(`Number expected`, value)
+}
+
+function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): DecodeResult<unknown[]> {
+  if (opts?.maxItems != null && value.length > opts.maxItems) {
+    return error(`Array must have maximum ${opts.maxItems} items`, value)
+  }
+  return success(value)
+}
+
+function decodeArrayElements(value: unknown[], type: ArrayDecorator, cast: boolean): DecodeResult<unknown[]> {
+  const values: unknown[] = []
+  for (let i = 0; i < value.length; i++) {
+    const result = decodeInternal(type.type, value[i], cast)
+    const enrichedResult = enrichErrors(result, i.toString())
+    if (!enrichedResult.pass) {
+      return enrichedResult
+    }
+    values.push(enrichedResult.value)
+  }
+  return success(values)
 }
 
 function assertNumber(value: unknown, cast: boolean): DecodeResult<number> {

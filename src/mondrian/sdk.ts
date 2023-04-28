@@ -1,6 +1,7 @@
 import { decode } from './decoder'
+import { encode } from './encoder'
 import { Operations, Module, ModuleDefinition, Operation, OperationNature } from './mondrian'
-import { Infer, Projection, Types, encode } from './type-system'
+import { Infer, Projection, Types } from './type-system'
 import { encodeQueryObject } from './utils'
 
 type SDK<T extends Types, O extends Operations<T>> = {
@@ -126,13 +127,13 @@ function handleRemoteCall<const T extends Types, const O extends Operations<T>>(
 }) {
   const resolver = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
     const url = `${endpoint}/api/${operation.options?.rest?.path ?? operationName}`
-    const method = operation.options?.rest?.method ?? (operationNature === 'mutations' ? 'post' : 'get')
+    const method = operation.options?.rest?.method ?? (operationNature === 'mutations' ? 'POST' : 'GET')
     const encodedInput = encode(module.types[operation.input], input)
-    const realUrl = method === 'get' ? `${url}?${encodeQueryObject(encodedInput, 'input')}` : url
+    const realUrl = method === 'GET' || method === 'DELETE' ? `${url}?${encodeQueryObject(encodedInput, 'input')}` : url
     const response = await fetch(realUrl, {
       headers: { 'content-type': 'application/json', ...defaultHeaders },
       method: method,
-      body: method !== 'get' ? JSON.stringify(encodedInput) : undefined,
+      body: method !== 'GET' && method !== 'DELETE' ? JSON.stringify(encodedInput) : undefined,
     })
     const json = await response.json()
     if (response.status === 200) {

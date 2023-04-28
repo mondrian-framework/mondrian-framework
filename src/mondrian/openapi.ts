@@ -1,10 +1,11 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { GenericModule, ModuleRunnerOptions, OperationNature } from './mondrian'
-import { LazyType, Types, encode } from './type-system'
+import { LazyType, Types } from './type-system'
 import { assertNever, decodeQueryObject, lazyToType } from './utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { randomUUID } from 'crypto'
 import { decode } from './decoder'
+import { encode } from './encoder'
 
 export function attachRestMethods({
   module,
@@ -64,7 +65,7 @@ async function elabFastifyRestRequest({
   reply.header('operation-id', operationId)
   const operation = module.operations[operationNature][operationName]
   const resolver = module.resolvers[operationNature][operationName]
-  const inputFrom = request.method === 'GET' ? 'query' : 'body'
+  const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
   const input =
     inputFrom === 'body' ? request.body : decodeQueryObject(request.query as Record<string, unknown>, 'input')
   const decoded = decode(operation.types[operation.input], input, { cast: inputFrom !== 'body' })
@@ -106,10 +107,10 @@ export function openapiSpecification({
     const operationNature = opt as OperationNature
     for (const [operationName, operation] of Object.entries(operations)) {
       const path = `${operation.options?.rest?.path ?? `/${operationName}`}`
-      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'get' : 'post')
+      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'GET' : 'POST')
       const operationObj: OpenAPIV3_1.OperationObject = {
         parameters:
-          method === 'get'
+          method === 'GET' || method === 'DELETE'
             ? [
                 {
                   name: 'input',
@@ -124,7 +125,7 @@ export function openapiSpecification({
               ]
             : undefined,
         requestBody:
-          method !== 'get'
+          method !== 'GET' && method !== 'DELETE'
             ? {
                 content: {
                   'application/json': {

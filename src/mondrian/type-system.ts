@@ -19,7 +19,7 @@ export type ObjectType = {
   type: { [K in string]: LazyType }
   opts?: { strict?: boolean }
 }
-export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType }
+export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType; opts?: { maxItems?: number } }
 export type OptionalDecorator = { kind: 'optional-decorator'; type: LazyType }
 export type DefaultDecorator = { kind: 'default-decorator'; type: LazyType; opts: { default?: unknown } }
 export type UnionOperator = { kind: 'union-operator'; types: LazyType[] }
@@ -196,8 +196,11 @@ export function object<const T extends ObjectType['type']>(
 ): Omit<ObjectType, 'type'> & { type: T } {
   return { kind: 'object', type, opts }
 }
-export function array<const T extends LazyType>(type: T): { kind: 'array-decorator'; type: T } {
-  return { kind: 'array-decorator', type }
+export function array<const T extends LazyType>(
+  type: T,
+  opts?: ArrayDecorator['opts'],
+): { kind: 'array-decorator'; type: T; opts: ArrayDecorator['opts'] } {
+  return { kind: 'array-decorator', type, opts }
 }
 export function optional<const T extends LazyType>(type: T): { kind: 'optional-decorator'; type: T } {
   return { kind: 'optional-decorator', type }
@@ -254,60 +257,6 @@ export function datetime(opts?: DatetimeType['opts']): DatetimeType {
     opts,
     type: null as unknown as Date,
   }
-}
-
-export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
-  return encodeInternal(type, value as JSONType)
-}
-function encodeInternal(type: LazyType, value: JSONType): JSONType {
-  const t = lazyToType(type)
-  if (t.kind === 'optional-decorator') {
-    if (value === undefined) {
-      return undefined
-    }
-    return encode(t.type, value)
-  }
-  if (t.kind === 'default-decorator') {
-    return encode(t.type, value)
-  }
-  if (t.kind === 'array-decorator') {
-    const results = []
-    for (const v of value as Array<JSONType>) {
-      results.push(encodeInternal(t.type, v))
-    }
-    return results
-  }
-  if (t.kind === 'object') {
-    const ret: { [K in string]: JSONType } = {}
-    for (const [key, v] of Object.entries(value as object)) {
-      const subtype = t.type[key]
-      if (subtype) {
-        ret[key] = encode(subtype, v)
-      }
-    }
-    return ret
-  }
-  if (t.kind === 'custom') {
-    return t.encode(value, t.opts)
-  }
-  if (t.kind === 'union-operator') {
-    for (const subtype of t.types) {
-      if (decode(subtype, value).pass) {
-        return encode(subtype, value)
-      }
-    }
-    assertNever(t as never)
-  }
-  if (
-    t.kind === 'boolean' ||
-    t.kind === 'enumerator' ||
-    t.kind === 'null' ||
-    t.kind === 'number' ||
-    t.kind === 'string'
-  ) {
-    return value
-  }
-  assertNever(t)
 }
 
 export function envs<const T extends ObjectType['type']>(properties: T): Infer<{ kind: 'object'; type: T }> {

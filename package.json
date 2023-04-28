@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "npx tsc && node build/src/user.module.js",
-    "test": "npx vitest run"
+    "test": "npx vitest run",
+    "pretty": "prettier --write \"./src/**/*.ts\""
   },
   "author": "",
   "license": "ISC",

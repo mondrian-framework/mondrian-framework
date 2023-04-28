@@ -50,12 +50,12 @@ const Post = () =>
   })
 type Post = m.Infer<typeof Post>
 const CursedType = () => m.array(m.union([CursedType, m.string()]))
-type CursedType = m.Infer<typeof CursedType>
+type CursedType = m.Infer<typeof CursedType> //TODO: openapi
 
 const UserInput = m.object({
   username: m.string(),
   password: m.string(),
-  //v: m.optional(CursedType),
+  v: m.optional(CursedType),
 })
 type UserInput = m.Infer<typeof UserInput>
 const UserFind = m.object({ id: Id, b: m.defaul(m.number(), 123), c: m.optional(m.array(m.object({ a: m.number() }))) })

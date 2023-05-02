@@ -11,6 +11,7 @@
     "baseUrl": "src",
     "declaration": false,
     "strict": true,
+    "noErrorTruncation": true
   },
   "include": [
     "src"

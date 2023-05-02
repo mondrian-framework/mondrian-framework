@@ -1,4 +1,4 @@
-import { ArrayDecorator, Infer, LazyType, NumberType, StringType } from './type-system'
+import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType, TupleDecorator } from './type-system'
 import { assertNever, lazyToType } from './utils'
 
 export type DecodeResult<T> =
@@ -83,49 +83,36 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
     if (!result.pass) {
       return result.errors.length > 0 ? result : error(`Undefined expected`, value)
     }
-    return { pass: true, value: result.value as any }
+    return result
   } else if (t.kind === 'default-decorator') {
     if (value === undefined) {
-      return { pass: true, value: t.opts.default }
+      return success(t.opts.default)
     }
-    const result = decodeInternal(t.type, value, cast)
-    if (!result.pass) {
-      return result
-    }
-    return { pass: true, value: result.value as any }
+    return decodeInternal(t.type, value, cast)
   } else if (t.kind === 'union-operator') {
-    const errors: { path?: string; error: string; value: unknown }[] = []
+    const errs: { path?: string; error: string; value: unknown }[] = []
     for (const u of t.types) {
       const result = decodeInternal(u, value, cast)
       if (result.pass) {
         return result
       }
-      errors.push(...result.errors)
+      errs.push(...result.errors)
     }
-    return { pass: false, errors }
+    return errors(errs)
   } else if (t.kind === 'object') {
-    if (typeof value !== 'object' || !value) {
-      return error(`Object expected`, value)
-    }
-    const obj = value as Record<string, unknown>
-    const ret: Record<string, unknown> = t.opts?.strict === false ? {} : { ...value }
-    for (const [key, subtype] of Object.entries(t.type)) {
-      const result = decodeInternal(subtype, obj[key], cast)
-      const enrichedResult = enrichErrors(result, key)
-      if (!enrichedResult.pass) {
-        return enrichedResult
-      }
-      if (enrichedResult.value !== undefined) {
-        ret[key] = enrichedResult.value
-      }
-    }
-    return { pass: true, value: ret }
+    return concat3(
+      assertObject(value, cast),
+      (value) => checkObjectOptions(value, t.opts),
+      ({ value, accumulator }) => decodeObjectProperties(value, t, accumulator, cast),
+    )
   } else if (t.kind === 'array-decorator') {
     return concat3(
       assertArray(value, cast),
       (value) => checkArrayOptions(value, t.opts),
       (value) => decodeArrayElements(value, t, cast),
     )
+  } else if (t.kind === 'tuple-decorator') {
+    return concat2(assertArray(value, cast), (value) => decodeTupleElements(value, t, cast))
   } else if (t.kind === 'enumerator') {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
@@ -140,9 +127,8 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
       return result
     }
     return success(value)
-  } else {
-    assertNever(t)
   }
+  assertNever(t)
 }
 
 function assertString(value: unknown, cast: boolean): DecodeResult<string> {
@@ -158,6 +144,42 @@ function assertString(value: unknown, cast: boolean): DecodeResult<string> {
     }
   }
   return error(`String expected`, value)
+}
+
+function assertObject(value: unknown, cast: boolean): DecodeResult<Record<string, unknown>> {
+  if (typeof value !== 'object' || !value) {
+    return error(`Object expected`, value)
+  }
+  return success(value as Record<string, unknown>)
+}
+
+function checkObjectOptions(
+  value: Record<string, unknown>,
+  opts: ObjectType['opts'],
+): DecodeResult<{ value: Record<string, unknown>; accumulator: Record<string, unknown> }> {
+  if (opts?.strict) {
+    return success({ value, accumulator: {} })
+  }
+  return success({ value, accumulator: { ...value } })
+}
+
+function decodeObjectProperties(
+  value: Record<string, unknown>,
+  type: ObjectType,
+  accumulator: Record<string, unknown>,
+  cast: boolean,
+): DecodeResult<Record<string, unknown>> {
+  for (const [key, subtype] of Object.entries(type.type)) {
+    const result = decodeInternal(subtype, value[key], cast)
+    const enrichedResult = enrichErrors(result, key)
+    if (!enrichedResult.pass) {
+      return enrichedResult
+    }
+    if (enrichedResult.value !== undefined) {
+      accumulator[key] = enrichedResult.value
+    }
+  }
+  return success(accumulator)
 }
 
 function checkStringOptions(value: string, opts: StringType['opts']): DecodeResult<string> {
@@ -181,13 +203,13 @@ function assertArray(value: unknown, cast: boolean): DecodeResult<unknown[]> {
     // { 0: "a", 1: "b" } -> ["a", "b"]
     const keys = Object.keys(value)
     if (keys.some((v) => Number.isNaN(Number(v)))) {
-      return error(`Number expected`, value)
+      return error(`Array expected`, value)
     }
     const array: unknown[] = []
     for (let i = 0; i < keys.length; i++) {
       const index = Number(keys[i])
       if (index !== i) {
-        return error(`Number expected`, value)
+        return error(`Array expected`, value)
       }
       array.push((value as Record<string, unknown>)[keys[i]])
     }
@@ -195,7 +217,7 @@ function assertArray(value: unknown, cast: boolean): DecodeResult<unknown[]> {
       return success(array)
     }
   }
-  return error(`Number expected`, value)
+  return error(`Array expected`, value)
 }
 
 function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): DecodeResult<unknown[]> {
@@ -209,6 +231,24 @@ function decodeArrayElements(value: unknown[], type: ArrayDecorator, cast: boole
   const values: unknown[] = []
   for (let i = 0; i < value.length; i++) {
     const result = decodeInternal(type.type, value[i], cast)
+    const enrichedResult = enrichErrors(result, i.toString())
+    if (!enrichedResult.pass) {
+      return enrichedResult
+    }
+    values.push(enrichedResult.value)
+  }
+  return success(values)
+}
+
+function decodeTupleElements(value: unknown[], type: TupleDecorator, cast: boolean): DecodeResult<unknown[]> {
+  const values: unknown[] = []
+  if (type.types.length !== value.length) {
+    if (value.length < type.types.length || !cast) {
+      return error(`Tuple expects ${type.types.length} elements, but obly got ${value.length}`, value)
+    }
+  }
+  for (let i = 0; i < type.types.length; i++) {
+    const result = decodeInternal(type.types[i], value[i], cast)
     const enrichedResult = enrichErrors(result, i.toString())
     if (!enrichedResult.pass) {
       return enrichedResult

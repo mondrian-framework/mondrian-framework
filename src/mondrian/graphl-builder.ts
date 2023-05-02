@@ -1,10 +1,11 @@
 import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { GenericModule, ModuleRunnerOptions } from './mondrian'
 import { assertNever, lazyToType } from './utils'
-import { CustomType, LazyType, encode } from './type-system'
+import { CustomType, LazyType } from './type-system'
 import { createSchema } from 'graphql-yoga'
 import { randomUUID } from 'crypto'
 import { decode } from './decoder'
+import { encode } from './encoder'
 
 function typeToGqlType(
   name: string,
@@ -101,6 +102,19 @@ function typeToGqlType(
       type: null,
     }
     return `Null${isRequired}`
+  }
+  if (type.kind === 'tuple-decorator') {
+    //https://github.com/graphql/graphql-spec/issues/534
+    /*
+    We could convert it in:
+    type Name {
+      first: T1
+      second: T2!
+      ...
+    }
+    need for an encode/decode graphql middleware
+    */
+    throw new Error('Tuple not supported on graphql generation')
   }
   return assertNever(type)
 }

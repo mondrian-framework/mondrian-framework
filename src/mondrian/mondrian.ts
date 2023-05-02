@@ -1,13 +1,14 @@
 import { FastifyRequest, fastify, FastifyReply } from 'fastify'
 import { createYoga } from 'graphql-yoga'
 import { buildGraphqlSchema } from './graphl-builder'
-import { Infer, InferReturn, ObjectType, Projection, Types } from './type-system'
+import { Infer, InferReturn, Types } from './type-system'
 import { createGRPCServer } from './grpc'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import { fastifyStatic } from '@fastify/static'
 import path from 'path'
 import fs from 'fs'
 import { attachRestMethods, openapiSpecification } from './openapi'
+import { Projection } from './projection'
 
 export type Operations<T extends Types> = Record<OperationNature, Record<string, Operation<T, string, string>>>
 
@@ -103,7 +104,7 @@ export type Module<T extends Types, O extends Operations<T>, Context> = ModuleDe
     }
     mutations: {
       [K in keyof O['mutations']]: Infer<T[O['mutations'][K]['input']]> extends infer Input
-        ? Infer<T[O['mutations'][K]['output']]> extends infer Output
+        ? InferReturn<T[O['mutations'][K]['output']]> extends infer Output
           ? {
               f: ResolverF<Input, Output, Context>
             }

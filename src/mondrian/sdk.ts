@@ -1,7 +1,8 @@
 import { decode } from './decoder'
 import { encode } from './encoder'
 import { Operations, Module, ModuleDefinition, Operation, OperationNature } from './mondrian'
-import { Infer, Projection, Types } from './type-system'
+import { Projection } from './projection'
+import { Infer, Types } from './type-system'
 import { encodeQueryObject } from './utils'
 
 type SDK<T extends Types, O extends Operations<T>> = {

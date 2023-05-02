@@ -248,10 +248,15 @@ function typeToSchemaObject(
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { type: 'array', items: subtype }
   }
+  if (type.kind === 'tuple-decorator') {
+    /*const subtypes = type.types.map(t => typeToSchemaObject(name, t, types, typeMap, typeRef))
+    return { type: 'array', minItems: type.types.length, maxItems: type.types.length, prefixItems: subtypes }*/
+    //https://github.com/kogosoftwarellc/open-api/issues/864
+    throw new Error('Tuple not supported on openapi generation')
+  }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
-    return {
-      allOf: [typeToSchemaObject(name, type.type, types, typeMap, typeRef), { type: 'null', description: 'optional' }],
-    }
+    const t = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return { allOf: [t, { type: 'null', description: 'optional' }] }
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {

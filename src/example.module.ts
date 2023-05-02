@@ -1,4 +1,5 @@
 import m from './mondrian' //from '@twinlogix/mondrian/core'
+import { lazyToType } from './mondrian/utils'
 
 process.env.STARTING_ID = '123'
 const envs = m.envs({
@@ -37,8 +38,10 @@ const User = () =>
     registeredAt: m.timestamp(),
     posts: m.optional(m.array(Post)),
     taggedPosts: m.optional(m.array(Post)),
+    position: m.optional(m.tuple([m.optional(m.number()), m.timestamp()])),
   })
 type User = m.Infer<typeof User>
+
 const Post = () =>
   m.object({
     id: Id,
@@ -51,6 +54,10 @@ const Post = () =>
 type Post = m.Infer<typeof Post>
 const CursedType = () => m.array(m.union([CursedType, m.string()]))
 type CursedType = m.Infer<typeof CursedType> //TODO: openapi
+
+const pCursed = m.getProjectionType(CursedType)
+const a = lazyToType(pCursed)
+console.log(a)
 
 const UserInput = m.object({
   username: m.string(),
@@ -164,7 +171,7 @@ async function main() {
 /*
 TODO:
   - module merging
-  - sdk remote call
   - IfC
-  - projection
+  - projection, union projection
+  - (lambda)/(dedicated server) runner
 */

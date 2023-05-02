@@ -78,10 +78,13 @@ function generateType(
     return { id: 0, type: name, rule }
   }
   if (type.kind === 'union-operator') {
-    throw new Error('Union not supported') //TODO
+    throw new Error('Union not supported on protobuf generation') //TODO
+  }
+  if (type.kind === 'tuple-decorator') {
+    throw new Error('Tuple not supported on protobuf generation') //TODO
   }
   if (type.kind === 'null') {
-    throw new Error('Null not supported') //TODO
+    throw new Error('Null not supported on protobuf generation') //TODO
   }
 
   return assertNever(type)

@@ -13,6 +13,10 @@ export type Resource =
       type: 'MONGODB_DATABASE'
     }
 
+export type Infrastructure = {
+  
+}
+
 const resources = {
   incoming: {
     type: 'QUEUE',

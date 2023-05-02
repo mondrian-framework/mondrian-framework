@@ -23,6 +23,14 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     }
     return results
   }
+  if (t.kind === 'tuple-decorator') {
+    const results = []
+    const values = value as Array<JSONType>
+    for (let i = 0; i < t.types.length; i++) {
+      results.push(encodeInternal(t.types[i], values[i]))
+    }
+    return results
+  }
   if (t.kind === 'object') {
     const ret: { [K in string]: JSONType } = {}
     for (const [key, v] of Object.entries(value as object)) {

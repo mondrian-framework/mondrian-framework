@@ -19,6 +19,7 @@ export type ObjectType = {
   type: { [K in string]: LazyType }
   opts?: { strict?: boolean }
 }
+export type TupleDecorator = { kind: 'tuple-decorator'; types: LazyType[] }
 export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType; opts?: { maxItems?: number } }
 export type OptionalDecorator = { kind: 'optional-decorator'; type: LazyType }
 export type DefaultDecorator = { kind: 'default-decorator'; type: LazyType; opts: { default?: unknown } }
@@ -31,6 +32,7 @@ export type Type =
   | NullType
   | CustomType
   | ObjectType
+  | TupleDecorator
   | ArrayDecorator
   | OptionalDecorator
   | DefaultDecorator
@@ -53,115 +55,76 @@ export type CustomType<
 export type LazyType = Type | (() => Type)
 export type Types = Record<string, LazyType>
 
-export type Infer<T extends LazyType> = [T] extends [() => infer LT] ? InferType<LT> : InferType<T>
-export type InferReturn<T extends LazyType> = [T] extends [() => infer LT] ? InferReturnType<LT> : InferReturnType<T>
+export type Infer<T extends LazyType> = InferType<T, false>
+export type InferReturn<T extends LazyType> = InferType<T, true>
 
-type InferUnionType<TS extends LazyType[]> = TS extends [infer H, ...infer T]
+type InferType<T extends LazyType, Partial extends boolean> = [T] extends [() => infer LT]
+  ? InferTypeInternal<LT, Partial>
+  : InferTypeInternal<T, Partial>
+
+type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? InferType<ST, Partial>[]
+    : never
+  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? InferType<ST, Partial> | undefined
+    : never
+  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? InferType<ST, Partial>
+    : never
+  : [T] extends [{ kind: 'string' }]
+  ? string
+  : [T] extends [{ kind: 'number' }]
+  ? number
+  : [T] extends [{ kind: 'boolean' }]
+  ? boolean
+  : [T] extends [{ kind: 'null' }]
+  ? null
+  : [T] extends [{ kind: 'tuple-decorator'; types: infer TS }]
+  ? {
+      [Index in keyof TS]: TS[Index] extends LazyType ? InferType<TS[Index], Partial> : never
+    }
+  : [T] extends [{ kind: 'custom'; type: infer C }]
+  ? C
+  : [T] extends [{ kind: 'enumerator'; values: infer V }]
+  ? V extends readonly string[]
+    ? V[number]
+    : never
+  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
+  ? TS extends Array<any>
+    ? InferUnionType<TS, Partial>
+    : never
+  : [T] extends [{ kind: 'object'; type: infer ST }]
+  ? ST extends ObjectType['type']
+    ? Partial extends true
+      ? Expand<{
+          [K in keyof ST]?: InferType<ST[K], Partial>
+        }>
+      : Expand<
+          {
+            [K in NonOptionalKeys<ST>]: InferType<ST[K], Partial>
+          } & {
+            [K in OptionalKeys<ST>]?: InferType<ST[K], Partial>
+          }
+        >
+    : never
+  : unknown
+
+type InferUnionType<TS extends LazyType[], Partial extends boolean> = TS extends [infer H, ...infer T]
   ? H extends LazyType
     ? T extends LazyType[]
-      ? Infer<H> | InferUnionType<T>
+      ? InferType<H, Partial> | InferUnionType<T, Partial>
       : never
     : never
   : never
-
-type InferType<T> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Infer<ST>[]
-    : never
-  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Infer<ST> | undefined
-    : never
-  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Infer<ST>
-    : never
-  : [T] extends [{ kind: 'string' }]
-  ? string
-  : [T] extends [{ kind: 'number' }]
-  ? number
-  : [T] extends [{ kind: 'boolean' }]
-  ? boolean
-  : [T] extends [{ kind: 'null' }]
-  ? null
-  : [T] extends [{ kind: 'custom'; type: infer C }]
-  ? C
-  : [T] extends [{ kind: 'enumerator'; values: infer V }]
-  ? V extends readonly string[]
-    ? V[number]
-    : never
-  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
-  ? TS extends Array<any>
-    ? InferUnionType<TS>
-    : never
-  : [T] extends [{ kind: 'object'; type: infer ST }]
-  ? ST extends ObjectType['type']
-    ? Expand<
-        {
-          [K in NonOptionalKeys<ST>]: Infer<ST[K]>
-        } & {
-          [K in OptionalKeys<ST>]?: Infer<ST[K]>
-        }
-      >
-    : never
-  : unknown
-
-type InferReturnType<T> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Infer<ST>[]
-    : never
-  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Infer<ST> | undefined
-    : never
-  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Infer<ST>
-    : never
-  : [T] extends [{ kind: 'string' }]
-  ? string
-  : [T] extends [{ kind: 'number' }]
-  ? number
-  : [T] extends [{ kind: 'boolean' }]
-  ? boolean
-  : [T] extends [{ kind: 'null' }]
-  ? null
-  : [T] extends [{ kind: 'custom'; type: infer C }]
-  ? C
-  : [T] extends [{ kind: 'enumerator'; values: infer V }]
-  ? V extends readonly string[]
-    ? V[number]
-    : never
-  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
-  ? TS extends Array<any>
-    ? Infer<TS[number]>
-    : never
-  : [T] extends [{ kind: 'object'; type: infer ST }]
-  ? ST extends ObjectType['type']
-    ? Expand<{
-        [K in keyof ST]?: InferReturn<ST[K]>
-      }>
-    : never
-  : unknown
-
 type OptionalKeys<T extends ObjectType['type']> = {
   [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? K : never
 }[keyof T]
 type NonOptionalKeys<T extends ObjectType['type']> = {
   [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? never : K
 }[keyof T]
-
-export type Projection<T> = T extends Date
-  ? true | undefined
-  : T extends (infer E)[]
-  ? Projection<E>
-  : T extends object
-  ?
-      | {
-          [K in keyof T]?: Projection<T[K]> | true
-        }
-      | true
-  : true | undefined
 
 export function types<const T extends Types>(types: T): T {
   return types
@@ -177,6 +140,11 @@ export function union<const T1 extends LazyType, const T2 extends LazyType, cons
   types: [T1, T2, ...TS],
 ): { kind: 'union-operator'; types: [T1, T2, ...TS] } {
   return { kind: 'union-operator', types }
+}
+export function tuple<const T1 extends LazyType, const T2 extends LazyType, const TS extends LazyType[]>(
+  types: [T1, T2, ...TS],
+): { kind: 'tuple-decorator'; types: [T1, T2, ...TS] } {
+  return { kind: 'tuple-decorator', types }
 }
 export function enumerator<const V extends readonly [string, ...string[]]>(values: V): EnumeratorType<V> {
   return { kind: 'enumerator', values }

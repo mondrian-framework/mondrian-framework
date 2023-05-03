@@ -13,9 +13,7 @@ export type Resource =
       type: 'MONGODB_DATABASE'
     }
 
-export type Infrastructure = {
-  
-}
+export type Infrastructure = {}
 
 const resources = {
   incoming: {

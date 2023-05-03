@@ -23,14 +23,6 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     }
     return results
   }
-  if (t.kind === 'tuple-decorator') {
-    const results = []
-    const values = value as Array<JSONType>
-    for (let i = 0; i < t.types.length; i++) {
-      results.push(encodeInternal(t.types[i], values[i]))
-    }
-    return results
-  }
   if (t.kind === 'object') {
     const ret: { [K in string]: JSONType } = {}
     for (const [key, v] of Object.entries(value as object)) {
@@ -45,14 +37,14 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     return t.encode(value, t.opts)
   }
   if (t.kind === 'union-operator') {
-    for (const subtype of t.types) {
+    for (const subtype of Object.values(t.types)) {
       if (decode(subtype, value).pass) {
         return encode(subtype, value)
       }
     }
     assertNever(t as never)
   }
-  if(t.kind === 'name-decorator') {
+  if (t.kind === 'name-decorator') {
     return encode(t.type, value)
   }
   if (

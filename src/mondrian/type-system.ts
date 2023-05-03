@@ -20,11 +20,10 @@ export type ObjectType = {
   opts?: { strict?: boolean }
 }
 export type NameDecorator = { kind: 'name-decorator'; type: LazyType; name: string }
-export type TupleDecorator = { kind: 'tuple-decorator'; types: LazyType[] }
 export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType; opts?: { maxItems?: number } }
 export type OptionalDecorator = { kind: 'optional-decorator'; type: LazyType }
 export type DefaultDecorator = { kind: 'default-decorator'; type: LazyType; opts: { default?: unknown } }
-export type UnionOperator = { kind: 'union-operator'; types: LazyType[] }
+export type UnionOperator = { kind: 'union-operator'; types: Types }
 export type Type =
   | NumberType
   | StringType
@@ -34,7 +33,6 @@ export type Type =
   | CustomType
   | ObjectType
   | NameDecorator
-  | TupleDecorator
   | ArrayDecorator
   | OptionalDecorator
   | DefaultDecorator
@@ -57,61 +55,8 @@ export type CustomType<
 export type LazyType = Type | (() => Type)
 export type Types = Record<string, LazyType>
 
-export type TypesMap<TS extends LazyType[]> = TS extends [infer H, ...infer T]
-  ? H extends LazyType
-    ? T extends LazyType[]
-      ? TypeMap<H> & TypesMap<T>
-      : {}
-    : {}
-  : {}
-type TypeMap<T extends LazyType> = [T] extends [() => infer LT] ? TypeMapInternal<LT> : TypeMapInternal<T>
-type TypeMapInternal<T> = [T] extends [{ kind: 'name-decorator'; name: infer N; type: infer ST }]
-  ? N extends string
-    ? Expand<Record<N, T>> & (ST extends LazyType ? TypeMap<ST> : {})
-    : {}
-  : [T] extends [{ kind: 'union-operator' | 'tuple-decorator'; types: infer TS }]
-  ? TS extends LazyType[]
-    ? TypeMapTupleInternal<TS>
-    : {}
-  : [T] extends [{ kind: 'optional-operator' | 'array-decorator' | 'default-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? TypeMap<ST>
-    : {}
-  : [T] extends [{ kind: 'object'; type: infer ST }]
-  ? ST extends ObjectType['type']
-    ? UnionToIntersection<{ [K in keyof ST]: TypeMap<ST[K]> }[keyof ST]>
-    : {}
-  : {}
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
-type TypeMapTupleInternal<TS extends LazyType[]> = TS extends [infer H, ...infer T]
-  ? H extends LazyType
-    ? T extends LazyType[]
-      ? TypeMap<H> & TypeMapTupleInternal<T>
-      : {}
-    : {}
-  : {}
-
-export function types<const T1 extends LazyType, const TS extends LazyType[]>(
-  types: [T1, ...TS],
-): TypesMap<[T1, ...TS]> {
-  function typeMap(type: LazyType): [string, LazyType][] {
-    const t = lazyToType(type)
-    if (t.kind === 'name-decorator') {
-      return [[t.name, type]]
-    }
-    if (t.kind === 'union-operator' || t.kind === 'tuple-decorator') {
-      return t.types.flatMap((v) => typeMap(v))
-    }
-    if (t.kind === 'array-decorator' || t.kind === 'optional-decorator' || t.kind === 'default-decorator') {
-      return typeMap(t.type)
-    }
-    if (t.kind === 'object') {
-      return Object.values(t.type).flatMap((v) => typeMap(v))
-    }
-    return []
-  }
-  const entries: [string, LazyType][] = types.flatMap(t => typeMap(t))
-  return Object.fromEntries(entries) as TypesMap<[T1, ...TS]>
+export function types<const TS extends Types>(types: TS): TS {
+  return types
 }
 
 export type Infer<T extends LazyType> = InferType<T, false>
@@ -145,10 +90,6 @@ type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array
   ? boolean
   : [T] extends [{ kind: 'null' }]
   ? null
-  : [T] extends [{ kind: 'tuple-decorator'; types: infer TS }]
-  ? {
-      [Index in keyof TS]: TS[Index] extends LazyType ? InferType<TS[Index], Partial> : never
-    }
   : [T] extends [{ kind: 'custom'; type: infer C }]
   ? C
   : [T] extends [{ kind: 'enumerator'; values: infer V }]
@@ -156,8 +97,8 @@ type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array
     ? V[number]
     : never
   : [T] extends [{ kind: 'union-operator'; types: infer TS }]
-  ? TS extends Array<any>
-    ? InferUnionType<TS, Partial>
+  ? TS extends Types
+    ? { [K in keyof TS]: InferType<TS[K], Partial> }[keyof TS]
     : never
   : [T] extends [{ kind: 'object'; type: infer ST }]
   ? ST extends ObjectType['type']
@@ -175,13 +116,6 @@ type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array
     : never
   : unknown
 
-type InferUnionType<TS extends LazyType[], Partial extends boolean> = TS extends [infer H, ...infer T]
-  ? H extends LazyType
-    ? T extends LazyType[]
-      ? InferType<H, Partial> | InferUnionType<T, Partial>
-      : never
-    : never
-  : never
 type OptionalKeys<T extends ObjectType['type']> = {
   [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? K : never
 }[keyof T]
@@ -195,24 +129,14 @@ export function number(opts?: NumberType['opts']): NumberType {
 export function string(opts?: StringType['opts']): StringType {
   return { kind: 'string', opts }
 }
-export function union<const T1 extends LazyType, const T2 extends LazyType, const TS extends LazyType[]>(
-  types: [T1, T2, ...TS],
-): { kind: 'union-operator'; types: [T1, T2, ...TS] } {
+export function union<const T extends Types>(types: T): { kind: 'union-operator'; types: T } {
   return { kind: 'union-operator', types }
-}
-export function tuple<const T1 extends LazyType, const T2 extends LazyType, const TS extends LazyType[]>(
-  types: [T1, T2, ...TS],
-): { kind: 'tuple-decorator'; types: [T1, T2, ...TS] } {
-  return { kind: 'tuple-decorator', types }
 }
 export function enumerator<const V extends readonly [string, ...string[]]>(values: V): EnumeratorType<V> {
   return { kind: 'enumerator', values }
 }
 export function boolean(): BooleanType {
   return { kind: 'boolean' }
-}
-export function nullable<const T extends LazyType>(type: T): { kind: 'union-operator'; types: [T, { kind: 'null' }] } {
-  return { kind: 'union-operator', types: [type, { kind: 'null' }] }
 }
 export function nill(): NullType {
   return { kind: 'null' }
@@ -238,12 +162,7 @@ export function defaul<const T extends LazyType>(
 ): { kind: 'default-decorator'; type: T; opts: { default: unknown } } {
   return { kind: 'default-decorator', type, opts: { default: value } }
 }
-export function named<const N extends string, const T extends LazyType>(
-  name: N,
-  type: T,
-): { kind: 'name-decorator'; name: N; type: T } {
-  return { kind: 'name-decorator', type, name }
-}
+
 export function custom<const T, const N extends string>(
   custom: Omit<CustomType<T, N>, 'kind' | 'type' | 'opts'>,
 ): CustomType<T, N> {

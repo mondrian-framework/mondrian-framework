@@ -1,4 +1,4 @@
-import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType, TupleDecorator } from './type-system'
+import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType } from './type-system'
 import { assertNever, lazyToType } from './utils'
 
 export type DecodeResult<T> =
@@ -91,7 +91,7 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
     return decodeInternal(t.type, value, cast)
   } else if (t.kind === 'union-operator') {
     const errs: { path?: string; error: string; value: unknown }[] = []
-    for (const u of t.types) {
+    for (const u of Object.values(t.types)) {
       const result = decodeInternal(u, value, cast)
       if (result.pass) {
         return result
@@ -113,8 +113,6 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
     )
   } else if (t.kind === 'name-decorator') {
     return decodeInternal(t.type, value, cast)
-  } else if (t.kind === 'tuple-decorator') {
-    return concat2(assertArray(value, cast), (value) => decodeTupleElements(value, t, cast))
   } else if (t.kind === 'enumerator') {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
@@ -233,24 +231,6 @@ function decodeArrayElements(value: unknown[], type: ArrayDecorator, cast: boole
   const values: unknown[] = []
   for (let i = 0; i < value.length; i++) {
     const result = decodeInternal(type.type, value[i], cast)
-    const enrichedResult = enrichErrors(result, i.toString())
-    if (!enrichedResult.pass) {
-      return enrichedResult
-    }
-    values.push(enrichedResult.value)
-  }
-  return success(values)
-}
-
-function decodeTupleElements(value: unknown[], type: TupleDecorator, cast: boolean): DecodeResult<unknown[]> {
-  const values: unknown[] = []
-  if (type.types.length !== value.length) {
-    if (value.length < type.types.length || !cast) {
-      return error(`Tuple expects ${type.types.length} elements, but obly got ${value.length}`, value)
-    }
-  }
-  for (let i = 0; i < type.types.length; i++) {
-    const result = decodeInternal(type.types[i], value[i], cast)
     const enrichedResult = enrichErrors(result, i.toString())
     if (!enrichedResult.pass) {
       return enrichedResult

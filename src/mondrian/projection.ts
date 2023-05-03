@@ -1,4 +1,4 @@
-import { LazyType, boolean, object, optional, tuple, union } from './type-system'
+import { LazyType, boolean, object, optional, union } from './type-system'
 import { assertNever, lazyToType } from './utils'
 
 export type Projection<T> = T extends Date
@@ -34,9 +34,9 @@ export function getProjectionType(type: LazyType): LazyType {
     return boolean()
   }
   if (type.kind === 'object') {
-    return union([
-      boolean(),
-      object(
+    return union({
+      first: boolean(),
+      second: object(
         Object.fromEntries(
           Object.entries(type.type).map(([k, v]) => {
             const t = getProjectionType(v)
@@ -44,41 +44,46 @@ export function getProjectionType(type: LazyType): LazyType {
           }),
         ),
       ),
-    ])
+    })
   }
-  if (type.kind === 'array-decorator' || type.kind === 'optional-decorator' || type.kind === 'default-decorator' || type.kind === 'name-decorator') {
+  if (
+    type.kind === 'array-decorator' ||
+    type.kind === 'optional-decorator' ||
+    type.kind === 'default-decorator' ||
+    type.kind === 'name-decorator'
+  ) {
     return getProjectionType(type.type)
   }
-  if (type.kind === 'union-operator' || type.kind === 'tuple-decorator') {
-    const subProjection = type.types.map((t) => getProjectionType(t)) as [LazyType, LazyType, ...LazyType[]]
-    return union([boolean(), tuple(subProjection)])
+  if (type.kind === 'union-operator') {
+    const subProjection = Object.entries(type.types).map(([k, t]) => [k, getProjectionType(t)] as const)
+    return union({ all: boolean(), object: object(Object.fromEntries(subProjection)) })
     /*
     //NEED FOR TYPE NAME
-    type U = {
+    type U = { //A
         firstName: string
         lastName: string
         likes: number
         a: number
-    } | {
+    } | { //B
         firstName: string
         lastName: string
         jobs: number
         a: { a: number }
     }
-    type UProjection = true | [
-        true | {
+    type UProjection = true | { 
+        A: true | {
             firstName?: true
             lastName?: true
             likes?: true
             a?: true
         },
-        true | {
+        B: true | {
             firstName?: true
             lastName?: true
             jobs?: true
             a?: true | { a?: true }
         }
-    ]
+    }
     */
   }
   assertNever(type)

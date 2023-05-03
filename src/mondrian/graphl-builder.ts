@@ -70,16 +70,14 @@ function typeToGqlType(
   }
   if (type.kind === 'name-decorator') {
     return typeToGqlType(type.name, type.type, types, typeMap, typeRef, isInput, false, scalars)
-   // return `${typeToGqlType(type.name, type.type, types, typeMap, typeRef, isInput, false, scalars)}${isRequired}`
+    // return `${typeToGqlType(type.name, type.type, types, typeMap, typeRef, isInput, false, scalars)}${isRequired}`
   }
   if (type.kind === 'union-operator') {
-    if (
-      (type.types.length === 2 && lazyToType(type.types[0]).kind === 'null') ||
-      lazyToType(type.types[1]).kind === 'null'
-    ) {
+    const ts = Object.entries(type.types)
+    if ((ts.length === 2 && lazyToType(ts[0][1]).kind === 'null') || lazyToType(ts[1][1]).kind === 'null') {
       return typeToGqlType(
-        name,
-        lazyToType(type.types[0]).kind === 'null' ? type.types[1] : type.types[0],
+        lazyToType(ts[0][1]).kind === 'null' ? ts[1][0] : ts[0][0],
+        lazyToType(ts[0][1]).kind === 'null' ? ts[1][1] : ts[0][1],
         types,
         typeMap,
         typeRef,
@@ -88,8 +86,8 @@ function typeToGqlType(
         scalars,
       )
     }
-    typeMap[name] = `union ${name} = ${type.types
-      .map((t, i) => typeToGqlType(`${name}_Union_${i}`, t, types, typeMap, typeRef, isInput, true, scalars))
+    typeMap[name] = `union ${name} = ${ts
+      .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars))
       .join(' | ')}`
     return `${name}${isRequired}`
   }
@@ -106,19 +104,6 @@ function typeToGqlType(
       type: null,
     }
     return `Null${isRequired}`
-  }
-  if (type.kind === 'tuple-decorator') {
-    //https://github.com/graphql/graphql-spec/issues/534
-    /*
-    We could convert it in:
-    type Name {
-      first: T1
-      second: T2!
-      ...
-    }
-    need for an encode/decode graphql middleware
-    */
-    throw new Error('Tuple not supported on graphql generation')
   }
   return assertNever(type)
 }

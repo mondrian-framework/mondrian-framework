@@ -155,7 +155,7 @@ export function openapiSpecification({
       }
       paths[path] = {
         summary: operationName,
-        [method]: operationObj,
+        [method.toLocaleLowerCase()]: operationObj,
       }
     }
   }
@@ -248,12 +248,6 @@ function typeToSchemaObject(
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { type: 'array', items: subtype }
   }
-  if (type.kind === 'tuple-decorator') {
-    /*const subtypes = type.types.map(t => typeToSchemaObject(name, t, types, typeMap, typeRef))
-    return { type: 'array', minItems: type.types.length, maxItems: type.types.length, prefixItems: subtypes }*/
-    //https://github.com/kogosoftwarellc/open-api/issues/864
-    throw new Error('Tuple not supported on openapi generation')
-  }
   if (type.kind === 'name-decorator') {
     const t = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return t
@@ -296,7 +290,7 @@ function typeToSchemaObject(
     return { type: 'string', enum: type.values as unknown as string[] }
   }
   if (type.kind === 'union-operator') {
-    const uniontypes = type.types.map((t, i) => typeToSchemaObject(`${name}_Union_${i}`, t, types, typeMap, typeRef))
+    const uniontypes = Object.entries(type.types).map(([k, t]) => typeToSchemaObject(k, t, types, typeMap, typeRef))
     return { anyOf: uniontypes }
   }
   if (type.kind === 'null') {

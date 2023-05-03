@@ -254,6 +254,10 @@ function typeToSchemaObject(
     //https://github.com/kogosoftwarellc/open-api/issues/864
     throw new Error('Tuple not supported on openapi generation')
   }
+  if (type.kind === 'name-decorator') {
+    const t = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return t
+  }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     const t = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { allOf: [t, { type: 'null', description: 'optional' }] }

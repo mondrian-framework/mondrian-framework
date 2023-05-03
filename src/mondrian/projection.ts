@@ -46,7 +46,7 @@ export function getProjectionType(type: LazyType): LazyType {
       ),
     ])
   }
-  if (type.kind === 'array-decorator' || type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
+  if (type.kind === 'array-decorator' || type.kind === 'optional-decorator' || type.kind === 'default-decorator' || type.kind === 'name-decorator') {
     return getProjectionType(type.type)
   }
   if (type.kind === 'union-operator' || type.kind === 'tuple-decorator') {

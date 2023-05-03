@@ -111,6 +111,8 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
       (value) => checkArrayOptions(value, t.opts),
       (value) => decodeArrayElements(value, t, cast),
     )
+  } else if (t.kind === 'name-decorator') {
+    return decodeInternal(t.type, value, cast)
   } else if (t.kind === 'tuple-decorator') {
     return concat2(assertArray(value, cast), (value) => decodeTupleElements(value, t, cast))
   } else if (t.kind === 'enumerator') {

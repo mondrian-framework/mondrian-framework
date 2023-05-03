@@ -52,6 +52,9 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     }
     assertNever(t as never)
   }
+  if(t.kind === 'name-decorator') {
+    return encode(t.type, value)
+  }
   if (
     t.kind === 'boolean' ||
     t.kind === 'enumerator' ||

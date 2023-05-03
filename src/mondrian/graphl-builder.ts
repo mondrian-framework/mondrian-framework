@@ -68,6 +68,10 @@ function typeToGqlType(
     }`
     return `${name}${isRequired}`
   }
+  if (type.kind === 'name-decorator') {
+    return typeToGqlType(type.name, type.type, types, typeMap, typeRef, isInput, false, scalars)
+   // return `${typeToGqlType(type.name, type.type, types, typeMap, typeRef, isInput, false, scalars)}${isRequired}`
+  }
   if (type.kind === 'union-operator') {
     if (
       (type.types.length === 2 && lazyToType(type.types[0]).kind === 'null') ||

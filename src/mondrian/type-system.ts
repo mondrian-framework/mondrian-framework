@@ -12,6 +12,7 @@ export type EnumeratorType<V extends readonly [string, ...string[]] = readonly [
   values: V
 }
 export type NullType = { kind: 'null' }
+export type LiteralType = { kind: 'literal'; value: any }
 export type TimestampType = CustomType<Date, 'timestamp', { min?: Date; max?: Date }>
 export type DatetimeType = CustomType<Date, 'datetime', { min?: Date; max?: Date }>
 export type ObjectType = {
@@ -30,6 +31,7 @@ export type Type =
   | BooleanType
   | NullType
   | CustomType
+  | LiteralType
   | ObjectType
   | ArrayDecorator
   | OptionalDecorator
@@ -88,6 +90,8 @@ type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array
   ? boolean
   : [T] extends [{ kind: 'null' }]
   ? null
+  : [T] extends [{ kind: 'literal'; value: infer ST }]
+  ? ST
   : [T] extends [{ kind: 'custom'; type: infer C }]
   ? C
   : [T] extends [{ kind: 'enumerator'; values: infer V }]
@@ -127,6 +131,9 @@ export function number(opts?: NumberType['opts']): NumberType {
 export function string(opts?: StringType['opts']): StringType {
   return { kind: 'string', opts }
 }
+export function literal<const T extends number | string | boolean | null>(value: T): { kind: 'literal'; value: T } {
+  return { kind: 'literal', value }
+}
 export function union<const T extends Types>(types: T): { kind: 'union-operator'; types: T } {
   function flattened() {
     const entries: [string, LazyType][] = Object.entries(types).flatMap(([k, type]) => {
@@ -139,7 +146,7 @@ export function union<const T extends Types>(types: T): { kind: 'union-operator'
     return entries
   }
   if (Object.values(types).some((t) => typeof t === 'function')) {
-    //If it has 
+    //If it has
     return (() => ({ kind: 'union-operator', types: Object.fromEntries(flattened()) as T })) as any
   } else {
     return { kind: 'union-operator', types: Object.fromEntries(flattened()) as T }

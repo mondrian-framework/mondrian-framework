@@ -56,8 +56,8 @@ function typeToGqlTypeInternal(
     return `Boolean${isRequired}`
   }
   if (type.kind === 'number') {
-    //TODO: Float
-    return `Int${isRequired}`
+    //TODO: Int
+    return `Float${isRequired}`
   }
   if (type.kind === 'array-decorator') {
     return `[${typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, false, scalars)}]${isRequired}`
@@ -108,6 +108,15 @@ function typeToGqlTypeInternal(
       type: null,
     }
     return `Null${isRequired}`
+  }
+  if (type.kind === 'literal') {
+    const t = typeof type.value
+    //TODO: Int
+    const tp = t === 'boolean' ? 'Boolean' : t === 'number' ? 'Float' : t === 'string' ? 'String' : null
+    if (tp === null) {
+      throw new Error(`Unknown literal type: ${tp}`)
+    }
+    return `${tp}${isRequired}`
   }
   return assertNever(type)
 }

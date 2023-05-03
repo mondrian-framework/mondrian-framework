@@ -32,6 +32,7 @@ type PostTag = m.Infer<typeof PostTag>
 const ManagerUser = () =>
   m.object({
     id: Id,
+    type: m.literal('MANAGER'),
     username: m.string(),
     password: m.string(),
     registeredAt: m.timestamp(),
@@ -47,6 +48,7 @@ type ManagerUser = m.Infer<typeof ManagerUser>
 const NormalUser = () =>
   m.object({
     id: Id,
+    type: m.literal('NORMAL'),
     username: m.string(),
     password: m.string(),
     registeredAt: m.timestamp(),
@@ -75,6 +77,7 @@ type CursedType = m.Infer<typeof CursedType>
 const UserInput = m.object({
   username: m.string(),
   password: m.string(),
+  type: () => m.enumerator([ManagerUser().type.type.value, NormalUser().type.type.value]),
   v: m.optional(CursedType),
 })
 type UserInput = m.Infer<typeof UserInput>
@@ -169,7 +172,7 @@ async function main() {
   })*/
   const sdk = m.sdk({ module: testModule, endpoint: 'http://127.0.0.1:4000' })
   const ins = await sdk.mutation.register({
-    input: { password: '1234', username: 'Mario' },
+    input: { password: '1234', username: 'Mario', type: 'MANAGER' },
     fields: { id: true, username: true },
     headers: { id: '1234' },
   })

@@ -36,6 +36,9 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
   if (t.kind === 'custom') {
     return t.encode(value, t.opts)
   }
+  if (t.kind === 'literal') {
+    return t.value
+  }
   if (t.kind === 'union-operator') {
     for (const subtype of Object.values(t.types)) {
       if (decode(subtype, value).pass) {

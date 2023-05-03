@@ -83,6 +83,9 @@ function generateType(
   if (type.kind === 'null') {
     throw new Error('Null not supported on protobuf generation') //TODO
   }
+  if (type.kind === 'literal') {
+    throw new Error('Literal not supported on protobuf generation') //TODO
+  }
 
   return assertNever(type)
 }

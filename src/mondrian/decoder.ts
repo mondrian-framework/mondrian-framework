@@ -75,6 +75,14 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
     return assertBoolean(value, cast)
   } else if (t.kind === 'null') {
     return assertNull(value, cast)
+  } else if (t.kind === 'literal') {
+    if (value === t.value) {
+      return success(value)
+    }
+    if (cast) {
+      return success(t.value)
+    }
+    return error(`Literal ${t.value} expected`, value)
   } else if (t.kind === 'optional-decorator') {
     if (value === undefined) {
       return success(value)

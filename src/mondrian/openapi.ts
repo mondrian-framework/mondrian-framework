@@ -268,7 +268,7 @@ function typeToSchemaObjectInternal(
     return { type: 'boolean' }
   }
   if (type.kind === 'number') {
-    //TODO: Float
+    //TODO: integer
     return {
       type: 'number',
       maximum: type.opts?.maximum,
@@ -276,6 +276,15 @@ function typeToSchemaObjectInternal(
       exclusiveMaximum: type.opts?.exclusiveMaximum,
       exclusiveMinimum: type.opts?.exclusiveMinimum,
     }
+  }
+  if (type.kind === 'literal') {
+    const t = typeof type.value
+    //TODO: integer
+    const tp = t === 'boolean' ? t : t === 'number' ? t : t === 'string' ? t : null
+    if (tp === null) {
+      throw new Error(`Unknown literal type: ${tp}`)
+    }
+    return { type: tp, const: type.value }
   }
   if (type.kind === 'array-decorator') {
     const items = typeToSchemaObject(name, type.type, types, typeMap, typeRef)

@@ -17,11 +17,7 @@ export type GenericProjection = true | { [K in string]?: true | GenericProjectio
 
 export function getProjectionType(type: LazyType): LazyType {
   if (typeof type === 'function') {
-    return () => {
-      const t = getProjectionType(type())
-      const t2 = lazyToType(t)
-      return t2
-    }
+    return () => lazyToType(getProjectionType(lazyToType(type)))
   }
   if (
     type.kind === 'boolean' ||
@@ -29,7 +25,8 @@ export function getProjectionType(type: LazyType): LazyType {
     type.kind === 'number' ||
     type.kind === 'null' ||
     type.kind === 'enumerator' ||
-    type.kind === 'custom'
+    type.kind === 'custom' ||
+    type.kind === 'literal'
   ) {
     return boolean()
   }
@@ -43,7 +40,7 @@ export function getProjectionType(type: LazyType): LazyType {
             return [k, optional(t)]
           }),
         ),
-        { strict: true }
+        { strict: true },
       ),
     })
   }
@@ -55,37 +52,9 @@ export function getProjectionType(type: LazyType): LazyType {
       if (lazyToType(t).kind !== 'object') {
         return []
       }
-      return [[k, getProjectionType(t)]] as const
+      return [[k, optional(getProjectionType(t))]] as const
     })
     return union({ all: boolean(), object: object(Object.fromEntries(subProjection), { strict: true }) })
-    /*
-    //NEED FOR TYPE NAME
-    type U = { //A
-        firstName: string
-        lastName: string
-        likes: number
-        a: number
-    } | { //B
-        firstName: string
-        lastName: string
-        jobs: number
-        a: { a: number }
-    }
-    type UProjection = true | { 
-        A: true | {
-            firstName?: true
-            lastName?: true
-            likes?: true
-            a?: true
-        },
-        B: true | {
-            firstName?: true
-            lastName?: true
-            jobs?: true
-            a?: true | { a?: true }
-        }
-    }
-    */
   }
   assertNever(type)
 }

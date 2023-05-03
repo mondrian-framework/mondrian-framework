@@ -45,19 +45,19 @@ const Post = () =>
   m.object({
     id: Id,
     userId: Id,
-    //user: User,
+    user: User,
     createdAt: m.datetime(),
     content: m.string(),
     tags: m.optional(m.array(PostTag)),
   })
 type Post = m.Infer<typeof Post>
-//const CursedType = () => m.array(m.union({ Asd: CursedType, L: m.string() }))
-//type CursedType = m.Infer<typeof CursedType> //TODO: openapi
+const CursedType = () => m.array(m.union({ Asd: CursedType, L: m.string() }))
+type CursedType = m.Infer<typeof CursedType> //TODO: openapi
 
 const UserInput = m.object({
   username: m.string(),
   password: m.string(),
-  //v: m.optional(CursedType),
+  v: m.optional(CursedType),
 })
 type UserInput = m.Infer<typeof UserInput>
 const UserFind = m.object({ id: Id, b: m.defaul(m.number(), 123), c: m.optional(m.array(m.object({ a: m.number() }))) })
@@ -65,7 +65,7 @@ type UserFind = m.Infer<typeof UserFind>
 const UserOutput = m.union({ User2: User, Null: m.nill() })
 type UserOutput = m.Infer<typeof UserOutput>
 
-const types = m.types({ Id, User, UserOutput, Post, UserFind, UserInput })
+const types = m.types({ Id, User, UserOutput, Post, UserFind, UserInput, CursedType })
 
 //OPERATIONS
 const register = m.operation({

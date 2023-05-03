@@ -19,7 +19,6 @@ export type ObjectType = {
   type: { [K in string]: LazyType }
   opts?: { strict?: boolean }
 }
-export type NameDecorator = { kind: 'name-decorator'; type: LazyType; name: string }
 export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType; opts?: { maxItems?: number } }
 export type OptionalDecorator = { kind: 'optional-decorator'; type: LazyType }
 export type DefaultDecorator = { kind: 'default-decorator'; type: LazyType; opts: { default?: unknown } }
@@ -32,7 +31,6 @@ export type Type =
   | NullType
   | CustomType
   | ObjectType
-  | NameDecorator
   | ArrayDecorator
   | OptionalDecorator
   | DefaultDecorator

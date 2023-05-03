@@ -208,11 +208,24 @@ function typeToSchemaObject(
   if (typeof t === 'function') {
     const n = typeRef.get(t)
     if (n) {
-      return { $ref: `#/components/schemas/${name}` }
+      return { $ref: `#/components/schemas/${n}` }
     }
     typeRef.set(t, name)
   }
-
+  const type = typeToSchemaObjectInternal(name, t, types, typeMap, typeRef)
+  if (typeof t === 'function' || name in types) {
+    typeMap[name] = type
+    return { $ref: `#/components/schemas/${name}` }
+  }
+  return type
+}
+function typeToSchemaObjectInternal(
+  name: string,
+  t: LazyType,
+  types: Types,
+  typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
+  typeRef: Map<Function, string>, // function -> type name
+): OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject {
   const type = lazyToType(t)
   if (type.kind === 'string') {
     return {
@@ -245,16 +258,12 @@ function typeToSchemaObject(
     }
   }
   if (type.kind === 'array-decorator') {
-    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
-    return { type: 'array', items: subtype }
-  }
-  if (type.kind === 'name-decorator') {
-    const t = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
-    return t
+    const items = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return { type: 'array', items }
   }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
-    const t = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
-    return { allOf: [t, { type: 'null', description: 'optional' }] }
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return { allOf: [subtype, { type: 'null', description: 'optional' }] }
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {
@@ -280,14 +289,10 @@ function typeToSchemaObject(
         }),
       ),
     }
-    typeMap[name] = object
-    if (name in types) {
-      return { $ref: `#/components/schemas/${name}` }
-    }
     return object
   }
   if (type.kind === 'enumerator') {
-    return { type: 'string', enum: type.values as unknown as string[] }
+    return { type: 'string', enum: type.values as unknown as string[] } as const
   }
   if (type.kind === 'union-operator') {
     const uniontypes = Object.entries(type.types).map(([k, t]) => typeToSchemaObject(k, t, types, typeMap, typeRef))

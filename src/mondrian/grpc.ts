@@ -64,9 +64,6 @@ function generateType(
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return generateType(name, type.type, types, typeMap, typeRef, true, isArray)
   }
-  if (type.kind === 'name-decorator') {
-    return generateType(name, type.type, types, typeMap, typeRef, isOptional, isArray)
-  }
   if (type.kind === 'object') {
     typeMap[name] = 'processing'
     const fields = mapObject(type.type, (fieldName, fieldT, i) => {

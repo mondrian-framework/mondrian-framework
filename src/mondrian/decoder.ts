@@ -111,8 +111,6 @@ function decodeInternal(type: LazyType, value: unknown, cast: boolean): DecodeRe
       (value) => checkArrayOptions(value, t.opts),
       (value) => decodeArrayElements(value, t, cast),
     )
-  } else if (t.kind === 'name-decorator') {
-    return decodeInternal(t.type, value, cast)
   } else if (t.kind === 'enumerator') {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)

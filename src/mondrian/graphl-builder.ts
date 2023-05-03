@@ -30,7 +30,20 @@ function typeToGqlType(
     }
     typeRef.set(t, name)
   }
-
+  const type = typeToGqlTypeInternal(name, t, types, typeMap, typeRef, isInput, isOptional, scalars)
+  return type
+}
+function typeToGqlTypeInternal(
+  name: string,
+  t: LazyType,
+  types: Record<string, LazyType>, //same as module
+  typeMap: Record<string, string>, //type name -> definition
+  typeRef: Map<Function, string>, // function -> type name
+  isInput: boolean,
+  isOptional: boolean,
+  scalars: Record<string, CustomType>,
+): string {
+  const isRequired = isOptional ? '' : '!'
   const type = lazyToType(t)
   if (type.kind === 'string') {
     return `String${isRequired}`
@@ -67,10 +80,6 @@ function typeToGqlType(
       ${type.values.join('\n        ')}
     }`
     return `${name}${isRequired}`
-  }
-  if (type.kind === 'name-decorator') {
-    return typeToGqlType(type.name, type.type, types, typeMap, typeRef, isInput, false, scalars)
-    // return `${typeToGqlType(type.name, type.type, types, typeMap, typeRef, isInput, false, scalars)}${isRequired}`
   }
   if (type.kind === 'union-operator') {
     const ts = Object.entries(type.types)

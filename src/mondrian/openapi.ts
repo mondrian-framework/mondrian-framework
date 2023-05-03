@@ -6,6 +6,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { randomUUID } from 'crypto'
 import { decode } from './decoder'
 import { encode } from './encoder'
+import { getProjectionType } from './projection'
 
 export function attachRestMethods({
   module,
@@ -76,10 +77,21 @@ async function elabFastifyRestRequest({
     reply.status(400)
     return { errors: decoded.errors }
   }
+  const fieldsHeader = request.headers['fields']
+  const fieldsObject = typeof fieldsHeader === 'string' ? JSON.parse(fieldsHeader) : null
+  const fieldType = () => getProjectionType(operation.types[operation.output])
+  const fields = fieldsObject != null ? decode(fieldType(), fieldsObject, { cast: true }) : undefined
+  if (fields && !fields.pass) {
+    if (options.http?.logger) {
+      console.log(`[REST-MODULE / ${operationNature}.${operationName}]: Bad request (fields). ID: ${operationId}`)
+    }
+    reply.status(400)
+    return { errors: fields.errors, message: "On 'fields' header" }
+  }
   const startMs = new Date().getTime()
   const context = await module.context({ headers: request.headers })
   const result = await resolver.f({
-    fields: undefined,
+    fields: fields ? (fields.value as any) : undefined,
     context,
     input: decoded.value,
   })
@@ -109,8 +121,8 @@ export function openapiSpecification({
       const path = `${operation.options?.rest?.path ?? `/${operationName}`}`
       const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'GET' : 'POST')
       const operationObj: OpenAPIV3_1.OperationObject = {
-        parameters:
-          method === 'GET' || method === 'DELETE'
+        parameters: [
+          ...(method === 'GET' || method === 'DELETE'
             ? [
                 {
                   name: 'input',
@@ -123,7 +135,12 @@ export function openapiSpecification({
                   },
                 },
               ]
-            : undefined,
+            : []),
+          {
+            name: 'fields',
+            in: 'header',
+          },
+        ],
         requestBody:
           method !== 'GET' && method !== 'DELETE'
             ? {

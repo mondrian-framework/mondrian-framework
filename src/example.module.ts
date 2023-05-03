@@ -1,6 +1,6 @@
 import m from './mondrian' //from '@twinlogix/mondrian/core'
 
-process.env.STARTING_ID = '123'
+process.env.STARTING_ID = '1'
 const envs = m.envs({
   STARTING_ID: m.number(),
   MONGODB_URL: m.defaul(m.string(), 'mock'),
@@ -29,7 +29,20 @@ type Id = m.Infer<typeof Id>
 const PostTag = m.enumerator(['A', 'B', 'C'])
 type PostTag = m.Infer<typeof PostTag>
 
-const User = () =>
+const ManagerUser = () =>
+  m.object({
+    id: Id,
+    username: m.string(),
+    password: m.string(),
+    registeredAt: m.timestamp(),
+    permissions: m.optional(m.object({
+      admin: m.boolean(),
+      moderator: m.boolean()
+    }))
+  })
+type ManagerUser = m.Infer<typeof ManagerUser>
+
+const NormalUser = () =>
   m.object({
     id: Id,
     username: m.string(),
@@ -38,21 +51,23 @@ const User = () =>
     posts: m.optional(m.array(Post)),
     taggedPosts: m.optional(m.array(Post)),
   })
+type NormalUser = m.Infer<typeof NormalUser>
 
+const User = m.union({ NormalUser, ManagerUser })
 type User = m.Infer<typeof User>
 
 const Post = () =>
   m.object({
     id: Id,
     userId: Id,
-    user: User,
+    user: NormalUser,
     createdAt: m.datetime(),
     content: m.string(),
     tags: m.optional(m.array(PostTag)),
   })
 type Post = m.Infer<typeof Post>
 const CursedType = () => m.array(m.union({ Asd: CursedType, L: m.string() }))
-type CursedType = m.Infer<typeof CursedType> //TODO: openapi
+type CursedType = m.Infer<typeof CursedType>
 
 const UserInput = m.object({
   username: m.string(),
@@ -62,7 +77,7 @@ const UserInput = m.object({
 type UserInput = m.Infer<typeof UserInput>
 const UserFind = m.object({ id: Id, b: m.defaul(m.number(), 123), c: m.optional(m.array(m.object({ a: m.number() }))) })
 type UserFind = m.Infer<typeof UserFind>
-const UserOutput = m.union({ User2: User, Null: m.nill() })
+const UserOutput = m.union({ User, Null: m.nill() })
 type UserOutput = m.Infer<typeof UserOutput>
 
 const types = m.types({ Id, User, UserOutput, Post, UserFind, UserInput, CursedType })
@@ -94,7 +109,8 @@ const testModule = m.module({
   resolvers: {
     queries: {
       user: {
-        f: async ({ input, context }) => {
+        f: async ({ input, context, fields }) => {
+          console.log(fields)
           const user = db.get(input.id) as User | null
           if (!user) {
             return null

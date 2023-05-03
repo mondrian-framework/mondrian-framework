@@ -43,6 +43,7 @@ export function getProjectionType(type: LazyType): LazyType {
             return [k, optional(t)]
           }),
         ),
+        { strict: true }
       ),
     })
   }
@@ -50,8 +51,13 @@ export function getProjectionType(type: LazyType): LazyType {
     return getProjectionType(type.type)
   }
   if (type.kind === 'union-operator') {
-    const subProjection = Object.entries(type.types).map(([k, t]) => [k, getProjectionType(t)] as const)
-    return union({ all: boolean(), object: object(Object.fromEntries(subProjection)) })
+    const subProjection = Object.entries(type.types).flatMap(([k, t]) => {
+      if (lazyToType(t).kind === 'null') {
+        return []
+      }
+      return [[k, getProjectionType(t)]] as const
+    })
+    return union({ all: boolean(), object: object(Object.fromEntries(subProjection), { strict: true }) })
     /*
     //NEED FOR TYPE NAME
     type U = { //A

@@ -35,10 +35,12 @@ const ManagerUser = () =>
     username: m.string(),
     password: m.string(),
     registeredAt: m.timestamp(),
-    permissions: m.optional(m.object({
-      admin: m.boolean(),
-      moderator: m.boolean()
-    }))
+    permissions: m.optional(
+      m.object({
+        admin: m.boolean(),
+        moderator: m.boolean(),
+      }),
+    ),
   })
 type ManagerUser = m.Infer<typeof ManagerUser>
 
@@ -50,6 +52,7 @@ const NormalUser = () =>
     registeredAt: m.timestamp(),
     posts: m.optional(m.array(Post)),
     taggedPosts: m.optional(m.array(Post)),
+    asd: m.optional(m.union({ A: m.number(), B: m.string() })),
   })
 type NormalUser = m.Infer<typeof NormalUser>
 
@@ -185,4 +188,9 @@ TODO:
   - IfC
   - projection, union projection
   - (lambda)/(dedicated server) runner
+*/
+
+/*
+ TODO: not possible in graphql
+ type X = string | X[]
 */

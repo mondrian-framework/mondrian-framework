@@ -52,7 +52,7 @@ export function getProjectionType(type: LazyType): LazyType {
   }
   if (type.kind === 'union-operator') {
     const subProjection = Object.entries(type.types).flatMap(([k, t]) => {
-      if (lazyToType(t).kind === 'null') {
+      if (lazyToType(t).kind !== 'object') {
         return []
       }
       return [[k, getProjectionType(t)]] as const

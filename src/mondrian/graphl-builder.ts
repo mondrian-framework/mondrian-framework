@@ -83,17 +83,12 @@ function typeToGqlTypeInternal(
   }
   if (type.kind === 'union-operator') {
     const ts = Object.entries(type.types)
-    if ((ts.length === 2 && lazyToType(ts[0][1]).kind === 'null') || lazyToType(ts[1][1]).kind === 'null') {
-      return typeToGqlType(
-        lazyToType(ts[0][1]).kind === 'null' ? ts[1][0] : ts[0][0],
-        lazyToType(ts[0][1]).kind === 'null' ? ts[1][1] : ts[0][1],
-        types,
-        typeMap,
-        typeRef,
-        isInput,
-        true,
-        scalars,
-      )
+    if (ts.length >= 2 && ts.some((t) => lazyToType(t[1]).kind === 'null')) {
+      typeMap[name] = `union ${name} = ${ts
+        .filter((t) => lazyToType(t[1]).kind !== 'null')
+        .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars))
+        .join(' | ')}`
+      return `${name}${isRequired}`
     }
     typeMap[name] = `union ${name} = ${ts
       .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars))

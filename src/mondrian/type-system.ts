@@ -128,13 +128,22 @@ export function string(opts?: StringType['opts']): StringType {
   return { kind: 'string', opts }
 }
 export function union<const T extends Types>(types: T): { kind: 'union-operator'; types: T } {
-  const entries: [string, LazyType][] = Object.entries(types).flatMap(([k, type]) => {
-    if (typeof type !== 'function' && type.kind === 'union-operator') {
-      return Object.entries(type.types)
-    }
-    return [[k, type]]
-  })
-  return { kind: 'union-operator', types: Object.fromEntries(entries) as T }
+  function flattened() {
+    const entries: [string, LazyType][] = Object.entries(types).flatMap(([k, type]) => {
+      const t = lazyToType(type)
+      if (t.kind === 'union-operator') {
+        return Object.entries(t.types)
+      }
+      return [[k, type]]
+    })
+    return entries
+  }
+  if (Object.values(types).some((t) => typeof t === 'function')) {
+    //If it has 
+    return (() => ({ kind: 'union-operator', types: Object.fromEntries(flattened()) as T })) as any
+  } else {
+    return { kind: 'union-operator', types: Object.fromEntries(flattened()) as T }
+  }
 }
 export function enumerator<const V extends readonly [string, ...string[]]>(values: V): EnumeratorType<V> {
   return { kind: 'enumerator', values }

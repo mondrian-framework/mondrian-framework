@@ -232,6 +232,9 @@ function typeToSchemaObject(
   const type = typeToSchemaObjectInternal(name, t, types, typeMap, typeRef)
   if (typeof t === 'function' || name in types) {
     typeMap[name] = type
+    if ('anyOf' in type && type.anyOf?.some((v) => '$ref' in v && v.$ref === `#/components/schemas/${name}`)) {
+      return type
+    }
     return { $ref: `#/components/schemas/${name}` }
   }
   return type

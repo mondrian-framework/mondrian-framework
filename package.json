@@ -5,7 +5,8 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "pretty": "prettier --write \"./**/*.ts\""
+    "pretty": "prettier --write \"./**/*.ts\"",
+    "example": "npm run build --workspace=@mondrian/example && node packages/example/build/src/index.js"
   },
   "devDependencies": {
     "typescript": "5.0.4",

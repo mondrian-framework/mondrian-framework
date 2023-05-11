@@ -64,12 +64,12 @@ export const User = t.union(
 export type User = t.Infer<typeof User>
 
 export const UserInput = t.union({
-  ManagerUserInput: t.object({
+  ProfessionalUser: t.object({
     credentials: UserCredentials,
     profile: UserProfile,
     type: t.literal(ProfessionalUser().type.type.value),
   }),
-  NormalUserInput: t.object({
+  CustomerUser: t.object({
     credentials: UserCredentials,
     profile: UserProfile,
     type: t.literal(CustomerUser().type.type.value),

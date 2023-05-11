@@ -245,13 +245,13 @@ export async function start<
     const yoga = createYoga<{ fastify: { request: FastifyRequest; reply: FastifyReply } }>({
       schema: buildGraphqlSchema({ module, options, configuration }),
       plugins: options.introspection ? [] : [], //TODO
-      logging: false,
+      logging: true,
     })
     server.route({
       url: '/graphql',
       method: ['GET', 'POST', 'OPTIONS'],
       handler: async (request, reply) => {
-        // Second parameter adds Fastify's `req` and `reply` to the GraphQL Context
+        // Second parameter adds Fastify's `request` and `reply` to the GraphQL Context
         const response = await yoga.handleNodeRequest(request, { fastify: { request, reply } })
         response.headers.forEach((value, key) => {
           reply.header(key, value)

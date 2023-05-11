@@ -93,5 +93,7 @@ export default t.types({
   UserFilter,
   UserOutput,
   UserOutputs,
+  UserCredentials,
+  UserProfile,
   Void: t.nothing(),
 })

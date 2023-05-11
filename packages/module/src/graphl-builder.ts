@@ -50,6 +50,7 @@ function typeToGqlTypeInternal(
   unions: Record<string, (v: unknown) => boolean>,
 ): string {
   const isRequired = isOptional ? '' : '!'
+  const input = isInput ? 'I' : ''
   const type = lazyToType(t)
   if (type.kind === 'string') {
     return `String${isRequired}`
@@ -74,7 +75,7 @@ function typeToGqlTypeInternal(
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {
       const fieldType = typeToGqlType(
-        `${name}_${fieldName}`,
+        `${input}${name}_${fieldName}`,
         fieldT,
         types,
         typeMap,
@@ -86,10 +87,10 @@ function typeToGqlTypeInternal(
       )
       return `${fieldName}: ${fieldType}`
     })
-    typeMap[name] = `${isInput ? 'input' : 'type'} ${name} {
+    typeMap[`${input}${name}`] = `${isInput ? 'input' : 'type'} ${input}${name} {
         ${fields.join('\n        ')}
     }`
-    return `${name}${isRequired}`
+    return `${input}${name}${isRequired}`
   }
   if (type.kind === 'enumerator') {
     typeMap[name] = `enum ${name} {
@@ -107,10 +108,10 @@ function typeToGqlTypeInternal(
           fieldType.charAt(fieldType.length - 1) === '!' ? fieldType.substring(0, fieldType.length - 1) : fieldType
         return `${unionName}: ${realType}`
       })
-      typeMap[name] = `input ${name} {
+      typeMap[`${input}${name}`] = `input ${input}${name} {
           ${fields.join('\n        ')}
       }`
-      return `${name}${isRequired}`
+      return `${input}${name}${isRequired}`
     }
 
     //remove the Null types

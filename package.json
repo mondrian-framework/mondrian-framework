@@ -1,0 +1,25 @@
+{
+  "name": "@mondrian/root",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "pretty": "prettier --write \"./**/*.ts\""
+  },
+  "devDependencies": {
+    "typescript": "5.0.4",
+    "vitest": "0.31.0",
+    "prettier": "2.8.8"
+  },
+  "workspaces": [
+    "packages/utils",
+    "packages/model",
+    "packages/module",
+    "packages/example"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {}
+}

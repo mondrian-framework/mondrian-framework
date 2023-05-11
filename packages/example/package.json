@@ -1,0 +1,15 @@
+{
+  "name": "@mondrian/example",
+  "version": "0.0.0",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@mondrian/module": "*",
+    "graphql-yoga": "3.9.1"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "target": "esnext",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noErrorTruncation": false,
+    "sourceMap": true,
+    "declaration": true,
+    "incremental": true,
+    "composite": true,
+    "skipLibCheck": true,
+    "types": ["vitest/importMeta"],
+    "paths": {
+      "@mondrian/utils": ["./packages/utils"],
+      "@mondrian/model": ["./packages/model"],
+      "@mondrian/module": ["./packages/module"],
+      "@mondrian/sdk": ["./packages/sdk"],
+      "@mondrian/example": ["./packages/example"]
+    }
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "packages/utils"
+    },
+    {
+      "path": "packages/model"
+    },
+    {
+      "path": "packages/module"
+    },
+    {
+      "path": "packages/sdk"
+    },
+    {
+      "path": "packages/example"
+    }
+  ],
+  "exclude": ["**/node_modules", "build"]
+}

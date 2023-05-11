@@ -1,0 +1,21 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": [],
+  "rules": {
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-unnecessary-condition": "off"
+  },
+  "parserOptions": {
+    "project": [
+      "./tsconfig.json",
+      "./packages/model/tsconfig.json",
+      "./packages/module/tsconfig.json",
+      "./packages/utils/tsconfig.json",
+      "./packages/sdk/tsconfig.json",
+      "./packages/example/tsconfig.json"
+    ]
+  },
+  "ignorePatterns": []
+}

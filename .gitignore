@@ -1,0 +1,16 @@
+node_modules
+node_modules/**
+**/node_modules
+.vscode
+**/build
+**/.build
+coverage
+**/ysconfig.tsbuildinfo
+**/*.generated.ts
+**/.env.*
+**/.env
+.vscode/settings.json
+.npmrc
+packages/api/.env-dev
+packages/api/.env-stage
+packages/api/.env-stage-test

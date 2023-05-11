@@ -1,0 +1,11 @@
+{
+  "name": "@mondrian/utils",
+  "version": "0.0.0",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "keywords": []
+}

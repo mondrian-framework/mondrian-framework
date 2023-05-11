@@ -1,3 +1,4 @@
+import { createSdk } from '@mondrian/sdk'
 import m from '@mondrian/module'
 import module from './module'
 import { createGraphQLError } from 'graphql-yoga'
@@ -30,4 +31,33 @@ async function main() {
   console.log(`Module "${module.name}" has started in ${ms} ms! ${address}`)
 }
 
-main().then()
+async function sdkExample() {
+  const sdk = createSdk({ module, endpoint: 'http://127.0.0.1:4000' })
+  for (let i = 0; i < 1; i++) {
+    const ins = await sdk.mutation.register({
+      input: {
+        credentials: { email: 'asd@gmail.com', password: '123' },
+        profile: { firstname: `Mario ${i}`, lastname: 'Bros' },
+        type: 'CUSTOMER',
+      },
+      fields: {
+        ProfessionalUser: { id: true, profile: true, type: true },
+        CustomerUser: { id: true, type: true },
+      },
+      headers: { id: '1234' },
+    })
+    console.log(ins)
+    const result = await sdk.query.users({
+      input: null,
+      fields: true,
+      headers: { id: '1234' },
+    })
+    console.log(result)
+  }
+
+  //example of another app using this module implementation
+  //the module is not served but only used
+  //const sdk = m.sdk({ module: EXPORTS.module, configuration: { MONGODB_URL: 'mock', STARTING_ID: 1 } })
+}
+
+main().then(() => sdkExample().then())

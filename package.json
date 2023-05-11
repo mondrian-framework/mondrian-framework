@@ -16,6 +16,7 @@
     "packages/utils",
     "packages/model",
     "packages/module",
+    "packages/sdk",
     "packages/example"
   ],
   "engines": {

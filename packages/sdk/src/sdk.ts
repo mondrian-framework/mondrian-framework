@@ -1,6 +1,5 @@
 import { Infer, InferProjection, LazyType, Project, Types, decode, encode } from '@mondrian/model'
-import { Module, ModuleDefinition, Operation, OperationNature, Operations } from '@mondrian/module'
-import { encodeQueryObject } from '@mondrian/module/src/utils'
+import { Module, ModuleDefinition, Operation, OperationNature, Operations, encodeQueryObject } from '@mondrian/module'
 
 type SDK<T extends Types, O extends Operations<T>> = {
   query: {
@@ -25,7 +24,7 @@ type SdkResolver<Input, Fields, OutputType extends LazyType> = <const F extends 
   fields?: F
 }) => Promise<Project<F, OutputType>>
 
-export function sdk<const T extends Types, const O extends Operations<T>, const C extends LazyType>({
+export function createSdk<const T extends Types, const O extends Operations<T>, const C extends LazyType>({
   module,
   defaultHeaders,
   ...args

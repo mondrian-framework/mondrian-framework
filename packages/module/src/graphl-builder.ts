@@ -1,6 +1,6 @@
 import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { GenericModule, ModuleRunnerOptions } from './module'
-import { extractFieldsFromGraphqlInfo, isVoidType, logger, randomOperationId } from './utils'
+import { extractFieldsFromGraphqlInfo, isNullType, isVoidType, logger, randomOperationId } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { getProjectionType } from './projection'
@@ -114,8 +114,8 @@ function typeToGqlTypeInternal(
     }
 
     //remove the Null types
-    if (ts.length >= 2 && ts.some((t) => lazyToType(t[1]).kind === 'null')) {
-      const filteredTs = ts.filter((t) => lazyToType(t[1]).kind !== 'null')
+    if (ts.length >= 2 && ts.some((t) => isNullType(t[1]))) {
+      const filteredTs = ts.filter((t) => isNullType(t[1]))
       if (filteredTs.length === 1) {
         const e = typeToGqlType(
           filteredTs[0][0],
@@ -157,7 +157,7 @@ function typeToGqlTypeInternal(
       .join(' | ')}`
     return `${name}${isRequired}`
   }
-  if (type.kind === 'null') {
+  if (isNullType(type)) {
     scalars['Null'] = {
       decode: (input) =>
         input === null

@@ -273,6 +273,7 @@ function typeToSchemaObjectInternal(
       pattern: type.opts?.regex?.source,
       minLength: type.opts?.minLength,
       maxLength: type.opts?.maxLength,
+      format: type.opts?.format,
     }
   }
   if (type.kind === 'custom') {
@@ -301,6 +302,9 @@ function typeToSchemaObjectInternal(
     const t = typeof type.value
     //TODO: integer
     const tp = t === 'boolean' ? t : t === 'number' ? t : t === 'string' ? t : null
+    if (type.value === null) {
+      return { type: 'null' }
+    }
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
     }
@@ -346,9 +350,6 @@ function typeToSchemaObjectInternal(
   if (type.kind === 'union-operator') {
     const uniontypes = Object.entries(type.types).map(([k, t]) => typeToSchemaObject(k, t, types, typeMap, typeRef))
     return { anyOf: uniontypes }
-  }
-  if (type.kind === 'null') {
-    return { type: 'null' }
   }
   return assertNever(type)
 }

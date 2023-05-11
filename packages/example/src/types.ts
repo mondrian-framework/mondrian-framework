@@ -26,8 +26,8 @@ export const UserProfile = t.object({
 })
 
 export const UserCredentials = t.object({
-  email: t.string({ maxLength: 100 }),
-  password: t.string(),
+  email: t.string({ format: 'email' }),
+  password: t.string({ format: 'password', minLength: 5 }),
 })
 export type UserCredentials = t.Infer<typeof UserCredentials>
 
@@ -93,5 +93,5 @@ export default t.types({
   UserFilter,
   UserOutput,
   UserOutputs,
-  Void: t.voidT(),
+  Void: t.nothing(),
 })

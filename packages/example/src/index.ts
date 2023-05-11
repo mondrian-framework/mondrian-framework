@@ -34,25 +34,31 @@ async function main() {
 async function sdkExample() {
   const sdk = createSdk({ module, endpoint: 'http://127.0.0.1:4000' })
   for (let i = 0; i < 1; i++) {
-    const ins = await sdk.mutation.register({
-      input: {
-        credentials: { email: 'asd@gmail.com', password: '123' },
-        profile: { firstname: `Mario ${i}`, lastname: 'Bros' },
-        type: 'CUSTOMER',
-      },
-      fields: {
-        ProfessionalUser: { id: true, profile: true, type: true },
-        CustomerUser: { id: true, type: true },
-      },
-      headers: { id: '1234' },
-    })
-    console.log(ins)
-    const result = await sdk.query.users({
-      input: null,
-      fields: true,
-      headers: { id: '1234' },
-    })
-    console.log(result)
+    try {
+      const ins = await sdk.mutation.register({
+        input: {
+          credentials: { email: 'asd@gmail.com', password: '12345' },
+          profile: { firstname: `Mario ${i}`, lastname: 'Bros' },
+          type: 'CUSTOMER',
+        },
+        fields: {
+          ProfessionalUser: { id: true, profile: true, type: true },
+          CustomerUser: { id: true, type: true },
+        },
+        headers: { id: '1234' },
+      })
+      console.log(ins)
+      const result = await sdk.query.users({
+        input: null,
+        fields: true,
+        headers: { id: '1234' },
+      })
+      console.log(result)
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message)
+      }
+    }
   }
 
   //example of another app using this module implementation

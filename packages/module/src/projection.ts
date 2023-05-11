@@ -11,7 +11,6 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
     type.kind === 'boolean' ||
     type.kind === 'string' ||
     type.kind === 'number' ||
-    type.kind === 'null' ||
     type.kind === 'enumerator' ||
     type.kind === 'custom' ||
     type.kind === 'literal'

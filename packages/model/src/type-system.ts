@@ -1,17 +1,29 @@
 import { Expand, JSONType } from '@mondrian/utils'
 import { DecodeResult } from './decoder'
 
-export type StringType = { kind: 'string'; opts?: { maxLength?: number; regex?: RegExp; minLength?: number } }
+export type StringType = {
+  kind: 'string'
+  opts?: {
+    maxLength?: number
+    regex?: RegExp
+    minLength?: number
+    format?: 'password' | 'byte' | 'binary' | 'email' | 'uuid' | 'url' | 'ipv4'
+  }
+}
 export type NumberType = {
   kind: 'number'
-  opts?: { exclusiveMaximum?: number; exclusiveMinimum?: number; minimum?: number; maximum?: number }
+  opts?: {
+    exclusiveMaximum?: number
+    exclusiveMinimum?: number
+    minimum?: number
+    maximum?: number
+  }
 }
 export type BooleanType = { kind: 'boolean'; opts?: {} }
 export type EnumeratorType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]> = {
   kind: 'enumerator'
   values: V
 }
-export type NullType = { kind: 'null' }
 export type LiteralType = { kind: 'literal'; value: any }
 export type TimestampType = CustomType<Date, 'timestamp', { min?: Date; max?: Date }>
 export type DatetimeType = CustomType<Date, 'datetime', { min?: Date; max?: Date }>
@@ -39,7 +51,6 @@ export type Type =
   | StringType
   | EnumeratorType
   | BooleanType
-  | NullType
   | CustomType
   | LiteralType
   | ObjectType
@@ -251,9 +262,6 @@ export function enumerator<const V extends readonly [string, ...string[]]>(value
 export function boolean(): BooleanType {
   return { kind: 'boolean' }
 }
-export function nill(): NullType {
-  return { kind: 'null' }
-}
 export function object<const T extends ObjectType['type']>(
   type: T,
   opts?: ObjectType['opts'],
@@ -324,7 +332,7 @@ export function datetime(opts?: DatetimeType['opts']): DatetimeType {
   }
 }
 
-export function voidT(opts?: VoidType['opts']): VoidType {
+export function nothing(opts?: VoidType['opts']): VoidType {
   return {
     kind: 'custom',
     name: 'void',

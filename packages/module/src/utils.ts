@@ -60,6 +60,11 @@ export function isVoidType(type: LazyType): boolean {
   return t.kind === 'custom' && t.name === 'void'
 }
 
+export function isNullType(type: LazyType): boolean {
+  const t = lazyToType(type)
+  return t.kind === 'literal' && t.value === null
+}
+
 export function randomOperationId() {
   //same length until Tue, 02 Aug 10889 05:31:50 GMT
   return `${new Date().getTime().toString(16).padStart(12, '0')}-${randomBytes(6).toString('hex')}`
@@ -151,7 +156,6 @@ function extractRequiredFields(type: LazyType, fields: GenericProjection): Gener
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'null' ||
     t.kind === 'enumerator' ||
     t.kind === 'custom' ||
     t.kind === 'literal'

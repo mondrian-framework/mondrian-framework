@@ -1,5 +1,5 @@
 import { Infer, InferProjection, LazyType, Project, Types } from '@mondrian/model'
-import { logger, randomOperationId } from './utils'
+import { buildLogger, randomOperationId } from './utils'
 import { ContextType, Functions, Module } from './module'
 
 type SDK<T extends Types, F extends Functions<keyof T extends string ? keyof T : never>> = {
@@ -23,10 +23,10 @@ export function createLocalSdk<
     Object.entries(module.functions).map(([functionName, functionBody]) => {
       const wrapper = async ({ input, fields }: { input: any; fields: any }) => {
         const operationId = randomOperationId()
-        const log = logger(module.name, operationId, null, functionName, 'LOCAL', new Date())
+        const log = buildLogger(module.name, operationId, null, functionName, 'LOCAL', new Date())
         const ctx = await context()
         try {
-          const result = functionBody.apply({ input, fields, context: ctx, operationId })
+          const result = functionBody.apply({ input, fields, context: ctx, operationId, log })
           log('Done.')
           return result
         } catch {

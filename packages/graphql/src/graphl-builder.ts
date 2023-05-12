@@ -287,6 +287,7 @@ function generateQueryOrMutation({
             fields: fields.value,
             input: decoded.value,
             operationId,
+            log,
           })
           const encoded = encode(outputType, result)
           log('Completed.')

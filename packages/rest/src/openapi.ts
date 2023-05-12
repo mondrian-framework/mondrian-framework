@@ -116,6 +116,7 @@ async function elabFastifyRestRequest({
       context: ctx,
       input: decoded.value,
       operationId,
+      log,
     })
     const encoded = encode(outputType, result)
     log('Completed.')

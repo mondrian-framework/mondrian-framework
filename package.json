@@ -17,7 +17,8 @@
     "packages/utils",
     "packages/model",
     "packages/module",
-    "packages/sdk",
+    "packages/rest",
+    "packages/graphql",
     "packages/example"
   ],
   "engines": {

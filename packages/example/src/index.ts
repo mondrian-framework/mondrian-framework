@@ -1,41 +1,55 @@
-import { createSdk } from '@mondrian/sdk'
-import m from '@mondrian/module'
-import module from './module'
-import { createGraphQLError } from 'graphql-yoga'
+import { module } from './module'
+import { fastify } from 'fastify'
+import { createRestSdk, exposeModuleAsREST } from '@mondrian/rest'
+import { exposeModuleAsGraphQL } from '@mondrian/graphql'
 
 async function main() {
-  const { address, ms } = await m.start({
+  const server = fastify()
+  const time = new Date().getTime()
+  await exposeModuleAsREST({
+    server,
     module,
-    configuration: { MONGODB_URL: 'mock', STARTING_ID: 1 },
-    options: {
-      port: 4000,
-      introspection: true,
-      healthcheck: true,
-      graphql: {
-        logger: true,
-        async errorHandler({ error, operationId }) {
-          if (error instanceof Error) {
-            return { error: createGraphQLError(error.message, { extensions: { operationId } }) }
-          }
-          return { error: createGraphQLError(`Internal server error ${operationId}`) } //hide details
-        },
+    rest: {
+      api: {
+        register: { method: 'POST' },
+        user: { method: 'GET' },
+        users: { method: 'GET' },
       },
-      http: {
-        logger: true,
-        async errorHandler({ operationId }) {
-          return { response: `Internal server error ${operationId}`, statusCode: 500 } //hide details
-        },
-      },
+      options: { introspection: true },
     },
   })
-  console.log(`Module "${module.name}" has started in ${ms} ms! ${address}`)
+  await exposeModuleAsGraphQL({
+    server,
+    module,
+    graphql: {
+      api: {
+        register: { type: 'mutation' },
+        user: { type: 'query' },
+        users: { type: 'query' },
+      },
+      options: { introspection: true },
+    },
+  })
+  const address = await server.listen({ port: 4000 })
+  console.log(`Module "${module.name}" has started in ${new Date().getTime() - time} ms! ${address}`)
 }
 
 async function sdkExample() {
-  const sdk = createSdk({ module, endpoint: 'http://127.0.0.1:4000' })
+  const sdk = createRestSdk({
+    module,
+    endpoint: 'http://127.0.0.1:4000',
+    rest: {
+      api: {
+        register: { method: 'POST' },
+        user: { method: 'GET' },
+        users: { method: 'GET' },
+      },
+      options: { introspection: true },
+    },
+  })
   for (let i = 0; i < 1; i++) {
     try {
-      const ins = await sdk.mutation.register({
+      const ins = await sdk.register({
         input: {
           credentials: { email: 'asd@gmail.com', password: '12345' },
           profile: { firstname: `Mario ${i}`, lastname: 'Bros' },
@@ -48,8 +62,8 @@ async function sdkExample() {
         headers: { id: '1234' },
       })
       console.log(ins)
-      const result = await sdk.query.users({
-        input: null,
+      const result = await sdk.users({
+        input: {},
         fields: true,
         headers: { id: '1234' },
       })

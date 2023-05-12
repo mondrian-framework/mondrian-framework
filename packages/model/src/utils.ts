@@ -6,3 +6,13 @@ export function lazyToType(t: LazyType): Type {
   }
   return t
 }
+
+export function isVoidType(type: LazyType): boolean {
+  const t = lazyToType(type)
+  return t.kind === 'custom' && t.name === 'void'
+}
+
+export function isNullType(type: LazyType): boolean {
+  const t = lazyToType(type)
+  return t.kind === 'literal' && t.value === null
+}

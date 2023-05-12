@@ -8,13 +8,10 @@
   "exclude": ["build", "node_modules"],
   "references": [
     {
-      "path": "../module"
-    },
-    {
       "path": "../model"
     },
     {
-      "path": "../rest"
-    },
+      "path": "../utils"
+    }
   ]
 }

@@ -1,22 +1,39 @@
 import m from '@mondrian/module'
-import types from './types'
+import { Types, User } from './types'
 
-const register = m.operation({
-  types,
-  input: 'UserInput',
-  output: 'User',
-})
-const getUser = m.operation({
-  types,
+type SharedContext = { startingId: number; db: Map<string, any> }
+const f = m.functionBuilder<Types, SharedContext>()
+
+const user = f({
   input: 'UserFilter',
   output: 'UserOutput',
-  options: {
-    graphql: { inputName: 'id' },
+  async apply({ input, context, fields, operationId }) {
+    const user = input.id ? (context.db.get(input.id) as User | null) : null
+    if (!user) {
+      return undefined
+    }
+    return user
   },
 })
-const getUsers = m.operation({
-  types,
-  input: 'Void',
+const users = f({
+  input: 'UserFilter',
   output: 'UserOutputs',
+  async apply({ input, context, fields, operationId }) {
+    return [...context.db.values()]
+  },
 })
-export default m.operations({ mutations: { register }, queries: { user: getUser, users: getUsers } })
+const register = f({
+  input: 'UserInput',
+  output: 'User',
+  async apply({ input, context, fields, operationId }) {
+    if (context.db.size >= 20000) {
+      throw new Error('Maximum db size')
+    }
+    const id = (context.db.size + context.startingId).toString()
+    const user: User = { id, ...input, registeredAt: new Date() }
+    context.db.set(id, user)
+    return user
+  },
+})
+
+export const functions = m.functions({ users, user, register })

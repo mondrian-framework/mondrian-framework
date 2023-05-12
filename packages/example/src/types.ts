@@ -84,7 +84,7 @@ export const UserOutput = t.optional(User)
 
 export const UserOutputs = t.array(User)
 
-export default t.types({
+export const types = t.types({
   Id,
   ProfessionalUser,
   CustomerUser,
@@ -97,3 +97,4 @@ export default t.types({
   UserProfile,
   Void: t.nothing(),
 })
+export type Types = typeof types

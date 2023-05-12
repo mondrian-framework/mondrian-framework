@@ -19,7 +19,7 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
   }
   if (t.kind === 'optional-decorator') {
     if (value === undefined) {
-      return undefined
+      return null
     }
     return encode(t.type, value)
   }

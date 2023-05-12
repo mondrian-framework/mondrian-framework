@@ -17,7 +17,8 @@
       "@mondrian/utils": ["./packages/utils"],
       "@mondrian/model": ["./packages/model"],
       "@mondrian/module": ["./packages/module"],
-      "@mondrian/sdk": ["./packages/sdk"],
+      "@mondrian/rest": ["./packages/rest"],
+      "@mondrian/graphql": ["./packages/graphql"],
       "@mondrian/example": ["./packages/example"]
     }
   },
@@ -33,7 +34,10 @@
       "path": "packages/module"
     },
     {
-      "path": "packages/sdk"
+      "path": "packages/rest"
+    },
+    {
+      "path": "packages/graphql"
     },
     {
       "path": "packages/example"

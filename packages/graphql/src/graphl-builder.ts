@@ -1,11 +1,12 @@
 import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
-import { GenericModule, ModuleRunnerOptions } from './module'
-import { extractFieldsFromGraphqlInfo, isNullType, isVoidType, logger, randomOperationId } from './utils'
+import { extractFieldsFromGraphqlInfo } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { getProjectionType } from './projection'
-import { CustomType, LazyType, decode, encode, lazyToType } from '@mondrian/model'
+import { CustomType, LazyType, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
+import { Functions, GenericModule, logger, randomOperationId } from '@mondrian/module'
+import { ModuleGraphqlApi } from './server'
 
 function typeToGqlType(
   name: string,
@@ -184,21 +185,10 @@ function typeToGqlTypeInternal(
   return assertNever(type)
 }
 
-function generateInputs({
-  module,
-  options,
-  scalarsMap,
-}: {
-  module: GenericModule
-  options: ModuleRunnerOptions
-  scalarsMap: Record<string, CustomType>
-}) {
+function generateInputs({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, CustomType> }) {
   const typeMap: Record<string, string> = {}
   const typeRef: Map<Function, string> = new Map()
-  const usedTypes = new Set([
-    ...Object.values(module.operations.queries).map((q) => q.input),
-    ...Object.values(module.operations.mutations).map((q) => q.input),
-  ])
+  const usedTypes = new Set([...Object.values(module.functions).map((q) => q.input)])
   for (const [name, type] of Object.entries(module.types).filter(
     ([name, type]) => usedTypes.has(name) && !isVoidType(type),
   )) {
@@ -207,22 +197,14 @@ function generateInputs({
   return Object.values(typeMap).join('\n\n')
 }
 
-function generateTypes({
-  module,
-  options,
-  scalarsMap,
-}: {
-  module: GenericModule
-  options: ModuleRunnerOptions
-  scalarsMap: Record<string, CustomType>
-}): { gql: string; unions: Record<string, (v: unknown) => boolean> } {
+function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, CustomType> }): {
+  gql: string
+  unions: Record<string, (v: unknown) => boolean>
+} {
   const typeMap: Record<string, string> = {}
   const typeRef: Map<Function, string> = new Map()
   const unions: Record<string, (v: unknown) => boolean> = {}
-  const usedTypes = new Set([
-    ...Object.values(module.operations.queries).map((q) => q.output),
-    ...Object.values(module.operations.mutations).map((q) => q.output),
-  ])
+  const usedTypes = new Set([...Object.values(module.functions).map((q) => q.output)])
   for (const [name, type] of Object.entries(module.types).filter(
     ([name, type]) => usedTypes.has(name) && !isVoidType(type),
   )) {
@@ -231,15 +213,7 @@ function generateTypes({
   return { gql: Object.values(typeMap).join('\n\n'), unions }
 }
 
-function generateScalars({
-  module,
-  options,
-  scalarsMap,
-}: {
-  module: GenericModule
-  options: ModuleRunnerOptions
-  scalarsMap: Record<string, CustomType>
-}) {
+function generateScalars({ scalarsMap }: { scalarsMap: Record<string, CustomType> }) {
   const scalarDefs = Object.values(scalarsMap)
     .map((s) => `scalar ${s.name}`)
     .join('\n')
@@ -266,20 +240,20 @@ function generateScalars({
 
 function generateQueryOrMutation({
   module,
-  options,
   type,
-  configuration,
+  graphql,
 }: {
-  type: 'queries' | 'mutations'
+  type: 'query' | 'mutation'
   module: GenericModule
-  options: ModuleRunnerOptions
-  configuration: unknown
+  graphql: ModuleGraphqlApi<Functions>
 }) {
-  const ops = module.operations[type]
-  const rsvs = module.resolvers[type]
+  const functions = Object.entries(module.functions).filter(
+    ([functionName, _]) => graphql.api[functionName].type === type,
+  )
   const resolvers = Object.fromEntries(
-    Object.entries(ops).map(([operationName, operation]) => {
-      const gqlInputTypeName = operation.options?.graphql?.inputName ?? 'input'
+    functions.map(([functionName, functionBody]) => {
+      const specification = graphql.api[functionName]
+      const gqlInputTypeName = specification.inputName ?? 'input'
       const resolver = async (
         parent: unknown,
         input: Record<string, unknown>,
@@ -287,11 +261,9 @@ function generateQueryOrMutation({
         info: GraphQLResolveInfo,
       ) => {
         const operationId = randomOperationId()
-        const log = options.graphql?.logger
-          ? logger(module.name, operationId, operationName, operationName, 'GQL', new Date())
-          : () => {}
+        const log = logger(module.name, operationId, specification.type.toUpperCase(), functionName, 'GQL', new Date())
         context.fastify.reply.header('operation-id', operationId)
-        const decoded = decode(operation.types[operation.input], input[gqlInputTypeName], {
+        const decoded = decode(module.types[functionBody.input], input[gqlInputTypeName], {
           cast: true,
           castGqlInputUnion: true,
         })
@@ -299,7 +271,7 @@ function generateQueryOrMutation({
           log('Bad request.')
           throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
         }
-        const outputType = operation.types[operation.output]
+        const outputType = module.types[functionBody.output]
         const fieldType = () => getProjectionType(outputType)
         const gqlFields = extractFieldsFromGraphqlInfo(info, outputType)
         const fields = decode(fieldType(), gqlFields, { cast: true })
@@ -308,40 +280,34 @@ function generateQueryOrMutation({
           throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
         }
         try {
-          const result = await rsvs[operationName].f({
+          const result = await functionBody.apply({
             context: await module.context({ headers: context.fastify.request.headers }),
             fields: fields.value,
             input: decoded.value,
             operationId,
-            configuration,
           })
           const encoded = encode(outputType, result)
           log('Completed.')
           return encoded
         } catch (error) {
           log('Failed with exception.')
-          if (options.graphql?.errorHandler) {
-            const handled = await options.graphql.errorHandler({ error, operation, operationId })
-            if (handled && handled.error !== undefined) {
-              throw handled.error
-            }
-          }
           throw error
         }
       }
-      return [operationName, resolver]
+      return [functionName, resolver]
     }),
   )
-  const defs = Object.entries(ops)
-    .map(([operationName, operation]) => {
-      const inputType = lazyToType(module.types[operation.input])
+  const defs = functions
+    .map(([functionName, functionBody]) => {
+      const specification = graphql.api[functionName]
+      const inputType = lazyToType(module.types[functionBody.input])
       const inputIsVoid = isVoidType(inputType)
       const gqlInputType = inputIsVoid
         ? null
-        : typeToGqlType(operation.input, inputType, module.types, {}, new Map(), true, false, {}, {})
-      const ouputType = lazyToType(module.types[operation.output])
+        : typeToGqlType(functionBody.input, inputType, module.types, {}, new Map(), true, false, {}, {})
+      const ouputType = lazyToType(module.types[functionBody.output])
       const gqlOutputType = typeToGqlType(
-        operation.output,
+        functionBody.output,
         ouputType,
         module.types,
         {},
@@ -352,8 +318,8 @@ function generateQueryOrMutation({
         {},
       )
       return inputIsVoid
-        ? `${operationName}: ${gqlOutputType}`
-        : `${operationName}(${operation.options?.graphql?.inputName ?? 'input'}: ${gqlInputType}): ${gqlOutputType}`
+        ? `${functionName}: ${gqlOutputType}`
+        : `${functionName}(${specification.inputName ?? 'input'}: ${gqlInputType}): ${gqlOutputType}`
     })
     .join('\n')
   return { defs, resolvers }
@@ -361,29 +327,25 @@ function generateQueryOrMutation({
 
 export function buildGraphqlSchema({
   module,
-  options,
-  configuration,
+  graphql,
 }: {
   module: GenericModule
-  options: ModuleRunnerOptions
-  configuration: unknown
+  graphql: ModuleGraphqlApi<Functions>
 }): GraphQLSchema {
   const { defs: queryDefs, resolvers: queryResolvers } = generateQueryOrMutation({
     module,
-    options,
-    type: 'queries',
-    configuration,
+    graphql,
+    type: 'query',
   })
   const { defs: mutationDefs, resolvers: mutationResolvers } = generateQueryOrMutation({
     module,
-    options,
-    type: 'mutations',
-    configuration,
+    graphql,
+    type: 'mutation',
   })
   const scalarsMap: Record<string, CustomType> = {}
-  const { gql: typeDefs, unions } = generateTypes({ module, options, scalarsMap })
-  const inputDefs = generateInputs({ module, options, scalarsMap })
-  const { scalarDefs, scalarResolvers } = generateScalars({ module, options, scalarsMap })
+  const { gql: typeDefs, unions } = generateTypes({ module, scalarsMap })
+  const inputDefs = generateInputs({ module, scalarsMap })
+  const { scalarDefs, scalarResolvers } = generateScalars({ scalarsMap })
 
   const schemaDefs = `
   ${scalarDefs}

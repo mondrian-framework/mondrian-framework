@@ -1,85 +1,94 @@
 import { OpenAPIV3_1 } from 'openapi-types'
-import { GenericModule, ModuleRunnerOptions, OperationNature } from './module'
-import { decodeQueryObject, firstOf2, isVoidType, logger, randomOperationId } from './utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { getProjectionType } from './projection'
-import { LazyType, Types, decode, encode, lazyToType } from '@mondrian/model'
+import { DecodeResult, LazyType, Types, decode, encode, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
+import {
+  Functions,
+  GenericFunction,
+  GenericModule,
+  getProjectionType,
+  logger,
+  randomOperationId,
+} from '@mondrian/module'
+import { decodeQueryObject } from './utils'
+import { ModuleRestApi, RestFunctionSpecs } from './server'
 
 export function attachRestMethods({
   module,
-  options,
   server,
-  configuration,
+  rest,
 }: {
   module: GenericModule
-  options: ModuleRunnerOptions
   server: FastifyInstance
-  configuration: unknown
+  rest: ModuleRestApi<Functions>
 }): void {
-  for (const [opt, operations] of Object.entries(module.operations)) {
-    const operationNature = opt as OperationNature
-    for (const [operationName, operation] of Object.entries(operations)) {
-      const path = `/api${operation.options?.rest?.path ?? `/${operationName}`}`
-      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'GET' : 'POST')
-      if (method === 'GET') {
-        server.get(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options, configuration }),
-        )
-      } else if (method === 'POST') {
-        server.post(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options, configuration }),
-        )
-      } else if (method === 'PUT') {
-        server.put(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options, configuration }),
-        )
-      } else if (method === 'DELETE') {
-        server.delete(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options, configuration }),
-        )
-      } else if (method === 'PATCH') {
-        server.patch(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, operationName, operationNature, module, options, configuration }),
-        )
-      }
+  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+    const specifications = rest.api[functionName]
+    const path = `/api${specifications.path ?? `/${functionName}`}`
+    if (specifications.method === 'GET') {
+      server.get(path, (request, reply) =>
+        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+      )
+    } else if (specifications.method === 'POST') {
+      server.post(path, (request, reply) =>
+        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+      )
+    } else if (specifications.method === 'PUT') {
+      server.put(path, (request, reply) =>
+        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+      )
+    } else if (specifications.method === 'DELETE') {
+      server.delete(path, (request, reply) =>
+        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+      )
+    } else if (specifications.method === 'PATCH') {
+      server.patch(path, (request, reply) =>
+        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+      )
     }
   }
+}
+
+function firstOf2<V>(f1: () => DecodeResult<V>, f2: () => DecodeResult<V>): DecodeResult<V> {
+  const v1 = f1()
+  if (!v1.pass) {
+    const v2 = f2()
+    if (v2.pass) {
+      return v2
+    }
+  }
+  return v1
 }
 
 async function elabFastifyRestRequest({
   request,
   reply,
-  operationName,
+  functionName,
   module,
-  operationNature,
-  options,
-  configuration,
+  rest,
+  specifications,
+  functionBody,
 }: {
   request: FastifyRequest
   reply: FastifyReply
-  operationName: string
-  operationNature: OperationNature
+  functionName: string
   module: GenericModule
-  options: ModuleRunnerOptions
-  configuration: unknown
+  functionBody: GenericFunction
+  rest: ModuleRestApi<Functions>
+  specifications: RestFunctionSpecs
 }): Promise<unknown> {
   const startDate = new Date()
   const operationId = randomOperationId()
-  const log = options.http?.logger
-    ? logger(module.name, operationId, operationName, operationName, 'REST', startDate)
-    : () => {}
+  const log = logger(module.name, operationId, specifications.method, functionName, 'REST', startDate)
   reply.header('operation-id', operationId)
-  const operation = module.operations[operationNature][operationName]
-  const resolver = module.resolvers[operationNature][operationName]
   const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
-  const outputType = operation.types[operation.output]
+  const outputType = module.types[functionBody.output]
   const query = request.query as Record<string, unknown>
-  const inputIsVoid = isVoidType(module.types[operation.input])
+  const inputIsVoid = isVoidType(module.types[functionBody.input])
   const input = inputIsVoid ? null : inputFrom === 'body' ? request.body : decodeQueryObject(query, 'input')
   const decoded = firstOf2(
-    () => decode(operation.types[operation.input], input, { cast: inputFrom !== 'body' }),
-    () => decode(operation.types[operation.input], query['input'], { cast: inputFrom !== 'body' }),
+    () => decode(module.types[functionBody.input], input, { cast: inputFrom !== 'body' }),
+    () => decode(module.types[functionBody.input], query['input'], { cast: inputFrom !== 'body' }),
   )
   if (!decoded.pass) {
     log('Bad request.')
@@ -98,102 +107,87 @@ async function elabFastifyRestRequest({
   }
   const context = await module.context({ headers: request.headers })
   try {
-    const result = await resolver.f({
+    const result = await functionBody.apply({
       fields: fields ? (fields.value as any) : undefined,
       context,
       input: decoded.value,
       operationId,
-      configuration,
     })
     const encoded = encode(outputType, result)
     log('Completed.')
     return encoded
   } catch (error) {
     log('Failed with exception.')
-    if (options.http?.errorHandler) {
-      const handled = await options.http.errorHandler({ error, reply, request, operation, operationId })
-      if (handled) {
-        if (handled.statusCode != null) {
-          reply.status(handled.statusCode)
-        }
-        if (handled.response !== undefined) {
-          return handled.response
-        }
-      }
-    }
     throw error
   }
 }
 
 export function openapiSpecification({
   module,
-  options,
+  rest,
 }: {
   module: GenericModule
-  options: ModuleRunnerOptions
+  rest: ModuleRestApi<Functions>
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
-  const components = openapiComponents({ module, options })
-  for (const [opt, operations] of Object.entries(module.operations)) {
-    const operationNature = opt as OperationNature
-    for (const [operationName, operation] of Object.entries(operations)) {
-      const path = `${operation.options?.rest?.path ?? `/${operationName}`}`
-      const method = operation.options?.rest?.method ?? (operationNature === 'queries' ? 'GET' : 'POST')
-      const inputIsVoid = isVoidType(module.types[operation.input])
-      const operationObj: OpenAPIV3_1.OperationObject = {
-        parameters: [
-          ...((method === 'GET' || method === 'DELETE') && !inputIsVoid
-            ? [
-                {
-                  name: 'input',
-                  in: 'query',
-                  required: true,
-                  style: 'deepObject',
-                  explode: true,
-                  schema: {
-                    $ref: `#/components/schemas/${operation.input}`,
-                  },
-                },
-              ]
-            : []),
-          {
-            name: 'fields',
-            in: 'header',
-          },
-        ],
-        requestBody:
-          method !== 'GET' && method !== 'DELETE' && !inputIsVoid
-            ? {
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: `#/components/schemas/${operation.input}`,
-                    },
-                  },
-                },
-              }
-            : undefined,
-        responses: {
-          '200': {
-            description: 'Success',
-            content: {
-              'application/json': {
+  const components = openapiComponents({ module })
+  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+    const specifications = rest.api[functionName]
+    const path = `${specifications.path ?? `/${functionName}`}`
+    const inputIsVoid = isVoidType(module.types[functionBody.input])
+    const operationObj: OpenAPIV3_1.OperationObject = {
+      parameters: [
+        ...((specifications.method === 'GET' || specifications.method === 'DELETE') && !inputIsVoid
+          ? [
+              {
+                name: 'input',
+                in: 'query',
+                required: true,
+                style: 'deepObject',
+                explode: true,
                 schema: {
-                  $ref: `#/components/schemas/${operation.output}`,
+                  $ref: `#/components/schemas/${functionBody.input}`,
                 },
+              },
+            ]
+          : []),
+        {
+          name: 'fields',
+          in: 'header',
+        },
+      ],
+      requestBody:
+        specifications.method !== 'GET' && specifications.method !== 'DELETE' && !inputIsVoid
+          ? {
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: `#/components/schemas/${functionBody.input}`,
+                  },
+                },
+              },
+            }
+          : undefined,
+      responses: {
+        '200': {
+          description: 'Success',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: `#/components/schemas/${functionBody.output}`,
               },
             },
           },
-          '400': {
-            description: 'Validation error',
-          },
         },
-        tags: [module.name],
-      }
-      paths[path] = {
-        summary: operationName,
-        [method.toLocaleLowerCase()]: operationObj,
-      }
+        '400': {
+          description: 'Validation error',
+        },
+      },
+      tags: [module.name],
+    }
+    paths[path] = {
+      summary: functionName,
+      [specifications.method.toLocaleLowerCase()]: operationObj,
     }
   }
   return {
@@ -210,13 +204,7 @@ export function openapiSpecification({
   }
 }
 
-function openapiComponents({
-  module,
-  options,
-}: {
-  module: GenericModule
-  options: ModuleRunnerOptions
-}): OpenAPIV3_1.ComponentsObject {
+function openapiComponents({ module }: { module: GenericModule }): OpenAPIV3_1.ComponentsObject {
   const schemas: Record<string, OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject> = {}
   const typeMap: Record<string, OpenAPIV3_1.SchemaObject> = {}
   const typeRef: Map<Function, string> = new Map()

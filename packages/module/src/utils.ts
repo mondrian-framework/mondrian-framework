@@ -20,16 +20,15 @@ export function projectionDepth(p: GenericProjection, start = 0): number {
 export function logger(
   moduleName: string,
   operationId: string,
-  operationType: string,
+  operationType: string | null,
   operationName: string,
   driver: string,
   start: Date,
 ) {
   function l(message: string) {
+    const op = operationType ? `${operationType}.${operationName}` : operationName
     console.log(
-      `[${operationId}] [${moduleName} / ${operationType}.${operationName} / ${driver}]: ${message} (${
-        new Date().getTime() - start.getTime()
-      } ms)`,
+      `[${operationId}] [${moduleName} / ${op} / ${driver}]: ${message} (${new Date().getTime() - start.getTime()} ms)`,
     )
   }
   return l

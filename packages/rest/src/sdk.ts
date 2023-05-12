@@ -23,17 +23,17 @@ export function createRestSdk<
 >({
   module,
   defaultHeaders,
-  rest,
+  api,
   endpoint,
 }: {
-  module: Module<T, F> //TODO: remove impl
-  rest: ModuleRestApi<F>
+  module: Module<T, F>
+  api: ModuleRestApi<F>
   defaultHeaders?: Record<string, string>
   endpoint: string
 }): SDK<T, F> {
   const functions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const specification = rest.functions[functionName]
+      const specification = api.functions[functionName]
       const resolver = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
         const url = `${endpoint}/api/${specification.path ?? functionName}`
         const encodedInput = encode(module.types[functionBody.input], input)
@@ -41,8 +41,9 @@ export function createRestSdk<
           specification.method === 'GET' || specification.method === 'DELETE'
             ? `${url}?${encodeQueryObject(encodedInput, 'input')}`
             : url
+        const fieldsHeader = fields != null ? { fields: JSON.stringify(fields) } : {}
         const response = await fetch(realUrl, {
-          headers: { 'content-type': 'application/json', ...defaultHeaders, ...headers }, //TODO: fields
+          headers: { 'content-type': 'application/json', ...defaultHeaders, ...headers, ...fieldsHeader },
           method: specification.method,
           body:
             specification.method !== 'GET' && specification.method !== 'DELETE'
@@ -67,45 +68,3 @@ export function createRestSdk<
 
   return functions as SDK<T, F>
 }
-/*
-export function createSdk<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : never>>({
-  module,
-  defaultHeaders,
-  ...args
-}:
-  | {
-      module: Module<T, F>
-      defaultHeaders?: Record<string, string>
-      configuration: Infer<C>
-    }
-  | {
-      module: ModuleDefinition<T, O, C>
-      defaultHeaders?: Record<string, string>
-      endpoint: string
-    }): SDK<T, O> {
-    const queries = Object.fromEntries(
-      Object.entries(module.resolvers.queries).map(([query, body]) => {
-        const resolver = body.f
-        const wrapper = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
-          const context = await module.context({ headers: { ...defaultHeaders, ...headers } })
-          return resolver({ input, fields, context, configuration: args.configuration })
-        }
-        return [query, wrapper]
-      }),
-    )
-    const mutations = Object.fromEntries(
-      Object.entries(module.resolvers.mutations).map(([mutation, body]) => {
-        const resolver = body.f
-        const wrapper = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
-          const context = await module.context({ headers: { ...defaultHeaders, ...headers } })
-          return resolver({ input, fields, context, configuration: args.configuration })
-        }
-        return [mutation, wrapper]
-      }),
-    )
-    return {
-      query: queries,
-      mutation: mutations,
-    } as SDK<T, O>
-}
-*/

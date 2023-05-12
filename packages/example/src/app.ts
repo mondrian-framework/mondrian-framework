@@ -3,7 +3,8 @@ import { fastify } from 'fastify'
 import { serve as serveRest } from '@mondrian/rest'
 import { serve as serveGraphql } from '@mondrian/graphql'
 import { GRAPHQL_API, REST_API } from './api'
-import { sdkExample } from './client'
+import { localSdkExample } from './local-client'
+import { remoteSdkExample } from './remote-client'
 
 const db = new Map<string, any>()
 
@@ -16,7 +17,8 @@ async function main() {
   const address = await server.listen({ port: 4000 })
   console.log(`Module "${module.name}" has started in ${new Date().getTime() - time} ms! ${address}`)
 
-  //await sdkExample()
+  await localSdkExample(db)
+  await remoteSdkExample()
 }
 
 main().then()

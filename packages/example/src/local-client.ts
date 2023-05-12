@@ -1,20 +1,19 @@
-import { createRestSdk } from '@mondrian/rest'
-import { REST_API } from './api'
+import { createLocalSdk } from '@mondrian/module'
 import { module } from './module'
 
-export async function sdkExample() {
-  const sdk = createRestSdk({
+export async function localSdkExample(db: Map<string, any>) {
+  const sdk = createLocalSdk({
     module,
-    endpoint: 'http://127.0.0.1:4000',
-    rest: REST_API,
-    defaultHeaders: { id: '1234' },
+    async context() {
+      return { startingId: 1, db }
+    },
   })
   for (let i = 0; i < 1; i++) {
     try {
       const ins = await sdk.register({
         input: {
           credentials: { email: 'asd@gmail.com', password: '12345' },
-          profile: { firstname: `Mario ${i}`, lastname: 'Bros' },
+          profile: { firstname: `Luigi ${i}`, lastname: 'Bros' },
           type: 'CUSTOMER',
         },
         fields: {
@@ -22,12 +21,12 @@ export async function sdkExample() {
           CustomerUser: { id: true, type: true },
         },
       })
-      console.log(ins)
+      //console.log(ins)
       const result = await sdk.users({
         input: {},
         fields: true,
       })
-      console.log(result)
+      //console.log(result)
     } catch (error) {
       if (error instanceof Error) {
         console.log(error.message)

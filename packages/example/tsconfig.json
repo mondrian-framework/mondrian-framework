@@ -16,5 +16,8 @@
     {
       "path": "../rest"
     },
+    {
+      "path": "../graphql"
+    },
   ]
 }

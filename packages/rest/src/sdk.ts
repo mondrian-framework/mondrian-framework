@@ -33,7 +33,7 @@ export function createRestSdk<
 }): SDK<T, F> {
   const functions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const specification = rest.api[functionName]
+      const specification = rest.functions[functionName]
       const resolver = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
         const url = `${endpoint}/api/${specification.path ?? functionName}`
         const encodedInput = encode(module.types[functionBody.input], input)

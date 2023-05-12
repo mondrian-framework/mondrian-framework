@@ -6,7 +6,7 @@ import { buildGraphqlSchema } from './graphl-builder'
 
 export type GraphqlFunctionSpecs = { type: 'query' | 'mutation'; name?: string; inputName?: string }
 export type ModuleGraphqlApi<F extends Functions> = {
-  api: {
+  functions: {
     [K in keyof F]: GraphqlFunctionSpecs
   }
   options?: ModuleRunnerOptions
@@ -15,18 +15,10 @@ export type ModuleGraphqlApi<F extends Functions> = {
 export async function exposeModuleAsGraphQL<
   const T extends Types,
   const F extends Functions<keyof T extends string ? keyof T : string>,
->({
-  module,
-  server,
-  graphql,
-}: {
-  module: Module<T, F>
-  graphql: ModuleGraphqlApi<F>
-  server: FastifyInstance
-}): Promise<void> {
+>({ module, server, api }: { module: Module<T, F>; api: ModuleGraphqlApi<F>; server: FastifyInstance }): Promise<void> {
   const yoga = createYoga<{ fastify: { request: FastifyRequest; reply: FastifyReply } }>({
-    schema: buildGraphqlSchema({ module, graphql }),
-    plugins: graphql.options?.introspection ? [] : [], //TODO
+    schema: buildGraphqlSchema({ module, api }),
+    plugins: api.options?.introspection ? [] : [], //TODO
     logging: true,
   })
   server.route({

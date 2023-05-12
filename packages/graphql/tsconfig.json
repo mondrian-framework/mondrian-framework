@@ -11,6 +11,9 @@
       "path": "../model"
     },
     {
+      "path": "../module"
+    },
+    {
       "path": "../utils"
     }
   ]

@@ -16,34 +16,34 @@ import { ModuleRestApi, RestFunctionSpecs } from './server'
 export function attachRestMethods({
   module,
   server,
-  rest,
+  api,
 }: {
   module: GenericModule
   server: FastifyInstance
-  rest: ModuleRestApi<Functions>
+  api: ModuleRestApi<Functions>
 }): void {
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
-    const specifications = rest.api[functionName]
+    const specifications = api.functions[functionName]
     const path = `/api${specifications.path ?? `/${functionName}`}`
     if (specifications.method === 'GET') {
       server.get(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
       )
     } else if (specifications.method === 'POST') {
       server.post(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
       )
     } else if (specifications.method === 'PUT') {
       server.put(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
       )
     } else if (specifications.method === 'DELETE') {
       server.delete(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
       )
     } else if (specifications.method === 'PATCH') {
       server.patch(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, rest, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
       )
     }
   }
@@ -65,7 +65,7 @@ async function elabFastifyRestRequest({
   reply,
   functionName,
   module,
-  rest,
+  api,
   specifications,
   functionBody,
 }: {
@@ -74,7 +74,7 @@ async function elabFastifyRestRequest({
   functionName: string
   module: GenericModule
   functionBody: GenericFunction
-  rest: ModuleRestApi<Functions>
+  api: ModuleRestApi<Functions>
   specifications: RestFunctionSpecs
 }): Promise<unknown> {
   const startDate = new Date()
@@ -105,7 +105,7 @@ async function elabFastifyRestRequest({
     reply.status(400)
     return { errors: fields.errors, message: "On 'fields' header" }
   }
-  const context = await module.context({ headers: request.headers })
+  const context = await module.context({ headers: request.headers, functionName })
   try {
     const result = await functionBody.apply({
       fields: fields ? (fields.value as any) : undefined,
@@ -124,15 +124,15 @@ async function elabFastifyRestRequest({
 
 export function openapiSpecification({
   module,
-  rest,
+  api,
 }: {
   module: GenericModule
-  rest: ModuleRestApi<Functions>
+  api: ModuleRestApi<Functions>
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
   const components = openapiComponents({ module })
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
-    const specifications = rest.api[functionName]
+    const specifications = api.functions[functionName]
     const path = `${specifications.path ?? `/${functionName}`}`
     const inputIsVoid = isVoidType(module.types[functionBody.input])
     const operationObj: OpenAPIV3_1.OperationObject = {

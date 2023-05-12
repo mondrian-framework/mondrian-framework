@@ -241,18 +241,18 @@ function generateScalars({ scalarsMap }: { scalarsMap: Record<string, CustomType
 function generateQueryOrMutation({
   module,
   type,
-  graphql,
+  api,
 }: {
   type: 'query' | 'mutation'
   module: GenericModule
-  graphql: ModuleGraphqlApi<Functions>
+  api: ModuleGraphqlApi<Functions>
 }) {
   const functions = Object.entries(module.functions).filter(
-    ([functionName, _]) => graphql.api[functionName].type === type,
+    ([functionName, _]) => api.functions[functionName].type === type,
   )
   const resolvers = Object.fromEntries(
     functions.map(([functionName, functionBody]) => {
-      const specification = graphql.api[functionName]
+      const specification = api.functions[functionName]
       const gqlInputTypeName = specification.inputName ?? 'input'
       const resolver = async (
         parent: unknown,
@@ -281,7 +281,7 @@ function generateQueryOrMutation({
         }
         try {
           const result = await functionBody.apply({
-            context: await module.context({ headers: context.fastify.request.headers }),
+            context: await module.context({ headers: context.fastify.request.headers, functionName }),
             fields: fields.value,
             input: decoded.value,
             operationId,
@@ -299,7 +299,7 @@ function generateQueryOrMutation({
   )
   const defs = functions
     .map(([functionName, functionBody]) => {
-      const specification = graphql.api[functionName]
+      const specification = api.functions[functionName]
       const inputType = lazyToType(module.types[functionBody.input])
       const inputIsVoid = isVoidType(inputType)
       const gqlInputType = inputIsVoid
@@ -327,19 +327,19 @@ function generateQueryOrMutation({
 
 export function buildGraphqlSchema({
   module,
-  graphql,
+  api,
 }: {
   module: GenericModule
-  graphql: ModuleGraphqlApi<Functions>
+  api: ModuleGraphqlApi<Functions>
 }): GraphQLSchema {
   const { defs: queryDefs, resolvers: queryResolvers } = generateQueryOrMutation({
     module,
-    graphql,
+    api,
     type: 'query',
   })
   const { defs: mutationDefs, resolvers: mutationResolvers } = generateQueryOrMutation({
     module,
-    graphql,
+    api,
     type: 'mutation',
   })
   const scalarsMap: Record<string, CustomType> = {}

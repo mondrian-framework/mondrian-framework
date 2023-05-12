@@ -37,3 +37,4 @@ const register = f({
 })
 
 export const functions = m.functions({ users, user, register })
+export type Functions = typeof functions

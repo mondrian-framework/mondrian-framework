@@ -41,6 +41,7 @@ export function functions<const F extends Functions>(functions: F): F {
 
 type MondrianRequest = {
   headers: Record<string, string | string[] | undefined>
+  functionName: string
 }
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never

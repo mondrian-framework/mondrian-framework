@@ -1,6 +1,11 @@
 import { ModuleRestApi } from '@mondrian/rest'
 import { Functions } from './functions'
 import { ModuleGraphqlApi } from '@mondrian/graphql'
+import { module } from './module'
+
+//How to exlude function implementation in package release?
+//create a genetaror that writes a sdk.ts with only the required information
+export const MODULE = module
 
 export const REST_API: ModuleRestApi<Functions> = {
   functions: {

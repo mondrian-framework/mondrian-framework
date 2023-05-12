@@ -39,11 +39,6 @@ export function functions<const F extends Functions>(functions: F): F {
   return functions
 }
 
-type MondrianRequest = {
-  headers: Record<string, string | string[] | undefined>
-  functionName: string
-}
-
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 export type ContextType<F extends Functions> = {
   [K in keyof F]: F[K] extends {
@@ -61,14 +56,12 @@ export type GenericModule = {
   name: string
   types: Types
   functions: Record<string, GenericFunction>
-  context: (req: MondrianRequest) => Promise<unknown>
 }
 
 export type Module<T extends Types, F extends Functions<keyof T extends string ? keyof T : string>> = {
   name: string
   types: T
   functions: F
-  context: (req: MondrianRequest) => Promise<ContextType<F>>
 }
 
 export type ModuleRunnerOptions = {

@@ -250,11 +250,14 @@ function generateQueryOrMutation({
   context: (args: { request: FastifyRequest; info: GraphQLResolveInfo }) => Promise<ContextType<Functions>>
 }) {
   const functions = Object.entries(module.functions).filter(
-    ([functionName, _]) => api.functions[functionName].type === type,
+    ([functionName, _]) => api.functions[functionName]?.type === type,
   )
   const resolvers = Object.fromEntries(
-    functions.map(([functionName, functionBody]) => {
+    functions.flatMap(([functionName, functionBody]) => {
       const specification = api.functions[functionName]
+      if (!specification) {
+        return []
+      }
       const gqlInputTypeName = specification.inputName ?? 'input'
       const resolver = async (
         parent: unknown,
@@ -263,7 +266,14 @@ function generateQueryOrMutation({
         info: GraphQLResolveInfo,
       ) => {
         const operationId = randomOperationId()
-        const log = logger(module.name, operationId, specification.type.toUpperCase(), functionName, 'GQL', new Date())
+        const log = logger(
+          module.name,
+          operationId,
+          specification.type.toUpperCase(),
+          specification.name ?? functionName,
+          'GQL',
+          new Date(),
+        )
         ctx.fastify.reply.header('operation-id', operationId)
         const decoded = decode(module.types[functionBody.input], input[gqlInputTypeName], {
           cast: true,
@@ -297,12 +307,15 @@ function generateQueryOrMutation({
           throw error
         }
       }
-      return [functionName, resolver]
+      return [[specification.name ?? functionName, resolver]]
     }),
   )
   const defs = functions
-    .map(([functionName, functionBody]) => {
+    .flatMap(([functionName, functionBody]) => {
       const specification = api.functions[functionName]
+      if (!specification) {
+        return []
+      }
       const inputType = lazyToType(module.types[functionBody.input])
       const inputIsVoid = isVoidType(inputType)
       const gqlInputType = inputIsVoid
@@ -320,9 +333,13 @@ function generateQueryOrMutation({
         {},
         {},
       )
-      return inputIsVoid
-        ? `${functionName}: ${gqlOutputType}`
-        : `${functionName}(${specification.inputName ?? 'input'}: ${gqlInputType}): ${gqlOutputType}`
+      return [
+        inputIsVoid
+          ? `${specification.name ?? functionName}: ${gqlOutputType}`
+          : `${specification.name ?? functionName}(${
+              specification.inputName ?? 'input'
+            }: ${gqlInputType}): ${gqlOutputType}`,
+      ]
     })
     .join('\n')
   return { defs, resolvers }
@@ -358,11 +375,19 @@ export function buildGraphqlSchema({
   ${scalarDefs}
   ${typeDefs}
   ${inputDefs}
-  type Query {
+  ${
+    queryDefs.length === 0
+      ? ''
+      : `type Query {
     ${queryDefs}
+  }`
   }
-  type Mutation {
+  ${
+    mutationDefs.length === 0
+      ? ''
+      : `type Mutation {
     ${mutationDefs}
+  }`
   }
   `
   const unionResolvers = Object.fromEntries(Object.entries(unions).map(([k, v]) => [k, { __isTypeOf: v }]))
@@ -370,8 +395,8 @@ export function buildGraphqlSchema({
     const schema = createSchema({
       typeDefs: schemaDefs,
       resolvers: {
-        Query: queryResolvers,
-        Mutation: mutationResolvers,
+        ...(Object.keys(queryResolvers).length > 0 ? { Query: queryResolvers } : {}),
+        ...(Object.keys(mutationResolvers).length > 0 ? { Mutation: mutationResolvers } : {}),
         ...scalarResolvers,
         ...unionResolvers,
       },

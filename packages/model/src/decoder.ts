@@ -257,7 +257,6 @@ function checkStringOptions(value: string, opts: StringType['opts']): DecodeResu
       assertNever(opts.format)
     }
   }
-  //TODO: stirng formats
   return success(value)
 }
 

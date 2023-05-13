@@ -8,7 +8,7 @@ import { GraphQLResolveInfo } from 'graphql'
 export type GraphqlFunctionSpecs = { type: 'query' | 'mutation'; name?: string; inputName?: string }
 export type ModuleGraphqlApi<F extends Functions> = {
   functions: {
-    [K in keyof F]: GraphqlFunctionSpecs
+    [K in keyof F]?: GraphqlFunctionSpecs
   }
   options?: ModuleRunnerOptions
 }

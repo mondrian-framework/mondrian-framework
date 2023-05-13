@@ -3,8 +3,12 @@ import { Functions, Module } from '@mondrian/module'
 import { ModuleRestApi } from './server'
 import { encodeQueryObject } from './utils'
 
-type SDK<T extends Types, F extends Functions<keyof T extends string ? keyof T : never>> = {
-  [K in keyof F]: Infer<T[F[K]['input']]> extends infer Input
+type SDK<
+  T extends Types,
+  F extends Functions<keyof T extends string ? keyof T : never>,
+  API extends ModuleRestApi<F>,
+> = {
+  [K in keyof F & keyof API['functions']]: Infer<T[F[K]['input']]> extends infer Input
     ? InferProjection<T[F[K]['output']]> extends infer Fields
       ? SdkResolver<Input, Fields, T[F[K]['output']]>
       : never
@@ -20,6 +24,7 @@ type SdkResolver<Input, Fields, OutputType extends LazyType> = <const F extends 
 export function createRestSdk<
   const T extends Types,
   const F extends Functions<keyof T extends string ? keyof T : never>,
+  const API extends ModuleRestApi<F>,
 >({
   module,
   defaultHeaders,
@@ -27,15 +32,18 @@ export function createRestSdk<
   endpoint,
 }: {
   module: Module<T, F>
-  api: ModuleRestApi<F>
+  api: API
   defaultHeaders?: Record<string, string>
   endpoint: string
-}): SDK<T, F> {
+}): SDK<T, F, API> {
   const functions = Object.fromEntries(
-    Object.entries(module.functions).map(([functionName, functionBody]) => {
+    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
       const specification = api.functions[functionName]
+      if (!specification) {
+        return []
+      }
       const resolver = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
-        const url = `${endpoint}/api/${specification.path ?? functionName}`
+        const url = `${endpoint}/api${specification.path ?? `/${functionName}`}`
         const encodedInput = encode(module.types[functionBody.input], input)
         const realUrl =
           specification.method === 'GET' || specification.method === 'DELETE'
@@ -62,9 +70,9 @@ export function createRestSdk<
         console.log(`Operation failed: ${operationId}`)
         throw new Error(await response.text())
       }
-      return [functionName, resolver]
+      return [[functionName, resolver]]
     }),
   )
 
-  return functions as SDK<T, F>
+  return functions as SDK<T, F, API>
 }

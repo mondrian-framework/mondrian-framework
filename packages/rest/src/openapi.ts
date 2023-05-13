@@ -27,6 +27,9 @@ export function attachRestMethods({
 }): void {
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
+    if(!specifications) {
+      continue
+    }
     const path = `/api${specifications.path ?? `/${functionName}`}`
     if (specifications.method === 'GET') {
       server.get(path, (request, reply) =>
@@ -138,6 +141,9 @@ export function openapiSpecification({
   const components = openapiComponents({ module })
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
+    if(!specifications) {
+      continue
+    }
     const path = `${specifications.path ?? `/${functionName}`}`
     const inputIsVoid = isVoidType(module.types[functionBody.input])
     const operationObj: OpenAPIV3_1.OperationObject = {

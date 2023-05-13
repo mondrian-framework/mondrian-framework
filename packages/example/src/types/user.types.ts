@@ -1,24 +1,5 @@
 import t from '@mondrian/model'
-
-export const Id = t.custom({
-  name: 'ID',
-  decode(input) {
-    if (typeof input !== 'string') {
-      return { pass: false, errors: [{ value: input, error: 'ID expected' }] }
-    }
-    if (input.length === 0) {
-      return { pass: false, errors: [{ value: input, error: 'Empty ID is not valid' }] }
-    }
-    return { pass: true, value: input }
-  },
-  encode(input) {
-    return input
-  },
-  is(input) {
-    return typeof input === 'string' && input.length > 0
-  },
-})
-export type Id = t.Infer<typeof Id>
+import { Id } from './scalars.types'
 
 export const UserProfile = t.object({
   firstname: t.string(),
@@ -83,18 +64,3 @@ export const UserFilter = t.object({
 export const UserOutput = t.optional(User)
 
 export const UserOutputs = t.array(User)
-
-export const types = t.types({
-  Id,
-  ProfessionalUser,
-  CustomerUser,
-  User,
-  UserInput,
-  UserFilter,
-  UserOutput,
-  UserOutputs,
-  UserCredentials,
-  UserProfile,
-  Void: t.nothing(),
-})
-export type Types = typeof types

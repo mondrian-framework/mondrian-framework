@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_mondrian_docs=self.webpackChunk_mondrian_docs||[]).push([[655],{5745:s=>{s.exports=JSON.parse('{"name":"docusaurus-plugin-content-pages","id":"default"}')}}]);

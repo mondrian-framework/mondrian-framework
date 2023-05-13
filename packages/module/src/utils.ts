@@ -17,17 +17,19 @@ export function projectionDepth(p: GenericProjection, start = 0): number {
   return start
 }
 
-export function logger(
+export type Logger = (message: string, level?: 'log' | 'warn' | 'error') => void | Promise<void>
+export function buildLogger(
   moduleName: string,
-  operationId: string,
-  operationType: string,
+  operationId: string | null,
+  operationType: string | null, //QUERY, MUTATION, GET, POST, ...
   operationName: string,
-  driver: string,
+  server: string, //REST, GRAPHQL, LOCAL, ...
   start: Date,
-) {
-  function l(message: string) {
-    console.log(
-      `[${operationId}] [${moduleName} / ${operationType}.${operationName} / ${driver}]: ${message} (${
+): Logger {
+  function l(message: string, level?: 'log' | 'warn' | 'error') {
+    const op = operationType ? `${operationType}.${operationName}` : operationName
+    console[level ?? 'log'](
+      `${operationId ? `[${operationId}] ` : ''}[${moduleName} / ${op} / ${server}]: ${message} (${
         new Date().getTime() - start.getTime()
       } ms)`,
     )

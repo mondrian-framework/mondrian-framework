@@ -11,6 +11,7 @@
   "dependencies": {
     "@mondrian/model": "*",
     "@mondrian/module": "*",
+    "@mondrian/utils": "*",
     "graphql": "16.6.0",
     "graphql-yoga": "3.9.1",
     "fastify": "4.17.0"

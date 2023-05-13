@@ -3,11 +3,12 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { DecodeResult, LazyType, Types, decode, encode, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
 import {
+  ContextType,
   Functions,
   GenericFunction,
   GenericModule,
   getProjectionType,
-  logger,
+  buildLogger,
   randomOperationId,
 } from '@mondrian/module'
 import { decodeQueryObject } from './utils'
@@ -17,33 +18,38 @@ export function attachRestMethods({
   module,
   server,
   api,
+  context,
 }: {
   module: GenericModule
   server: FastifyInstance
   api: ModuleRestApi<Functions>
+  context: (args: { request: FastifyRequest }) => Promise<ContextType<Functions>>
 }): void {
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
+    if (!specifications) {
+      continue
+    }
     const path = `/api${specifications.path ?? `/${functionName}`}`
     if (specifications.method === 'GET') {
       server.get(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
       )
     } else if (specifications.method === 'POST') {
       server.post(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
       )
     } else if (specifications.method === 'PUT') {
       server.put(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
       )
     } else if (specifications.method === 'DELETE') {
       server.delete(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
       )
     } else if (specifications.method === 'PATCH') {
       server.patch(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody }),
+        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
       )
     }
   }
@@ -65,9 +71,9 @@ async function elabFastifyRestRequest({
   reply,
   functionName,
   module,
-  api,
   specifications,
   functionBody,
+  context,
 }: {
   request: FastifyRequest
   reply: FastifyReply
@@ -76,10 +82,11 @@ async function elabFastifyRestRequest({
   functionBody: GenericFunction
   api: ModuleRestApi<Functions>
   specifications: RestFunctionSpecs
+  context: (args: { request: FastifyRequest }) => Promise<ContextType<Functions>>
 }): Promise<unknown> {
   const startDate = new Date()
   const operationId = randomOperationId()
-  const log = logger(module.name, operationId, specifications.method, functionName, 'REST', startDate)
+  const log = buildLogger(module.name, operationId, specifications.method, functionName, 'REST', startDate)
   reply.header('operation-id', operationId)
   const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
   const outputType = module.types[functionBody.output]
@@ -105,13 +112,14 @@ async function elabFastifyRestRequest({
     reply.status(400)
     return { errors: fields.errors, message: "On 'fields' header" }
   }
-  const context = await module.context({ headers: request.headers, functionName })
+  const ctx = await context({ request })
   try {
     const result = await functionBody.apply({
       fields: fields ? (fields.value as any) : undefined,
-      context,
+      context: ctx,
       input: decoded.value,
       operationId,
+      log,
     })
     const encoded = encode(outputType, result)
     log('Completed.')
@@ -133,6 +141,9 @@ export function openapiSpecification({
   const components = openapiComponents({ module })
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
+    if (!specifications) {
+      continue
+    }
     const path = `${specifications.path ?? `/${functionName}`}`
     const inputIsVoid = isVoidType(module.types[functionBody.input])
     const operationObj: OpenAPIV3_1.OperationObject = {

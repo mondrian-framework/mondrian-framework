@@ -1,6 +1,6 @@
 import { Types } from '@mondrian/model'
-import { Functions, Module, ModuleRunnerOptions } from '@mondrian/module'
-import { FastifyInstance } from 'fastify'
+import { ContextType, Functions, Module } from '@mondrian/module'
+import { FastifyInstance, FastifyRequest } from 'fastify'
 import { fastifyStatic } from '@fastify/static'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import path from 'path'
@@ -10,15 +10,24 @@ import { attachRestMethods, openapiSpecification } from './openapi'
 export type RestFunctionSpecs = { method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'; path?: string }
 export type ModuleRestApi<F extends Functions> = {
   functions: {
-    [K in keyof F]: RestFunctionSpecs
+    [K in keyof F]?: RestFunctionSpecs
   }
-  options?: ModuleRunnerOptions
+  options?: {
+    introspection?: boolean
+  }
 }
 
-export async function exposeModuleAsREST<
-  const T extends Types,
-  const F extends Functions<keyof T extends string ? keyof T : string>,
->({ module, api, server }: { module: Module<T, F>; api: ModuleRestApi<F>; server: FastifyInstance }): Promise<void> {
+export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>({
+  module,
+  api,
+  server,
+  context,
+}: {
+  module: Module<T, F>
+  api: ModuleRestApi<F>
+  server: FastifyInstance
+  context: (args: { request: FastifyRequest }) => Promise<ContextType<F>>
+}): void {
   const httpPrefix = '/api'
   if (api.options?.introspection) {
     server.register(fastifyStatic, {
@@ -36,5 +45,5 @@ export async function exposeModuleAsREST<
     const spec = openapiSpecification({ module, api })
     server.get(`${httpPrefix}/doc/schema.json`, () => spec)
   }
-  attachRestMethods({ module, api, server })
+  attachRestMethods({ module, api, server, context })
 }

@@ -15,6 +15,7 @@
       "./packages/utils/tsconfig.json",
       "./packages/rest/tsconfig.json",
       "./packages/graphql/tsconfig.json",
+      "./packages/aws-sqs/tsconfig.json",
       "./packages/example/tsconfig.json"
     ]
   },

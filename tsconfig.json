@@ -34,6 +34,9 @@
       "@mondrian/graphql": [
         "./packages/graphql"
       ],
+      "@mondrian/aws-sqs": [
+        "./packages/aws-sqs"
+      ],
       "@mondrian/example": [
         "./packages/example"
       ]
@@ -55,6 +58,9 @@
     },
     {
       "path": "packages/rest"
+    },
+    {
+      "path": "packages/aws-sqs"
     },
     {
       "path": "packages/graphql"

@@ -19,5 +19,8 @@
     {
       "path": "../graphql"
     },
+    {
+      "path": "../aws-sqs"
+    },
   ]
 }

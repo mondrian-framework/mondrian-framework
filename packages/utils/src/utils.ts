@@ -17,3 +17,9 @@ export function setTraversingValue(value: unknown, path: string, object: Record<
   }
   setTraversingValue(value, tail.join('.'), object[head] as Record<string, unknown>)
 }
+
+export function sleep(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}

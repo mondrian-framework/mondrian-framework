@@ -6,7 +6,7 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "pretty": "prettier --write \"./**/*.ts\"",
-    "example": "npm run build --workspace=@mondrian/example && node packages/example/build/src/app.js"
+    "example": "npm run build --workspace=@mondrian/example && npm run example --workspace=@mondrian/example"
   },
   "devDependencies": {
     "typescript": "5.0.4",
@@ -19,6 +19,7 @@
     "packages/module",
     "packages/rest",
     "packages/graphql",
+    "packages/aws-sqs",
     "packages/example"
   ],
   "engines": {

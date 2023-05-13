@@ -20,7 +20,7 @@ export function projectionDepth(p: GenericProjection, start = 0): number {
 export type Logger = (message: string, level?: 'log' | 'warn' | 'error') => void | Promise<void>
 export function buildLogger(
   moduleName: string,
-  operationId: string,
+  operationId: string | null,
   operationType: string | null, //QUERY, MUTATION, GET, POST, ...
   operationName: string,
   server: string, //REST, GRAPHQL, LOCAL, ...
@@ -29,7 +29,9 @@ export function buildLogger(
   function l(message: string, level?: 'log' | 'warn' | 'error') {
     const op = operationType ? `${operationType}.${operationName}` : operationName
     console[level ?? 'log'](
-      `[${operationId}] [${moduleName} / ${op} / ${server}]: ${message} (${new Date().getTime() - start.getTime()} ms)`,
+      `${operationId ? `[${operationId}] ` : ''}[${moduleName} / ${op} / ${server}]: ${message} (${
+        new Date().getTime() - start.getTime()
+      } ms)`,
     )
   }
   return l

@@ -8,7 +8,7 @@ import {
   GenericFunction,
   GenericModule,
   getProjectionType,
-  logger,
+  buildLogger,
   randomOperationId,
 } from '@mondrian/module'
 import { decodeQueryObject } from './utils'
@@ -27,7 +27,7 @@ export function attachRestMethods({
 }): void {
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
-    if(!specifications) {
+    if (!specifications) {
       continue
     }
     const path = `/api${specifications.path ?? `/${functionName}`}`
@@ -86,7 +86,7 @@ async function elabFastifyRestRequest({
 }): Promise<unknown> {
   const startDate = new Date()
   const operationId = randomOperationId()
-  const log = logger(module.name, operationId, specifications.method, functionName, 'REST', startDate)
+  const log = buildLogger(module.name, operationId, specifications.method, functionName, 'REST', startDate)
   reply.header('operation-id', operationId)
   const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
   const outputType = module.types[functionBody.output]
@@ -141,7 +141,7 @@ export function openapiSpecification({
   const components = openapiComponents({ module })
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
-    if(!specifications) {
+    if (!specifications) {
       continue
     }
     const path = `${specifications.path ?? `/${functionName}`}`

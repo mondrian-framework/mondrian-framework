@@ -80,14 +80,6 @@ export type Module<T extends Types, F extends Functions<keyof T extends string ?
   functions: F
 }
 
-export type ModuleRunnerOptions = {
-  introspection?: boolean
-  validation?: {
-    input?: boolean
-    output?: boolean
-  }
-}
-
 export function module<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>(
   module: Module<T, F>,
 ): Module<T, F> {

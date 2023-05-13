@@ -5,15 +5,18 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "test": "vitest run",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "example": "node -r dotenv/config build/src/app.js"
   },
   "keywords": [],
   "dependencies": {
     "@mondrian/model": "*",
     "@mondrian/module": "*",
-    "@mondrian/sdk": "*",
     "@mondrian/rest": "*",
     "@mondrian/graphql": "*",
-    "graphql-yoga": "3.9.1"
+    "@mondrian/aws-sqs": "*"
+  },
+  "devDependencies": {
+    "dotenv": "16.0.3"
   }
 }

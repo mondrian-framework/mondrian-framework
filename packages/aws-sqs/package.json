@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian/rest",
+  "name": "@mondrian/aws-sqs",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -12,12 +12,6 @@
     "@mondrian/model": "*",
     "@mondrian/module": "*",
     "@mondrian/utils": "*",
-    "fastify": "4.17.0",
-    "@fastify/static": "6.10.1",
-    "swagger-ui-dist": "5.0.0-alpha.10",
-    "openapi-types": "12.1.0"
-  },
-  "devDependencies": {
-    "@types/swagger-ui-dist": "3.30.1"
+    "@aws-sdk/client-sqs": "3.332.0"
   }
 }

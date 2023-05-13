@@ -5,7 +5,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { getProjectionType } from './projection'
 import { CustomType, LazyType, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
-import { ContextType, Functions, GenericModule, logger, randomOperationId } from '@mondrian/module'
+import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian/module'
 import { ModuleGraphqlApi } from './server'
 
 function typeToGqlType(
@@ -266,7 +266,7 @@ function generateQueryOrMutation({
         info: GraphQLResolveInfo,
       ) => {
         const operationId = randomOperationId()
-        const log = logger(
+        const log = buildLogger(
           module.name,
           operationId,
           specification.type.toUpperCase(),

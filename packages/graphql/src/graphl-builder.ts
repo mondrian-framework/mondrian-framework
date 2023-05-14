@@ -268,6 +268,9 @@ function generateQueryOrMutation({
         return []
       }
       const gqlInputTypeName = specification.inputName ?? 'input'
+      const inputType = module.types[functionBody.input]
+      const outputType = module.types[functionBody.output]
+
       const resolver = async (
         parent: unknown,
         input: Record<string, unknown>,
@@ -284,7 +287,7 @@ function generateQueryOrMutation({
           new Date(),
         )
         ctx.fastify.reply.header('operation-id', operationId)
-        const decoded = decode(module.types[functionBody.input], input[gqlInputTypeName], {
+        const decoded = decode(inputType, input[gqlInputTypeName], {
           cast: true,
           castGqlInputUnion: true,
         })
@@ -292,7 +295,6 @@ function generateQueryOrMutation({
           log('Bad request.')
           throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
         }
-        const outputType = module.types[functionBody.output]
         const fieldType = () => getProjectionType(outputType)
         const gqlFields = extractFieldsFromGraphqlInfo(info, outputType)
         const fields = decode(fieldType(), gqlFields, { cast: true })
@@ -301,13 +303,16 @@ function generateQueryOrMutation({
           throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
         }
         try {
-          const result = await functionBody.apply({
-            context: await context({ request: ctx.fastify.request, info }),
-            fields: fields.value,
-            input: decoded.value,
-            operationId,
-            log,
-          })
+          const result = await functionBody.apply(
+            {
+              context: await context({ request: ctx.fastify.request, info }),
+              fields: fields.value,
+              input: decoded.value,
+              operationId,
+              log,
+            },
+            { inputType, outputType },
+          )
           const encoded = encode(outputType, result)
           log('Completed.')
           return encoded

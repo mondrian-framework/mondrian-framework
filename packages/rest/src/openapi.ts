@@ -90,12 +90,13 @@ async function elabFastifyRestRequest({
   reply.header('operation-id', operationId)
   const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
   const outputType = module.types[functionBody.output]
+  const inputType = module.types[functionBody.input]
   const query = request.query as Record<string, unknown>
-  const inputIsVoid = isVoidType(module.types[functionBody.input])
+  const inputIsVoid = isVoidType(inputType)
   const input = inputIsVoid ? null : inputFrom === 'body' ? request.body : decodeQueryObject(query, 'input')
   const decoded = firstOf2(
-    () => decode(module.types[functionBody.input], input, { cast: inputFrom !== 'body' }),
-    () => decode(module.types[functionBody.input], query['input'], { cast: inputFrom !== 'body' }),
+    () => decode(inputType, input, { cast: inputFrom !== 'body' }),
+    () => decode(inputType, query['input'], { cast: inputFrom !== 'body' }),
   )
   if (!decoded.pass) {
     log('Bad request.')
@@ -114,13 +115,16 @@ async function elabFastifyRestRequest({
   }
   const ctx = await context({ request })
   try {
-    const result = await functionBody.apply({
-      fields: fields ? (fields.value as any) : undefined,
-      context: ctx,
-      input: decoded.value,
-      operationId,
-      log,
-    })
+    const result = await functionBody.apply(
+      {
+        fields: fields ? (fields.value as any) : undefined,
+        context: ctx,
+        input: decoded.value,
+        operationId,
+        log,
+      },
+      { inputType, outputType },
+    )
     const encoded = encode(outputType, result)
     log('Completed.')
     return encoded

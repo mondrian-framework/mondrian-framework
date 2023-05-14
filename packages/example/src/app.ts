@@ -20,7 +20,7 @@ async function main() {
   const address = await server.listen({ port: 4000 })
   console.log(`Module "${module.name}" has started in ${new Date().getTime() - time} ms! ${address}`)
 
-  //await localSdkExample(db)
+  await localSdkExample(db)
   //await remoteSdkExample()
   //await sleep(60000)
   //await server.close()

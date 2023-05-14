@@ -1,5 +1,7 @@
-import { Infer, InferProjection, InferReturn, Types } from '@mondrian/model'
+import { Infer, InferProjection, InferReturn, LazyType, Types, decode, is } from '@mondrian/model'
 import { Logger, buildLogger } from './utils'
+import { GenericProjection, getProjectedType } from './projection'
+import { JSONType } from '@mondrian/utils'
 
 export type Function<T extends Types, I extends keyof T, O extends keyof T, Context> = Infer<T[I]> extends infer Input
   ? InferReturn<T[O]> extends infer Output
@@ -7,13 +9,16 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
       ? {
           input: I
           output: O
-          apply: (args: {
-            input: Input
-            fields: Fields | undefined
-            operationId: string
-            context: Context
-            log: Logger
-          }) => Promise<Output>
+          apply: (
+            args: {
+              input: Input
+              fields: Fields | undefined
+              operationId: string
+              context: Context
+              log: Logger
+            },
+            context: { inputType: LazyType; outputType: LazyType }, //TODO: ok to be here?
+          ) => Promise<Output>
         }
       : never
     : never
@@ -21,7 +26,10 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
 export type GenericFunction<TypesName extends string = string> = {
   input: TypesName
   output: TypesName
-  apply: (args: { input: any; fields: any; context: any; operationId: string; log: Logger }) => Promise<unknown>
+  apply: (
+    args: { input: any; fields: any; context: any; operationId: string; log: Logger },
+    context: { inputType: LazyType; outputType: LazyType },
+  ) => Promise<unknown>
 }
 
 export type Functions<Types extends string = string> = Record<string, GenericFunction<Types>>
@@ -35,14 +43,13 @@ export function functionBuilder<const T extends Types, Context>(): <const I exte
     return {
       input: f.input,
       output: f.output,
-      async apply(args) {
-        const result = f.apply(args)
-        if (args.fields !== true) {
-          //TODO: check if fields are respected (more is ok)
-          //We can also check the correctness of result
-          //const type = generateProjectedType(module.types[f.output])
-          //decode(type, result)
-          args.log('Fields not respected.', 'warn')
+      async apply(args, context) {
+        const result = await f.apply(args, context)
+        const projectedType = getProjectedType(context.outputType, args.fields as GenericProjection)
+        const outputDecoded = decode(projectedType, result as JSONType)
+        if (!outputDecoded.pass) {
+          const m = JSON.stringify({ fields: args.fields, errors: outputDecoded.errors })
+          args.log(`Projection is not respected: ${m}`, 'error')
         }
         return result
       },

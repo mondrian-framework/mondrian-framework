@@ -71,47 +71,11 @@ const config = {
         ],
       },
       footer: {
-        links: [
-          {
-            title: 'Docs',
-            items: [
-              {
-                label: '...',
-                to: '/',
-              },
-              {
-                label: '...',
-                to: '/',
-              },
-              {
-                label: '...',
-                to: '/',
-              },
-            ],
-          },
-          {
-            title: 'Community',
-            items: [
-              {
-                label: '...',
-                to: '/',
-              },
-              {
-                label: '...',
-                to: '/',
-              },
-            ],
-          },
-          {
-            title: 'More',
-            items: [
-              {
-                label: 'GitHub',
-                href: 'https://github.com/twinlogix/mondrian-framework',
-              },
-            ],
-          },
-        ],
+        logo: {
+          alt: 'Mondrian Framework Logo',
+          height: '25px',
+          src: 'img/logo-white.png',
+        },
         copyright: `Copyright © ${new Date().getFullYear()} TwinLogix srl.`,
       },
     }),

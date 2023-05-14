@@ -4,7 +4,7 @@
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Mondrian Framework',
-  tagline: 'The Typescript framework for building modular and highly decoupled Node.js applications ready to evolve.',
+  tagline: 'The Node.js framework for building modular server-side applications ready to evolve',
   favicon: 'img/favicon.ico',
   url: 'https://mondrianframework.io',
   baseUrl: '/mondrian-framework/',

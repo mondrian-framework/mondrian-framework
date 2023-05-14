@@ -7,7 +7,6 @@ import CodeBlock from '@theme/CodeBlock';
 import GitHubSVG from '../../static/img/github.svg';
 
 import styles from './index.module.css';
-import Head from '@docusaurus/Head';
 
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
@@ -17,7 +16,7 @@ function HomepageHeader() {
         <div className={styles.bannerContainer}>
           <div className={styles.bannerLeft}>
             <div className={styles.title}>
-              The Node.js framework for building <em>modular</em> server-side applications ready to <em>evolve</em>.
+              The Node.js framework for building <em>modular</em> server-side applications ready to <em>evolve</em>
             </div>
             <div className={styles.subtitle}>
               <p>
@@ -62,7 +61,7 @@ export default function Home(): JSX.Element {
             <div className={styles.feature}>
               <div className={styles.featureColumn}>
                 <div className={styles.featureSubtitle}>@mondrian-framework/model</div>
-                <div className={styles.featureTitle}>Data model</div>
+                <div className={styles.featureTitle}>Expressive <em>data model</em> and schema validation</div>
                 <div className={styles.featureDescription}>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.</div>
               </div>
               <div className={styles.featureColumn}>
@@ -71,9 +70,24 @@ export default function Home(): JSX.Element {
                   title="model.ts"
                   showLineNumbers>
                   {
-                    `function HelloCodeTitle(props) {
-  return <h1>Hello, {props.name}</h1>;
-}`
+                    `import t from '@mondrian-framework/model'
+
+export const Post = t.object({
+  id: t.string(),
+  createdAt: t.timestamp(),
+  title: t.string(),
+})
+export type Post = t.Infer<typeof Post>
+
+export const User = t.object({
+  id: t.string(),
+  createdAt: t.timestamp(),
+  email: t.string({ format: 'email' }),
+  password: t.string({ format: 'password', minLength: 5 }),
+  posts: t.array(Post),
+})
+export type User = t.Infer<typeof User>
+`
                   }
                 </CodeBlock>
               </div>

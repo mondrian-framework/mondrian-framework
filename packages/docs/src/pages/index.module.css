@@ -1,0 +1,172 @@
+.heroBanner {
+  padding: 4rem 0;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(-45deg, #5080c8, #225095, #225095, #5080c8);
+  background-size: 400% 400%;
+  animation: gradient 25s ease infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bannerContainer {
+  display: flex;
+  flex-direction: row;
+}
+
+.bannerLeft {
+  width: 60%;
+}
+
+.bannerRight {
+  width: 40%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.title {
+  line-height: 50px;
+  font-size: 50px;
+  font-weight: 800;
+  padding-bottom: 20px;
+}
+
+.title em {
+  font-style: normal;
+  color: #fac901;
+}
+
+.subtitle {
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 300;
+}
+
+.bannerGraphic {
+  width: 400px;
+  max-width: 80%;
+}
+
+.feature {
+  padding: 6rem 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 100px
+}
+
+.featureColumn {
+  width: 50%;
+}
+
+.featureSubtitle {
+  font-size: 24px;
+  font-weight: bold;
+  color: #999;
+}
+
+.featureTitle {
+  font-size: 50px;
+  line-height: 50px;
+  font-weight: 800;
+  color: var(--ifm-heading-color);
+}
+
+.featureTitle em {
+  font-style: normal;
+  color: var(--ifm-color-primary);
+}
+
+.featureDescription {
+  margin-top: 20px;
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 30px;
+}
+
+@media screen and (max-width: 1280px) {
+  .bannerLeft {
+    width: 100%;
+  }
+
+  .bannerRight {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem 0rem;
+  }
+
+  .bannerLeft {
+    width: 100%;
+  }
+
+  .bannerRight {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .heroBanner {
+    padding: 2rem 0rem;
+  }
+  
+  .title {
+    line-height: 40px;
+    font-size: 35px;
+  }
+
+  .title em {
+    font-style: normal;
+    color: #fac901;
+  }
+
+  .subtitle {
+    font-size: 15px;
+    line-height: 22px;
+  }
+}
+
+.buttons {
+  padding-top: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: 20px;
+}
+
+.button {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.buttonDoc {
+  background: #fac901;
+  color: var(--ifm-color-gray-900);
+}
+
+.buttonDoc:hover {
+  background: #ebbc03;
+  color: var(--ifm-color-gray-900);
+}
+
+

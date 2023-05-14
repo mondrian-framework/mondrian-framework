@@ -12,19 +12,41 @@
     "incremental": true,
     "composite": true,
     "skipLibCheck": true,
-    "types": ["vitest/importMeta"],
+    "types": [
+      "vitest/importMeta"
+    ],
     "paths": {
-      "@mondrian/utils": ["./packages/utils"],
-      "@mondrian/model": ["./packages/model"],
-      "@mondrian/module": ["./packages/module"],
-      "@mondrian/rest": ["./packages/rest"],
-      "@mondrian/graphql": ["./packages/graphql"],
-      "@mondrian/aws-sqs": ["./packages/aws-sqs"],
-      "@mondrian/example": ["./packages/example"]
+      "@mondrian/docs": [
+        "./packages/docs"
+      ],
+      "@mondrian/utils": [
+        "./packages/utils"
+      ],
+      "@mondrian/model": [
+        "./packages/model"
+      ],
+      "@mondrian/module": [
+        "./packages/module"
+      ],
+      "@mondrian/rest": [
+        "./packages/rest"
+      ],
+      "@mondrian/graphql": [
+        "./packages/graphql"
+      ],
+      "@mondrian/aws-sqs": [
+        "./packages/aws-sqs"
+      ],
+      "@mondrian/example": [
+        "./packages/example"
+      ]
     }
   },
   "files": [],
   "references": [
+    {
+      "path": "packages/doc"
+    },
     {
       "path": "packages/utils"
     },
@@ -47,5 +69,8 @@
       "path": "packages/example"
     }
   ],
-  "exclude": ["**/node_modules", "build"]
+  "exclude": [
+    "**/node_modules",
+    "build"
+  ]
 }

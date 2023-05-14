@@ -69,6 +69,14 @@
   gap: 100px
 }
 
+section:nth-child(2n){
+  background: rgba(0,0,0,0.03);
+}
+
+[data-theme='dark'] section:nth-child(2n) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .featureColumn {
   width: 50%;
 }

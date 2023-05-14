@@ -46,6 +46,8 @@ export type UnionOperator = {
     discriminant?: string
   }
 }
+export type ReferenceDecorator = { kind: 'reference-decorator'; type: LazyType }
+
 export type Type =
   | NumberType
   | StringType
@@ -57,6 +59,7 @@ export type Type =
   | ArrayDecorator
   | OptionalDecorator
   | DefaultDecorator
+  | ReferenceDecorator
   | UnionOperator
 
 export type CustomType<
@@ -92,6 +95,10 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
     ? Project<F, ST> | undefined
     : never
   : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Project<F, ST>
+    : never
+  : [T] extends [{ kind: 'reference-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? Project<F, ST>
     : never
@@ -148,6 +155,10 @@ type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array
   ? ST extends LazyType
     ? InferType<ST, Partial>
     : never
+  : [T] extends [{ kind: 'reference-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? InferType<ST, Partial>
+    : never
   : [T] extends [{ kind: 'string' }]
   ? string
   : [T] extends [{ kind: 'number' }]
@@ -196,6 +207,10 @@ type InferProjectionInternal<T> = [T] extends [{ kind: 'array-decorator'; type: 
     ? InferProjection<ST>
     : never
   : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? InferProjection<ST>
+    : never
+  : [T] extends [{ kind: 'reference-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? InferProjection<ST>
     : never
@@ -282,6 +297,9 @@ export function defaul<const T extends LazyType>(
   value: Infer<T>,
 ): { kind: 'default-decorator'; type: T; opts: { default: unknown } } {
   return { kind: 'default-decorator', type, opts: { default: value } }
+}
+export function reference<const T extends LazyType>(type: T): { kind: 'reference-decorator'; type: T } {
+  return { kind: 'reference-decorator', type }
 }
 
 export function custom<const T, const N extends string>(

@@ -1,8 +1,7 @@
-import { GenericProjection } from './projection'
 import { GraphQLResolveInfo, Kind, SelectionSetNode } from 'graphql'
 import { assertNever } from '@mondrian/utils'
 import { LazyType, lazyToType } from '@mondrian/model'
-import { mergeProjections } from '@mondrian/module'
+import { GenericProjection, mergeProjections } from '@mondrian/module'
 
 function graphqlInfoToProjection(
   node: SelectionSetNode,
@@ -53,7 +52,12 @@ function extractRequiredFields(type: LazyType, fields: GenericProjection): Gener
   ) {
     return null
   }
-  if (t.kind === 'array-decorator' || t.kind === 'optional-decorator' || t.kind === 'default-decorator') {
+  if (
+    t.kind === 'array-decorator' ||
+    t.kind === 'optional-decorator' ||
+    t.kind === 'default-decorator' ||
+    t.kind === 'reference-decorator'
+  ) {
     return extractRequiredFields(t.type, fields)
   }
   if (t.kind === 'object') {

@@ -35,7 +35,12 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
       ),
     })
   }
-  if (type.kind === 'array-decorator' || type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
+  if (
+    type.kind === 'array-decorator' ||
+    type.kind === 'optional-decorator' ||
+    type.kind === 'default-decorator' ||
+    type.kind === 'reference-decorator'
+  ) {
     return getProjectionType(type.type, discriminantKey)
   }
   if (type.kind === 'union-operator') {

@@ -23,7 +23,7 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     }
     return encode(t.type, value)
   }
-  if (t.kind === 'default-decorator') {
+  if (t.kind === 'default-decorator' || t.kind === 'reference-decorator') {
     return encode(t.type, value)
   }
   if (t.kind === 'array-decorator') {
@@ -84,7 +84,7 @@ function is(type: LazyType, value: JSONType): boolean {
     }
     return is(t.type, value)
   }
-  if (t.kind === 'default-decorator') {
+  if (t.kind === 'default-decorator' || t.kind === 'reference-decorator') {
     return is(t.type, value)
   }
   if (t.kind === 'array-decorator') {

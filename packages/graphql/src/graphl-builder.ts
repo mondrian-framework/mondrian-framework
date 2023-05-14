@@ -2,10 +2,16 @@ import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { extractFieldsFromGraphqlInfo } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { getProjectionType } from './projection'
 import { CustomType, LazyType, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
-import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian/module'
+import {
+  ContextType,
+  Functions,
+  GenericModule,
+  buildLogger,
+  getProjectionType,
+  randomOperationId,
+} from '@mondrian/module'
 import { ModuleGraphqlApi } from './server'
 
 function typeToGqlType(
@@ -72,6 +78,9 @@ function typeToGqlTypeInternal(
   }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, true, scalars, unions)
+  }
+  if (type.kind === 'reference-decorator') {
+    return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, isOptional, scalars, unions)
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {

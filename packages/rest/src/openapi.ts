@@ -307,13 +307,17 @@ function typeToSchemaObjectInternal(
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
     }
-    return { type: tp, const: type.value }
+    return { type: tp, const: type.value, example: type.value }
   }
   if (type.kind === 'array-decorator') {
     const items = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { type: 'array', items }
   }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return { allOf: [subtype, { type: 'null', description: 'optional' }] }
+  }
+  if (type.kind === 'reference-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { allOf: [subtype, { type: 'null', description: 'optional' }] }
   }
@@ -347,7 +351,9 @@ function typeToSchemaObjectInternal(
     return { type: 'string', enum: type.values as unknown as string[] } as const
   }
   if (type.kind === 'union-operator') {
-    const uniontypes = Object.entries(type.types).map(([k, t]) => typeToSchemaObject(k, t, types, typeMap, typeRef))
+    const uniontypes = Object.entries(type.types).map(([k, t]) =>
+      typeToSchemaObject(`${name}_${k}`, t, types, typeMap, typeRef),
+    )
     return { anyOf: uniontypes }
   }
   return assertNever(type)

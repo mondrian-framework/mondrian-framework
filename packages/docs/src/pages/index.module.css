@@ -98,49 +98,8 @@
   line-height: 30px;
 }
 
-@media screen and (max-width: 1280px) {
-  .bannerLeft {
-    width: 100%;
-  }
-
-  .bannerRight {
-    display: none;
-  }
-}
-
-@media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 2rem 0rem;
-  }
-
-  .bannerLeft {
-    width: 100%;
-  }
-
-  .bannerRight {
-    display: none;
-  }
-}
-
-@media screen and (max-width: 500px) {
-  .heroBanner {
-    padding: 2rem 0rem;
-  }
-  
-  .title {
-    line-height: 40px;
-    font-size: 35px;
-  }
-
-  .title em {
-    font-style: normal;
-    color: #fac901;
-  }
-
-  .subtitle {
-    font-size: 15px;
-    line-height: 22px;
-  }
+.featureButton {
+  padding: 2rem 0;
 }
 
 .buttons {
@@ -170,3 +129,62 @@
 }
 
 
+@media screen and (max-width: 1280px) {
+  .bannerLeft {
+    width: 100%;
+  }
+
+  .bannerRight {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem 0rem;
+  }
+
+  .bannerLeft {
+    width: 100%;
+  }
+
+  .bannerRight {
+    display: none;
+  }
+
+  .feature {
+    padding: 1rem 0rem;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .featureColumn {
+    width: 100%;
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .title {
+    line-height: 45px;
+    font-size: 40px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    line-height: 25px;
+  }
+
+  .buttons {
+    flex-direction: column;
+  }
+
+  .featureTitle {
+    font-size: 40px;
+    line-height: 45px;
+  }
+
+  .featureDescription {
+    font-size: 18px;
+    line-height: 25px;
+  }
+}

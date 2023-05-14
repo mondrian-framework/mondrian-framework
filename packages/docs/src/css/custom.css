@@ -58,3 +58,9 @@
   color: var(--ifm-color-primary);
 }
 
+@media screen and (max-width: 500px) {
+  .navbar-sidebar .navbar__logo {
+    height: 25px;
+  }
+}
+

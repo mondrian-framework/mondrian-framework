@@ -62,7 +62,17 @@ export default function Home(): JSX.Element {
               <div className={styles.featureColumn}>
                 <div className={styles.featureSubtitle}>@mondrian-framework/model</div>
                 <div className={styles.featureTitle}>Expressive <em>data model</em> and schema validation</div>
-                <div className={styles.featureDescription}>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.</div>
+                <div className={styles.featureDescription}>
+                  Mondrian allows you to define a data model in an intuitive human-readable way. In addition to schema fields, types, possibly new scalars and relationships, you can utilize a wide range of validity rules or create new and reusable ones.
+                  Once the model is defined, the framework provides a set of fully automatic translation features to major standards: JSONSchema (OpenAPI), GraphQL and Protobuf.
+                </div>
+                <div className={styles.featureButton}>
+                  <Link
+                    className={`button button--primary button--lg`}
+                    to="/docs/docs/intro">
+                      Learn more about data model
+                  </Link>  
+                </div>
               </div>
               <div className={styles.featureColumn}>
                 <CodeBlock

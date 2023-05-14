@@ -7,9 +7,11 @@ const config = {
   tagline: 'The Typescript framework for building modular and highly decoupled Node.js applications ready to evolve.',
   favicon: 'img/favicon.ico',
   url: 'https://mondrianframework.io',
-  baseUrl: '/',
+  baseUrl: '/mondrian-framework/',
   organizationName: 'twinlogix',
-  projectName: 'mondrian',
+  projectName: 'mondrian-framework',
+  deploymentBranch: 'docs',
+  trailingSlash: false,
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',

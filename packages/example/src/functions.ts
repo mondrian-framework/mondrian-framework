@@ -30,7 +30,10 @@ const register = f({
       throw new Error('Maximum db size')
     }
     const id = (context.db.size + context.startingId).toString()
-    const user: User = { id, ...input, registeredAt: new Date() }
+    const user: Partial<User> =
+      input.type === 'PROFESSIONAL'
+        ? { id, ...input, registeredAt: new Date() }
+        : { id, ...input, registeredAt: new Date(), referrerId: id }
     context.db.set(id, user)
     return user
   },

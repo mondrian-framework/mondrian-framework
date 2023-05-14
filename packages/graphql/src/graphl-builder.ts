@@ -2,10 +2,16 @@ import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { extractFieldsFromGraphqlInfo } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { getProjectionType } from './projection'
 import { CustomType, LazyType, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
-import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian/module'
+import {
+  ContextType,
+  Functions,
+  GenericModule,
+  buildLogger,
+  getProjectionType,
+  randomOperationId,
+} from '@mondrian/module'
 import { ModuleGraphqlApi } from './server'
 
 function typeToGqlType(
@@ -72,6 +78,9 @@ function typeToGqlTypeInternal(
   }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, true, scalars, unions)
+  }
+  if (type.kind === 'reference-decorator') {
+    return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, isOptional, scalars, unions)
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {
@@ -259,6 +268,9 @@ function generateQueryOrMutation({
         return []
       }
       const gqlInputTypeName = specification.inputName ?? 'input'
+      const inputType = module.types[functionBody.input]
+      const outputType = module.types[functionBody.output]
+
       const resolver = async (
         parent: unknown,
         input: Record<string, unknown>,
@@ -275,7 +287,7 @@ function generateQueryOrMutation({
           new Date(),
         )
         ctx.fastify.reply.header('operation-id', operationId)
-        const decoded = decode(module.types[functionBody.input], input[gqlInputTypeName], {
+        const decoded = decode(inputType, input[gqlInputTypeName], {
           cast: true,
           castGqlInputUnion: true,
         })
@@ -283,7 +295,6 @@ function generateQueryOrMutation({
           log('Bad request.')
           throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
         }
-        const outputType = module.types[functionBody.output]
         const fieldType = () => getProjectionType(outputType)
         const gqlFields = extractFieldsFromGraphqlInfo(info, outputType)
         const fields = decode(fieldType(), gqlFields, { cast: true })
@@ -292,13 +303,16 @@ function generateQueryOrMutation({
           throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
         }
         try {
-          const result = await functionBody.apply({
-            context: await context({ request: ctx.fastify.request, info }),
-            fields: fields.value,
-            input: decoded.value,
-            operationId,
-            log,
-          })
+          const result = await functionBody.apply(
+            {
+              context: await context({ request: ctx.fastify.request, info }),
+              fields: fields.value,
+              input: decoded.value,
+              operationId,
+              log,
+            },
+            { inputType, outputType },
+          )
           const encoded = encode(outputType, result)
           log('Completed.')
           return encoded

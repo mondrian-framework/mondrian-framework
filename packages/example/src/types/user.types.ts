@@ -29,6 +29,8 @@ export const CustomerUser = () =>
     profile: UserProfile,
     credentials: UserCredentials,
     registeredAt: t.timestamp(),
+    referrerId: Id,
+    referrer: t.reference(CustomerUser),
   })
 export type CustomerUser = t.Infer<typeof CustomerUser>
 

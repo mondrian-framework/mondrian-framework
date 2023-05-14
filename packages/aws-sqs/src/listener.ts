@@ -70,6 +70,7 @@ async function listenForMessage({
 }) {
   const functionBody = module.functions[functionName]
   const inputType = module.types[functionBody.input]
+  const outputType = module.types[functionBody.output]
   const listenerLog = buildLogger(module.name, null, queueUrl, functionName, 'SQS', new Date())
   listenerLog('Start listening for messsages...')
   while (alive.yes) {
@@ -100,13 +101,16 @@ async function listenForMessage({
         continue
       }
       const ctx = await context({})
-      await functionBody.apply({
-        input: decoded.value,
-        fields: undefined,
-        operationId,
-        context: ctx,
-        log,
-      })
+      await functionBody.apply(
+        {
+          input: decoded.value,
+          fields: undefined,
+          operationId,
+          context: ctx,
+          log,
+        },
+        { inputType, outputType },
+      )
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
       log(`Completed.`)
     } catch (error) {

@@ -90,12 +90,13 @@ async function elabFastifyRestRequest({
   reply.header('operation-id', operationId)
   const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
   const outputType = module.types[functionBody.output]
+  const inputType = module.types[functionBody.input]
   const query = request.query as Record<string, unknown>
-  const inputIsVoid = isVoidType(module.types[functionBody.input])
+  const inputIsVoid = isVoidType(inputType)
   const input = inputIsVoid ? null : inputFrom === 'body' ? request.body : decodeQueryObject(query, 'input')
   const decoded = firstOf2(
-    () => decode(module.types[functionBody.input], input, { cast: inputFrom !== 'body' }),
-    () => decode(module.types[functionBody.input], query['input'], { cast: inputFrom !== 'body' }),
+    () => decode(inputType, input, { cast: inputFrom !== 'body' }),
+    () => decode(inputType, query['input'], { cast: inputFrom !== 'body' }),
   )
   if (!decoded.pass) {
     log('Bad request.')
@@ -114,13 +115,16 @@ async function elabFastifyRestRequest({
   }
   const ctx = await context({ request })
   try {
-    const result = await functionBody.apply({
-      fields: fields ? (fields.value as any) : undefined,
-      context: ctx,
-      input: decoded.value,
-      operationId,
-      log,
-    })
+    const result = await functionBody.apply(
+      {
+        fields: fields ? (fields.value as any) : undefined,
+        context: ctx,
+        input: decoded.value,
+        operationId,
+        log,
+      },
+      { inputType, outputType },
+    )
     const encoded = encode(outputType, result)
     log('Completed.')
     return encoded
@@ -307,13 +311,17 @@ function typeToSchemaObjectInternal(
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
     }
-    return { type: tp, const: type.value }
+    return { type: tp, const: type.value, example: type.value }
   }
   if (type.kind === 'array-decorator') {
     const items = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { type: 'array', items }
   }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return { allOf: [subtype, { type: 'null', description: 'optional' }] }
+  }
+  if (type.kind === 'reference-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { allOf: [subtype, { type: 'null', description: 'optional' }] }
   }
@@ -347,7 +355,9 @@ function typeToSchemaObjectInternal(
     return { type: 'string', enum: type.values as unknown as string[] } as const
   }
   if (type.kind === 'union-operator') {
-    const uniontypes = Object.entries(type.types).map(([k, t]) => typeToSchemaObject(k, t, types, typeMap, typeRef))
+    const uniontypes = Object.entries(type.types).map(([k, t]) =>
+      typeToSchemaObject(`${name}_${k}`, t, types, typeMap, typeRef),
+    )
     return { anyOf: uniontypes }
   }
   return assertNever(type)

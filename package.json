@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "build-docs": "npm run build-docs --workspace=@mondrian/docs",
     "test": "npm run test --workspaces --if-present",
     "pretty": "prettier --write \"./**/*.ts\"",
     "example": "npm run build --workspace=@mondrian/example && npm run example --workspace=@mondrian/example"

@@ -1,11 +1,11 @@
-import { LazyType, array, boolean, lazyToType, defaul, object, optional, union, reference } from '@mondrian/model'
+import { LazyType, array, boolean, lazyToType, defaul, object, optional, union, hide } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
 
 export type GenericProjection = true | { [K in string]?: true | GenericProjection }
 
 export function getProjectedType(type: LazyType, fields: GenericProjection | undefined): LazyType {
   if (fields === undefined || fields === true) {
-    return ignoreReferences(type)
+    return ignoreHides(type)
   }
   if (typeof type === 'function') {
     return () => lazyToType(getProjectedType(lazyToType(type), fields))
@@ -29,8 +29,8 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
   if (type.kind === 'default-decorator') {
     return defaul(getProjectedType(type.type, fields), type.opts)
   }
-  if (type.kind === 'reference-decorator') {
-    return reference(getProjectedType(type.type, fields))
+  if (type.kind === 'hide-decorator') {
+    return hide(getProjectedType(type.type, fields))
   }
   if (type.kind === 'union-operator') {
     return union(
@@ -53,9 +53,9 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
   assertNever(type)
 }
 
-function ignoreReferences(type: LazyType): LazyType {
+function ignoreHides(type: LazyType): LazyType {
   if (typeof type === 'function') {
-    return () => lazyToType(ignoreReferences(lazyToType(type)))
+    return () => lazyToType(ignoreHides(lazyToType(type)))
   }
   if (
     type.kind === 'boolean' ||
@@ -68,19 +68,19 @@ function ignoreReferences(type: LazyType): LazyType {
     return type
   }
   if (type.kind === 'array-decorator') {
-    return array(ignoreReferences(type.type))
+    return array(ignoreHides(type.type))
   }
   if (type.kind === 'optional-decorator') {
-    return optional(ignoreReferences(type.type))
+    return optional(ignoreHides(type.type))
   }
   if (type.kind === 'default-decorator') {
-    return defaul(ignoreReferences(type.type), type.opts)
+    return defaul(ignoreHides(type.type), type.opts)
   }
-  if (type.kind === 'reference-decorator') {
-    return reference(ignoreReferences(type.type))
+  if (type.kind === 'hide-decorator') {
+    return hide(ignoreHides(type.type))
   }
   if (type.kind === 'union-operator') {
-    return union(Object.fromEntries(Object.entries(type.types).map(([k, t]) => [k, ignoreReferences(t)])))
+    return union(Object.fromEntries(Object.entries(type.types).map(([k, t]) => [k, ignoreHides(t)])))
   }
   if (type.kind === 'object') {
     return object(
@@ -91,14 +91,14 @@ function ignoreReferences(type: LazyType): LazyType {
               k,
               () => {
                 const t = lazyToType(lt)
-                if (t.kind === 'reference-decorator') {
+                if (t.kind === 'hide-decorator') {
                   return optional(t)
                 }
                 return t
               },
             ]
           }
-          if (lt.kind === 'reference-decorator') {
+          if (lt.kind === 'hide-decorator') {
             return [k, optional(lt)]
           }
           return [k, lt]
@@ -146,7 +146,7 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
     type.kind === 'array-decorator' ||
     type.kind === 'optional-decorator' ||
     type.kind === 'default-decorator' ||
-    type.kind === 'reference-decorator'
+    type.kind === 'hide-decorator'
   ) {
     return getProjectionType(type.type, discriminantKey)
   }

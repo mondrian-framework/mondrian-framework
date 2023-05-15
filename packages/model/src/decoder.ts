@@ -94,7 +94,7 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
       return success(t.opts.default)
     }
     return decodeInternal(t.type, value, opts)
-  } else if (t.kind === 'reference-decorator') {
+  } else if (t.kind === 'hide-decorator') {
     return decodeInternal(t.type, value, opts)
   } else if (t.kind === 'union-operator') {
     if (opts?.castGqlInputUnion) {

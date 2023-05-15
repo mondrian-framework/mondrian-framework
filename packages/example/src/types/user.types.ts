@@ -30,7 +30,7 @@ export const CustomerUser = () =>
     credentials: UserCredentials,
     registeredAt: t.timestamp(),
     referrerId: Id,
-    referrer: t.reference(CustomerUser),
+    referrer: t.hide(CustomerUser),
   })
 export type CustomerUser = t.Infer<typeof CustomerUser>
 

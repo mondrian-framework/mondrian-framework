@@ -46,7 +46,7 @@ export type UnionOperator = {
     discriminant?: string
   }
 }
-export type ReferenceDecorator = { kind: 'reference-decorator'; type: LazyType }
+export type HideDecorator = { kind: 'hide-decorator'; type: LazyType }
 
 export type Type =
   | NumberType
@@ -59,7 +59,7 @@ export type Type =
   | ArrayDecorator
   | OptionalDecorator
   | DefaultDecorator
-  | ReferenceDecorator
+  | HideDecorator
   | UnionOperator
 
 export type CustomType<
@@ -98,7 +98,7 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
   ? ST extends LazyType
     ? Project<F, ST>
     : never
-  : [T] extends [{ kind: 'reference-decorator'; type: infer ST }]
+  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? Project<F, ST>
     : never
@@ -121,13 +121,13 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
   : [T] extends [{ kind: 'union-operator'; types: infer TS }]
   ? TS extends Types
     ? F extends true
-      ? InferTypeInternal<T, false>
+      ? InferTypeInternal<T, false, true>
       : { [K in keyof TS]: F extends Record<K, unknown> ? Project<F[K], TS[K]> : Project<{}, TS[K]> }[keyof TS]
     : never
   : [T] extends [{ kind: 'object'; type: infer ST }]
   ? ST extends ObjectType['type']
     ? F extends true
-      ? InferTypeInternal<T, false>
+      ? InferTypeInternal<T, false, true>
       : Expand<
           {
             [K in NonOptionalKeys<ST> & keyof F]: Project<F[K], ST[K]>
@@ -138,26 +138,30 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
     : never
   : unknown
 
-export type Infer<T extends LazyType> = InferType<T, false>
-export type InferReturn<T extends LazyType> = InferType<T, true>
-type InferType<T extends LazyType, Partial extends boolean> = [T] extends [() => infer LT]
-  ? InferTypeInternal<LT, Partial>
-  : InferTypeInternal<T, Partial>
-type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
+export type Infer<T extends LazyType> = InferType<T, false, false>
+export type InferReturn<T extends LazyType> = InferType<T, true, false>
+type InferType<T extends LazyType, Partial extends boolean, Shader extends boolean> = [T] extends [() => infer LT]
+  ? InferTypeInternal<LT, Partial, Shader>
+  : InferTypeInternal<T, Partial, Shader>
+type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T] extends [
+  { kind: 'array-decorator'; type: infer ST },
+]
   ? ST extends LazyType
-    ? InferType<ST, Partial>[]
+    ? InferType<ST, Partial, Shader>[]
     : never
   : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
   ? ST extends LazyType
-    ? InferType<ST, Partial> | undefined
+    ? InferType<ST, Partial, Shader> | undefined
     : never
   : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
   ? ST extends LazyType
-    ? InferType<ST, Partial>
+    ? InferType<ST, Partial, Shader>
     : never
-  : [T] extends [{ kind: 'reference-decorator'; type: infer ST }]
+  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
   ? ST extends LazyType
-    ? InferType<ST, Partial>
+    ? Shader extends true
+      ? undefined
+      : InferType<ST, Partial, Shader>
     : never
   : [T] extends [{ kind: 'string' }]
   ? string
@@ -177,19 +181,19 @@ type InferTypeInternal<T, Partial extends boolean> = [T] extends [{ kind: 'array
     : never
   : [T] extends [{ kind: 'union-operator'; types: infer TS }]
   ? TS extends Types
-    ? { [K in keyof TS]: InferType<TS[K], Partial> }[keyof TS]
+    ? { [K in keyof TS]: InferType<TS[K], Partial, Shader> }[keyof TS]
     : never
   : [T] extends [{ kind: 'object'; type: infer ST }]
   ? ST extends ObjectType['type']
     ? Partial extends true
       ? Expand<{
-          [K in keyof ST]?: InferType<ST[K], Partial>
+          [K in keyof ST]?: InferType<ST[K], Partial, Shader>
         }>
       : Expand<
           {
-            [K in NonOptionalKeys<ST>]: InferType<ST[K], Partial>
+            [K in NonOptionalKeys<ST>]: InferType<ST[K], Partial, Shader>
           } & {
-            [K in OptionalKeys<ST>]?: InferType<ST[K], Partial>
+            [K in OptionalKeys<ST>]?: InferType<ST[K], Partial, Shader>
           }
         >
     : never
@@ -210,7 +214,7 @@ type InferProjectionInternal<T> = [T] extends [{ kind: 'array-decorator'; type: 
   ? ST extends LazyType
     ? InferProjection<ST>
     : never
-  : [T] extends [{ kind: 'reference-decorator'; type: infer ST }]
+  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? InferProjection<ST>
     : never
@@ -229,11 +233,27 @@ type InferProjectionInternal<T> = [T] extends [{ kind: 'array-decorator'; type: 
   : true
 
 type OptionalKeys<T extends ObjectType['type']> = {
-  [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? K : never
+  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never
 }[keyof T]
 type NonOptionalKeys<T extends ObjectType['type']> = {
-  [K in keyof T]: T[K] extends { kind: 'optional-decorator'; type: unknown } ? never : K
+  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? never : K
 }[keyof T]
+
+type HasOptionalDecorator<T extends LazyType> = [T] extends [() => infer LT]
+  ? LT extends Type
+    ? HasOptionalDecorator<LT>
+    : false
+  : [T] extends [{ kind: 'optional-decorator'; type: unknown }]
+  ? true
+  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? HasOptionalDecorator<ST>
+    : false
+  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? HasOptionalDecorator<ST>
+    : false
+  : false
 
 export function number(opts?: NumberType['opts']): NumberType {
   return { kind: 'number', opts }
@@ -298,8 +318,8 @@ export function defaul<const T extends LazyType>(
 ): { kind: 'default-decorator'; type: T; opts: { default: unknown } } {
   return { kind: 'default-decorator', type, opts: { default: value } }
 }
-export function reference<const T extends LazyType>(type: T): { kind: 'reference-decorator'; type: T } {
-  return { kind: 'reference-decorator', type }
+export function hide<const T extends LazyType>(type: T): { kind: 'hide-decorator'; type: T } {
+  return { kind: 'hide-decorator', type }
 }
 
 export function custom<const T, const N extends string>(

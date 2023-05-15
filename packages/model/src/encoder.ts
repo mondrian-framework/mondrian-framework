@@ -24,7 +24,7 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     }
     return encode(t.type, value)
   }
-  if (t.kind === 'default-decorator' || t.kind === 'reference-decorator') {
+  if (t.kind === 'default-decorator' || t.kind === 'hide-decorator') {
     return encode(t.type, value)
   }
   if (t.kind === 'array-decorator') {

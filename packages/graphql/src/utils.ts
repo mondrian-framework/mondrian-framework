@@ -56,7 +56,7 @@ function extractRequiredFields(type: LazyType, fields: GenericProjection): Gener
     t.kind === 'array-decorator' ||
     t.kind === 'optional-decorator' ||
     t.kind === 'default-decorator' ||
-    t.kind === 'reference-decorator'
+    t.kind === 'hide-decorator'
   ) {
     return extractRequiredFields(t.type, fields)
   }

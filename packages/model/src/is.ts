@@ -31,7 +31,7 @@ export function is(type: LazyType, value: JSONType): boolean {
     }
     return is(t.type, value)
   }
-  if (t.kind === 'default-decorator' || t.kind === 'reference-decorator') {
+  if (t.kind === 'default-decorator' || t.kind === 'hide-decorator') {
     return is(t.type, value)
   }
   if (t.kind === 'array-decorator') {

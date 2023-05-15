@@ -25,7 +25,10 @@ export async function remoteSdkExample() {
       //console.log(ins)
       const result = await sdk.users({
         input: {},
-        fields: true,
+        fields: {
+          ProfessionalUser: { id: true, profile: true, type: true },
+          CustomerUser: { id: true, type: true, referrer: true },
+        },
       })
       //console.log(result)
     } catch (error) {

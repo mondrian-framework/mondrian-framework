@@ -37,6 +37,9 @@
       "@mondrian/aws-sqs": [
         "./packages/aws-sqs"
       ],
+      "@mondrian/cron": [
+        "./packages/cron"
+      ],
       "@mondrian/example": [
         "./packages/example"
       ]
@@ -61,6 +64,9 @@
     },
     {
       "path": "packages/aws-sqs"
+    },
+    {
+      "path": "packages/cron"
     },
     {
       "path": "packages/graphql"

@@ -16,6 +16,7 @@
       "./packages/rest/tsconfig.json",
       "./packages/graphql/tsconfig.json",
       "./packages/aws-sqs/tsconfig.json",
+      "./packages/cron/tsconfig.json",
       "./packages/example/tsconfig.json"
     ]
   },

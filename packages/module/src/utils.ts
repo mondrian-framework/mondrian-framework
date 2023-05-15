@@ -21,15 +21,22 @@ export type Logger = (message: string, level?: 'log' | 'warn' | 'error') => void
 export function buildLogger(
   moduleName: string,
   operationId: string | null,
-  operationType: string | null, //QUERY, MUTATION, GET, POST, ...
-  operationName: string,
+  operationType: string | null, //QUERY, MUTATION, GET, POST, SQS-URL ...
+  operationName: string | null,
   server: string, //REST, GRAPHQL, LOCAL, ...
   start: Date,
 ): Logger {
   function l(message: string, level?: 'log' | 'warn' | 'error') {
-    const op = operationType ? `${operationType}.${operationName}` : operationName
+    const op =
+      operationType && operationName
+        ? `${operationType} / ${operationName}`
+        : operationName
+        ? operationName
+        : operationType
+        ? operationType
+        : null
     console[level ?? 'log'](
-      `${operationId ? `[${operationId}] ` : ''}[${moduleName} / ${op} / ${server}]: ${message} (${
+      `${operationId ? `[${operationId}] ` : ''}[${moduleName}${op ? ` / ${op}` : ''} / ${server}]: ${message} (${
         new Date().getTime() - start.getTime()
       } ms)`,
     )

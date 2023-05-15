@@ -3,6 +3,8 @@ import { Functions } from './functions'
 import { ModuleGraphqlApi } from '@mondrian/graphql'
 import { module } from './module'
 import { ModuleSqsApi } from '@mondrian/aws-sqs/src/listener'
+import { ModuleCronApi } from '@mondrian/cron/src/executor'
+import { Types } from './types'
 
 //TODO:
 //How to exlude function implementation in package release?
@@ -22,7 +24,7 @@ export const GRAPHQL_API = {
   functions: {
     register: { type: 'mutation', name: 'subscribe', inputName: 'user' },
     user: { type: 'query' },
-    //users: { type: 'query' },
+    users: { type: 'query' },
   },
   options: { introspection: true },
 } as const satisfies ModuleGraphqlApi<Functions>
@@ -44,3 +46,17 @@ export const SQS_API = {
     },
   },
 } as const satisfies ModuleSqsApi<Functions>
+
+export const CRON_API = {
+  functions: {
+    register: {
+      cron: '*/2 * * * * *',
+      runAtStart: true,
+      input: async () => ({
+        type: 'PROFESSIONAL' as const,
+        credentials: { email: 'asd@gmail.com', password: 'lollol' },
+        profile: { firstname: 'Asd', lastname: 'Lol' },
+      }),
+    },
+  },
+} as const satisfies ModuleCronApi<Types, Functions>

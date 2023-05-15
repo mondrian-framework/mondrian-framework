@@ -14,7 +14,8 @@
     "@mondrian/module": "*",
     "@mondrian/rest": "*",
     "@mondrian/graphql": "*",
-    "@mondrian/aws-sqs": "*"
+    "@mondrian/aws-sqs": "*",
+    "@mondrian/cron": "*"
   },
   "devDependencies": {
     "dotenv": "16.0.3"

@@ -46,6 +46,7 @@ export function listen<const T extends Types, const F extends Functions<keyof T 
   return {
     async close() {
       alive.yes = false
+      buildLogger(module.name, null, null, null, 'SQS', new Date())('Closing listeners...')
       await Promise.all(promises)
     },
   }
@@ -72,7 +73,7 @@ async function listenForMessage({
   const inputType = module.types[functionBody.input]
   const outputType = module.types[functionBody.output]
   const listenerLog = buildLogger(module.name, null, queueUrl, functionName, 'SQS', new Date())
-  listenerLog('Start listening for messsages...')
+  listenerLog('Started.')
   while (alive.yes) {
     const operationId = randomOperationId()
     try {
@@ -120,5 +121,5 @@ async function listenForMessage({
       await sleep(1000)
     }
   }
-  listenerLog('Stop listening for messsages.')
+  listenerLog('Stopped.')
 }

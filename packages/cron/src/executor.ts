@@ -34,8 +34,6 @@ export function cron<const T extends Types, const F extends Functions<keyof T ex
     if (!validate(options.cron)) {
       throw new Error(`Invalid cron string ${options.cron}`)
     }
-    const inputType = module.types[functionBody.input]
-    const outputType = module.types[functionBody.output]
     const task = schedule(
       options.cron,
       async () => {
@@ -44,10 +42,7 @@ export function cron<const T extends Types, const F extends Functions<keyof T ex
         try {
           const input = await options.input()
           const ctx = await context({})
-          await functionBody.apply(
-            { input, fields: undefined, operationId, log, context: ctx },
-            { inputType, outputType },
-          )
+          await functionBody.apply({ input, fields: undefined, operationId, log, context: ctx })
         } catch (error) {
           if (error instanceof Error) {
             log(error.message, 'error')

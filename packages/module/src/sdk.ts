@@ -21,17 +21,12 @@ export function createLocalSdk<
 >({ module, context }: { module: Module<T, F>; context: () => Promise<ContextType<F>> }): SDK<T, F> {
   const functions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const inputType = module.types[functionBody.input]
-      const outputType = module.types[functionBody.output]
       const wrapper = async ({ input, fields }: { input: any; fields: any }) => {
         const operationId = randomOperationId()
         const log = buildLogger(module.name, operationId, null, functionName, 'LOCAL', new Date())
         const ctx = await context()
         try {
-          const result = functionBody.apply(
-            { input, fields, context: ctx, operationId, log },
-            { inputType, outputType },
-          )
+          const result = functionBody.apply({ input, fields, context: ctx, operationId, log })
           log('Done.')
           return result
         } catch {

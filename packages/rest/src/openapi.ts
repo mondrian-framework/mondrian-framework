@@ -115,16 +115,13 @@ async function elabFastifyRestRequest({
   }
   const ctx = await context({ request })
   try {
-    const result = await functionBody.apply(
-      {
-        fields: fields ? (fields.value as any) : undefined,
-        context: ctx,
-        input: decoded.value,
-        operationId,
-        log,
-      },
-      { inputType, outputType },
-    )
+    const result = await functionBody.apply({
+      fields: fields ? (fields.value as any) : undefined,
+      context: ctx,
+      input: decoded.value,
+      operationId,
+      log,
+    })
     const encoded = encode(outputType, result)
     log('Completed.')
     return encoded

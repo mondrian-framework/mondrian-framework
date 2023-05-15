@@ -9,16 +9,13 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
       ? {
           input: I
           output: O
-          apply: (
-            args: {
-              input: Input
-              fields: Fields | undefined
-              operationId: string
-              context: Context
-              log: Logger
-            },
-            context: { inputType: LazyType; outputType: LazyType }, //TODO: ok to be here?
-          ) => Promise<Output>
+          apply: (args: {
+            input: Input
+            fields: Fields | undefined
+            operationId: string
+            context: Context
+            log: Logger
+          }) => Promise<Output>
         }
       : never
     : never
@@ -26,10 +23,7 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
 export type GenericFunction<TypesName extends string = string> = {
   input: TypesName
   output: TypesName
-  apply: (
-    args: { input: any; fields: any; context: any; operationId: string; log: Logger },
-    context: { inputType: LazyType; outputType: LazyType },
-  ) => Promise<unknown>
+  apply: (args: { input: any; fields: any; context: any; operationId: string; log: Logger }) => Promise<unknown>
 }
 
 export type Functions<Types extends string = string> = Record<string, GenericFunction<Types>>
@@ -40,20 +34,7 @@ export function functionBuilder<const T extends Types, Context>(): <const I exte
   function builder<const I extends keyof T, const O extends keyof T>(
     f: Function<T, I, O, Context>,
   ): Function<T, I, O, Context> {
-    return {
-      input: f.input,
-      output: f.output,
-      async apply(args, context) {
-        const result = await f.apply(args, context)
-        const projectedType = getProjectedType(context.outputType, args.fields as GenericProjection)
-        const outputDecoded = decode(projectedType, result as JSONType)
-        if (!outputDecoded.pass) {
-          const m = JSON.stringify({ fields: args.fields, errors: outputDecoded.errors })
-          args.log(`Projection is not respected: ${m}`, 'error')
-        }
-        return result
-      },
-    } as Function<T, I, O, Context>
+    return f
   }
   return builder
 }
@@ -90,5 +71,24 @@ export type Module<T extends Types, F extends Functions<keyof T extends string ?
 export function module<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>(
   module: Module<T, F>,
 ): Module<T, F> {
-  return module
+  const functions = Object.fromEntries(
+    Object.entries(module.functions).map(([functionName, functionBody]) => {
+      const outputType = module.types[functionBody.output]
+      const f: GenericFunction = {
+        ...functionBody,
+        async apply(args) {
+          const result = await functionBody.apply(args)
+          const projectedType = getProjectedType(outputType, args.fields as GenericProjection)
+          const outputDecoded = decode(projectedType, result as JSONType)
+          if (!outputDecoded.pass) {
+            const m = JSON.stringify({ fields: args.fields, errors: outputDecoded.errors })
+            args.log(`Projection is not respected: ${m}`, 'error')
+          }
+          return result
+        },
+      }
+      return [functionName, f]
+    }),
+  )
+  return { ...module, functions: functions as F }
 }

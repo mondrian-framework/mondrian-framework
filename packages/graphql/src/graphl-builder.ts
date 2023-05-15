@@ -303,16 +303,13 @@ function generateQueryOrMutation({
           throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
         }
         try {
-          const result = await functionBody.apply(
-            {
-              context: await context({ request: ctx.fastify.request, info }),
-              fields: fields.value,
-              input: decoded.value,
-              operationId,
-              log,
-            },
-            { inputType, outputType },
-          )
+          const result = await functionBody.apply({
+            context: await context({ request: ctx.fastify.request, info }),
+            fields: fields.value,
+            input: decoded.value,
+            operationId,
+            log,
+          })
           const encoded = encode(outputType, result)
           log('Completed.')
           return encoded

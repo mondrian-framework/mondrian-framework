@@ -17,8 +17,8 @@ async function main() {
   const context = async () => ({ db, startingId: 1 })
   serveRest({ server, module, api: REST_API, context })
   serveGraphql({ server, module, api: GRAPHQL_API, context })
-  const closer = listenSqs({ module, api: SQS_API, context })
-  const cronHandler = cron({ module, api: CRON_API, context })
+  //const closer = listenSqs({ module, api: SQS_API, context })
+  //const cronHandler = cron({ module, api: CRON_API, context })
   const address = await server.listen({ port: 4000 })
   console.log(`Module "${module.name}" has started in ${new Date().getTime() - time} ms! ${address}`)
 

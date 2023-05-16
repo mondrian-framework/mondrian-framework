@@ -23,3 +23,6 @@ export function sleep(ms: number) {
     setTimeout(resolve, ms)
   })
 }
+
+//https://github.com/microsoft/TypeScript/issues/17002
+export const isArray = Array.isArray as <T extends readonly any[]>(obj: unknown) => obj is T

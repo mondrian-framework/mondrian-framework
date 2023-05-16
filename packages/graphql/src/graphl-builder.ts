@@ -3,7 +3,7 @@ import { extractFieldsFromGraphqlInfo } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { CustomType, LazyType, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
-import { assertNever } from '@mondrian/utils'
+import { assertNever, isArray } from '@mondrian/utils'
 import {
   ContextType,
   Functions,
@@ -291,100 +291,104 @@ function generateQueryOrMutation({
   api: ModuleGraphqlApi<Functions>
   context: (args: { request: FastifyRequest; info: GraphQLResolveInfo }) => Promise<ContextType<Functions>>
 }) {
-  const functions = Object.entries(module.functions).filter(
-    ([functionName, _]) => api.functions[functionName]?.type === type,
-  )
   const resolvers = Object.fromEntries(
-    functions.flatMap(([functionName, functionBody]) => {
-      const specification = api.functions[functionName]
-      if (!specification) {
+    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
+      const specifications = api.functions[functionName]
+      if (!specifications) {
         return []
       }
-      const gqlInputTypeName = specification.inputName ?? 'input'
-      const inputType = module.types[functionBody.input]
-      const outputType = module.types[functionBody.output]
+      return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {
+        if (specification.type !== type) {
+          return []
+        }
+        const gqlInputTypeName = specification.inputName ?? 'input'
+        const inputType = module.types[functionBody.input]
+        const outputType = module.types[functionBody.output]
 
-      const resolver = async (
-        parent: unknown,
-        input: Record<string, unknown>,
-        ctx: { fastify: { request: FastifyRequest; reply: FastifyReply } },
-        info: GraphQLResolveInfo,
-      ) => {
-        const operationId = randomOperationId()
-        const log = buildLogger(
-          module.name,
-          operationId,
-          specification.type.toUpperCase(),
-          specification.name ?? functionName,
-          'GQL',
-          new Date(),
-        )
-        ctx.fastify.reply.header('operation-id', operationId)
-        const decoded = decode(inputType, input[gqlInputTypeName], {
-          cast: true,
-          castGqlInputUnion: true,
-        })
-        if (!decoded.pass) {
-          log('Bad request.')
-          throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
-        }
-        const fieldType = () => getProjectionType(outputType)
-        const gqlFields = extractFieldsFromGraphqlInfo(info, outputType)
-        const fields = decode(fieldType(), gqlFields, { cast: true })
-        if (!fields.pass) {
-          log('Bad request. (fields)')
-          throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
-        }
-        try {
-          const contextInput = await context({ request: ctx.fastify.request, info })
-          const result = await functionBody.apply({
-            context: await module.context(contextInput),
-            fields: fields.value,
-            input: decoded.value,
+        const resolver = async (
+          parent: unknown,
+          input: Record<string, unknown>,
+          ctx: { fastify: { request: FastifyRequest; reply: FastifyReply } },
+          info: GraphQLResolveInfo,
+        ) => {
+          const operationId = randomOperationId()
+          const log = buildLogger(
+            module.name,
             operationId,
-            log,
+            specification.type.toUpperCase(),
+            specification.name ?? functionName,
+            'GQL',
+            new Date(),
+          )
+          ctx.fastify.reply.header('operation-id', operationId)
+          const decoded = decode(inputType, input[gqlInputTypeName], {
+            cast: true,
+            castGqlInputUnion: true,
           })
-          const encoded = encode(outputType, result)
-          log('Completed.')
-          return encoded
-        } catch (error) {
-          log('Failed with exception.')
-          throw error
+          if (!decoded.pass) {
+            log('Bad request.')
+            throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
+          }
+          const fieldType = () => getProjectionType(outputType)
+          const gqlFields = extractFieldsFromGraphqlInfo(info, outputType)
+          const fields = decode(fieldType(), gqlFields, { cast: true })
+          if (!fields.pass) {
+            log('Bad request. (fields)')
+            throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
+          }
+          try {
+            const contextInput = await context({ request: ctx.fastify.request, info })
+            const result = await functionBody.apply({
+              context: await module.context(contextInput),
+              fields: fields.value,
+              input: decoded.value,
+              operationId,
+              log,
+            })
+            const encoded = encode(outputType, result)
+            log('Completed.')
+            return encoded
+          } catch (error) {
+            log('Failed with exception.')
+            throw error
+          }
         }
-      }
-      return [[specification.name ?? functionName, resolver]]
+        return [[specification.name ?? functionName, resolver]]
+      })
     }),
   )
-  const defs = functions
+  const defs = Object.entries(module.functions)
     .flatMap(([functionName, functionBody]) => {
-      const specification = api.functions[functionName]
-      if (!specification) {
+      const specifications = api.functions[functionName]
+      if (!specifications) {
         return []
       }
-      const inputType = lazyToType(module.types[functionBody.input])
-      const inputIsVoid = isVoidType(inputType)
-      const gqlInputType = inputIsVoid
-        ? null
-        : typeToGqlType(functionBody.input, inputType, module.types, {}, new Map(), true, false, {}, {})
-      const ouputType = lazyToType(module.types[functionBody.output])
-      const gqlOutputType = typeToGqlType(
-        functionBody.output,
-        ouputType,
-        module.types,
-        {},
-        new Map(),
-        false,
-        false,
-        {},
-        {},
-      )
-      const description = functionBody.opts?.description ? `"""${functionBody.opts?.description}"""\n` : null
-      const def = inputIsVoid
-        ? `${specification.name ?? functionName}: ${gqlOutputType.type}`
-        : `${specification.name ?? functionName}(${specification.inputName ?? 'input'}: ${gqlInputType?.type}): ${
-            gqlOutputType.type
-          }`
-      return description ? [description, def] : [def]
+      return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {
+        const inputType = lazyToType(module.types[functionBody.input])
+        const inputIsVoid = isVoidType(inputType)
+        const gqlInputType = inputIsVoid
+          ? null
+          : typeToGqlType(functionBody.input, inputType, module.types, {}, new Map(), true, false, {}, {})
+        const ouputType = lazyToType(module.types[functionBody.output])
+        const gqlOutputType = typeToGqlType(
+          functionBody.output,
+          ouputType,
+          module.types,
+          {},
+          new Map(),
+          false,
+          false,
+          {},
+          {},
+        )
+        const description = functionBody.opts?.description ? `"""${functionBody.opts?.description}"""\n` : null
+        const def = inputIsVoid
+          ? `${specification.name ?? functionName}: ${gqlOutputType.type}`
+          : `${specification.name ?? functionName}(${specification.inputName ?? 'input'}: ${gqlInputType?.type}): ${
+              gqlOutputType.type
+            }`
+        return description ? [description, def] : [def]
+      })
     })
     .join('\n')
   return { defs, resolvers }

@@ -10,7 +10,7 @@ import { attachRestMethods, openapiSpecification } from './openapi'
 export type RestFunctionSpecs = { method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'; path?: string }
 export type ModuleRestApi<F extends Functions> = {
   functions: {
-    [K in keyof F]?: RestFunctionSpecs
+    [K in keyof F]?: RestFunctionSpecs | readonly RestFunctionSpecs[]
   }
   options?: {
     introspection?: boolean

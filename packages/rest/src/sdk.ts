@@ -38,7 +38,8 @@ export function createRestSdk<
 }): SDK<T, F, API> {
   const functions = Object.fromEntries(
     Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
-      const specification = api.functions[functionName]
+      const specs = api.functions[functionName]
+      const specification = Array.isArray(specs) ? specs[0] : specs
       if (!specification) {
         return []
       }

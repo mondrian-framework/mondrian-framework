@@ -13,7 +13,10 @@ export const MODULE = module
 
 export const REST_API = {
   functions: {
-    register: { method: 'POST', path: '/subscribe' },
+    register: [
+      { method: 'POST', path: '/subscribe' },
+      { method: 'PUT', path: '/register' },
+    ],
     user: { method: 'GET' },
     users: { method: 'GET' },
   },
@@ -22,12 +25,15 @@ export const REST_API = {
 
 export const GRAPHQL_API = {
   functions: {
-    register: { type: 'mutation', name: 'subscribe', inputName: 'user' },
+    register: [
+      { type: 'mutation', name: 'subscribe', inputName: 'user' },
+      { type: 'mutation', name: 'register', inputName: 'user' },
+    ],
     user: { type: 'query' },
     users: { type: 'query' },
   },
   options: { introspection: true },
-} as const satisfies ModuleGraphqlApi<Functions>
+} satisfies ModuleGraphqlApi<Functions>
 
 export const SQS_API = {
   functions: {
@@ -45,12 +51,12 @@ export const SQS_API = {
       region: 'eu-central-1',
     },
   },
-} as const satisfies ModuleSqsApi<Functions>
+} satisfies ModuleSqsApi<Functions>
 
 export const CRON_API = {
   functions: {
     register: {
-      cron: '*/2 * * * * *',
+      cron: '* 0 * * * *',
       runAtStart: true,
       input: async () => ({
         type: 'PROFESSIONAL' as const,
@@ -59,4 +65,4 @@ export const CRON_API = {
       }),
     },
   },
-} as const satisfies ModuleCronApi<Types, Functions>
+} satisfies ModuleCronApi<Types, Functions>

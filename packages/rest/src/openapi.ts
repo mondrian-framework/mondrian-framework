@@ -1,7 +1,7 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { DecodeResult, LazyType, Types, decode, encode, isVoidType, lazyToType } from '@mondrian/model'
-import { assertNever } from '@mondrian/utils'
+import { assertNever, isArray } from '@mondrian/utils'
 import {
   Functions,
   GenericFunction,
@@ -29,27 +29,29 @@ export function attachRestMethods({
     if (!specifications) {
       continue
     }
-    const path = `/api${specifications.path ?? `/${functionName}`}`
-    if (specifications.method === 'GET') {
-      server.get(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
-      )
-    } else if (specifications.method === 'POST') {
-      server.post(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
-      )
-    } else if (specifications.method === 'PUT') {
-      server.put(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
-      )
-    } else if (specifications.method === 'DELETE') {
-      server.delete(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
-      )
-    } else if (specifications.method === 'PATCH') {
-      server.patch(path, (request, reply) =>
-        elabFastifyRestRequest({ request, reply, functionName, module, api, specifications, functionBody, context }),
-      )
+    for (const specification of isArray(specifications) ? specifications : [specifications]) {
+      const path = `/api${specification.path ?? `/${functionName}`}`
+      if (specification.method === 'GET') {
+        server.get(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+        )
+      } else if (specification.method === 'POST') {
+        server.post(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+        )
+      } else if (specification.method === 'PUT') {
+        server.put(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+        )
+      } else if (specification.method === 'DELETE') {
+        server.delete(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+        )
+      } else if (specification.method === 'PATCH') {
+        server.patch(path, (request, reply) =>
+          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+        )
+      }
     }
   }
 }
@@ -70,7 +72,7 @@ async function elabFastifyRestRequest({
   reply,
   functionName,
   module,
-  specifications,
+  specification,
   functionBody,
   context,
 }: {
@@ -80,12 +82,12 @@ async function elabFastifyRestRequest({
   module: GenericModule
   functionBody: GenericFunction
   api: ModuleRestApi<Functions>
-  specifications: RestFunctionSpecs
+  specification: RestFunctionSpecs
   context: (args: { request: FastifyRequest }) => Promise<unknown>
 }): Promise<unknown> {
   const startDate = new Date()
   const operationId = randomOperationId()
-  const log = buildLogger(module.name, operationId, specifications.method, functionName, 'REST', startDate)
+  const log = buildLogger(module.name, operationId, specification.method, functionName, 'REST', startDate)
   reply.header('operation-id', operationId)
   const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
   const outputType = module.types[functionBody.output]
@@ -145,62 +147,64 @@ export function openapiSpecification({
     if (!specifications) {
       continue
     }
-    const path = `${specifications.path ?? `/${functionName}`}`
-    const inputIsVoid = isVoidType(module.types[functionBody.input])
-    const operationObj: OpenAPIV3_1.OperationObject = {
-      parameters: [
-        ...((specifications.method === 'GET' || specifications.method === 'DELETE') && !inputIsVoid
-          ? [
-              {
-                name: 'input',
-                in: 'query',
-                required: true,
-                style: 'deepObject',
-                explode: true,
-                schema: {
-                  $ref: `#/components/schemas/${functionBody.input}`,
-                },
-              },
-            ]
-          : []),
-        {
-          name: 'fields',
-          in: 'header',
-        },
-      ],
-      requestBody:
-        specifications.method !== 'GET' && specifications.method !== 'DELETE' && !inputIsVoid
-          ? {
-              content: {
-                'application/json': {
+    for (const specification of isArray(specifications) ? specifications : [specifications]) {
+      const path = `${specification.path ?? `/${functionName}`}`
+      const inputIsVoid = isVoidType(module.types[functionBody.input])
+      const operationObj: OpenAPIV3_1.OperationObject = {
+        parameters: [
+          ...((specification.method === 'GET' || specification.method === 'DELETE') && !inputIsVoid
+            ? [
+                {
+                  name: 'input',
+                  in: 'query',
+                  required: true,
+                  style: 'deepObject',
+                  explode: true,
                   schema: {
                     $ref: `#/components/schemas/${functionBody.input}`,
                   },
                 },
-              },
-            }
-          : undefined,
-      responses: {
-        '200': {
-          description: 'Success',
-          content: {
-            'application/json': {
-              schema: {
-                $ref: `#/components/schemas/${functionBody.output}`,
+              ]
+            : []),
+          {
+            name: 'fields',
+            in: 'header',
+          },
+        ],
+        requestBody:
+          specification.method !== 'GET' && specification.method !== 'DELETE' && !inputIsVoid
+            ? {
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: `#/components/schemas/${functionBody.input}`,
+                    },
+                  },
+                },
+              }
+            : undefined,
+        responses: {
+          '200': {
+            description: 'Success',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: `#/components/schemas/${functionBody.output}`,
+                },
               },
             },
           },
+          '400': {
+            description: 'Validation error',
+          },
         },
-        '400': {
-          description: 'Validation error',
-        },
-      },
-      description: functionBody.opts?.description,
-      tags: [module.name],
-    }
-    paths[path] = {
-      summary: functionName,
-      [specifications.method.toLocaleLowerCase()]: operationObj,
+        description: functionBody.opts?.description,
+        tags: [module.name],
+      }
+      paths[path] = {
+        summary: functionName,
+        [specification.method.toLocaleLowerCase()]: operationObj,
+      }
     }
   }
   return {

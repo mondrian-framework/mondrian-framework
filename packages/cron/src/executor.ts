@@ -15,7 +15,7 @@ export type ModuleCronApi<T extends Types, F extends Functions> = {
   }
 }
 
-export function cron<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
+export function start<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
   module,
   api,
   context,

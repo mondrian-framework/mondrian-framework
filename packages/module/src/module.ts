@@ -24,17 +24,20 @@ export type GenericFunction<TypesName extends string = string> = {
   input: TypesName
   output: TypesName
   apply: (args: { input: any; fields: any; context: any; operationId: string; log: Logger }) => Promise<unknown>
+  opts?: { description?: string }
 }
 
 export type Functions<Types extends string = string> = Record<string, GenericFunction<Types>>
 
 export function functionBuilder<const T extends Types, Context>(): <const I extends keyof T, const O extends keyof T>(
   f: Function<T, I, O, Context>,
-) => Function<T, I, O, Context> {
+  opts?: { description?: string },
+) => Function<T, I, O, Context> & { opts?: { description?: string } } {
   function builder<const I extends keyof T, const O extends keyof T>(
     f: Function<T, I, O, Context>,
-  ): Function<T, I, O, Context> {
-    return f
+    opts?: { description?: string },
+  ): Function<T, I, O, Context> & { opts?: { description?: string } } {
+    return { ...f, opts }
   }
   return builder
 }

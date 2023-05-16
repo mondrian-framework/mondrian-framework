@@ -195,6 +195,7 @@ export function openapiSpecification({
           description: 'Validation error',
         },
       },
+      description: functionBody.opts?.description,
       tags: [module.name],
     }
     paths[path] = {
@@ -278,12 +279,12 @@ function typeToSchemaObjectInternal(
   }
   if (type.kind === 'custom') {
     if (type.name === 'timestamp') {
-      return { type: 'integer' }
+      return { type: 'integer', description: type.opts?.description }
     }
     if (type.name === 'datetime') {
-      return { type: 'string', format: 'date-time' }
+      return { type: 'string', format: 'date-time', description: type.opts?.description }
     }
-    return { type: 'string', description: type.name }
+    return { type: 'string', description: type.opts?.description ?? type.name }
   }
   if (type.kind === 'boolean') {
     return { type: 'boolean' }
@@ -296,6 +297,7 @@ function typeToSchemaObjectInternal(
       minimum: type.opts?.minimum,
       exclusiveMaximum: type.opts?.exclusiveMaximum,
       exclusiveMinimum: type.opts?.exclusiveMinimum,
+      description: type.opts?.description,
     }
   }
   if (type.kind === 'literal') {
@@ -308,7 +310,7 @@ function typeToSchemaObjectInternal(
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
     }
-    return { type: tp, const: type.value, example: type.value }
+    return { type: tp, const: type.value, example: type.value, description: type.opts?.description }
   }
   if (type.kind === 'array-decorator') {
     const items = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
@@ -345,17 +347,18 @@ function typeToSchemaObjectInternal(
           return [name, type]
         }),
       ),
+      description: type.opts?.description,
     }
     return object
   }
   if (type.kind === 'enumerator') {
-    return { type: 'string', enum: type.values as unknown as string[] } as const
+    return { type: 'string', enum: type.values as unknown as string[], description: type.opts?.description } as const
   }
   if (type.kind === 'union-operator') {
     const uniontypes = Object.entries(type.types).map(([k, t]) =>
       typeToSchemaObject(`${name}_${k}`, t, types, typeMap, typeRef),
     )
-    return { anyOf: uniontypes }
+    return { anyOf: uniontypes, description: type.opts?.description }
   }
   return assertNever(type)
 }

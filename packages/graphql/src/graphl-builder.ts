@@ -18,14 +18,14 @@ function typeToGqlType(
   name: string,
   t: LazyType,
   types: Record<string, LazyType>, //same as module
-  typeMap: Record<string, string>, //type name -> definition
+  typeMap: Record<string, { description?: string; type: string }>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
   isInput: boolean,
   isOptional: boolean,
   scalars: Record<string, CustomType>,
   unions: Record<string, (v: unknown) => boolean>,
   isUnion?: (v: unknown) => boolean,
-): string {
+): { description?: string; type: string } {
   const isRequired = isOptional ? '' : '!'
   for (const [n, type] of Object.entries(types)) {
     if (type === t) {
@@ -38,7 +38,7 @@ function typeToGqlType(
   if (typeof t === 'function') {
     const n = typeRef.get(t)
     if (n) {
-      return `${n}${isRequired}`
+      return { type: `${n}${isRequired}`, description: typeMap[n]?.description }
     }
     typeRef.set(t, name)
   }
@@ -49,32 +49,39 @@ function typeToGqlTypeInternal(
   name: string,
   t: LazyType,
   types: Record<string, LazyType>, //same as module
-  typeMap: Record<string, string>, //type name -> definition
+  typeMap: Record<string, { description?: string; type: string }>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
   isInput: boolean,
   isOptional: boolean,
   scalars: Record<string, CustomType>,
   unions: Record<string, (v: unknown) => boolean>,
-): string {
+): { description?: string; type: string } {
   const isRequired = isOptional ? '' : '!'
   const input = isInput ? 'I' : ''
   const type = lazyToType(t)
+  const description = 'opts' in type && type.opts && 'description' in type.opts ? type.opts.description : undefined
+  const desc = description ? `"""${description}"""\n` : ''
   if (type.kind === 'string') {
-    return `String${isRequired}`
+    return { description, type: `String${isRequired}` }
   }
   if (type.kind === 'custom') {
     scalars[type.name] = type
-    return `${type.name}${isRequired}`
+    return { description, type: `${type.name}${isRequired}` }
   }
   if (type.kind === 'boolean') {
-    return `Boolean${isRequired}`
+    return { description, type: `Boolean${isRequired}` }
   }
   if (type.kind === 'number') {
     //TODO: Int
-    return `Float${isRequired}`
+    return { description, type: `Float${isRequired}` }
   }
   if (type.kind === 'array-decorator') {
-    return `[${typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, false, scalars, unions)}]${isRequired}`
+    return {
+      description,
+      type: `[${
+        typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, false, scalars, unions).type
+      }]${isRequired}`,
+    }
   }
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, true, scalars, unions)
@@ -95,18 +102,25 @@ function typeToGqlTypeInternal(
         scalars,
         unions,
       )
-      return `${fieldName}: ${fieldType}`
+      const desc = fieldType.description ? `"""${fieldType.description}"""\n` : ''
+      return `${desc}${fieldName}: ${fieldType.type}`
     })
-    typeMap[`${input}${name}`] = `${isInput ? 'input' : 'type'} ${input}${name} {
+    typeMap[`${input}${name}`] = {
+      description,
+      type: `${desc}${isInput ? 'input' : 'type'} ${input}${name} {
         ${fields.join('\n        ')}
-    }`
-    return `${input}${name}${isRequired}`
+    }`,
+    }
+    return { description, type: `${input}${name}${isRequired}` }
   }
   if (type.kind === 'enumerator') {
-    typeMap[name] = `enum ${name} {
+    typeMap[name] = {
+      description,
+      type: `${desc}enum ${name} {
       ${type.values.join('\n        ')}
-    }`
-    return `${name}${isRequired}`
+    }`,
+    }
+    return { description, type: `${name}${isRequired}` }
   }
   if (type.kind === 'union-operator') {
     const ts = Object.entries(type.types)
@@ -115,13 +129,18 @@ function typeToGqlTypeInternal(
       const fields = ts.map(([unionName, fieldT]) => {
         const fieldType = typeToGqlType(unionName, fieldT, types, typeMap, typeRef, isInput, false, scalars, unions)
         const realType =
-          fieldType.charAt(fieldType.length - 1) === '!' ? fieldType.substring(0, fieldType.length - 1) : fieldType
+          fieldType.type.charAt(fieldType.type.length - 1) === '!'
+            ? fieldType.type.substring(0, fieldType.type.length - 1)
+            : fieldType.type
         return `${unionName}: ${realType}`
       })
-      typeMap[`${input}${name}`] = `input ${input}${name} {
+      typeMap[`${input}${name}`] = {
+        description,
+        type: `${desc}input ${input}${name} {
           ${fields.join('\n        ')}
-      }`
-      return `${input}${name}${isRequired}`
+      }`,
+      }
+      return { description, type: `${input}${name}${isRequired}` }
     }
 
     //remove the Null types
@@ -139,34 +158,41 @@ function typeToGqlTypeInternal(
           scalars,
           unions,
         )
-        return `${e}${isRequired}`
+        return { description: e.description, type: `${e}${isRequired}` }
       }
-      typeMap[name] = `union ${name} = ${filteredTs
-        .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars, unions))
-        .join(' | ')}`
-      return `${name}${isRequired}`
+      typeMap[name] = {
+        description,
+        type: `${desc}union ${name} = ${filteredTs
+          .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars, unions).type)
+          .join(' | ')}`,
+      }
+      return { description, type: `${name}${isRequired}` }
     }
-    typeMap[name] = `union ${name} = ${ts
-      .map(([k, t], i) =>
-        typeToGqlType(
-          k,
-          t,
-          types,
-          typeMap,
-          typeRef,
-          isInput,
-          true,
-          scalars,
-          unions,
-          type.opts?.is
-            ? (v) => {
-                return type.opts!.is![k](v)
-              }
-            : undefined,
-        ),
-      )
-      .join(' | ')}`
-    return `${name}${isRequired}`
+    typeMap[name] = {
+      description,
+      type: `${desc}union ${name} = ${ts
+        .map(
+          ([k, t], i) =>
+            typeToGqlType(
+              k,
+              t,
+              types,
+              typeMap,
+              typeRef,
+              isInput,
+              true,
+              scalars,
+              unions,
+              type.opts?.is
+                ? (v) => {
+                    return type.opts!.is![k](v)
+                  }
+                : undefined,
+            ).type,
+        )
+        .join(' | ')}`,
+    }
+    return { description, type: `${name}${isRequired}` }
   }
   if (isNullType(type)) {
     scalars['Null'] = {
@@ -180,7 +206,7 @@ function typeToGqlTypeInternal(
       name: 'Null',
       type: null,
     }
-    return `Null${isRequired}`
+    return { description, type: `Null${isRequired}` }
   }
   if (type.kind === 'literal') {
     const t = typeof type.value
@@ -189,13 +215,13 @@ function typeToGqlTypeInternal(
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
     }
-    return `${tp}${isRequired}`
+    return { description, type: `${tp}${isRequired}` }
   }
   return assertNever(type)
 }
 
 function generateInputs({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, CustomType> }) {
-  const typeMap: Record<string, string> = {}
+  const typeMap: Record<string, { description?: string; type: string }> = {}
   const typeRef: Map<Function, string> = new Map()
   const usedTypes = new Set([...Object.values(module.functions).map((q) => q.input)])
   for (const [name, type] of Object.entries(module.types).filter(
@@ -203,14 +229,16 @@ function generateInputs({ module, scalarsMap }: { module: GenericModule; scalars
   )) {
     typeToGqlType(name, type, module.types, typeMap, typeRef, true, false, scalarsMap, {})
   }
-  return Object.values(typeMap).join('\n\n')
+  return Object.values(typeMap)
+    .map((v) => v.type)
+    .join('\n\n')
 }
 
 function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, CustomType> }): {
   gql: string
   unions: Record<string, (v: unknown) => boolean>
 } {
-  const typeMap: Record<string, string> = {}
+  const typeMap: Record<string, { description?: string; type: string }> = {}
   const typeRef: Map<Function, string> = new Map()
   const unions: Record<string, (v: unknown) => boolean> = {}
   const usedTypes = new Set([...Object.values(module.functions).map((q) => q.output)])
@@ -219,12 +247,17 @@ function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsM
   )) {
     typeToGqlType(name, type, module.types, typeMap, typeRef, false, false, scalarsMap, unions)
   }
-  return { gql: Object.values(typeMap).join('\n\n'), unions }
+  return {
+    gql: Object.values(typeMap)
+      .map((v) => v.type)
+      .join('\n\n'),
+    unions,
+  }
 }
 
 function generateScalars({ scalarsMap }: { scalarsMap: Record<string, CustomType> }) {
   const scalarDefs = Object.values(scalarsMap)
-    .map((s) => `scalar ${s.name}`)
+    .map((s) => (s.opts?.description ? `scalar ${s.name}` : `"""${s.opts?.description}"""\nscalar ${s.name}`))
     .join('\n')
   const scalarResolvers = Object.fromEntries(
     Object.values(scalarsMap).map((s) => {
@@ -345,13 +378,13 @@ function generateQueryOrMutation({
         {},
         {},
       )
-      return [
-        inputIsVoid
-          ? `${specification.name ?? functionName}: ${gqlOutputType}`
-          : `${specification.name ?? functionName}(${
-              specification.inputName ?? 'input'
-            }: ${gqlInputType}): ${gqlOutputType}`,
-      ]
+      const description = functionBody.opts?.description ? `"""${functionBody.opts?.description}"""\n` : null
+      const def = inputIsVoid
+        ? `${specification.name ?? functionName}: ${gqlOutputType.type}`
+        : `${specification.name ?? functionName}(${specification.inputName ?? 'input'}: ${gqlInputType?.type}): ${
+            gqlOutputType.type
+          }`
+      return description ? [description, def] : [def]
     })
     .join('\n')
   return { defs, resolvers }

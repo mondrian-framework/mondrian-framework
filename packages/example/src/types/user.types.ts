@@ -1,10 +1,15 @@
 import t from '@mondrian/model'
 import { Id } from './scalars.types'
 
-export const UserProfile = t.object({
-  firstname: t.string(),
-  lastname: t.string(),
-})
+export const UserProfile = t.object(
+  {
+    firstname: t.string(),
+    lastname: t.string(),
+  },
+  {
+    description: 'User profile basic info',
+  },
+)
 
 export const UserCredentials = t.object({
   email: t.string({ format: 'email' }),

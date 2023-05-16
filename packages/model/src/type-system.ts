@@ -8,6 +8,7 @@ export type StringType = {
     regex?: RegExp
     minLength?: number
     format?: 'password' | 'byte' | 'binary' | 'email' | 'uuid' | 'url' | 'ipv4'
+    description?: string
   }
 }
 export type NumberType = {
@@ -17,21 +18,23 @@ export type NumberType = {
     exclusiveMinimum?: number
     minimum?: number
     maximum?: number
+    description?: string
   }
 }
-export type BooleanType = { kind: 'boolean'; opts?: {} }
+export type BooleanType = { kind: 'boolean'; opts?: { description?: string } }
 export type EnumeratorType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]> = {
   kind: 'enumerator'
   values: V
+  opts?: { description?: string }
 }
-export type LiteralType = { kind: 'literal'; value: any }
+export type LiteralType = { kind: 'literal'; value: any; opts?: { description?: string } }
 export type TimestampType = CustomType<Date, 'timestamp', { min?: Date; max?: Date }>
 export type DatetimeType = CustomType<Date, 'datetime', { min?: Date; max?: Date }>
 export type VoidType = CustomType<null, 'void', {}>
 export type ObjectType = {
   kind: 'object'
   type: { [K in string]: LazyType }
-  opts?: { strict?: boolean }
+  opts?: { strict?: boolean; description?: string }
 }
 export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType; opts?: { maxItems?: number } }
 export type OptionalDecorator = { kind: 'optional-decorator'; type: LazyType }
@@ -44,6 +47,7 @@ export type UnionOperator = {
       [K in string]: (value: unknown) => boolean
     }
     discriminant?: string
+    description?: string
   }
 }
 export type HideDecorator = { kind: 'hide-decorator'; type: LazyType }
@@ -73,7 +77,7 @@ export type CustomType<
   decode: (input: unknown, context: O | undefined) => DecodeResult<T>
   encode: (input: T, context: O | undefined) => JSONType
   is: (input: unknown, context: O | undefined) => boolean
-  opts?: O
+  opts?: O & { description?: string }
 }
 
 export type LazyType = Type | (() => Type)
@@ -261,8 +265,11 @@ export function number(opts?: NumberType['opts']): NumberType {
 export function string(opts?: StringType['opts']): StringType {
   return { kind: 'string', opts }
 }
-export function literal<const T extends number | string | boolean>(value: T): { kind: 'literal'; value: T } {
-  return { kind: 'literal', value }
+export function literal<const T extends number | string | boolean>(
+  value: T,
+  opts?: LiteralType['opts'],
+): { kind: 'literal'; value: T; opts?: LiteralType['opts'] } {
+  return { kind: 'literal', value, opts }
 }
 export function union<const T extends Types>(
   types: T,
@@ -291,11 +298,14 @@ export function union<const T extends Types>(
   }*/
   return { kind: 'union-operator', types, opts: opts as UnionOperator['opts'] }
 }
-export function enumerator<const V extends readonly [string, ...string[]]>(values: V): EnumeratorType<V> {
-  return { kind: 'enumerator', values }
+export function enumerator<const V extends readonly [string, ...string[]]>(
+  values: V,
+  opts?: EnumeratorType<V>['opts'],
+): EnumeratorType<V> {
+  return { kind: 'enumerator', values, opts }
 }
-export function boolean(): BooleanType {
-  return { kind: 'boolean' }
+export function boolean(opts?: BooleanType['opts']): BooleanType {
+  return { kind: 'boolean', opts }
 }
 export function object<const T extends ObjectType['type']>(
   type: T,
@@ -324,8 +334,9 @@ export function hide<const T extends LazyType>(type: T): { kind: 'hide-decorator
 
 export function custom<const T, const N extends string>(
   custom: Omit<CustomType<T, N>, 'kind' | 'type' | 'opts'>,
+  opts?: CustomType<T, N>['opts'],
 ): CustomType<T, N> {
-  return { ...custom, kind: 'custom', type: null as T }
+  return { ...custom, kind: 'custom', type: null as T, opts }
 }
 export function timestamp(opts?: TimestampType['opts']): TimestampType {
   return {

@@ -14,7 +14,7 @@ export const MODULE = module
 export const REST_API = {
   functions: {
     register: { method: 'POST', path: '/subscribe' },
-    //user: { method: 'GET' },
+    user: { method: 'GET' },
     users: { method: 'GET' },
   },
   options: { introspection: true },

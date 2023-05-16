@@ -4,17 +4,22 @@ import { Types, User } from './types'
 type SharedContext = { startingId: number; db: Map<string, any> }
 const f = m.functionBuilder<Types, SharedContext>()
 
-const user = f({
-  input: 'UserFilter',
-  output: 'UserOutput',
-  async apply({ input, context, fields, operationId }) {
-    const user = input.id ? (context.db.get(input.id) as User | null) : null
-    if (!user) {
-      return undefined
-    }
-    return user
+const user = f(
+  {
+    input: 'UserFilter',
+    output: 'UserOutput',
+    async apply({ input, context, fields, operationId }) {
+      const user = input.id ? (context.db.get(input.id) as User | null) : null
+      if (!user) {
+        return undefined
+      }
+      return user
+    },
   },
-})
+  {
+    description: 'Get a user',
+  },
+)
 const users = f({
   input: 'UserFilter',
   output: 'UserOutputs',

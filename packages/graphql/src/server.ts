@@ -15,16 +15,16 @@ export type ModuleGraphqlApi<F extends Functions> = {
   }
 }
 
-export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>({
+export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
   module,
   server,
   api,
   context,
 }: {
-  module: Module<T, F>
+  module: Module<T, F, CI>
   api: ModuleGraphqlApi<F>
   server: FastifyInstance
-  context: (args: { request: FastifyRequest; info: GraphQLResolveInfo }) => Promise<ContextType<F>>
+  context: (args: { request: FastifyRequest; info: GraphQLResolveInfo }) => Promise<CI>
 }): void {
   const yoga = createYoga<{ fastify: { request: FastifyRequest; reply: FastifyReply } }>({
     schema: buildGraphqlSchema({ module, api, context }),

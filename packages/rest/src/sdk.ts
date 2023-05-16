@@ -31,7 +31,7 @@ export function createRestSdk<
   api,
   endpoint,
 }: {
-  module: Module<T, F>
+  module: Module<T, F, any>
   api: API
   defaultHeaders?: Record<string, string>
   endpoint: string

@@ -18,7 +18,8 @@ type SdkResolver<Input, Fields, OutputType extends LazyType> = <const F extends 
 export function createLocalSdk<
   const T extends Types,
   const F extends Functions<keyof T extends string ? keyof T : never>,
->({ module, context }: { module: Module<T, F>; context: () => Promise<ContextType<F>> }): SDK<T, F> {
+  CI,
+>({ module, context }: { module: Module<T, F, CI>; context: () => Promise<ContextType<F>> }): SDK<T, F> {
   const functions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
       const wrapper = async ({ input, fields }: { input: any; fields: any }) => {

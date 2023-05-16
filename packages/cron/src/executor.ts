@@ -1,6 +1,5 @@
-import { Infer, Types, decode } from '@mondrian/model'
-import { ContextType, Functions, GenericModule, Logger, Module, buildLogger, randomOperationId } from '@mondrian/module'
-import { sleep } from '@mondrian/utils'
+import { Infer, Types } from '@mondrian/model'
+import { Functions, Logger, Module, buildLogger, randomOperationId } from '@mondrian/module'
 import { ScheduledTask } from 'node-cron'
 import { validate, schedule } from 'node-cron'
 
@@ -16,14 +15,14 @@ export type ModuleCronApi<T extends Types, F extends Functions> = {
   }
 }
 
-export function cron<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>({
+export function cron<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
   module,
   api,
   context,
 }: {
-  module: Module<T, F>
+  module: Module<T, F, CI>
   api: ModuleCronApi<T, F>
-  context: (args: {}) => Promise<ContextType<F>>
+  context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const scheduledTasks: { task: ScheduledTask; logger: () => Logger }[] = []
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
@@ -41,7 +40,8 @@ export function cron<const T extends Types, const F extends Functions<keyof T ex
         const log = buildLogger(module.name, operationId, options.cron, functionName, 'CRON', new Date())
         try {
           const input = await options.input()
-          const ctx = await context({})
+          const contextInput = await context({ cron: options.cron })
+          const ctx = await module.context(contextInput)
           await functionBody.apply({ input, fields: undefined, operationId, log, context: ctx })
         } catch (error) {
           if (error instanceof Error) {

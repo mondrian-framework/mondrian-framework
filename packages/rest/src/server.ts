@@ -1,5 +1,5 @@
 import { Types } from '@mondrian/model'
-import { ContextType, Functions, Module } from '@mondrian/module'
+import { Functions, Module } from '@mondrian/module'
 import { FastifyInstance, FastifyRequest } from 'fastify'
 import { fastifyStatic } from '@fastify/static'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
@@ -17,16 +17,16 @@ export type ModuleRestApi<F extends Functions> = {
   }
 }
 
-export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>({
+export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
   module,
   api,
   server,
   context,
 }: {
-  module: Module<T, F>
+  module: Module<T, F, CI>
   api: ModuleRestApi<F>
   server: FastifyInstance
-  context: (args: { request: FastifyRequest }) => Promise<ContextType<F>>
+  context: (args: { request: FastifyRequest }) => Promise<CI>
 }): void {
   const httpPrefix = '/api'
   if (api.options?.introspection) {

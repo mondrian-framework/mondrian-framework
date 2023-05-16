@@ -303,8 +303,9 @@ function generateQueryOrMutation({
           throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
         }
         try {
+          const contextInput = await context({ request: ctx.fastify.request, info })
           const result = await functionBody.apply({
-            context: await context({ request: ctx.fastify.request, info }),
+            context: await module.context(contextInput),
             fields: fields.value,
             input: decoded.value,
             operationId,

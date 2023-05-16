@@ -1,5 +1,14 @@
-import m from '@mondrian/module'
-import { types } from './types'
-import { functions } from './functions'
+import m, { ContextType } from '@mondrian/module'
+import { types, Types } from './types'
+import { functions, Functions } from './functions'
 
-export const module = m.module({ name: 'Jopla', types, functions })
+const db = new Map<string, any>()
+
+export const module = m.module<Types, Functions, { token?: string }>({
+  name: 'Jopla',
+  types,
+  functions,
+  async context(input: { token?: string }) {
+    return { db, startingId: 1 }
+  },
+})

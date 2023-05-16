@@ -46,7 +46,7 @@ export function functions<const F extends Functions>(functions: F): F {
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 export type ContextType<F extends Functions> = {
   [K in keyof F]: F[K] extends {
-    apply: (args: { context: infer C; input: any; fields: any; operationId: string }) => any
+    apply: (args: { context: infer C; input: any; fields: any; operationId: any; log: any }) => any
   }
     ? C
     : never
@@ -60,17 +60,19 @@ export type GenericModule = {
   name: string
   types: Types
   functions: Record<string, GenericFunction>
+  context: (input: any) => Promise<unknown>
 }
 
-export type Module<T extends Types, F extends Functions<keyof T extends string ? keyof T : string>> = {
+export type Module<T extends Types, F extends Functions<keyof T extends string ? keyof T : string>, CI> = {
   name: string
   types: T
   functions: F
+  context: (input: CI) => Promise<ContextType<F>>
 }
 
-export function module<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>(
-  module: Module<T, F>,
-): Module<T, F> {
+export function module<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>(
+  module: Module<T, F, CI>,
+): Module<T, F, CI> {
   const functions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
       const outputType = module.types[functionBody.output]

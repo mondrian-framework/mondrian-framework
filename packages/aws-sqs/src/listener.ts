@@ -13,14 +13,18 @@ export type ModuleSqsApi<F extends Functions> = {
   }
 }
 
-export function listen<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>>({
+export function listen<
+  const T extends Types,
+  const F extends Functions<keyof T extends string ? keyof T : string>,
+  CI,
+>({
   module,
   api,
   context,
 }: {
-  module: Module<T, F>
+  module: Module<T, F, CI>
   api: ModuleSqsApi<F>
-  context: (args: {}) => Promise<ContextType<F>>
+  context: (args: { message: AWS.Message }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
 
@@ -66,7 +70,7 @@ async function listenForMessage({
   client: AWS.SQS
   module: GenericModule
   functionName: string
-  context: (args: {}) => Promise<ContextType<Functions>>
+  context: (args: { message: AWS.Message }) => Promise<unknown>
   specifications: SqsFunctionSpecs
 }) {
   const functionBody = module.functions[functionName]
@@ -100,7 +104,8 @@ async function listenForMessage({
         log(`Bad message: ${JSON.stringify(decoded.errors)}`)
         continue
       }
-      const ctx = await context({})
+      const contextInput = await context({ message: m })
+      const ctx = await module.context(contextInput)
       await functionBody.apply({
         input: decoded.value,
         fields: undefined,

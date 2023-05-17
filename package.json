@@ -22,6 +22,7 @@
     "packages/rest",
     "packages/graphql",
     "packages/aws-sqs",
+    "packages/aws-lambda-sqs",
     "packages/cron",
     "packages/example"
   ],

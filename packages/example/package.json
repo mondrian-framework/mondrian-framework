@@ -15,6 +15,7 @@
     "@mondrian/rest": "*",
     "@mondrian/graphql": "*",
     "@mondrian/aws-sqs": "*",
+    "@mondrian/aws-lambda-sqs": "*",
     "@mondrian/cron": "*"
   },
   "devDependencies": {

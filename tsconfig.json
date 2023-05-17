@@ -12,37 +12,18 @@
     "incremental": true,
     "composite": true,
     "skipLibCheck": true,
-    "types": [
-      "vitest/importMeta"
-    ],
+    "types": ["vitest/importMeta"],
     "paths": {
-      "@mondrian/docs": [
-        "./packages/docs"
-      ],
-      "@mondrian/utils": [
-        "./packages/utils"
-      ],
-      "@mondrian/model": [
-        "./packages/model"
-      ],
-      "@mondrian/module": [
-        "./packages/module"
-      ],
-      "@mondrian/rest": [
-        "./packages/rest"
-      ],
-      "@mondrian/graphql": [
-        "./packages/graphql"
-      ],
-      "@mondrian/aws-sqs": [
-        "./packages/aws-sqs"
-      ],
-      "@mondrian/cron": [
-        "./packages/cron"
-      ],
-      "@mondrian/example": [
-        "./packages/example"
-      ]
+      "@mondrian/docs": ["./packages/docs"],
+      "@mondrian/utils": ["./packages/utils"],
+      "@mondrian/model": ["./packages/model"],
+      "@mondrian/module": ["./packages/module"],
+      "@mondrian/rest": ["./packages/rest"],
+      "@mondrian/graphql": ["./packages/graphql"],
+      "@mondrian/aws-sqs": ["./packages/aws-sqs"],
+      "@mondrian/aws-lambda-sqs": ["./packages/aws-lambda-sqs"],
+      "@mondrian/cron": ["./packages/cron"],
+      "@mondrian/example": ["./packages/example"]
     }
   },
   "files": [],
@@ -66,6 +47,9 @@
       "path": "packages/aws-sqs"
     },
     {
+      "path": "packages/aws-lambda-sqs"
+    },
+    {
       "path": "packages/cron"
     },
     {
@@ -75,8 +59,5 @@
       "path": "packages/example"
     }
   ],
-  "exclude": [
-    "**/node_modules",
-    "build"
-  ]
+  "exclude": ["**/node_modules", "build"]
 }

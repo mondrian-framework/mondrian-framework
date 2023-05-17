@@ -14,3 +14,4 @@ coverage
 packages/api/.env-dev
 packages/api/.env-stage
 packages/api/.env-stage-test
+**/.secrets.json

@@ -10,13 +10,15 @@
   },
   "keywords": [],
   "dependencies": {
+    "@mondrian/aws-lambda-sqs": "*",
+    "@mondrian/aws-sqs": "*",
+    "@mondrian/cron": "*",
+    "@mondrian/graphql": "*",
     "@mondrian/model": "*",
     "@mondrian/module": "*",
     "@mondrian/rest": "*",
-    "@mondrian/graphql": "*",
-    "@mondrian/aws-sqs": "*",
-    "@mondrian/aws-lambda-sqs": "*",
-    "@mondrian/cron": "*"
+    "@prisma/client": "^4.14.1",
+    "prisma": "4.14.1"
   },
   "devDependencies": {
     "dotenv": "16.0.3"

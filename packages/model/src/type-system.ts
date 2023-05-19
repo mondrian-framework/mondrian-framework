@@ -30,7 +30,7 @@ export type EnumeratorType<V extends readonly [string, ...string[]] = readonly [
 export type LiteralType = { kind: 'literal'; value: any; opts?: { description?: string } }
 export type TimestampType = CustomType<Date, 'timestamp', { min?: Date; max?: Date }>
 export type DatetimeType = CustomType<Date, 'datetime', { min?: Date; max?: Date }>
-export type VoidType = CustomType<null, 'void', {}>
+export type VoidType = CustomType<void, 'void', {}>
 export type ObjectType = {
   kind: 'object'
   type: { [K in string]: LazyType }
@@ -112,8 +112,6 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
   ? number
   : [T] extends [{ kind: 'boolean' }]
   ? boolean
-  : [T] extends [{ kind: 'null' }]
-  ? null
   : [T] extends [{ kind: 'literal'; value: infer ST }]
   ? ST
   : [T] extends [{ kind: 'custom'; type: infer C }]
@@ -173,8 +171,6 @@ type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T]
   ? number
   : [T] extends [{ kind: 'boolean' }]
   ? boolean
-  : [T] extends [{ kind: 'null' }]
-  ? null
   : [T] extends [{ kind: 'literal'; value: infer ST }]
   ? ST
   : [T] extends [{ kind: 'custom'; type: infer C }]
@@ -265,7 +261,7 @@ export function number(opts?: NumberType['opts']): NumberType {
 export function string(opts?: StringType['opts']): StringType {
   return { kind: 'string', opts }
 }
-export function literal<const T extends number | string | boolean>(
+export function literal<const T extends number | string | boolean | null>(
   value: T,
   opts?: LiteralType['opts'],
 ): { kind: 'literal'; value: T; opts?: LiteralType['opts'] } {
@@ -322,7 +318,12 @@ export function array<const T extends LazyType>(
 export function optional<const T extends LazyType>(type: T): { kind: 'optional-decorator'; type: T } {
   return { kind: 'optional-decorator', type }
 }
-export function defaul<const T extends LazyType>(
+export function nullable<const T extends LazyType>(
+  type: T,
+): { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } } {
+  return { kind: 'union-operator', types: { null: literal(null), other: type } }
+}
+export function preset<const T extends LazyType>(
   type: T,
   value: Infer<T>,
 ): { kind: 'default-decorator'; type: T; opts: { default: unknown } } {
@@ -386,7 +387,7 @@ export function nothing(opts?: VoidType['opts']): VoidType {
     kind: 'custom',
     name: 'void',
     decode: (input) => {
-      return { pass: true, value: input as null }
+      return { pass: true, value: input as void }
     },
     encode: (input) => {
       return null
@@ -395,6 +396,44 @@ export function nothing(opts?: VoidType['opts']): VoidType {
       return true
     },
     opts,
-    type: null,
+    type: null as unknown as void,
   }
+}
+
+type Selection<T extends ObjectType, P extends Partial<Record<keyof T['type'], true>>> = {
+  kind: 'object'
+  type: { [K in keyof T['type'] & keyof P]: T['type'][K] }
+  opts: ObjectType['opts']
+}
+export function select<const T extends ObjectType, const P extends Partial<Record<keyof T['type'], true>>>(
+  t: T,
+  selection: P,
+  opts?: ObjectType['opts'],
+): Selection<T, P> {
+  return {
+    kind: 'object',
+    type: Object.fromEntries(Object.entries(t.type).filter((v) => selection[v[0]])),
+    opts,
+  } as Selection<T, P>
+}
+
+type Merge<T1 extends ObjectType, T2 extends ObjectType> = {
+  kind: 'object'
+  type: { [K in Exclude<keyof T1['type'], keyof T2['type']>]: T1['type'][K] } & {
+    [K in keyof T2['type']]: T2['type'][K]
+  }
+  opts: ObjectType['opts']
+}
+export function merge<const T1 extends ObjectType, const T2 extends ObjectType>(
+  t1: T1,
+  t2: T2,
+  opts?: ObjectType['opts'],
+): Merge<T1, T2> {
+  const t1e = Object.entries(t1)
+  const t2e = Object.entries(t2)
+  return {
+    kind: 'object',
+    type: Object.fromEntries([...t1e.filter((v1) => !t2e.some((v2) => v1[0] !== v2[0])), ...t2e]),
+    opts,
+  } as Merge<T1, T2>
 }

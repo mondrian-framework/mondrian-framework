@@ -4,10 +4,14 @@ import { lazyToType } from './utils'
 import { is } from './is'
 
 export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
-  return encodeInternal(type, value as JSONType)
+  const result = encodeInternal(type, value as JSONType)
+  if (result === undefined) {
+    return null
+  }
+  return result
 }
 
-function encodeInternal(type: LazyType, value: JSONType): JSONType {
+function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
   const t = lazyToType(type)
   if (t.kind === 'boolean' || t.kind === 'enumerator' || t.kind === 'number' || t.kind === 'string') {
     return value
@@ -20,7 +24,7 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
   }
   if (t.kind === 'optional-decorator') {
     if (value === undefined) {
-      return null
+      return undefined
     }
     return encode(t.type, value)
   }
@@ -28,9 +32,10 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     return encode(t.type, value)
   }
   if (t.kind === 'array-decorator') {
-    const results = []
+    const results: JSONType = []
     for (const v of value as Array<JSONType>) {
-      results.push(encodeInternal(t.type, v))
+      const r = encodeInternal(t.type, v)
+      results.push(r === undefined ? null : r)
     }
     return results
   }
@@ -39,7 +44,10 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType {
     for (const [key, v] of Object.entries(value as object)) {
       const subtype = t.type[key]
       if (subtype) {
-        ret[key] = encode(subtype, v)
+        const r = encode(subtype, v)
+        if (r !== undefined) {
+          ret[key] = r
+        }
       }
     }
     return ret

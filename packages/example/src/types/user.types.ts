@@ -1,73 +1,53 @@
 import t from '@mondrian/model'
-import { Id } from './scalars.types'
+import { Id, JWT } from './scalars.types'
 
-export const UserProfile = t.object(
-  {
-    firstname: t.string(),
-    lastname: t.string(),
-  },
-  {
-    description: 'User profile basic info',
-  },
-)
-
-export const UserCredentials = t.object({
-  email: t.string({ format: 'email' }),
-  password: t.string({ format: 'password', minLength: 5 }),
-})
-export type UserCredentials = t.Infer<typeof UserCredentials>
-
-export const ProfessionalUser = () =>
+export const User = () =>
   t.object({
     id: Id,
-    type: t.literal('PROFESSIONAL'),
-    profile: UserProfile,
-    credentials: UserCredentials,
-    registeredAt: t.timestamp(),
+    email: t.string({ format: 'email', maxLength: 100 }),
+    name: t.nullable(t.string({ minLength: 3, maxLength: 20 })),
+    posts: t.hide(t.array(Post)),
   })
-export type ProfessionalUser = t.Infer<typeof ProfessionalUser>
-
-export const CustomerUser = () =>
-  t.object({
-    id: Id,
-    type: t.literal('CUSTOMER'),
-    profile: UserProfile,
-    credentials: UserCredentials,
-    registeredAt: t.timestamp(),
-    referrerId: Id,
-    referrer: t.hide(CustomerUser),
-  })
-export type CustomerUser = t.Infer<typeof CustomerUser>
-
-export const User = t.union(
-  { ProfessionalUser, CustomerUser },
-  {
-    is: {
-      ProfessionalUser: (value) => value.type === 'PROFESSIONAL',
-      CustomerUser: (value) => value.type === 'CUSTOMER',
-    },
-    discriminant: 'type',
-  },
-)
 export type User = t.Infer<typeof User>
 
-export const UserInput = t.union({
-  ProfessionalUser: t.object({
-    credentials: UserCredentials,
-    profile: UserProfile,
-    type: t.literal(ProfessionalUser().type.type.value),
-  }),
-  CustomerUser: t.object({
-    credentials: UserCredentials,
-    profile: UserProfile,
-    type: t.literal(CustomerUser().type.type.value),
-  }),
-})
+export const Post = () =>
+  t.object({
+    id: Id,
+    title: t.string({ minLength: 1, maxLength: 200 }),
+    content: t.nullable(t.string({ maxLength: 5000 })),
+    published: t.boolean(),
+    author: t.hide(User),
+  })
+export type Post = t.Infer<typeof Post>
 
 export const UserFilter = t.object({
   id: t.optional(Id),
 })
+export type UserFilter = t.Infer<typeof UserFilter>
 
-export const UserOutput = t.optional(User)
+export const LoginInput = t.select(User(), { email: true, password: true })
+export type LoginInput = t.Infer<typeof LoginInput>
+
+export const RegisterInput = t.merge(
+  t.select(User(), {
+    email: true,
+    name: true,
+  }),
+  t.object({ password: t.string({ minLength: 5, maxLength: 100 }) }),
+)
+export type RegisterInput = t.Infer<typeof RegisterInput>
+
+export const PostInput = t.object({
+  title: Post().type.title,
+  content: Post().type.content,
+})
+export type PostInput = t.Infer<typeof PostInput>
+
+export const RegisterOutput = t.object({ user: User, jwt: JWT })
+export type RegisterOutput = t.Infer<typeof RegisterOutput>
 
 export const UserOutputs = t.array(User)
+export type UserOutputs = t.Infer<typeof UserOutputs>
+
+export const CheckPostOutput = t.object({ passedPosts: t.array(Id), blockedPosts: t.array(Id) })
+export type CheckPostOutput = t.Infer<typeof CheckPostOutput>

@@ -8,7 +8,7 @@ function internalEncodeQueryObject(input: JSONType, prefix: string): string[] {
   if (typeof input === 'object' && input) {
     const params = []
     for (const [key, value] of Object.entries(input)) {
-      for (const v of internalEncodeQueryObject(value, '')) {
+      for (const v of internalEncodeQueryObject(value === undefined ? null : value, '')) {
         params.push(`${prefix}[${key}]${v}`)
       }
     }

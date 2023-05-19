@@ -3,11 +3,10 @@ import { Functions, Logger, Module, buildLogger, randomOperationId } from '@mond
 import { ScheduledTask } from 'node-cron'
 import { validate, schedule } from 'node-cron'
 
-export type CronFunctionSpecs<Input> = {
+export type CronFunctionSpecs<Input> = ([Input] extends [void] ? {} : { input: () => Promise<Input> }) & {
   cron: string
   runAtStart?: boolean
   timezone?: string
-  input: () => Promise<Input>
 }
 export type ModuleCronApi<T extends Types, F extends Functions> = {
   functions: {
@@ -39,7 +38,7 @@ export function start<const T extends Types, const F extends Functions<keyof T e
         const operationId = randomOperationId()
         const log = buildLogger(module.name, operationId, options.cron, functionName, 'CRON', new Date())
         try {
-          const input = await options.input()
+          const input = 'input' in options ? await options.input() : null
           const contextInput = await context({ cron: options.cron })
           const ctx = await module.context(contextInput)
           await functionBody.apply({ input, fields: undefined, operationId, log, context: ctx })

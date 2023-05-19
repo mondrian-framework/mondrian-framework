@@ -1,14 +1,14 @@
-import m, { ContextType } from '@mondrian/module'
+import m from '@mondrian/module'
 import { types, Types } from './types'
 import { functions, Functions } from './functions'
-
-const db = new Map<string, any>()
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
 
 export const module = m.module<Types, Functions, { token?: string }>({
   name: 'Jopla',
   types,
   functions,
   async context(input: { token?: string }) {
-    return { db, startingId: 1 }
+    return { prisma, startingId: 1 }
   },
 })

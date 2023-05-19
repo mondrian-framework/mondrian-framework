@@ -17,7 +17,6 @@ export const REST_API = {
       { method: 'POST', path: '/subscribe' },
       { method: 'PUT', path: '/register' },
     ],
-    user: { method: 'GET' },
     users: { method: 'GET' },
   },
   options: { introspection: true },
@@ -29,7 +28,6 @@ export const GRAPHQL_API = {
       { type: 'mutation', name: 'subscribe', inputName: 'user' },
       { type: 'mutation', name: 'register', inputName: 'user' },
     ],
-    user: { type: 'query' },
     users: { type: 'query' },
   },
   options: { introspection: true },
@@ -55,14 +53,9 @@ export const SQS_API = {
 
 export const CRON_API = {
   functions: {
-    register: {
+    checkPost: {
       cron: '* 0 * * * *',
       runAtStart: true,
-      input: async () => ({
-        type: 'PROFESSIONAL' as const,
-        credentials: { email: 'asd@gmail.com', password: 'lollol' },
-        profile: { firstname: 'Asd', lastname: 'Lol' },
-      }),
     },
   },
 } satisfies ModuleCronApi<Types, Functions>

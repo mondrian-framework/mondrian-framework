@@ -14,7 +14,7 @@
     "@mondrian/utils": "*",
     "fastify": "4.17.0",
     "@fastify/static": "6.10.1",
-    "swagger-ui-dist": "5.0.0-alpha.12",
+    "swagger-ui-dist": "5.0.0-alpha.13",
     "openapi-types": "12.1.0"
   },
   "devDependencies": {

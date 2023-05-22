@@ -1,6 +1,6 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { DecodeResult, LazyType, Types, decode, encode, isVoidType, lazyToType } from '@mondrian/model'
+import { DecodeResult, LazyType, Types, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever, isArray } from '@mondrian/utils'
 import {
   Functions,
@@ -359,10 +359,11 @@ function typeToSchemaObjectInternal(
     return { type: 'string', enum: type.values as unknown as string[], description: type.opts?.description } as const
   }
   if (type.kind === 'union-operator') {
+    const hasNull = Object.values(type.types).some((t) => isNullType(t))
     const uniontypes = Object.entries(type.types).map(([k, t]) =>
       typeToSchemaObject(`${name}_${k}`, t, types, typeMap, typeRef),
     )
-    return { anyOf: uniontypes, description: type.opts?.description }
+    return { anyOf: uniontypes, description: type.opts?.description, ...(hasNull ? { example: null } : {}) }
   }
   return assertNever(type)
 }

@@ -9,13 +9,10 @@ const users = f({
   input: 'UserFilter',
   output: 'UserOutputs',
   async apply({ input, context, fields, operationId }) {
-    const lol = await context.prisma.user.findMany({
-      select: {
-        posts: { select: { content: true } },
-      },
+    const users = await context.prisma.user.findMany({
       where: input,
     })
-    return 1 as any
+    return users
   },
 })
 const register = f({

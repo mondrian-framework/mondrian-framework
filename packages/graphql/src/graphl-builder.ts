@@ -124,28 +124,10 @@ function typeToGqlTypeInternal(
   }
   if (type.kind === 'union-operator') {
     const ts = Object.entries(type.types)
-    //If input use @oneOf https://github.com/graphql/graphql-spec/pull/825
-    if (isInput) {
-      const fields = ts.map(([unionName, fieldT]) => {
-        const fieldType = typeToGqlType(unionName, fieldT, types, typeMap, typeRef, isInput, false, scalars, unions)
-        const realType =
-          fieldType.type.charAt(fieldType.type.length - 1) === '!'
-            ? fieldType.type.substring(0, fieldType.type.length - 1)
-            : fieldType.type
-        return `${unionName}: ${realType}`
-      })
-      typeMap[`${input}${name}`] = {
-        description,
-        type: `${desc}input ${input}${name} {
-          ${fields.join('\n        ')}
-      }`,
-      }
-      return { description, type: `${input}${name}${isRequired}` }
-    }
 
     //remove the Null types
     if (ts.length >= 2 && ts.some((t) => isNullType(t[1]))) {
-      const filteredTs = ts.filter((t) => isNullType(t[1]))
+      const filteredTs = ts.filter((t) => !isNullType(t[1]))
       if (filteredTs.length === 1) {
         const e = typeToGqlType(
           filteredTs[0][0],
@@ -158,16 +140,43 @@ function typeToGqlTypeInternal(
           scalars,
           unions,
         )
-        return { description: e.description, type: `${e}${isRequired}` }
+        return { description: e.description, type: `${e.type}` }
       }
-      typeMap[name] = {
-        description,
-        type: `${desc}union ${name} = ${filteredTs
-          .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars, unions).type)
-          .join(' | ')}`,
+      if (!isInput) {
+        typeMap[name] = {
+          description,
+          type: `${desc}union ${name} = ${filteredTs
+            .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars, unions).type)
+            .join(' | ')}`,
+        }
+        return { description, type: `${name}${isRequired}` }
       }
-      return { description, type: `${name}${isRequired}` }
     }
+
+    //If input use @oneOf https://github.com/graphql/graphql-spec/pull/825
+    if (isInput) {
+      let isReq = isRequired
+      const fields = ts.flatMap(([unionName, fieldT]) => {
+        if (isNullType(fieldT)) {
+          isReq = ''
+          return []
+        }
+        const fieldType = typeToGqlType(unionName, fieldT, types, typeMap, typeRef, isInput, false, scalars, unions)
+        const realType =
+          fieldType.type.charAt(fieldType.type.length - 1) === '!'
+            ? fieldType.type.substring(0, fieldType.type.length - 1)
+            : fieldType.type
+        return [`${unionName}: ${realType}`]
+      })
+      typeMap[`${input}${name}`] = {
+        description,
+        type: `${desc}input ${input}${name} {
+          ${fields.join('\n        ')}
+      }`,
+      }
+      return { description, type: `${input}${name}${isReq}` }
+    }
+
     typeMap[name] = {
       description,
       type: `${desc}union ${name} = ${ts
@@ -297,6 +306,12 @@ function generateQueryOrMutation({
       if (!specifications) {
         return []
       }
+      if (
+        (isArray(specifications) && !specifications.some((s) => s.type === type)) ||
+        (!isArray(specifications) && specifications.type !== type)
+      ) {
+        return []
+      }
       return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {
         if (specification.type !== type) {
           return []
@@ -361,6 +376,12 @@ function generateQueryOrMutation({
     .flatMap(([functionName, functionBody]) => {
       const specifications = api.functions[functionName]
       if (!specifications) {
+        return []
+      }
+      if (
+        (isArray(specifications) && !specifications.some((s) => s.type === type)) ||
+        (!isArray(specifications) && specifications.type !== type)
+      ) {
         return []
       }
       return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {

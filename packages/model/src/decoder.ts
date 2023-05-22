@@ -1,6 +1,6 @@
 import { assertNever } from '@mondrian/utils'
 import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType } from './type-system'
-import { lazyToType } from './utils'
+import { isNullType, lazyToType } from './utils'
 
 export type DecodeResult<T> =
   | { pass: true; value: T }
@@ -98,16 +98,23 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
     return decodeInternal(t.type, value, opts)
   } else if (t.kind === 'union-operator') {
     if (opts?.castGqlInputUnion) {
+      const ts = Object.entries(t.types).filter((v) => !isNullType(v[1]))
+      const isNull = ts.length !== Object.keys(t.types).length
+      if (isNull && (value === null || (opts.cast && value === undefined))) {
+        return success(null)
+      }
+      if (ts.length === 1) {
+        return decodeInternal(ts[0][1], value, opts)
+      }
       //special graphql @oneOf
-      const typeKeys = Object.keys(t.types)
       if (typeof value === 'object' && value) {
         const keys = Object.keys(value)
         const key = keys[0]
-        if (keys.length === 1 && typeKeys.some((k) => k === key)) {
+        if (keys.length === 1 && ts.some((k) => k[0] === key)) {
           return decodeInternal(t.types[key], (value as Record<string, unknown>)[key], opts)
         }
       }
-      return error(`Expect exactly one of this property ${typeKeys.map((v) => `'${v}'`).join(', ')}`, value)
+      return error(`Expect exactly one of this property ${ts.map((v) => `'${v[0]}'`).join(', ')}`, value)
     } else {
       const errs: { path?: string; error: string; value: unknown }[] = []
       for (const u of Object.values(t.types)) {

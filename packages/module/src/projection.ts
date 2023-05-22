@@ -1,4 +1,4 @@
-import { LazyType, array, boolean, lazyToType, defaul, object, optional, union, hide } from '@mondrian/model'
+import { LazyType, array, boolean, lazyToType, preset, object, optional, union, hide } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
 
 export type GenericProjection = true | { [K in string]?: true | GenericProjection }
@@ -27,7 +27,7 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
     return optional(getProjectedType(type.type, fields))
   }
   if (type.kind === 'default-decorator') {
-    return defaul(getProjectedType(type.type, fields), type.opts)
+    return preset(getProjectedType(type.type, fields), type.opts)
   }
   if (type.kind === 'hide-decorator') {
     return hide(getProjectedType(type.type, fields))
@@ -74,7 +74,7 @@ function ignoreHides(type: LazyType): LazyType {
     return optional(ignoreHides(type.type))
   }
   if (type.kind === 'default-decorator') {
-    return defaul(ignoreHides(type.type), type.opts)
+    return preset(ignoreHides(type.type), type.opts)
   }
   if (type.kind === 'hide-decorator') {
     return hide(ignoreHides(type.type))

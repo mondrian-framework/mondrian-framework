@@ -255,7 +255,10 @@ type HasOptionalDecorator<T extends LazyType> = [T] extends [() => infer LT]
     : false
   : false
 
-export function number(opts?: NumberType['opts']): NumberType {
+export function number(opts?: NumberType['opts'] & { default?: number }): NumberType {
+  if (opts?.default) {
+    return preset({ kind: 'number', opts }, opts.default) as unknown as NumberType
+  }
   return { kind: 'number', opts }
 }
 export function string(opts?: StringType['opts']): StringType {
@@ -400,21 +403,36 @@ export function nothing(opts?: VoidType['opts']): VoidType {
   }
 }
 
-type Selection<T extends ObjectType, P extends Partial<Record<keyof T['type'], true>>> = {
-  kind: 'object'
-  type: { [K in keyof T['type'] & keyof P]: T['type'][K] }
-  opts: ObjectType['opts']
-}
-export function select<const T extends ObjectType, const P extends Partial<Record<keyof T['type'], true>>>(
-  t: T,
-  selection: P,
-  opts?: ObjectType['opts'],
-): Selection<T, P> {
-  return {
+type Selection<
+  T extends ObjectType | (() => ObjectType),
+  P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
+> = LazyToType<T> extends ObjectType
+  ? {
+      kind: 'object'
+      type: { [K in keyof LazyToType<T>['type'] & keyof P]: LazyToType<T>['type'][K] }
+      opts: ObjectType['opts']
+    }
+  : never
+type LazyToType<T extends LazyType> = [T] extends [() => infer R]
+  ? [R] extends [Type]
+    ? R
+    : never
+  : [T] extends [Type]
+  ? T
+  : never
+export function select<
+  const T extends ObjectType | (() => ObjectType),
+  const P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
+>(t: T, selection: P, opts?: ObjectType['opts']): [T] extends [ObjectType] ? Selection<T, P> : () => Selection<T, P> {
+  if (typeof t === 'function') {
+    return (() => select(t(), selection, opts)) as [T] extends [ObjectType] ? Selection<T, P> : () => Selection<T, P>
+  }
+  const result = {
     kind: 'object',
-    type: Object.fromEntries(Object.entries(t.type).filter((v) => selection[v[0]])),
+    type: Object.fromEntries(Object.entries(t.type).filter((v) => (selection as Record<string, boolean>)[v[0]])),
     opts,
-  } as Selection<T, P>
+  } as [T] extends [ObjectType] ? Selection<T, P> : () => Selection<T, P>
+  return result
 }
 
 type Merge<T1 extends ObjectType, T2 extends ObjectType> = {
@@ -424,16 +442,18 @@ type Merge<T1 extends ObjectType, T2 extends ObjectType> = {
   }
   opts: ObjectType['opts']
 }
+//TODO: accept lazy type
 export function merge<const T1 extends ObjectType, const T2 extends ObjectType>(
   t1: T1,
   t2: T2,
   opts?: ObjectType['opts'],
 ): Merge<T1, T2> {
-  const t1e = Object.entries(t1)
-  const t2e = Object.entries(t2)
-  return {
+  const t1e = Object.entries(t1.type)
+  const t2e = Object.entries(t2.type)
+  const result = {
     kind: 'object',
-    type: Object.fromEntries([...t1e.filter((v1) => !t2e.some((v2) => v1[0] !== v2[0])), ...t2e]),
+    type: Object.fromEntries([...t1e.filter((v1) => !t2e.some((v2) => v1[0] === v2[0])), ...t2e]),
     opts,
   } as Merge<T1, T2>
+  return result
 }

@@ -33,28 +33,10 @@ export const GRAPHQL_API = {
   options: { introspection: true },
 } satisfies ModuleGraphqlApi<Functions>
 
-export const SQS_API = {
-  functions: {
-    register: {
-      inputQueueUrl: process.env.REGISTER_SQS_URL ?? '',
-      malformedMessagePolicy: 'delete',
-    },
-  },
-  options: {
-    config: {
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? '',
-      },
-      region: 'eu-central-1',
-    },
-  },
-} satisfies ModuleSqsApi<Functions>
-
 export const CRON_API = {
   functions: {
     checkPost: {
-      cron: '* 0 * * * *',
+      cron: '*/5 * * * * *',
       runAtStart: true,
     },
   },

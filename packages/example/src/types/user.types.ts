@@ -37,9 +37,9 @@ export const RegisterInput = t.merge(
 )
 export type RegisterInput = t.Infer<typeof RegisterInput>
 
-export const PostInput = t.object({
-  title: Post().type.title,
-  content: Post().type.content,
+export const PostInput = t.select(Post, {
+  title: true,
+  content: true,
 })
 export type PostInput = t.Infer<typeof PostInput>
 

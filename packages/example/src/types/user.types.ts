@@ -29,7 +29,7 @@ export const LoginInput = t.select(User(), { email: true, password: true })
 export type LoginInput = t.Infer<typeof LoginInput>
 
 export const RegisterInput = t.merge(
-  t.select(User(), {
+  t.select(User, {
     email: true,
     name: true,
   }),

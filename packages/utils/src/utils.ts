@@ -1,5 +1,12 @@
 export type JSONType = string | number | boolean | null | { [K in string]: JSONTypeInternal } | JSONType[]
-export type JSONTypeInternal = string | number | boolean | null | undefined | { [K in string]: JSONTypeInternal } | JSONType[]
+export type JSONTypeInternal =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | { [K in string]: JSONTypeInternal }
+  | JSONType[]
 
 export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
 

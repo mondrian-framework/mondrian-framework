@@ -1,5 +1,6 @@
 import { Expand, JSONType } from '@mondrian/utils'
 import { DecodeResult } from './decoder'
+import { lazyToType } from './utils'
 
 export type StringType = {
   kind: 'string'
@@ -435,25 +436,50 @@ export function select<
   return result
 }
 
-type Merge<T1 extends ObjectType, T2 extends ObjectType> = {
+type Merge<T1 extends ObjectType | (() => ObjectType), T2 extends ObjectType | (() => ObjectType)> = [T1] extends [
+  ObjectType,
+]
+  ? [T2] extends [ObjectType]
+    ? MergeInternal<T1, T2>
+    : LazyToType<T2> extends ObjectType
+    ? () => MergeInternal<T1, LazyToType<T2>>
+    : never
+  : [T2] extends [ObjectType]
+  ? LazyToType<T1> extends ObjectType
+    ? () => MergeInternal<LazyToType<T1>, T2>
+    : never
+  : LazyToType<T1> extends ObjectType
+  ? LazyToType<T2> extends ObjectType
+    ? () => MergeInternal<LazyToType<T1>, LazyToType<T2>>
+    : never
+  : never
+
+type MergeInternal<T1 extends ObjectType, T2 extends ObjectType> = {
   kind: 'object'
   type: { [K in Exclude<keyof T1['type'], keyof T2['type']>]: T1['type'][K] } & {
     [K in keyof T2['type']]: T2['type'][K]
   }
   opts: ObjectType['opts']
 }
-//TODO: accept lazy type
-export function merge<const T1 extends ObjectType, const T2 extends ObjectType>(
-  t1: T1,
-  t2: T2,
-  opts?: ObjectType['opts'],
-): Merge<T1, T2> {
-  const t1e = Object.entries(t1.type)
-  const t2e = Object.entries(t2.type)
-  const result = {
-    kind: 'object',
-    type: Object.fromEntries([...t1e.filter((v1) => !t2e.some((v2) => v1[0] === v2[0])), ...t2e]),
-    opts,
-  } as Merge<T1, T2>
-  return result
+
+export function merge<
+  const T1 extends ObjectType | (() => ObjectType),
+  const T2 extends ObjectType | (() => ObjectType),
+>(t1: T1, t2: T2, opts?: ObjectType['opts']): Merge<T1, T2> {
+  function internal(t1: ObjectType, t2: ObjectType) {
+    const t1e = Object.entries(t1.type)
+    const t2e = Object.entries(t2.type)
+    const result = {
+      kind: 'object',
+      type: Object.fromEntries([...t1e.filter((v1) => !t2e.some((v2) => v1[0] === v2[0])), ...t2e]),
+      opts,
+    } as Merge<T1, T2>
+    return result
+  }
+  if (typeof t1 === 'function' || typeof t2 === 'function') {
+    return (() => {
+      return internal(typeof t1 === 'function' ? t1() : t1, typeof t2 === 'function' ? t2() : t2)
+    }) as unknown as Merge<T1, T2>
+  }
+  return internal(t1, t2)
 }

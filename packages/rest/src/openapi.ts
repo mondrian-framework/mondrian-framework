@@ -24,7 +24,7 @@ export function attachRestMethods({
   api: ModuleRestApi<Functions>
   context: (args: { request: FastifyRequest }) => Promise<unknown>
 }): void {
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -142,7 +142,7 @@ export function openapiSpecification({
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
   const components = openapiComponents({ module })
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -200,6 +200,7 @@ export function openapiSpecification({
         },
         description: functionBody.opts?.description,
         tags: [module.name],
+        security: openapiSecurityRequirements({ module, functionName }),
       }
       paths[path] = {
         summary: functionName,
@@ -216,8 +217,57 @@ export function openapiSpecification({
     },
     servers: [{ url: `http://127.0.0.1:4000/api` }], //TODO
     paths,
-    components,
+    components: { ...components, securitySchemes: openapiSecuritySchemes({ module }) },
     tags: [{ name: module.name }],
+  }
+}
+
+function openapiSecurityRequirements({
+  module,
+  functionName,
+}: {
+  module: GenericModule
+  functionName: string
+}): OpenAPIV3_1.SecurityRequirementObject[] | undefined {
+  const auth = (module.functions.options ?? {})[functionName]?.authentication
+  if (auth && auth !== 'NONE') {
+    return [{ [functionName]: [] }]
+  } else if (auth === 'NONE') {
+    return undefined
+  }
+  if (module.authentication) {
+    return [{ _: [] }]
+  }
+  return undefined
+}
+
+function openapiSecuritySchemes({
+  module,
+}: {
+  module: GenericModule
+}): Record<string, OpenAPIV3_1.SecuritySchemeObject> | undefined {
+  const defaultSchema: OpenAPIV3_1.SecuritySchemeObject | undefined = module.authentication
+    ? { type: 'http', scheme: module.authentication.type, bearerFormat: module.authentication.format }
+    : undefined
+  const schemas = Object.fromEntries(
+    Object.entries(module.functions.options ?? {}).flatMap(([k, v]) => {
+      if (!v?.authentication || v.authentication === 'NONE') {
+        return []
+      }
+      const schema: OpenAPIV3_1.SecuritySchemeObject = {
+        type: 'http',
+        scheme: v.authentication.type,
+        bearerFormat: v.authentication.format,
+      }
+      return [[k, schema]]
+    }),
+  )
+  if (Object.keys(schemas).length === 0 && !defaultSchema) {
+    return undefined
+  }
+  return {
+    ...schemas,
+    ...(defaultSchema ? { _: defaultSchema } : {}),
   }
 }
 
@@ -294,14 +344,14 @@ function typeToSchemaObjectInternal(
     return { type: 'boolean' }
   }
   if (type.kind === 'number') {
-    //TODO: integer
     return {
-      type: 'number',
+      type: type.opts?.multipleOf != null && type.opts.multipleOf % 1 === 0 ? 'integer' : 'number',
       maximum: type.opts?.maximum,
       minimum: type.opts?.minimum,
       exclusiveMaximum: type.opts?.exclusiveMaximum,
       exclusiveMinimum: type.opts?.exclusiveMinimum,
       description: type.opts?.description,
+      multipleOf: type.opts?.multipleOf === 1 ? undefined : type.opts?.multipleOf,
     }
   }
   if (type.kind === 'literal') {

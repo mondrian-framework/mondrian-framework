@@ -30,7 +30,7 @@ export function listen<
 
   const promises: Promise<void>[] = []
   const alive: { yes: boolean } = { yes: true }
-  for (const functionName of Object.keys(module.functions)) {
+  for (const functionName of Object.keys(module.functions.definitions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -73,7 +73,7 @@ async function listenForMessage({
   context: (args: { message: AWS.Message }) => Promise<unknown>
   specifications: SqsFunctionSpecs
 }) {
-  const functionBody = module.functions[functionName]
+  const functionBody = module.functions.definitions[functionName]
   const inputType = module.types[functionBody.input]
   const listenerLog = buildLogger(module.name, null, queueUrl, functionName, 'SQS', new Date())
   listenerLog('Started.')

@@ -4,6 +4,7 @@ import rest from '@mondrian/rest'
 import graphql from '@mondrian/graphql'
 import cron from '@mondrian/cron'
 import { CRON_API, GRAPHQL_API, REST_API } from './api'
+import jwt from 'jsonwebtoken'
 
 async function main() {
   const server = fastify()
@@ -12,7 +13,11 @@ async function main() {
     server,
     module,
     api: REST_API,
-    context: async ({ request }) => ({ token: request.headers.authorization }),
+    context: async ({ request }) => {
+      const jwtData =
+        (request.headers.authorization ? jwt.verify(request.headers.authorization, 'shhhhh') : undefined) ?? undefined
+      return { token: request.headers.authorization, jwt: jwtData }
+    },
   })
   graphql.serve({
     server,

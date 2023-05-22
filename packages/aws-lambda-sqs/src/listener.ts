@@ -55,7 +55,7 @@ export function handler<
         eventLog(`Message ${i} ignored! source: ${url}`, 'warn')
         continue
       }
-      const functionBody = module.functions[functionName]
+      const functionBody = module.functions.definitions[functionName]
       const inputType = module.types[functionBody.input]
       spec = specification
       const operationId = randomOperationId()

@@ -232,7 +232,7 @@ function typeToGqlTypeInternal(
 function generateInputs({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, CustomType> }) {
   const typeMap: Record<string, { description?: string; type: string }> = {}
   const typeRef: Map<Function, string> = new Map()
-  const usedTypes = new Set([...Object.values(module.functions).map((q) => q.input)])
+  const usedTypes = new Set([...Object.values(module.functions.definitions).map((q) => q.input)])
   for (const [name, type] of Object.entries(module.types).filter(
     ([name, type]) => usedTypes.has(name) && !isVoidType(type),
   )) {
@@ -250,7 +250,7 @@ function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsM
   const typeMap: Record<string, { description?: string; type: string }> = {}
   const typeRef: Map<Function, string> = new Map()
   const unions: Record<string, (v: unknown) => boolean> = {}
-  const usedTypes = new Set([...Object.values(module.functions).map((q) => q.output)])
+  const usedTypes = new Set([...Object.values(module.functions.definitions).map((q) => q.output)])
   for (const [name, type] of Object.entries(module.types).filter(
     ([name, type]) => usedTypes.has(name) && !isVoidType(type),
   )) {
@@ -301,7 +301,7 @@ function generateQueryOrMutation({
   context: (args: { request: FastifyRequest; info: GraphQLResolveInfo }) => Promise<ContextType<Functions>>
 }) {
   const resolvers = Object.fromEntries(
-    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
+    Object.entries(module.functions.definitions).flatMap(([functionName, functionBody]) => {
       const specifications = api.functions[functionName]
       if (!specifications) {
         return []
@@ -372,7 +372,7 @@ function generateQueryOrMutation({
       })
     }),
   )
-  const defs = Object.entries(module.functions)
+  const defs = Object.entries(module.functions.definitions)
     .flatMap(([functionName, functionBody]) => {
       const specifications = api.functions[functionName]
       if (!specifications) {

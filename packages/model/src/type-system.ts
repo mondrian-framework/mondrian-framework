@@ -20,6 +20,7 @@ export type NumberType = {
     minimum?: number
     maximum?: number
     description?: string
+    multipleOf?: number
   }
 }
 export type BooleanType = { kind: 'boolean'; opts?: { description?: string } }
@@ -256,12 +257,19 @@ type HasOptionalDecorator<T extends LazyType> = [T] extends [() => infer LT]
     : false
   : false
 
-export function number(opts?: NumberType['opts'] & { default?: number }): NumberType {
-  if (opts?.default) {
-    return preset({ kind: 'number', opts }, opts.default) as unknown as NumberType
+export function number(opts?: NumberType['opts']): NumberType {
+  if (opts?.multipleOf && opts.multipleOf <= 0) {
+    throw new Error('Invalid multipleOf for integer (must be > 0)')
   }
   return { kind: 'number', opts }
 }
+export function integer(opts?: NumberType['opts']): NumberType {
+  if (opts?.multipleOf && opts.multipleOf % 1 !== 0) {
+    throw new Error('Invalid multipleOf for integer (must be integer)')
+  }
+  return number({ multipleOf: 1, ...opts })
+}
+
 export function string(opts?: StringType['opts']): StringType {
   return { kind: 'string', opts }
 }

@@ -21,7 +21,7 @@ export function createLocalSdk<
   CI,
 >({ module, context }: { module: Module<T, F, CI>; context: () => Promise<ContextType<F>> }): SDK<T, F> {
   const functions = Object.fromEntries(
-    Object.entries(module.functions).map(([functionName, functionBody]) => {
+    Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
       const wrapper = async ({ input, fields }: { input: any; fields: any }) => {
         const operationId = randomOperationId()
         const log = buildLogger(module.name, operationId, null, functionName, 'LOCAL', new Date())

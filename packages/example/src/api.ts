@@ -18,6 +18,7 @@ export const REST_API = {
       { method: 'PUT', path: '/register' },
     ],
     users: { method: 'GET' },
+    login: { method: 'PUT', path: '/login' },
   },
   options: { introspection: true },
 } as const satisfies ModuleRestApi<Functions>

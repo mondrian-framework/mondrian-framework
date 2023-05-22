@@ -344,6 +344,9 @@ function checkNumberOptions(value: number, opts: NumberType['opts']): DecodeResu
   if (opts?.exclusiveMaximum != null && value >= opts.exclusiveMaximum) {
     return error(`Number must be less than ${opts.exclusiveMaximum}`, value)
   }
+  if (opts?.multipleOf != null && value % opts.multipleOf !== 0) {
+    return error(`Number must be mutiple of ${opts.multipleOf}`, value)
+  }
   return success(value)
 }
 

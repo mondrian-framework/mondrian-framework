@@ -4,7 +4,7 @@ import { Id, JWT } from './scalars.types'
 export const User = () =>
   t.object({
     id: Id,
-    email: t.string({ format: 'email', maxLength: 100 }),
+    email: t.string({ format: 'email' }),
     name: t.nullable(t.string({ minLength: 3, maxLength: 20 })),
     posts: t.hide(t.array(Post)),
   })
@@ -25,7 +25,10 @@ export const UserFilter = t.object({
 })
 export type UserFilter = t.Infer<typeof UserFilter>
 
-export const LoginInput = t.select(User(), { email: true, password: true })
+export const LoginInput = t.object({
+  email: t.string({ format: 'email' }),
+  password: t.string({ minLength: 1, maxLength: 100 }),
+})
 export type LoginInput = t.Infer<typeof LoginInput>
 
 export const RegisterInput = t.merge(
@@ -45,6 +48,9 @@ export type PostInput = t.Infer<typeof PostInput>
 
 export const RegisterOutput = t.object({ user: User, jwt: JWT })
 export type RegisterOutput = t.Infer<typeof RegisterOutput>
+
+export const LoginOutput = t.nullable(t.object({ user: User, jwt: JWT }))
+export type LoginOutput = t.Infer<typeof LoginOutput>
 
 export const UserOutputs = t.array(User)
 export type UserOutputs = t.Infer<typeof UserOutputs>

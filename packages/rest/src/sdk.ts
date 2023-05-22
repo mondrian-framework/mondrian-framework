@@ -37,7 +37,7 @@ export function createRestSdk<
   endpoint: string
 }): SDK<T, F, API> {
   const functions = Object.fromEntries(
-    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
+    Object.entries(module.functions.definitions).flatMap(([functionName, functionBody]) => {
       const specs = api.functions[functionName]
       const specification = Array.isArray(specs) ? specs[0] : specs
       if (!specification) {

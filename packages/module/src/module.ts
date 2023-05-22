@@ -59,17 +59,26 @@ export type ContextType<F extends Functions> = {
     : never
   : never
 
+export type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 export type GenericModule = {
   name: string
   types: Types
-  functions: Record<string, GenericFunction>
+  functions: {
+    definitions: Record<string, GenericFunction>
+    options?: Partial<Record<string, { authentication?: AuthenticationMethod | 'NONE' }>>
+  }
+  authentication?: AuthenticationMethod
   context: (input: any) => Promise<unknown>
 }
 
 export type Module<T extends Types, F extends Functions<keyof T extends string ? keyof T : string>, CI> = {
   name: string
   types: T
-  functions: F
+  functions: {
+    definitions: F
+    options?: { [K in keyof F]?: { authentication?: AuthenticationMethod | 'NONE' } }
+  }
+  authentication?: AuthenticationMethod
   context: (input: CI) => Promise<ContextType<F>>
 }
 
@@ -77,7 +86,7 @@ export function module<const T extends Types, const F extends Functions<keyof T 
   module: Module<T, F, CI>,
 ): Module<T, F, CI> {
   const functions = Object.fromEntries(
-    Object.entries(module.functions).map(([functionName, functionBody]) => {
+    Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
       const outputType = module.types[functionBody.output]
       const f: GenericFunction = {
         ...functionBody,
@@ -95,5 +104,5 @@ export function module<const T extends Types, const F extends Functions<keyof T 
       return [functionName, f]
     }),
   )
-  return { ...module, functions: functions as F }
+  return { ...module, functions: { definitions: functions as F, options: module.functions.options } }
 }

@@ -7,7 +7,16 @@ const prisma = new PrismaClient()
 export const module = m.module<Types, Functions, { token?: string }>({
   name: 'Jopla',
   types,
-  functions,
+  functions: {
+    definitions: functions,
+    options: {
+      login: { authentication: 'NONE' },
+      users: {
+        authentication: { format: 'jwt', type: 'bearer' },
+      },
+    },
+  },
+  authentication: { type: 'bearer', format: 'jwt' },
   async context(input: { token?: string }) {
     return { prisma, startingId: 1 }
   },

@@ -1,7 +1,7 @@
 import t from '@mondrian/model'
 
-export const Id = t.number({ minimum: 0 }) //TODO: Integer
+export const Id = t.integer({ minimum: 0 })
 export type Id = t.Infer<typeof Id>
 
-export const JWT = t.string({ regex: new RegExp('.*') })
+export const JWT = t.string({ regex: /^(?:[\w-]*\.){2}[\w-]*$/ })
 export type JWT = t.Infer<typeof JWT>

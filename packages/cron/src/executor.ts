@@ -24,7 +24,7 @@ export function start<const T extends Types, const F extends Functions<keyof T e
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const scheduledTasks: { task: ScheduledTask; logger: () => Logger }[] = []
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const options = api.functions[functionName]
     if (!options) {
       continue

@@ -374,7 +374,7 @@ function typeToSchemaObjectInternal(
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { allOf: [subtype, { type: 'null', description: 'optional' }] }
   }
-  if (type.kind === 'hide-decorator') {
+  if (type.kind === 'relation-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { allOf: [subtype, { type: 'null', description: 'optional' }] }
   }

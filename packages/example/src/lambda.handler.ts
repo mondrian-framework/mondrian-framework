@@ -5,6 +5,6 @@ export default handler({
   module,
   api: { functions: { register: { anyQueue: true } } },
   context: async ({}) => {
-    return { token: undefined }
+    return { jwt: undefined }
   },
 })

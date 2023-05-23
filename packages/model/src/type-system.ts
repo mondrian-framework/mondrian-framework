@@ -1,6 +1,5 @@
 import { Expand, JSONType } from '@mondrian/utils'
 import { DecodeResult } from './decoder'
-import { lazyToType } from './utils'
 
 export type StringType = {
   kind: 'string'
@@ -12,6 +11,7 @@ export type StringType = {
     description?: string
   }
 }
+
 export type NumberType = {
   kind: 'number'
   opts?: {
@@ -52,7 +52,7 @@ export type UnionOperator = {
     description?: string
   }
 }
-export type HideDecorator = { kind: 'hide-decorator'; type: LazyType }
+export type RelationDecorator = { kind: 'relation-decorator'; type: LazyType }
 
 export type Type =
   | NumberType
@@ -65,7 +65,7 @@ export type Type =
   | ArrayDecorator
   | OptionalDecorator
   | DefaultDecorator
-  | HideDecorator
+  | RelationDecorator
   | UnionOperator
 
 export type CustomType<
@@ -104,7 +104,7 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
   ? ST extends LazyType
     ? Project<F, ST>
     : never
-  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
+  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? Project<F, ST>
     : never
@@ -161,7 +161,7 @@ type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T]
   ? ST extends LazyType
     ? InferType<ST, Partial, Shader>
     : never
-  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
+  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? Shader extends true
       ? undefined
@@ -216,7 +216,7 @@ type InferProjectionInternal<T> = [T] extends [{ kind: 'array-decorator'; type: 
   ? ST extends LazyType
     ? InferProjection<ST>
     : never
-  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
+  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? InferProjection<ST>
     : never
@@ -251,33 +251,87 @@ type HasOptionalDecorator<T extends LazyType> = [T] extends [() => infer LT]
   ? ST extends LazyType
     ? HasOptionalDecorator<ST>
     : false
-  : [T] extends [{ kind: 'hide-decorator'; type: infer ST }]
+  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? HasOptionalDecorator<ST>
     : false
   : false
 
-export function number(opts?: NumberType['opts']): NumberType {
+export type DecoratorShorcuts<
+  T extends LazyType,
+  O extends 'optional' | 'nullable' | 'array' | 'relation' | 'default' = never,
+> = Omit<
+  {
+    optional: () => { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<
+      { kind: 'optional-decorator'; type: T },
+      O | 'optional'
+    >
+    default: (
+      value: [T] extends [LazyType] ? Infer<T> : never,
+    ) => { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] } & DecoratorShorcuts<
+      { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] },
+      O | 'default'
+    >
+    nullable: () => {
+      kind: 'union-operator'
+      types: { null: { kind: 'literal'; value: null }; other: T }
+    } & DecoratorShorcuts<
+      { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } },
+      O | 'nullable'
+    >
+    relation: () => { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<
+      { kind: 'relation-decorator'; type: T },
+      O | 'relation'
+    >
+    array: (
+      opts?: ArrayDecorator['opts'],
+    ) => { kind: 'array-decorator'; type: T } & DecoratorShorcuts<
+      { kind: 'array-decorator'; type: T },
+      Exclude<O, 'optional' | 'nullable'>
+    >
+  },
+  O
+>
+
+function decoratorShorcut<T extends LazyType>(t: T): DecoratorShorcuts<T> {
+  //@ts-ignore
+  return {
+    array: (opts) => array(t, opts),
+    optional: () => optional(t),
+    nullable: () => nullable(t),
+    relation: () => relation(t),
+    default: (value) => preset(t, value),
+  }
+}
+
+export function number(opts?: NumberType['opts']): NumberType & DecoratorShorcuts<NumberType> {
   if (opts?.multipleOf && opts.multipleOf <= 0) {
     throw new Error('Invalid multipleOf for integer (must be > 0)')
   }
-  return { kind: 'number', opts }
+  const t = { kind: 'number', opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
-export function integer(opts?: NumberType['opts']): NumberType {
+export function integer(opts?: NumberType['opts']): NumberType & DecoratorShorcuts<NumberType> {
   if (opts?.multipleOf && opts.multipleOf % 1 !== 0) {
     throw new Error('Invalid multipleOf for integer (must be integer)')
   }
   return number({ multipleOf: 1, ...opts })
 }
 
-export function string(opts?: StringType['opts']): StringType {
-  return { kind: 'string', opts }
+export function string(opts?: StringType['opts']): StringType & DecoratorShorcuts<StringType> {
+  const t = { kind: 'string', opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
 export function literal<const T extends number | string | boolean | null>(
   value: T,
   opts?: LiteralType['opts'],
-): { kind: 'literal'; value: T; opts?: LiteralType['opts'] } {
-  return { kind: 'literal', value, opts }
+): { kind: 'literal'; value: T; opts?: LiteralType['opts'] } & DecoratorShorcuts<{
+  kind: 'literal'
+  value: T
+  opts?: LiteralType['opts']
+}> {
+  const t = { kind: 'literal', value, opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
 export function union<const T extends Types>(
   types: T,
@@ -287,72 +341,90 @@ export function union<const T extends Types>(
     }
     discriminant?: keyof Infer<{ kind: 'union-operator'; types: T }>
   },
-): { kind: 'union-operator'; types: T; opts: UnionOperator['opts'] } {
-  /*function flattened() {
-    const entries: [string, LazyType][] = Object.entries(types).flatMap(([k, type]) => {
-      const t = lazyToType(type)
-      if (t.kind === 'union-operator') {
-        return Object.entries(t.types)
-      }
-      return [[k, type]]
-    })
-    return entries
-  }
-  if (Object.values(types).some((t) => typeof t === 'function')) {
-    //If it has
-    return (() => ({ kind: 'union-operator', types: Object.fromEntries(flattened()) as T })) as any
-  } else {
-    return { kind: 'union-operator', types: Object.fromEntries(flattened()) as T }
-  }*/
-  return { kind: 'union-operator', types, opts: opts as UnionOperator['opts'] }
+): { kind: 'union-operator'; types: T; opts: UnionOperator['opts'] } & DecoratorShorcuts<{
+  kind: 'union-operator'
+  types: T
+  opts: UnionOperator['opts']
+}> {
+  const t = { kind: 'union-operator', types, opts: opts as UnionOperator['opts'] } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
 export function enumerator<const V extends readonly [string, ...string[]]>(
   values: V,
   opts?: EnumeratorType<V>['opts'],
-): EnumeratorType<V> {
-  return { kind: 'enumerator', values, opts }
+): EnumeratorType<V> & DecoratorShorcuts<EnumeratorType<V>> {
+  const t = { kind: 'enumerator', values, opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
-export function boolean(opts?: BooleanType['opts']): BooleanType {
-  return { kind: 'boolean', opts }
+export function boolean(opts?: BooleanType['opts']): BooleanType & DecoratorShorcuts<BooleanType> {
+  const t = { kind: 'boolean', opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
 export function object<const T extends ObjectType['type']>(
   type: T,
   opts?: ObjectType['opts'],
-): Omit<ObjectType, 'type'> & { type: T } {
-  return { kind: 'object', type, opts }
+): { kind: 'object'; type: T; opts?: ObjectType['opts'] } & DecoratorShorcuts<{
+  kind: 'object'
+  type: T
+  opts?: ObjectType['opts']
+}> {
+  const t = { kind: 'object', type, opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
+
 export function array<const T extends LazyType>(
   type: T,
   opts?: ArrayDecorator['opts'],
-): { kind: 'array-decorator'; type: T; opts: ArrayDecorator['opts'] } {
-  return { kind: 'array-decorator', type, opts }
+): { kind: 'array-decorator'; type: T; opts: ArrayDecorator['opts'] } & DecoratorShorcuts<{
+  kind: 'array-decorator'
+  type: T
+  opts: ArrayDecorator['opts']
+}> {
+  const t = { kind: 'array-decorator', type, opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
-export function optional<const T extends LazyType>(type: T): { kind: 'optional-decorator'; type: T } {
-  return { kind: 'optional-decorator', type }
+export function optional<const T extends LazyType>(
+  type: T,
+): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<{ kind: 'optional-decorator'; type: T }> {
+  const t = { kind: 'optional-decorator', type } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
 export function nullable<const T extends LazyType>(
   type: T,
-): { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } } {
-  return { kind: 'union-operator', types: { null: literal(null), other: type } }
+): { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } } & DecoratorShorcuts<{
+  kind: 'union-operator'
+  types: { null: { kind: 'literal'; value: null }; other: T }
+}> {
+  const t = { kind: 'union-operator', types: { null: literal(null), other: type } } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
 export function preset<const T extends LazyType>(
   type: T,
   value: Infer<T>,
-): { kind: 'default-decorator'; type: T; opts: { default: unknown } } {
-  return { kind: 'default-decorator', type, opts: { default: value } }
+): { kind: 'default-decorator'; type: T; opts: { default: unknown } } & DecoratorShorcuts<{
+  kind: 'default-decorator'
+  type: T
+  opts: { default: unknown }
+}> {
+  const t = { kind: 'default-decorator', type, opts: { default: value } } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
-export function hide<const T extends LazyType>(type: T): { kind: 'hide-decorator'; type: T } {
-  return { kind: 'hide-decorator', type }
+export function relation<const T extends LazyType>(
+  type: T,
+): { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<{ kind: 'relation-decorator'; type: T }> {
+  const t = { kind: 'relation-decorator', type } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
 
 export function custom<const T, const N extends string>(
   custom: Omit<CustomType<T, N>, 'kind' | 'type' | 'opts'>,
   opts?: CustomType<T, N>['opts'],
-): CustomType<T, N> {
-  return { ...custom, kind: 'custom', type: null as T, opts }
+): CustomType<T, N> & DecoratorShorcuts<CustomType<T, N>> {
+  const t = { ...custom, kind: 'custom', type: null as T, opts } as const
+  return { ...t, ...decoratorShorcut(t) }
 }
-export function timestamp(opts?: TimestampType['opts']): TimestampType {
-  return {
+export function timestamp(opts?: TimestampType['opts']): TimestampType & DecoratorShorcuts<TimestampType> {
+  const t: TimestampType = {
     kind: 'custom',
     name: 'timestamp',
     decode: (input) => {
@@ -370,10 +442,11 @@ export function timestamp(opts?: TimestampType['opts']): TimestampType {
     opts,
     type: null as unknown as Date,
   }
+  return { ...t, ...decoratorShorcut(t) }
 }
 
-export function datetime(opts?: DatetimeType['opts']): DatetimeType {
-  return {
+export function datetime(opts?: DatetimeType['opts']): DatetimeType & DecoratorShorcuts<DatetimeType> {
+  const t: DatetimeType = {
     kind: 'custom',
     name: 'datetime',
     decode: (input) => {
@@ -392,6 +465,7 @@ export function datetime(opts?: DatetimeType['opts']): DatetimeType {
     opts,
     type: null as unknown as Date,
   }
+  return { ...t, ...decoratorShorcut(t) }
 }
 
 export function nothing(opts?: VoidType['opts']): VoidType {

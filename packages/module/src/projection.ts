@@ -1,11 +1,11 @@
-import { LazyType, array, boolean, lazyToType, preset, object, optional, union, hide } from '@mondrian/model'
+import { LazyType, array, boolean, lazyToType, preset, object, optional, union, relation } from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
 
 export type GenericProjection = true | { [K in string]?: true | GenericProjection }
 
 export function getProjectedType(type: LazyType, fields: GenericProjection | undefined): LazyType {
   if (fields === undefined || fields === true) {
-    return ignoreHides(type)
+    return ignoreRelations(type)
   }
   if (typeof type === 'function') {
     return () => lazyToType(getProjectedType(lazyToType(type), fields))
@@ -29,8 +29,8 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
   if (type.kind === 'default-decorator') {
     return preset(getProjectedType(type.type, fields), type.opts)
   }
-  if (type.kind === 'hide-decorator') {
-    return hide(getProjectedType(type.type, fields))
+  if (type.kind === 'relation-decorator') {
+    return relation(getProjectedType(type.type, fields))
   }
   if (type.kind === 'union-operator') {
     return union(
@@ -53,9 +53,9 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
   assertNever(type)
 }
 
-function ignoreHides(type: LazyType): LazyType {
+function ignoreRelations(type: LazyType): LazyType {
   if (typeof type === 'function') {
-    return () => lazyToType(ignoreHides(lazyToType(type)))
+    return () => lazyToType(ignoreRelations(lazyToType(type)))
   }
   if (
     type.kind === 'boolean' ||
@@ -68,19 +68,19 @@ function ignoreHides(type: LazyType): LazyType {
     return type
   }
   if (type.kind === 'array-decorator') {
-    return array(ignoreHides(type.type))
+    return array(ignoreRelations(type.type))
   }
   if (type.kind === 'optional-decorator') {
-    return optional(ignoreHides(type.type))
+    return optional(ignoreRelations(type.type))
   }
   if (type.kind === 'default-decorator') {
-    return preset(ignoreHides(type.type), type.opts)
+    return preset(ignoreRelations(type.type), type.opts)
   }
-  if (type.kind === 'hide-decorator') {
-    return hide(ignoreHides(type.type))
+  if (type.kind === 'relation-decorator') {
+    return relation(ignoreRelations(type.type))
   }
   if (type.kind === 'union-operator') {
-    return union(Object.fromEntries(Object.entries(type.types).map(([k, t]) => [k, ignoreHides(t)])))
+    return union(Object.fromEntries(Object.entries(type.types).map(([k, t]) => [k, ignoreRelations(t)])))
   }
   if (type.kind === 'object') {
     return object(
@@ -91,14 +91,14 @@ function ignoreHides(type: LazyType): LazyType {
               k,
               () => {
                 const t = lazyToType(lt)
-                if (t.kind === 'hide-decorator') {
+                if (t.kind === 'relation-decorator') {
                   return optional(t)
                 }
                 return t
               },
             ]
           }
-          if (lt.kind === 'hide-decorator') {
+          if (lt.kind === 'relation-decorator') {
             return [k, optional(lt)]
           }
           return [k, lt]
@@ -146,7 +146,7 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
     type.kind === 'array-decorator' ||
     type.kind === 'optional-decorator' ||
     type.kind === 'default-decorator' ||
-    type.kind === 'hide-decorator'
+    type.kind === 'relation-decorator'
   ) {
     return getProjectionType(type.type, discriminantKey)
   }

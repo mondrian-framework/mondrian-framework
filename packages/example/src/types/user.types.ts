@@ -1,12 +1,15 @@
 import t from '@mondrian/model'
 import { Id, JWT } from './scalars.types'
 
+const Asd = t.union({ a: t.number(), b: t.string() }).array().array().nullable().array()
+type Asd = t.Infer<typeof Asd>
+
 export const User = () =>
   t.object({
     id: Id,
     email: t.string({ format: 'email' }),
-    name: t.nullable(t.string({ minLength: 3, maxLength: 20 })),
-    posts: t.hide(t.array(Post)),
+    name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
+    posts: t.relation(t.array(User)),
   })
 export type User = t.Infer<typeof User>
 
@@ -14,14 +17,14 @@ export const Post = () =>
   t.object({
     id: Id,
     title: t.string({ minLength: 1, maxLength: 200 }),
-    content: t.nullable(t.string({ maxLength: 5000 })),
+    content: t.string({ maxLength: 5000 }).nullable(),
     published: t.boolean(),
-    author: t.hide(User),
+    author: t.relation(User),
   })
 export type Post = t.Infer<typeof Post>
 
 export const UserFilter = t.object({
-  id: t.optional(Id),
+  id: Id.optional(),
 })
 export type UserFilter = t.Infer<typeof UserFilter>
 

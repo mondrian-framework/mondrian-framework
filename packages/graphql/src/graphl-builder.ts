@@ -86,7 +86,7 @@ function typeToGqlTypeInternal(
   if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, true, scalars, unions)
   }
-  if (type.kind === 'hide-decorator') {
+  if (type.kind === 'relation-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, isOptional, scalars, unions)
   }
   if (type.kind === 'object') {

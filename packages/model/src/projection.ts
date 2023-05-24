@@ -1,16 +1,6 @@
-import {
-  LazyType,
-  array,
-  boolean,
-  lazyToType,
-  preset,
-  object,
-  optional,
-  union,
-  relation,
-  nullable,
-} from '@mondrian/model'
+import { LazyType, array, boolean, object, optional, union, nullable } from './type-system'
 import { assertNever } from '@mondrian/utils'
+import { lazyToType } from './utils'
 
 export type GenericProjection = true | { [K in string]?: true | GenericProjection }
 
@@ -94,7 +84,7 @@ function ignoreRelations(type: LazyType): LazyType {
     return ignoreRelations(type.type)
   }
   if (type.kind === 'relation-decorator') {
-    return ignoreRelations(type.type)
+    return optional(ignoreRelations(type.type))
   }
   if (type.kind === 'union-operator') {
     return union(Object.fromEntries(Object.entries(type.types).map(([k, t]) => [k, ignoreRelations(t)])))
@@ -103,22 +93,7 @@ function ignoreRelations(type: LazyType): LazyType {
     return object(
       Object.fromEntries(
         Object.entries(type.type).map(([k, lt]) => {
-          if (typeof lt === 'function') {
-            return [
-              k,
-              () => {
-                const t = lazyToType(lt)
-                if (t.kind === 'relation-decorator') {
-                  return optional(t)
-                }
-                return t
-              },
-            ]
-          }
-          if (lt.kind === 'relation-decorator') {
-            return [k, optional(lt)]
-          }
-          return [k, lt]
+          return [k, ignoreRelations(lt)]
         }),
       ),
       type.opts,
@@ -178,4 +153,23 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
     return union({ all: boolean(), object: object(Object.fromEntries(subProjection), { strict: true }) })
   }
   assertNever(type)
+}
+
+type FieldsKeys<T extends GenericProjection | undefined> = T extends Record<string, GenericProjection> ? keyof T : never
+type SubFieldsSelection<T extends GenericProjection | undefined, K extends FieldsKeys<T>> = T extends undefined
+  ? undefined
+  : T extends true
+  ? true
+  : T extends Record<string, GenericProjection>
+  ? T[K]
+  : never
+
+export function subFields<const T extends GenericProjection | undefined, const K extends FieldsKeys<T>>(
+  fields: T,
+  v: K,
+): SubFieldsSelection<T, K> {
+  if (fields === undefined || fields === true) {
+    return fields as any
+  }
+  return (fields as any)[v]
 }

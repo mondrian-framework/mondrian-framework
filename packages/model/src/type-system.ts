@@ -1,5 +1,6 @@
 import { Expand, JSONType } from '@mondrian/utils'
 import { DecodeResult } from './decoder'
+import { lazyToType } from './utils'
 
 export type StringType = {
   kind: 'string'
@@ -277,7 +278,7 @@ type HasOptionalDecorator<T extends LazyType> = [T] extends [() => infer LT]
 
 export type DecoratorShorcuts<
   T extends LazyType,
-  O extends 'optional' | 'nullable' | 'array' | 'relation' | 'default' = never,
+  O extends 'optional' | 'nullable' | 'array' | 'default' = never,
 > = Omit<
   {
     optional(): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<
@@ -293,10 +294,6 @@ export type DecoratorShorcuts<
     nullable(): { kind: 'nullable-decorator'; type: T } & DecoratorShorcuts<
       { kind: 'nullable-decorator'; type: T },
       O | 'nullable'
-    >
-    relation(): { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<
-      { kind: 'relation-decorator'; type: T },
-      O | 'relation'
     >
     array(
       opts?: ArrayDecorator['opts'],
@@ -314,7 +311,6 @@ function decoratorShorcut<T extends LazyType>(t: T): DecoratorShorcuts<T> {
     array: (opts) => array(t, opts),
     optional: () => optional(t),
     nullable: () => nullable(t),
-    relation: () => relation(t),
     default: (value) => preset(t, value),
   }
 }
@@ -410,6 +406,7 @@ export function nullable<const T extends LazyType>(
   const t = { kind: 'nullable-decorator', type } as const
   return { ...t, ...decoratorShorcut(t) }
 }
+
 export function preset<const T extends LazyType>(
   type: T,
   value: Infer<T>,
@@ -421,11 +418,8 @@ export function preset<const T extends LazyType>(
   const t = { kind: 'default-decorator', type, opts: { default: value } } as const
   return { ...t, ...decoratorShorcut(t) }
 }
-export function relation<const T extends LazyType>(
-  type: T,
-): { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<{ kind: 'relation-decorator'; type: T }, 'relation'> {
-  const t = { kind: 'relation-decorator', type } as const
-  return { ...t, ...decoratorShorcut(t) }
+export function relation<const T extends LazyType>(type: T): { kind: 'relation-decorator'; type: T } {
+  return { kind: 'relation-decorator', type } as const
 }
 
 export function custom<const T, const N extends string>(

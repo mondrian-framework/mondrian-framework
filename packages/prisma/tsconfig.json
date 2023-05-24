@@ -8,28 +8,10 @@
   "exclude": ["build", "node_modules"],
   "references": [
     {
-      "path": "../module"
-    },
-    {
       "path": "../model"
     },
     {
-      "path": "../prisma"
-    },
-    {
-      "path": "../rest"
-    },
-    {
-      "path": "../graphql"
-    },
-    {
-      "path": "../aws-sqs"
-    },
-    {
-      "path": "../aws-lambda-sqs"
-    },
-    {
-      "path": "../cron"
+      "path": "../utils"
     }
   ]
 }

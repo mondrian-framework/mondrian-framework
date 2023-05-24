@@ -1,7 +1,7 @@
 import { GraphQLResolveInfo, Kind, SelectionSetNode } from 'graphql'
 import { assertNever } from '@mondrian/utils'
-import { LazyType, lazyToType } from '@mondrian/model'
-import { GenericProjection, mergeProjections } from '@mondrian/module'
+import { GenericProjection, LazyType, lazyToType } from '@mondrian/model'
+import { mergeProjections } from '@mondrian/module'
 
 function graphqlInfoToProjection(
   node: SelectionSetNode,

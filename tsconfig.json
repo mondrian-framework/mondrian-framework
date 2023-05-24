@@ -18,6 +18,7 @@
       "@mondrian/utils": ["./packages/utils"],
       "@mondrian/model": ["./packages/model"],
       "@mondrian/module": ["./packages/module"],
+      "@mondrian/prisma": ["./packages/prisma"],
       "@mondrian/rest": ["./packages/rest"],
       "@mondrian/graphql": ["./packages/graphql"],
       "@mondrian/aws-sqs": ["./packages/aws-sqs"],
@@ -29,7 +30,7 @@
   "files": [],
   "references": [
     {
-      "path": "packages/doc"
+      "path": "packages/docs"
     },
     {
       "path": "packages/utils"
@@ -39,6 +40,9 @@
     },
     {
       "path": "packages/module"
+    },
+    {
+      "path": "packages/prisma"
     },
     {
       "path": "packages/rest"

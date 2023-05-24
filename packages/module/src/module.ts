@@ -1,7 +1,7 @@
-import { Infer, InferProjection, InferReturn, LazyType, Types, decode, is } from '@mondrian/model'
-import { Logger, buildLogger } from './utils'
-import { GenericProjection, getProjectedType } from './projection'
+import { Infer, InferProjection, InferReturn, Types, decode } from '@mondrian/model'
+import { Logger } from './utils'
 import { JSONType } from '@mondrian/utils'
+import { GenericProjection, getProjectedType } from '@mondrian/model/src/projection'
 
 export type Function<T extends Types, I extends keyof T, O extends keyof T, Context> = Infer<T[I]> extends infer Input
   ? InferReturn<T[O]> extends infer Output

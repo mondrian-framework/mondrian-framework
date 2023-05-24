@@ -1,5 +1,5 @@
+import { GenericProjection } from '@mondrian/model'
 import { randomBytes } from 'crypto'
-import { GenericProjection } from './projection'
 
 export function randomOperationId() {
   //same length until Tue, 02 Aug 10889 05:31:50 GMT

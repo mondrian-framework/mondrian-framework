@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian/module",
+  "name": "@mondrian/prisma",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",

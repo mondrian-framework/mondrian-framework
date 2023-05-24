@@ -1,15 +1,12 @@
 import t from '@mondrian/model'
 import { Id, JWT } from './scalars.types'
 
-const Asd = t.union({ a: t.number(), b: t.string() }).array().array().nullable().array()
-type Asd = t.Infer<typeof Asd>
-
 export const User = () =>
   t.object({
     id: Id,
     email: t.string({ format: 'email' }),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
-    posts: t.relation(t.array(User)),
+    posts: t.relation(Post).array(),
   })
 export type User = t.Infer<typeof User>
 
@@ -52,11 +49,11 @@ export type PostInput = t.Infer<typeof PostInput>
 export const RegisterOutput = t.object({ user: User, jwt: JWT })
 export type RegisterOutput = t.Infer<typeof RegisterOutput>
 
-export const LoginOutput = t.nullable(t.object({ user: User, jwt: JWT }))
+export const LoginOutput = t.object({ user: User, jwt: JWT }).nullable()
 export type LoginOutput = t.Infer<typeof LoginOutput>
 
-export const UserOutputs = t.array(User)
+export const UserOutputs = User().array()
 export type UserOutputs = t.Infer<typeof UserOutputs>
 
-export const CheckPostOutput = t.object({ passedPosts: t.array(Id), blockedPosts: t.array(Id) })
+export const CheckPostOutput = t.object({ passedPosts: Id.array(), blockedPosts: Id.array() })
 export type CheckPostOutput = t.Infer<typeof CheckPostOutput>

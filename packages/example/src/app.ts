@@ -5,7 +5,6 @@ import graphql from '@mondrian/graphql'
 import cron from '@mondrian/cron'
 import { CRON_API, GRAPHQL_API, REST_API } from './api'
 
-
 async function main() {
   const server = fastify()
   const time = new Date().getTime()

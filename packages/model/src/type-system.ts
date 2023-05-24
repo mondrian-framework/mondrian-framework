@@ -262,30 +262,30 @@ export type DecoratorShorcuts<
   O extends 'optional' | 'nullable' | 'array' | 'relation' | 'default' = never,
 > = Omit<
   {
-    optional: () => { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<
+    optional(): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<
       { kind: 'optional-decorator'; type: T },
       O | 'optional'
     >
-    default: (
+    default(
       value: [T] extends [LazyType] ? Infer<T> : never,
-    ) => { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] } & DecoratorShorcuts<
+    ): { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] } & DecoratorShorcuts<
       { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] },
       O | 'default'
     >
-    nullable: () => {
+    nullable(): {
       kind: 'union-operator'
       types: { null: { kind: 'literal'; value: null }; other: T }
     } & DecoratorShorcuts<
       { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } },
       O | 'nullable'
     >
-    relation: () => { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<
+    relation(): { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<
       { kind: 'relation-decorator'; type: T },
       O | 'relation'
     >
-    array: (
+    array(
       opts?: ArrayDecorator['opts'],
-    ) => { kind: 'array-decorator'; type: T } & DecoratorShorcuts<
+    ): { kind: 'array-decorator'; type: T } & DecoratorShorcuts<
       { kind: 'array-decorator'; type: T },
       Exclude<O, 'optional' | 'nullable'>
     >
@@ -385,16 +385,19 @@ export function array<const T extends LazyType>(
 }
 export function optional<const T extends LazyType>(
   type: T,
-): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<{ kind: 'optional-decorator'; type: T }> {
+): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<{ kind: 'optional-decorator'; type: T }, 'optional'> {
   const t = { kind: 'optional-decorator', type } as const
   return { ...t, ...decoratorShorcut(t) }
 }
 export function nullable<const T extends LazyType>(
   type: T,
-): { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } } & DecoratorShorcuts<{
-  kind: 'union-operator'
-  types: { null: { kind: 'literal'; value: null }; other: T }
-}> {
+): { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } } & DecoratorShorcuts<
+  {
+    kind: 'union-operator'
+    types: { null: { kind: 'literal'; value: null }; other: T }
+  },
+  'nullable'
+> {
   const t = { kind: 'union-operator', types: { null: literal(null), other: type } } as const
   return { ...t, ...decoratorShorcut(t) }
 }
@@ -411,7 +414,7 @@ export function preset<const T extends LazyType>(
 }
 export function relation<const T extends LazyType>(
   type: T,
-): { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<{ kind: 'relation-decorator'; type: T }> {
+): { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<{ kind: 'relation-decorator'; type: T }, 'relation'> {
   const t = { kind: 'relation-decorator', type } as const
   return { ...t, ...decoratorShorcut(t) }
 }
@@ -489,6 +492,12 @@ export function nothing(opts?: VoidType['opts']): VoidType {
 type Selection<
   T extends ObjectType | (() => ObjectType),
   P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
+> = [T] extends [ObjectType]
+  ? SelectionInternal<T, P> & DecoratorShorcuts<SelectionInternal<T, P>>
+  : () => SelectionInternal<T, P> & DecoratorShorcuts<SelectionInternal<T, P>>
+type SelectionInternal<
+  T extends ObjectType | (() => ObjectType),
+  P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
 > = LazyToType<T> extends ObjectType
   ? {
       kind: 'object'
@@ -506,23 +515,23 @@ type LazyToType<T extends LazyType> = [T] extends [() => infer R]
 export function select<
   const T extends ObjectType | (() => ObjectType),
   const P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
->(t: T, selection: P, opts?: ObjectType['opts']): [T] extends [ObjectType] ? Selection<T, P> : () => Selection<T, P> {
-  if (typeof t === 'function') {
-    return (() => select(t(), selection, opts)) as [T] extends [ObjectType] ? Selection<T, P> : () => Selection<T, P>
+>(type: T, selection: P, opts?: ObjectType['opts']): Selection<T, P> {
+  if (typeof type === 'function') {
+    return (() => select(type(), selection, opts)) as unknown as Selection<T, P>
   }
-  const result = {
+  const t = {
     kind: 'object',
-    type: Object.fromEntries(Object.entries(t.type).filter((v) => (selection as Record<string, boolean>)[v[0]])),
+    type: Object.fromEntries(Object.entries(type.type).filter((v) => (selection as Record<string, boolean>)[v[0]])),
     opts,
-  } as [T] extends [ObjectType] ? Selection<T, P> : () => Selection<T, P>
-  return result
+  } as Selection<T, P>
+  return { ...t, ...decoratorShorcut(t) } as Selection<T, P> & DecoratorShorcuts<Selection<T, P>>
 }
 
 type Merge<T1 extends ObjectType | (() => ObjectType), T2 extends ObjectType | (() => ObjectType)> = [T1] extends [
   ObjectType,
 ]
   ? [T2] extends [ObjectType]
-    ? MergeInternal<T1, T2>
+    ? MergeInternal<T1, T2> & DecoratorShorcuts<MergeInternal<T1, T2>>
     : LazyToType<T2> extends ObjectType
     ? () => MergeInternal<T1, LazyToType<T2>>
     : never
@@ -544,6 +553,7 @@ type MergeInternal<T1 extends ObjectType, T2 extends ObjectType> = {
   opts: ObjectType['opts']
 }
 
+//TODO & DecoratorShorcuts<Merge<T1, T2>>
 export function merge<
   const T1 extends ObjectType | (() => ObjectType),
   const T2 extends ObjectType | (() => ObjectType),
@@ -563,5 +573,6 @@ export function merge<
       return internal(typeof t1 === 'function' ? t1() : t1, typeof t2 === 'function' ? t2() : t2)
     }) as unknown as Merge<T1, T2>
   }
-  return internal(t1, t2)
+  const t = internal(t1, t2)
+  return { ...t, ...decoratorShorcut(t) }
 }

@@ -28,6 +28,12 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
     }
     return encode(t.type, value)
   }
+  if (t.kind === 'nullable-decorator') {
+    if (value === null) {
+      return null
+    }
+    return encode(t.type, value)
+  }
   if (t.kind === 'default-decorator' || t.kind === 'relation-decorator') {
     return encode(t.type, value)
   }

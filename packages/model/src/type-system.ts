@@ -40,6 +40,7 @@ export type ObjectType = {
 }
 export type ArrayDecorator = { kind: 'array-decorator'; type: LazyType; opts?: { maxItems?: number } }
 export type OptionalDecorator = { kind: 'optional-decorator'; type: LazyType }
+export type NullableDecorator = { kind: 'nullable-decorator'; type: LazyType }
 export type DefaultDecorator = { kind: 'default-decorator'; type: LazyType; opts: { default?: unknown } }
 export type UnionOperator = {
   kind: 'union-operator'
@@ -64,6 +65,7 @@ export type Type =
   | ObjectType
   | ArrayDecorator
   | OptionalDecorator
+  | NullableDecorator
   | DefaultDecorator
   | RelationDecorator
   | UnionOperator
@@ -99,6 +101,10 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
   : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? Project<F, ST> | undefined
+    : never
+  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? Project<F, ST> | null
     : never
   : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
   ? ST extends LazyType
@@ -157,6 +163,10 @@ type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T]
   ? ST extends LazyType
     ? InferType<ST, Partial, Shader> | undefined
     : never
+  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? InferType<ST, Partial, Shader> | null
+    : never
   : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? InferType<ST, Partial, Shader>
@@ -212,6 +222,10 @@ type InferProjectionInternal<T> = [T] extends [{ kind: 'array-decorator'; type: 
   ? ST extends LazyType
     ? InferProjection<ST>
     : never
+  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? InferProjection<ST>
+    : never
   : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? InferProjection<ST>
@@ -247,6 +261,10 @@ type HasOptionalDecorator<T extends LazyType> = [T] extends [() => infer LT]
     : false
   : [T] extends [{ kind: 'optional-decorator'; type: unknown }]
   ? true
+  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
+  ? ST extends LazyType
+    ? HasOptionalDecorator<ST>
+    : false
   : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
   ? ST extends LazyType
     ? HasOptionalDecorator<ST>
@@ -272,11 +290,8 @@ export type DecoratorShorcuts<
       { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] },
       O | 'default'
     >
-    nullable(): {
-      kind: 'union-operator'
-      types: { null: { kind: 'literal'; value: null }; other: T }
-    } & DecoratorShorcuts<
-      { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } },
+    nullable(): { kind: 'nullable-decorator'; type: T } & DecoratorShorcuts<
+      { kind: 'nullable-decorator'; type: T },
       O | 'nullable'
     >
     relation(): { kind: 'relation-decorator'; type: T } & DecoratorShorcuts<
@@ -391,14 +406,8 @@ export function optional<const T extends LazyType>(
 }
 export function nullable<const T extends LazyType>(
   type: T,
-): { kind: 'union-operator'; types: { null: { kind: 'literal'; value: null }; other: T } } & DecoratorShorcuts<
-  {
-    kind: 'union-operator'
-    types: { null: { kind: 'literal'; value: null }; other: T }
-  },
-  'nullable'
-> {
-  const t = { kind: 'union-operator', types: { null: literal(null), other: type } } as const
+): { kind: 'nullable-decorator'; type: T } & DecoratorShorcuts<{ kind: 'nullable-decorator'; type: T }, 'nullable'> {
+  const t = { kind: 'nullable-decorator', type } as const
   return { ...t, ...decoratorShorcut(t) }
 }
 export function preset<const T extends LazyType>(

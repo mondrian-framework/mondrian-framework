@@ -19,6 +19,7 @@ export const REST_API = {
     ],
     users: { method: 'GET' },
     login: { method: 'PUT', path: '/login' },
+    publish: { method: 'POST' },
   },
   options: { introspection: true },
 } as const satisfies ModuleRestApi<Functions>
@@ -30,6 +31,8 @@ export const GRAPHQL_API = {
       { type: 'mutation', name: 'register', inputName: 'user' },
     ],
     users: { type: 'query' },
+    login: { type: 'query' },
+    publish: { type: 'mutation', inputName: 'post' },
   },
   options: { introspection: true },
 } satisfies ModuleGraphqlApi<Functions>
@@ -37,8 +40,8 @@ export const GRAPHQL_API = {
 export const CRON_API = {
   functions: {
     checkPost: {
-      cron: '*/5 * * * * *',
-      runAtStart: true,
+      cron: '* 0 * * * *',
+      runAtStart: false,
     },
   },
 } satisfies ModuleCronApi<Types, Functions>

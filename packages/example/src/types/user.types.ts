@@ -6,7 +6,7 @@ export const User = () =>
     id: Id,
     email: t.string({ format: 'email' }),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
-    posts: t.relation(Post).array(),
+    posts: t.array(Post).relation(),
   })
 export type User = t.Infer<typeof User>
 

@@ -31,6 +31,12 @@ export function is(type: LazyType, value: JSONType): boolean {
     }
     return is(t.type, value)
   }
+  if (t.kind === 'nullable-decorator') {
+    if (value === null) {
+      return true
+    }
+    return is(t.type, value)
+  }
   if (t.kind === 'default-decorator' || t.kind === 'relation-decorator') {
     return is(t.type, value)
   }

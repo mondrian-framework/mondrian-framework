@@ -20,7 +20,9 @@ async function main() {
     server,
     module,
     api: GRAPHQL_API,
-    context: async ({ request }) => ({ jwt: request.headers.authorization }),
+    context: async ({ request }) => {
+      return { jwt: request.headers.authorization }
+    },
   })
   cron.start({
     module,

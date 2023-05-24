@@ -1,6 +1,6 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { DecodeResult, LazyType, Types, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
+import { DecodeResult, LazyType, Types, decode, encode, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever, isArray } from '@mondrian/utils'
 import {
   Functions,
@@ -370,13 +370,17 @@ function typeToSchemaObjectInternal(
     const items = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { type: 'array', items }
   }
-  if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
+  if (type.kind === 'optional-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
-    return { allOf: [subtype, { type: 'null', description: 'optional' }] }
+    return { anyOf: [subtype, { type: 'null', description: 'optional' }] }
   }
-  if (type.kind === 'relation-decorator') {
+  if (type.kind === 'nullable-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
-    return { allOf: [subtype, { type: 'null', description: 'optional' }] }
+    return { anyOf: [subtype, { const: null }] }
+  }
+  if (type.kind === 'relation-decorator' || type.kind === 'default-decorator') {
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return { anyOf: [subtype, { type: 'null', description: 'optional' }] }
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {
@@ -386,8 +390,8 @@ function typeToSchemaObjectInternal(
     const isOptional: (
       type: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject,
     ) => { optional: true; subtype: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } | false = (type) =>
-      'allOf' in type && type.allOf && type.allOf.length === 2 && type.allOf[1].description === 'optional'
-        ? { optional: true, subtype: type.allOf[0] }
+      'anyOf' in type && type.anyOf && type.anyOf.length === 2 && type.anyOf[1].description === 'optional'
+        ? { optional: true, subtype: type.anyOf[0] }
         : false
     const object: OpenAPIV3_1.SchemaObject = {
       type: 'object',
@@ -409,11 +413,10 @@ function typeToSchemaObjectInternal(
     return { type: 'string', enum: type.values as unknown as string[], description: type.opts?.description } as const
   }
   if (type.kind === 'union-operator') {
-    const hasNull = Object.values(type.types).some((t) => isNullType(t))
     const uniontypes = Object.entries(type.types).map(([k, t]) =>
       typeToSchemaObject(`${name}_${k}`, t, types, typeMap, typeRef),
     )
-    return { anyOf: uniontypes, description: type.opts?.description, ...(hasNull ? { example: null } : {}) }
+    return { anyOf: uniontypes, description: type.opts?.description }
   }
   return assertNever(type)
 }

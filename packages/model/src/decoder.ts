@@ -1,6 +1,6 @@
 import { assertNever } from '@mondrian/utils'
 import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType } from './type-system'
-import { isNullType, lazyToType } from './utils'
+import { lazyToType } from './utils'
 
 export type DecodeResult<T> =
   | { pass: true; value: T }
@@ -89,24 +89,30 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
       return result.errors.length > 0 ? result : error(`Undefined expected`, value)
     }
     return result
+  } else if (t.kind === 'nullable-decorator') {
+    if (value === null) {
+      return success(value)
+    }
+    const result = decodeInternal(t.type, value, opts)
+    if (!result.pass) {
+      return result.errors.length > 0 ? result : error(`Null expected`, value)
+    }
+    return result
   } else if (t.kind === 'default-decorator') {
-    if (value === undefined) {
+    const result = decodeInternal(t.type, value, opts)
+    if (result.pass) {
+      return result
+    }
+    if (value === undefined || (opts?.cast && value === null)) {
       return success(t.opts.default)
     }
-    return decodeInternal(t.type, value, opts)
+    return result
   } else if (t.kind === 'relation-decorator') {
     return decodeInternal(t.type, value, opts)
   } else if (t.kind === 'union-operator') {
     if (opts?.castGqlInputUnion) {
-      const ts = Object.entries(t.types).filter((v) => !isNullType(v[1]))
-      const isNull = ts.length !== Object.keys(t.types).length
-      if (isNull && (value === null || (opts.cast && value === undefined))) {
-        return success(null)
-      }
-      if (ts.length === 1) {
-        return decodeInternal(ts[0][1], value, opts)
-      }
       //special graphql @oneOf
+      const ts = Object.entries(t.types)
       if (typeof value === 'object' && value) {
         const keys = Object.keys(value)
         const key = keys[0]

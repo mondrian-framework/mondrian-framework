@@ -2,7 +2,7 @@ import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { extractFieldsFromGraphqlInfo } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { CustomType, LazyType, decode, encode, isNullType, isVoidType, lazyToType } from '@mondrian/model'
+import { CustomType, LazyType, decode, encode, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever, isArray } from '@mondrian/utils'
 import {
   ContextType,
@@ -83,10 +83,10 @@ function typeToGqlTypeInternal(
       }]${isRequired}`,
     }
   }
-  if (type.kind === 'optional-decorator' || type.kind === 'default-decorator') {
+  if (type.kind === 'optional-decorator' || type.kind === 'nullable-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, true, scalars, unions)
   }
-  if (type.kind === 'relation-decorator') {
+  if (type.kind === 'relation-decorator' || type.kind === 'default-decorator') {
     return typeToGqlType(name, type.type, types, typeMap, typeRef, isInput, isOptional, scalars, unions)
   }
   if (type.kind === 'object') {
@@ -124,43 +124,9 @@ function typeToGqlTypeInternal(
   }
   if (type.kind === 'union-operator') {
     const ts = Object.entries(type.types)
-
-    //remove the Null types
-    if (ts.length >= 2 && ts.some((t) => isNullType(t[1]))) {
-      const filteredTs = ts.filter((t) => !isNullType(t[1]))
-      if (filteredTs.length === 1) {
-        const e = typeToGqlType(
-          filteredTs[0][0],
-          filteredTs[0][1],
-          types,
-          typeMap,
-          typeRef,
-          isInput,
-          true,
-          scalars,
-          unions,
-        )
-        return { description: e.description, type: `${e.type}` }
-      }
-      if (!isInput) {
-        typeMap[name] = {
-          description,
-          type: `${desc}union ${name} = ${filteredTs
-            .map(([k, t], i) => typeToGqlType(k, t, types, typeMap, typeRef, isInput, true, scalars, unions).type)
-            .join(' | ')}`,
-        }
-        return { description, type: `${name}${isRequired}` }
-      }
-    }
-
     //If input use @oneOf https://github.com/graphql/graphql-spec/pull/825
     if (isInput) {
-      let isReq = isRequired
       const fields = ts.flatMap(([unionName, fieldT]) => {
-        if (isNullType(fieldT)) {
-          isReq = ''
-          return []
-        }
         const fieldType = typeToGqlType(unionName, fieldT, types, typeMap, typeRef, isInput, false, scalars, unions)
         const realType =
           fieldType.type.charAt(fieldType.type.length - 1) === '!'
@@ -174,7 +140,7 @@ function typeToGqlTypeInternal(
           ${fields.join('\n        ')}
       }`,
       }
-      return { description, type: `${input}${name}${isReq}` }
+      return { description, type: `${input}${name}${isRequired}` }
     }
 
     typeMap[name] = {
@@ -202,20 +168,6 @@ function typeToGqlTypeInternal(
         .join(' | ')}`,
     }
     return { description, type: `${name}${isRequired}` }
-  }
-  if (isNullType(type)) {
-    scalars['Null'] = {
-      decode: (input) =>
-        input === null
-          ? { pass: true, value: null }
-          : { pass: false, errors: [{ path: '', error: 'Null expected', value: input }] },
-      encode: (input) => input,
-      is: (input) => input === null,
-      kind: 'custom',
-      name: 'Null',
-      type: null,
-    }
-    return { description, type: `Null${isRequired}` }
   }
   if (type.kind === 'literal') {
     const t = typeof type.value

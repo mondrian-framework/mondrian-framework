@@ -1,4 +1,15 @@
-import { LazyType, array, boolean, lazyToType, preset, object, optional, union, relation } from '@mondrian/model'
+import {
+  LazyType,
+  array,
+  boolean,
+  lazyToType,
+  preset,
+  object,
+  optional,
+  union,
+  relation,
+  nullable,
+} from '@mondrian/model'
 import { assertNever } from '@mondrian/utils'
 
 export type GenericProjection = true | { [K in string]?: true | GenericProjection }
@@ -26,11 +37,14 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
   if (type.kind === 'optional-decorator') {
     return optional(getProjectedType(type.type, fields))
   }
+  if (type.kind === 'nullable-decorator') {
+    return nullable(getProjectedType(type.type, fields))
+  }
   if (type.kind === 'default-decorator') {
-    return preset(getProjectedType(type.type, fields), type.opts)
+    return getProjectedType(type.type, fields)
   }
   if (type.kind === 'relation-decorator') {
-    return relation(getProjectedType(type.type, fields))
+    return getProjectedType(type.type, fields)
   }
   if (type.kind === 'union-operator') {
     return union(
@@ -73,11 +87,14 @@ function ignoreRelations(type: LazyType): LazyType {
   if (type.kind === 'optional-decorator') {
     return optional(ignoreRelations(type.type))
   }
+  if (type.kind === 'nullable-decorator') {
+    return nullable(ignoreRelations(type.type))
+  }
   if (type.kind === 'default-decorator') {
-    return preset(ignoreRelations(type.type), type.opts)
+    return ignoreRelations(type.type)
   }
   if (type.kind === 'relation-decorator') {
-    return relation(ignoreRelations(type.type))
+    return ignoreRelations(type.type)
   }
   if (type.kind === 'union-operator') {
     return union(Object.fromEntries(Object.entries(type.types).map(([k, t]) => [k, ignoreRelations(t)])))
@@ -145,6 +162,7 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
   if (
     type.kind === 'array-decorator' ||
     type.kind === 'optional-decorator' ||
+    type.kind === 'nullable-decorator' ||
     type.kind === 'default-decorator' ||
     type.kind === 'relation-decorator'
   ) {

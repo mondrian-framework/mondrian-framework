@@ -9,16 +9,16 @@ type SDK<
   API extends ModuleRestApi<F>,
 > = {
   [K in keyof F & keyof API['functions']]: Infer<T[F[K]['input']]> extends infer Input
-    ? InferProjection<T[F[K]['output']]> extends infer Fields
-      ? SdkResolver<Input, Fields, T[F[K]['output']]>
+    ? InferProjection<T[F[K]['output']]> extends infer Projection
+      ? SdkResolver<Input, Projection, T[F[K]['output']]>
       : never
     : never
 }
 
-type SdkResolver<Input, Fields, OutputType extends LazyType> = <const F extends Fields>(args: {
+type SdkResolver<Input, Projection, OutputType extends LazyType> = <const F extends Projection>(args: {
   input: Input
   headers?: Record<string, string | string[] | undefined>
-  fields?: F
+  projection?: F
 }) => Promise<Project<F, OutputType>>
 
 export function createRestSdk<
@@ -43,16 +43,16 @@ export function createRestSdk<
       if (!specification) {
         return []
       }
-      const resolver = async ({ input, fields, headers }: { input: any; headers?: any; fields: any }) => {
+      const resolver = async ({ input, projection, headers }: { input: any; headers?: any; projection: any }) => {
         const url = `${endpoint}/api${specification.path ?? `/${functionName}`}`
         const encodedInput = encode(module.types[functionBody.input], input)
         const realUrl =
           specification.method === 'GET' || specification.method === 'DELETE'
             ? `${url}?${encodeQueryObject(encodedInput, 'input')}`
             : url
-        const fieldsHeader = fields != null ? { fields: JSON.stringify(fields) } : {}
+        const projectionHeader = projection != null ? { projection: JSON.stringify(projection) } : {}
         const response = await fetch(realUrl, {
-          headers: { 'content-type': 'application/json', ...defaultHeaders, ...headers, ...fieldsHeader },
+          headers: { 'content-type': 'application/json', ...defaultHeaders, ...headers, ...projectionHeader },
           method: specification.method,
           body:
             specification.method !== 'GET' && specification.method !== 'DELETE'

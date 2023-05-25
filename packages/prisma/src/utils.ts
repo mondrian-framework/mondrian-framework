@@ -1,13 +1,13 @@
-import { GenericProjection, LazyType, hasDecorator, lazyToType } from '@mondrian/model'
+import { GenericProjection, LazyType, getFirstConcreteType, hasDecorator, lazyToType } from '@mondrian/model'
 
-export function fieldsToSelection<T extends Record<string, unknown>>(
-  fields: GenericProjection | undefined,
+export function projectionToSelection<T extends Record<string, unknown>>(
+  projection: GenericProjection | undefined,
   type: LazyType,
   overrides?: T,
 ): T {
   const t = lazyToType(type)
   if (t.kind === 'object') {
-    if (fields === true || fields == null) {
+    if (projection === true || projection == null) {
       const selection = Object.fromEntries(
         Object.entries(t.type).flatMap(([k, t]) => {
           if (hasDecorator(t, 'relation-decorator')) {
@@ -20,8 +20,11 @@ export function fieldsToSelection<T extends Record<string, unknown>>(
     }
     const selection = Object.fromEntries(
       Object.entries(t.type).flatMap(([k, t]) => {
-        if (fields[k]) {
-          const subSelection = fieldsToSelection(fields[k], t, (overrides ?? ({} as any))[k])
+        if (getFirstConcreteType(t).kind === 'union-operator') {
+          return []
+        }
+        if (projection[k]) {
+          const subSelection = projectionToSelection(projection[k], t, (overrides ?? ({} as any))[k])
           if (hasDecorator(t, 'relation-decorator')) {
             return [[k, { ...(overrides ?? ({} as any))[k], select: subSelection }]]
           }
@@ -39,10 +42,10 @@ export function fieldsToSelection<T extends Record<string, unknown>>(
     t.kind === 'nullable-decorator' ||
     t.kind === 'relation-decorator'
   ) {
-    return fieldsToSelection(fields, t.type, overrides)
+    return projectionToSelection(projection, t.type, overrides)
   }
   if (t.kind === 'union-operator') {
-    throw new Error('TODO')
+    throw new Error('PrismaUtils does not support union type')
   }
   return true as any
 }

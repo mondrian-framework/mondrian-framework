@@ -1,7 +1,8 @@
 import { JSONType, assertNever } from '@mondrian/utils'
 import { Infer, LazyType } from './type-system'
-import { lazyToType } from './utils'
+import { hasDecorator, lazyToType } from './utils'
 import { is } from './is'
+import { decode } from './decoder'
 
 export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
   const result = encodeInternal(type, value as JSONType)
@@ -34,7 +35,13 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
     }
     return encode(t.type, value)
   }
-  if (t.kind === 'default-decorator' || t.kind === 'relation-decorator') {
+  if (t.kind === 'default-decorator') {
+    if (value === undefined && !hasDecorator(t.type, 'optional-decorator')) {
+      return t.opts.default as JSONType
+    }
+    return encode(t.type, value)
+  }
+  if (t.kind === 'relation-decorator') {
     return encode(t.type, value)
   }
   if (t.kind === 'array-decorator') {
@@ -51,6 +58,14 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
       const subtype = t.type[key]
       if (subtype) {
         const r = encode(subtype, v)
+        if (r !== undefined) {
+          ret[key] = r
+        }
+      }
+    }
+    for (const [key, subtype] of Object.entries(t.type)) {
+      if (hasDecorator(subtype, 'default-decorator') && ret[key] === undefined) {
+        const r = encode(subtype, undefined)
         if (r !== undefined) {
           ret[key] = r
         }

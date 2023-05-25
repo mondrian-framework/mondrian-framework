@@ -41,7 +41,7 @@ export function start<const T extends Types, const F extends Functions<keyof T e
           const input = 'input' in options ? await options.input() : null
           const contextInput = await context({ cron: options.cron })
           const ctx = await module.context(contextInput)
-          await functionBody.apply({ input, fields: undefined, operationId, log, context: ctx })
+          await functionBody.apply({ input, projection: undefined, operationId, log, context: ctx })
         } catch (error) {
           if (error instanceof Error) {
             log(error.message, 'error')

@@ -1,6 +1,5 @@
 import { Expand, JSONType } from '@mondrian/utils'
 import { DecodeResult } from './decoder'
-import { lazyToType } from './utils'
 
 export type StringType = {
   kind: 'string'
@@ -283,13 +282,13 @@ export type DecoratorShorcuts<
   {
     optional(): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<
       { kind: 'optional-decorator'; type: T },
-      O | 'optional'
+      O | 'optional' | 'default'
     >
     default(
       value: [T] extends [LazyType] ? Infer<T> : never,
     ): { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] } & DecoratorShorcuts<
       { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] },
-      O | 'default'
+      O | 'default' | 'optional'
     >
     nullable(): { kind: 'nullable-decorator'; type: T } & DecoratorShorcuts<
       { kind: 'nullable-decorator'; type: T },

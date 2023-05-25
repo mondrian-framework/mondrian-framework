@@ -7,6 +7,21 @@ export const User = () =>
     email: t.string({ format: 'email' }),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
+    test: t
+      .union(
+        {
+          a: t.object({ type: t.literal('A'), v: t.number() }),
+          b: t.object({ type: t.literal('B'), v: t.string() }),
+        },
+        {
+          discriminant: 'type',
+          is: {
+            a: (v) => v.type === 'A',
+            b: (v) => v.type === 'B',
+          },
+        },
+      )
+      .default({ type: 'A', v: 123 }),
   })
 export type User = t.Infer<typeof User>
 
@@ -36,7 +51,7 @@ export const RegisterInput = t.merge(
     email: true,
     name: true,
   }),
-  t.object({ password: t.string({ minLength: 5, maxLength: 100 }) }),
+  t.object({ password: t.string({ minLength: 5, maxLength: 100 }), a: t.literal(1.1) }),
 )
 export type RegisterInput = t.Infer<typeof RegisterInput>
 

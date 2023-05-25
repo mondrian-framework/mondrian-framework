@@ -2,13 +2,16 @@ import { OpenAPIV3_1 } from 'openapi-types'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   DecodeResult,
+  GenericProjection,
   LazyType,
   Types,
   decode,
   encode,
   getProjectionType,
+  getRequiredProjection,
   isVoidType,
   lazyToType,
+  mergeProjections,
 } from '@mondrian/model'
 import { assertNever, isArray } from '@mondrian/utils'
 import { Functions, GenericFunction, GenericModule, buildLogger, randomOperationId } from '@mondrian/module'
@@ -106,21 +109,29 @@ async function elabFastifyRestRequest({
     reply.status(400)
     return { errors: decoded.errors }
   }
-  const fieldsHeader = request.headers['fields']
-  const fieldsObject = typeof fieldsHeader === 'string' ? JSON.parse(fieldsHeader) : null
+  const projectionHeader = request.headers['projection']
+  const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
   const fieldType = () => getProjectionType(outputType)
-  //TODO: merge (decoded)fieldsObject extractRequiredFields(outputType)
-  const fields = fieldsObject != null ? decode(fieldType(), fieldsObject, { cast: true }) : undefined
-  if (fields && !fields.pass) {
-    log('Bad request. (fields)')
+  //TODO: merge (decoded)projectionObject extractRequiredProjection(outputType)
+  const projection = projectionObject != null ? decode(fieldType(), projectionObject, { cast: true }) : undefined
+  if (projection && !projection.pass) {
+    log('Bad request. (projection)')
     reply.status(400)
-    return { errors: fields.errors, message: "On 'fields' header" }
+    return { errors: projection.errors, message: "On 'projection' header" }
   }
+  const requiredProction =
+    projection != null ? getRequiredProjection(outputType, projection.value as GenericProjection) : undefined
+  const finalProjection =
+    projection != null && requiredProction != null
+      ? mergeProjections(projection.value as GenericProjection, requiredProction)
+      : projection != null
+      ? projection.value
+      : undefined
   const contextInput = await context({ request })
   const ctx = await module.context(contextInput)
   try {
     const result = await functionBody.apply({
-      fields: fields ? (fields.value as any) : undefined,
+      projection: finalProjection,
       context: ctx,
       input: decoded.value,
       operationId,
@@ -169,7 +180,7 @@ export function openapiSpecification({
               ]
             : []),
           {
-            name: 'fields',
+            name: 'projection',
             in: 'header',
           },
         ],
@@ -358,10 +369,9 @@ function typeToSchemaObjectInternal(
   }
   if (type.kind === 'literal') {
     const t = typeof type.value
-    //TODO: integer
     const tp = t === 'boolean' ? t : t === 'number' ? t : t === 'string' ? t : null
     if (type.value === null) {
-      return { type: 'null' }
+      return { type: 'null', const: 'null' }
     }
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)

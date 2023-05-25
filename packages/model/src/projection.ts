@@ -4,12 +4,12 @@ import { lazyToType } from './utils'
 
 export type GenericProjection = true | { [K in string]?: true | GenericProjection }
 
-export function getProjectedType(type: LazyType, fields: GenericProjection | undefined): LazyType {
-  if (fields === undefined || fields === true) {
+export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {
+  if (projection === undefined || projection === true) {
     return ignoreRelations(type)
   }
   if (typeof type === 'function') {
-    return () => lazyToType(getProjectedType(lazyToType(type), fields))
+    return () => lazyToType(getProjectedType(lazyToType(type), projection))
   }
   if (
     type.kind === 'boolean' ||
@@ -22,24 +22,24 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
     return type
   }
   if (type.kind === 'array-decorator') {
-    return array(getProjectedType(type.type, fields))
+    return array(getProjectedType(type.type, projection))
   }
   if (type.kind === 'optional-decorator') {
-    return optional(getProjectedType(type.type, fields))
+    return optional(getProjectedType(type.type, projection))
   }
   if (type.kind === 'nullable-decorator') {
-    return nullable(getProjectedType(type.type, fields))
+    return nullable(getProjectedType(type.type, projection))
   }
   if (type.kind === 'default-decorator') {
-    return getProjectedType(type.type, fields)
+    return getProjectedType(type.type, projection)
   }
   if (type.kind === 'relation-decorator') {
-    return getProjectedType(type.type, fields)
+    return getProjectedType(type.type, projection)
   }
   if (type.kind === 'union-operator') {
     return union(
       Object.fromEntries(
-        Object.entries(fields).map(([k, v]) => {
+        Object.entries(projection).map(([k, v]) => {
           return [k, getProjectedType(type.types[k], v)]
         }),
       ),
@@ -48,7 +48,7 @@ export function getProjectedType(type: LazyType, fields: GenericProjection | und
   if (type.kind === 'object') {
     return object(
       Object.fromEntries(
-        Object.entries(fields).map(([k, v]) => {
+        Object.entries(projection).map(([k, v]) => {
           return [k, getProjectedType(type.type[k], v)]
         }),
       ),
@@ -102,9 +102,9 @@ function ignoreRelations(type: LazyType): LazyType {
   assertNever(type)
 }
 
-export function getProjectionType(type: LazyType, discriminantKey?: string): LazyType {
+export function getProjectionType(type: LazyType): LazyType {
   if (typeof type === 'function') {
-    return () => lazyToType(getProjectionType(lazyToType(type), discriminantKey))
+    return () => lazyToType(getProjectionType(lazyToType(type)))
   }
   if (
     type.kind === 'boolean' ||
@@ -123,11 +123,7 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
         Object.fromEntries(
           Object.entries(type.type).map(([k, v]) => {
             const t = getProjectionType(v)
-            if (k === discriminantKey) {
-              return [k, t]
-            } else {
-              return [k, optional(t)]
-            }
+            return [k, optional(t)]
           }),
         ),
         { strict: true },
@@ -141,22 +137,24 @@ export function getProjectionType(type: LazyType, discriminantKey?: string): Laz
     type.kind === 'default-decorator' ||
     type.kind === 'relation-decorator'
   ) {
-    return getProjectionType(type.type, discriminantKey)
+    return getProjectionType(type.type)
   }
   if (type.kind === 'union-operator') {
     const subProjection = Object.entries(type.types).flatMap(([k, t]) => {
       if (lazyToType(t).kind !== 'object') {
         return []
       }
-      return [[k, optional(getProjectionType(t, type.opts?.discriminant))]] as const
+      return [[k, optional(getProjectionType(t))]] as const
     })
     return union({ all: boolean(), object: object(Object.fromEntries(subProjection), { strict: true }) })
   }
   assertNever(type)
 }
 
-type FieldsKeys<T extends GenericProjection | undefined> = T extends Record<string, GenericProjection> ? keyof T : never
-type SubFieldsSelection<T extends GenericProjection | undefined, K extends FieldsKeys<T>> = T extends undefined
+type projectionKeys<T extends GenericProjection | undefined> = T extends Record<string, GenericProjection>
+  ? keyof T
+  : never
+type SubProjection<T extends GenericProjection | undefined, K extends projectionKeys<T>> = T extends undefined
   ? undefined
   : T extends true
   ? true
@@ -164,12 +162,88 @@ type SubFieldsSelection<T extends GenericProjection | undefined, K extends Field
   ? T[K]
   : never
 
-export function subFields<const T extends GenericProjection | undefined, const K extends FieldsKeys<T>>(
-  fields: T,
+export function subProjection<const T extends GenericProjection | undefined, const K extends projectionKeys<T>>(
+  projection: T,
   v: K,
-): SubFieldsSelection<T, K> {
-  if (fields === undefined || fields === true) {
-    return fields as any
+): SubProjection<T, K> {
+  if (projection === undefined || projection === true) {
+    return projection as any
   }
-  return (fields as any)[v]
+  return (projection as any)[v]
+}
+
+//TODO: better typing
+export function mergeProjections(p1: GenericProjection, p2: GenericProjection): GenericProjection {
+  if (p1 === true || p2 === true) return true
+  if (p1 === null || p1 === undefined) return p2
+  if (p2 === null || p2 === undefined) return p1
+  const p1k = Object.keys(p1)
+  const p2k = Object.keys(p2)
+  const keySet = new Set([...p1k, ...p2k])
+  const res: Record<string, GenericProjection> = {}
+  for (const key of keySet.values()) {
+    res[key] = mergeProjections(p1[key] as GenericProjection, p2[key] as GenericProjection)
+  }
+  return res
+}
+
+export function getRequiredProjection(type: LazyType, projection: GenericProjection): GenericProjection | null {
+  if (projection === true) {
+    return null
+  }
+  const t = lazyToType(type)
+  if (
+    t.kind === 'boolean' ||
+    t.kind === 'string' ||
+    t.kind === 'number' ||
+    t.kind === 'enumerator' ||
+    t.kind === 'custom' ||
+    t.kind === 'literal'
+  ) {
+    return null
+  }
+  if (
+    t.kind === 'array-decorator' ||
+    t.kind === 'optional-decorator' ||
+    t.kind === 'nullable-decorator' ||
+    t.kind === 'default-decorator' ||
+    t.kind === 'relation-decorator'
+  ) {
+    return getRequiredProjection(t.type, projection)
+  }
+  if (t.kind === 'object') {
+    const p = Object.fromEntries(
+      Object.entries(t.type).flatMap(([k, type]) => {
+        const subF = projection[k]
+        if (!subF) {
+          return []
+        }
+        const subP = getRequiredProjection(type, subF)
+        return subP != null ? [[k, subP]] : []
+      }),
+    )
+    if (Object.keys(p).length > 0) {
+      return p
+    }
+    return null
+  }
+  if (t.kind === 'union-operator') {
+    const p = Object.fromEntries(
+      Object.entries(t.types).flatMap(([k, type]) => {
+        const subF = projection[k]
+        if (!subF && !t.opts?.discriminant) {
+          return []
+        }
+        const subP = subF ? getRequiredProjection(type, subF) : null
+        const reqP = t.opts?.discriminant ? ({ [t.opts!.discriminant!]: true } as GenericProjection) : null
+        const res = subP && reqP ? mergeProjections(reqP, subP) : reqP
+        return res != null ? [[k, res]] : []
+      }),
+    )
+    if (Object.keys(p).length > 0) {
+      return p
+    }
+    return null
+  }
+  assertNever(t)
 }

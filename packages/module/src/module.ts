@@ -1,17 +1,25 @@
-import { Infer, InferProjection, InferReturn, Types, decode } from '@mondrian/model'
+import {
+  GenericProjection,
+  Infer,
+  InferProjection,
+  InferReturn,
+  Types,
+  decode,
+  encode,
+  getProjectedType,
+} from '@mondrian/model'
 import { Logger } from './utils'
 import { JSONType } from '@mondrian/utils'
-import { GenericProjection, getProjectedType } from '@mondrian/model/src/projection'
 
 export type Function<T extends Types, I extends keyof T, O extends keyof T, Context> = Infer<T[I]> extends infer Input
   ? InferReturn<T[O]> extends infer Output
-    ? InferProjection<T[O]> extends infer Fields
+    ? InferProjection<T[O]> extends infer Projection
       ? {
           input: I
           output: O
           apply: (args: {
             input: Input
-            fields: Fields | undefined
+            projection: Projection | undefined
             operationId: string
             context: Context
             log: Logger
@@ -23,7 +31,7 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
 export type GenericFunction<TypesName extends string = string> = {
   input: TypesName
   output: TypesName
-  apply: (args: { input: any; fields: any; context: any; operationId: string; log: Logger }) => Promise<unknown>
+  apply: (args: { input: any; projection: any; context: any; operationId: string; log: Logger }) => Promise<unknown>
   opts?: { description?: string }
 }
 
@@ -49,7 +57,7 @@ export function functions<const F extends Functions>(functions: F): F {
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 export type ContextType<F extends Functions> = {
   [K in keyof F]: F[K] extends {
-    apply: (args: { context: infer C; input: any; fields: any; operationId: any; log: any }) => any
+    apply: (args: { context: infer C; input: any; projection: any; operationId: any; log: any }) => any
   }
     ? C
     : never
@@ -92,10 +100,11 @@ export function module<const T extends Types, const F extends Functions<keyof T 
         ...functionBody,
         async apply(args) {
           const result = await functionBody.apply(args)
-          const projectedType = getProjectedType(outputType, args.fields as GenericProjection)
-          const outputDecoded = decode(projectedType, result as JSONType)
+          const encoded = encode(outputType, result as any) //TODO: avoid encode and decode for performance reason (or need a setting)
+          const projectedType = getProjectedType(outputType, args.projection as GenericProjection)
+          const outputDecoded = decode(projectedType, encoded)
           if (!outputDecoded.pass) {
-            const m = JSON.stringify({ fields: args.fields, errors: outputDecoded.errors })
+            const m = JSON.stringify({ projection: args.projection, errors: outputDecoded.errors })
             args.log(`Projection is not respected: ${m}`, 'error')
           }
           return result

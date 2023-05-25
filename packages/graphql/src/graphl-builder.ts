@@ -1,16 +1,10 @@
 import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
-import { extractFieldsFromGraphqlInfo } from './utils'
+import { extractProjectionFromGraphqlInfo } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { CustomType, LazyType, decode, encode, getProjectionType, isVoidType, lazyToType } from '@mondrian/model'
 import { assertNever, isArray } from '@mondrian/utils'
-import {
-  ContextType,
-  Functions,
-  GenericModule,
-  buildLogger,
-  randomOperationId,
-} from '@mondrian/module'
+import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian/module'
 import { ModuleGraphqlApi } from './server'
 
 function typeToGqlType(
@@ -71,7 +65,9 @@ function typeToGqlTypeInternal(
     return { description, type: `Boolean${isRequired}` }
   }
   if (type.kind === 'number') {
-    //TODO: Int
+    if (type.opts?.multipleOf != null && type.opts.multipleOf % 1 === 0) {
+      return { description, type: `Int${isRequired}` }
+    }
     return { description, type: `Float${isRequired}` }
   }
   if (type.kind === 'array-decorator') {
@@ -170,7 +166,6 @@ function typeToGqlTypeInternal(
   }
   if (type.kind === 'literal') {
     const t = typeof type.value
-    //TODO: Int
     const tp = t === 'boolean' ? 'Boolean' : t === 'number' ? 'Float' : t === 'string' ? 'String' : null
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
@@ -295,18 +290,18 @@ function generateQueryOrMutation({
             log('Bad request.')
             throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
           }
-          const fieldType = () => getProjectionType(outputType)
-          const gqlFields = extractFieldsFromGraphqlInfo(info, outputType)
-          const fields = decode(fieldType(), gqlFields, { cast: true })
-          if (!fields.pass) {
-            log('Bad request. (fields)')
-            throw createGraphQLError(`Invalid input.`, { extensions: fields.errors })
+          const projectionType = () => getProjectionType(outputType)
+          const gqlProjection = extractProjectionFromGraphqlInfo(info, outputType)
+          const projection = decode(projectionType(), gqlProjection, { cast: true })
+          if (!projection.pass) {
+            log('Bad request. (projection)')
+            throw createGraphQLError(`Invalid input.`, { extensions: projection.errors })
           }
           try {
             const contextInput = await context({ request: ctx.fastify.request, info })
             const result = await functionBody.apply({
               context: await module.context(contextInput),
-              fields: fields.value,
+              projection: projection.value,
               input: decoded.value,
               operationId,
               log,
@@ -428,86 +423,3 @@ export function buildGraphqlSchema({
     throw error
   }
 }
-
-/*
-  import SchemaBuilder, { FieldRef, InputFieldRef, InputObjectRef, ObjectRef } from '@pothos/core'
-  const builder = new SchemaBuilder({})
-
-  const gqpTypes: Record<string, ObjectRef<any, any>> = {}
-  for (const [typeName, t] of Object.entries(module.types)) {
-    const type = lazyToType(t)
-    if (type.kind === 'object') {
-      const gqlType = builder.objectType(typeName as any, {
-        fields: (t) => {
-          const fields: [string, FieldRef][] = []
-          for (const [fieldName, fieldT] of Object.entries(type.type)) {
-            const fieldType = lazyToType(fieldT)
-            if (fieldType.kind === 'string') {
-              fields.push([
-                fieldName,
-                t.string({
-                  resolve: (parent) => {
-                    return parent[fieldName]
-                  },
-                }),
-              ] as [string, FieldRef])
-            }
-          }
-          return Object.fromEntries(fields)
-        },
-      })
-      gqpTypes[typeName] = gqlType
-    }
-  }
-
-  const gqlInputs: Record<string, InputObjectRef<any>> = {}
-  for (const [typeName, t] of Object.entries(module.types)) {
-    const type = lazyToType(t)
-    if (type.kind === 'object') {
-      const gqlType = builder.inputType(`${typeName}_Input`, {
-        fields: (t) => {
-          const fields: [string, InputFieldRef][] = []
-          for (const [fieldName, fieldT] of Object.entries(type.type)) {
-            const fieldType = lazyToType(fieldT)
-            if (fieldType.kind === 'string') {
-              fields.push([fieldName, t.string({ required: true })] as [string, InputFieldRef])
-            }
-          }
-          return Object.fromEntries(fields)
-        },
-      })
-      gqlInputs[typeName] = gqlType
-    }
-  }
-
-  builder.queryType({
-    fields: (t) => {
-      const fields: [string, FieldRef<any, 'Query'>][] = []
-      for (const [operationName, query] of Object.entries(module.operations.queries)) {
-        const resolver = module.resolvers.queries[operationName].f
-        const inputType = lazyToType(module.types[query.input])
-        const gqlInputType =
-          inputType.kind === 'object'
-            ? t.arg({ type: gqlInputs[query.input] })
-            : inputType.kind === 'string'
-            ? t.arg({ type: 'String', required: true })
-            : t.arg({ type: gqlInputs[query.input] })
-        const gqlInputTypeName = query.options?.graphql?.inputName ?? 'input'
-        fields.push([
-          operationName,
-          t.field({
-            nullable: true,
-            type: gqpTypes[query.output],
-            args: {
-              [gqlInputTypeName]: gqlInputType,
-            },
-            resolve: (parent, input, context, info) =>
-              resolver({ context, fields: info, input: input[gqlInputTypeName] } as any) as any,
-          }),
-        ])
-      }
-      return Object.fromEntries(fields)
-    },
-  })
-  return builder.toSchema()
-  */

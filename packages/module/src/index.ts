@@ -2,5 +2,5 @@ import * as m from './exports'
 export default m
 
 export * from './module'
-export { randomOperationId, buildLogger, mergeProjections, projectionDepth, Logger } from './utils'
+export { randomOperationId, buildLogger, projectionDepth, Logger } from './utils'
 export { createLocalSdk } from './sdk'

@@ -1,4 +1,4 @@
-import { GenericProjection } from '@mondrian/model'
+import { GenericProjection, LazyType, lazyToType } from '@mondrian/model'
 import { randomBytes } from 'crypto'
 
 export function randomOperationId() {
@@ -42,18 +42,4 @@ export function buildLogger(
     )
   }
   return l
-}
-
-export function mergeProjections(p1: GenericProjection, p2: GenericProjection): GenericProjection {
-  if (p1 === true || p2 === true) return true
-  if (p1 === null || p1 === undefined) return p2
-  if (p2 === null || p2 === undefined) return p1
-  const p1k = Object.keys(p1)
-  const p2k = Object.keys(p2)
-  const keySet = new Set([...p1k, ...p2k])
-  const res: Record<string, GenericProjection> = {}
-  for (const key of keySet.values()) {
-    res[key] = mergeProjections(p1[key] as GenericProjection, p2[key] as GenericProjection)
-  }
-  return res
 }

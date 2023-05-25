@@ -1,4 +1,15 @@
-import { ArrayDecorator, NullableDecorator } from './type-system'
+import {
+  ArrayDecorator,
+  BooleanType,
+  CustomType,
+  EnumeratorType,
+  LiteralType,
+  NullableDecorator,
+  NumberType,
+  ObjectType,
+  StringType,
+  UnionOperator,
+} from './type-system'
 import { DefaultDecorator, LazyType, OptionalDecorator, RelationDecorator, Type } from './type-system'
 
 export function lazyToType(t: LazyType): Type {
@@ -8,8 +19,24 @@ export function lazyToType(t: LazyType): Type {
   return t
 }
 
-export function isVoidType(type: LazyType): boolean {
+export function getFirstConcreteType(
+  type: LazyType,
+): NumberType | StringType | EnumeratorType | BooleanType | CustomType | LiteralType | ObjectType | UnionOperator {
   const t = lazyToType(type)
+  if (
+    t.kind === 'default-decorator' ||
+    t.kind === 'array-decorator' ||
+    t.kind === 'nullable-decorator' ||
+    t.kind === 'optional-decorator' ||
+    t.kind === 'relation-decorator'
+  ) {
+    return getFirstConcreteType(t.type)
+  }
+  return t
+}
+
+export function isVoidType(type: LazyType): boolean {
+  const t = getFirstConcreteType(type)
   return t.kind === 'custom' && t.name === 'void'
 }
 

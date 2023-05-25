@@ -90,7 +90,7 @@ export function handler<
         }
         await functionBody.apply({
           input: decoded.value,
-          fields: undefined,
+          projection: undefined,
           operationId,
           context: ctx,
           log,

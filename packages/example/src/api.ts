@@ -12,15 +12,15 @@ import { Types } from './types'
 export const MODULE = module
 
 export const REST_API = {
+  version: 100,
   functions: {
-    oldRegister: { method: 'PUT', path: '/register' },
     register: [
-      { method: 'POST', path: '/subscribe' },
-      { method: 'PUT', path: '/register' },
+      { method: 'POST', path: '/subscribe', version: { max: 1 } },
+      { method: 'PUT', path: '/register', version: { min: 2 } },
     ],
-    users: { method: 'GET' },
+    users: { method: 'GET', version: { min: 2 } },
     login: { method: 'PUT', path: '/login' },
-    publish: { method: 'POST' },
+    publish: { method: 'POST', version: { min: 2 } },
   },
   options: { introspection: true },
 } as const satisfies ModuleRestApi<Functions>

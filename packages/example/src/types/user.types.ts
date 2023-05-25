@@ -7,21 +7,6 @@ export const User = () =>
     email: t.string({ format: 'email' }),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
-    test: t
-      .union(
-        {
-          a: t.object({ type: t.literal('A'), v: t.number() }),
-          b: t.object({ type: t.literal('B'), v: t.string() }),
-        },
-        {
-          discriminant: 'type',
-          is: {
-            a: (v) => v.type === 'A',
-            b: (v) => v.type === 'B',
-          },
-        },
-      )
-      .default({ type: 'A', v: 123 }),
   })
 export type User = t.Infer<typeof User>
 
@@ -67,7 +52,7 @@ export type RegisterOutput = t.Infer<typeof RegisterOutput>
 export const LoginOutput = t.object({ user: User, jwt: JWT }).nullable()
 export type LoginOutput = t.Infer<typeof LoginOutput>
 
-export const UserOutputs = User().array()
+export const UserOutputs = t.array(User)
 export type UserOutputs = t.Infer<typeof UserOutputs>
 
 export const CheckPostOutput = t.object({ passedPosts: Id.array(), blockedPosts: Id.array() })

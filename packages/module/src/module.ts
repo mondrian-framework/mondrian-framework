@@ -71,6 +71,7 @@ export type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 export type GenericModule = {
   name: string
   types: Types
+  version: string
   functions: {
     definitions: Record<string, GenericFunction>
     options?: Partial<Record<string, { authentication?: AuthenticationMethod | 'NONE' }>>
@@ -81,6 +82,7 @@ export type GenericModule = {
 
 export type Module<T extends Types, F extends Functions<keyof T extends string ? keyof T : string>, CI> = {
   name: string
+  version: string
   types: T
   functions: {
     definitions: F

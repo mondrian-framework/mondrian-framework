@@ -24,12 +24,14 @@ export function attachRestMethods({
   api,
   context,
   pathPrefix,
+  globalMaxVersion,
 }: {
   module: GenericModule
   server: FastifyInstance
   api: ModuleRestApi<Functions>
   context: (args: { request: FastifyRequest }) => Promise<unknown>
   pathPrefix: string
+  globalMaxVersion: number
 }): void {
   for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
@@ -37,26 +39,76 @@ export function attachRestMethods({
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = `${pathPrefix}${specification.path ?? `/${functionName}`}`
+      const path = `${pathPrefix}/:v${specification.path ?? `/${functionName}`}`
       if (specification.method === 'GET') {
         server.get(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+          elabFastifyRestRequest({
+            request,
+            reply,
+            functionName,
+            module,
+            api,
+            specification,
+            functionBody,
+            context,
+            globalMaxVersion,
+          }),
         )
       } else if (specification.method === 'POST') {
         server.post(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+          elabFastifyRestRequest({
+            request,
+            reply,
+            functionName,
+            module,
+            api,
+            specification,
+            functionBody,
+            context,
+            globalMaxVersion,
+          }),
         )
       } else if (specification.method === 'PUT') {
         server.put(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+          elabFastifyRestRequest({
+            request,
+            reply,
+            functionName,
+            module,
+            api,
+            specification,
+            functionBody,
+            context,
+            globalMaxVersion,
+          }),
         )
       } else if (specification.method === 'DELETE') {
         server.delete(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+          elabFastifyRestRequest({
+            request,
+            reply,
+            functionName,
+            module,
+            api,
+            specification,
+            functionBody,
+            context,
+            globalMaxVersion,
+          }),
         )
       } else if (specification.method === 'PATCH') {
         server.patch(path, (request, reply) =>
-          elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
+          elabFastifyRestRequest({
+            request,
+            reply,
+            functionName,
+            module,
+            api,
+            specification,
+            functionBody,
+            context,
+            globalMaxVersion,
+          }),
         )
       }
     }
@@ -82,6 +134,7 @@ async function elabFastifyRestRequest({
   specification,
   functionBody,
   context,
+  globalMaxVersion,
 }: {
   request: FastifyRequest
   reply: FastifyReply
@@ -91,7 +144,17 @@ async function elabFastifyRestRequest({
   api: ModuleRestApi<Functions>
   specification: RestFunctionSpecs
   context: (args: { request: FastifyRequest }) => Promise<unknown>
+  globalMaxVersion: number
 }): Promise<unknown> {
+  const minVersion = specification.version?.min ?? 1
+  const maxVersion = specification.version?.max ?? globalMaxVersion
+  const v = (request.params as Record<string, string>).v
+  const version = Number(v ? v.replace('v', '') : Number.NaN)
+  if (Number.isNaN(version) || version < minVersion || version > maxVersion) {
+    reply.status(404)
+    return { error: 'Invalid version' }
+  }
+
   const startDate = new Date()
   const operationId = randomOperationId()
   const log = buildLogger(module.name, operationId, specification.method, functionName, 'REST', startDate)
@@ -151,19 +214,27 @@ export function openapiSpecification({
   module,
   api,
   pathPrefix,
+  version,
 }: {
   module: GenericModule
   api: ModuleRestApi<Functions>
   pathPrefix: string
+  version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
-  const components = openapiComponents({ module })
+  const components = openapiComponents({ module, version, api })
   for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
+      if (specification.version?.min != null && version < specification.version.min) {
+        continue
+      }
+      if (specification.version?.max != null && version > specification.version.max) {
+        continue
+      }
       const path = `${specification.path ?? `/${functionName}`}`
       const inputIsVoid = isVoidType(module.types[functionBody.input])
       const operationObj: OpenAPIV3_1.OperationObject = {
@@ -226,12 +297,8 @@ export function openapiSpecification({
   }
   return {
     openapi: '3.1.0',
-    info: {
-      version: '1.0.0', //TODO
-      title: module.name,
-      license: { name: 'MIT' }, //TODO
-    },
-    servers: [{ url: pathPrefix }],
+    info: { version: module.version, title: module.name },
+    servers: [{ url: `${pathPrefix}/v${version}` }],
     paths,
     components: { ...components, securitySchemes: openapiSecuritySchemes({ module }) },
     tags: [{ name: module.name }],
@@ -287,11 +354,36 @@ function openapiSecuritySchemes({
   }
 }
 
-function openapiComponents({ module }: { module: GenericModule }): OpenAPIV3_1.ComponentsObject {
+function openapiComponents({
+  module,
+  version,
+  api,
+}: {
+  module: GenericModule
+  version: number
+  api: ModuleRestApi<Functions>
+}): OpenAPIV3_1.ComponentsObject {
+  const usedTypes: string[] = []
+  for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
+    const specifications = api.functions[functionName]
+    if (!specifications) {
+      continue
+    }
+    for (const specification of isArray(specifications) ? specifications : [specifications]) {
+      if (specification.version?.min != null && version < specification.version.min) {
+        continue
+      }
+      if (specification.version?.max != null && version > specification.version.max) {
+        continue
+      }
+      usedTypes.push(functionBody.input)
+      usedTypes.push(functionBody.output)
+    }
+  }
   const schemas: Record<string, OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject> = {}
   const typeMap: Record<string, OpenAPIV3_1.SchemaObject> = {}
   const typeRef: Map<Function, string> = new Map()
-  for (const [name, type] of Object.entries(module.types).filter((v) => !isVoidType(v[1]))) {
+  for (const [name, type] of Object.entries(module.types).filter(([k, t]) => usedTypes.includes(k) && !isVoidType(t))) {
     const result = typeToSchemaObject(name, type, module.types, typeMap, typeRef)
     schemas[name] = result
   }

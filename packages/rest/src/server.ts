@@ -6,8 +6,13 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import path from 'path'
 import fs from 'fs'
 import { attachRestMethods, openapiSpecification } from './openapi'
+import { isArray } from '@mondrian/utils'
 
-export type RestFunctionSpecs = { method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'; path?: string }
+export type RestFunctionSpecs = {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+  path?: string
+  version?: { min?: number; max?: number }
+}
 export type ModuleRestApi<F extends Functions> = {
   functions: {
     [K in keyof F]?: RestFunctionSpecs | readonly RestFunctionSpecs[]
@@ -19,6 +24,7 @@ export type ModuleRestApi<F extends Functions> = {
      */
     pathPrefix?: string
   }
+  version?: number
 }
 
 export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
@@ -33,6 +39,10 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
   context: (args: { request: FastifyRequest }) => Promise<CI>
 }): void {
   const pathPrefix = api.options?.pathPrefix ?? `/${module.name.toLocaleLowerCase()}/api`
+  const globalMaxVersion = Object.values(api.functions)
+    .flatMap((v) => (v ? (isArray(v) ? v : [v]) : []))
+    .map((v) => Math.max(v.version?.max ?? 0, v.version?.min ?? 0))
+    .reduce((p, c) => Math.max(p, c), api.version ?? 1)
   if (api.options?.introspection) {
     server.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
@@ -41,13 +51,20 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/schema.json`)
+      .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/v${globalMaxVersion}/schema.json`)
     server.get(`${pathPrefix}/doc/swagger-initializer.js`, (req, res) => res.send(indexContent))
     server.get(`${pathPrefix}/doc`, (req, res) => {
       res.redirect(`${pathPrefix}/doc/index.html`)
     })
-    const spec = openapiSpecification({ module, api, pathPrefix })
-    server.get(`${pathPrefix}/doc/schema.json`, () => spec)
+    server.get(`${pathPrefix}/doc/:v/schema.json`, (req, reply) => {
+      const v = (req.params as Record<string, string>).v
+      const version = Number(v.replace('v', ''))
+      if (Number.isNaN(version) || version < 1 || version > globalMaxVersion) {
+        reply.status(404)
+        return { error: 'Invalid version' }
+      }
+      return openapiSpecification({ module, api, pathPrefix, version })
+    })
   }
-  attachRestMethods({ module, api, server, context, pathPrefix })
+  attachRestMethods({ module, api, server, context, pathPrefix, globalMaxVersion })
 }

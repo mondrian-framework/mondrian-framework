@@ -5,17 +5,6 @@ import { types } from '../types'
 import { PrismaUtils } from '@mondrian/prisma'
 import { subProjection } from '@mondrian/model'
 
-export const oldRegister = f({
-  input: 'RegisterInput',
-  output: 'RegisterOutput',
-  async apply({ input, context, projection, operationId }) {
-    const userSelect = subProjection(projection, 'user')
-    const select = PrismaUtils.projectionToSelection<Prisma.UserSelect>(userSelect, types.User)
-    const user = await context.prisma.user.create({ data: input, select })
-    return { user, jwt: jwt.sign({ userId: user.id }, 'shhhhh') }
-  },
-})
-
 export const register = f({
   input: 'RegisterInput',
   output: 'RegisterOutput',

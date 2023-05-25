@@ -20,7 +20,7 @@ function HomepageHeader() {
             </div>
             <div className={styles.subtitle}>
               <p>
-                Mondrian enables developers to focus on their applications providing a <b>clean architecture</b> made by small, cohesive and decoupled modules. It provides tools and abstractions to build efficient, scalable and reliable software that is designed to last.
+                Mondrian enables developers to focus on their applications with a <b>clean architecture</b> made by small, cohesive and decoupled modules. It provides tools and abstractions to build efficient, scalable and reliable software that is designed to lasm.
               </p>
               <p>
                 Start making <b>better software faster</b> with Mondrian!
@@ -28,7 +28,7 @@ function HomepageHeader() {
               <div className={styles.buttons}>
                 <Link
                   className={`button ${styles.button} ${styles.buttonDoc} button--lg`}
-                  to="/docs/docs/intro">
+                  to="/docs/docs/introduction">
                   Documentation 
                 </Link>
                 <Link
@@ -80,23 +80,23 @@ export default function Home(): JSX.Element {
                   title="model.ts"
                   showLineNumbers>
                   {
-                    `import t from '@mondrian-framework/model'
+                    `import m from '@mondrian-framework/model'
 
-export const Post = t.object({
-  id: t.string(),
-  createdAt: t.timestamp(),
-  title: t.string(),
+export const Post = m.object({
+  id: m.string(),
+  createdAt: m.timestamp(),
+  title: m.string(),
 })
-export type Post = t.Infer<typeof Post>
+export type Post = m.Infer<typeof Post>
 
-export const User = t.object({
-  id: t.string(),
-  createdAt: t.timestamp(),
-  email: t.string({ format: 'email' }),
-  password: t.string({ format: 'password', minLength: 5 }),
-  posts: t.array(Post),
+export const User = m.object({
+  id: m.string(),
+  createdAt: m.timestamp(),
+  email: m.string({ format: 'email' }),
+  password: m.string({ format: 'password', minLength: 5 }),
+  posts: m.array(Post),
 })
-export type User = t.Infer<typeof User>
+export type User = m.Infer<typeof User>
 `
                   }
                 </CodeBlock>

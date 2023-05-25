@@ -55,7 +55,7 @@ const config = {
             type: 'docSidebar',
             sidebarId: 'docsSidebar',
             position: 'left',
-            label: 'Docs',
+            label: 'Documentation',
           },
           {
             type: 'docSidebar',
@@ -69,6 +69,13 @@ const config = {
             position: 'right',
           },
         ],
+      },
+      algolia: {
+        appId: 'FFSJ0O7JXL',
+        apiKey: '9acefb3b8afa60f5e49296b9f5279f37',
+        indexName: 'mondrian-framework',
+        contextualSearch: true,
+        searchPagePath: 'search',
       },
       footer: {
         logo: {

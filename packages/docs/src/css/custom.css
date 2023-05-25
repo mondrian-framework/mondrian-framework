@@ -64,3 +64,20 @@
   }
 }
 
+a {
+  font-weight: 600;
+}
+
+.menu__list {
+  font-size: 14px;
+}
+
+.menu__caret:before {
+  background: var(--ifm-menu-link-sublist-icon) 50% / 1.5rem 1.5rem
+}
+
+.menu__list .menu__list .menu__link {
+  line-height: 1;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}

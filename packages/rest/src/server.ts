@@ -1,12 +1,12 @@
 import { Types } from '@mondrian/model'
-import { Functions, Module } from '@mondrian/module'
-import { FastifyInstance, FastifyRequest } from 'fastify'
+import { Functions, Logger, Module } from '@mondrian/module'
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { fastifyStatic } from '@fastify/static'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 import path from 'path'
 import fs from 'fs'
 import { attachRestMethods, openapiSpecification } from './openapi'
-import { isArray } from '@mondrian/utils'
+import { JSONType, isArray } from '@mondrian/utils'
 
 export type RestFunctionSpecs = {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
@@ -25,6 +25,19 @@ export type ModuleRestApi<F extends Functions> = {
     pathPrefix?: string
   }
   version?: number
+  errorHandler?: (args: {
+    request: FastifyRequest
+    reply: FastifyReply
+    error: unknown
+    log: Logger
+    functionName: keyof F
+    context: unknown
+    operationId: string
+    functionArgs: {
+      projection: unknown
+      input: unknown
+    }
+  }) => Promise<JSONType | void>
 }
 
 export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
@@ -61,7 +74,7 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
       const version = Number(v.replace('v', ''))
       if (Number.isNaN(version) || version < 1 || version > globalMaxVersion) {
         reply.status(404)
-        return { error: 'Invalid version' }
+        return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${globalMaxVersion}` }
       }
       return openapiSpecification({ module, api, pathPrefix, version })
     })

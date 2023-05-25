@@ -172,11 +172,26 @@ export function subProjection<const T extends GenericProjection | undefined, con
   return (projection as any)[v]
 }
 
-//TODO: better typing
-export function mergeProjections(p1: GenericProjection, p2: GenericProjection): GenericProjection {
-  if (p1 === true || p2 === true) return true
-  if (p1 === null || p1 === undefined) return p2
-  if (p2 === null || p2 === undefined) return p1
+export type MergeGenericProjection<T1 extends GenericProjection, T2 extends GenericProjection> = [T1] extends [true]
+  ? T1
+  : [T2] extends [true]
+  ? T2
+  : {
+      [K in keyof T1 | keyof T2]: [T1] extends [Record<K, GenericProjection>]
+        ? [T2] extends [Record<K, GenericProjection>]
+          ? MergeGenericProjection<T1[K], T2[K]>
+          : T1[K]
+        : [T2] extends [Record<K, GenericProjection>]
+        ? T2[K]
+        : never
+    }
+export function mergeProjections<const P1 extends GenericProjection, const P2 extends GenericProjection>(
+  p1: P1,
+  p2: P2,
+): MergeGenericProjection<P1, P2> {
+  if (p1 === true || p2 === true) return true as MergeGenericProjection<P1, P2>
+  if (p1 === null || p1 === undefined) return p2 as MergeGenericProjection<P1, P2>
+  if (p2 === null || p2 === undefined) return p1 as MergeGenericProjection<P1, P2>
   const p1k = Object.keys(p1)
   const p2k = Object.keys(p2)
   const keySet = new Set([...p1k, ...p2k])
@@ -184,7 +199,7 @@ export function mergeProjections(p1: GenericProjection, p2: GenericProjection): 
   for (const key of keySet.values()) {
     res[key] = mergeProjections(p1[key] as GenericProjection, p2[key] as GenericProjection)
   }
-  return res
+  return res as MergeGenericProjection<P1, P2>
 }
 
 export function getRequiredProjection(type: LazyType, projection: GenericProjection): GenericProjection | null {

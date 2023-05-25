@@ -8,7 +8,7 @@ import { subProjection } from '@mondrian/model'
 export const register = f({
   input: 'RegisterInput',
   output: 'RegisterOutput',
-  async apply({ input, context, projection, operationId }) {
+  async apply({ input, context, projection }) {
     const userSelect = subProjection(projection, 'user')
     const select = PrismaUtils.projectionToSelection<Prisma.UserSelect>(userSelect, types.User)
     const user = await context.prisma.user.create({ data: input, select })
@@ -19,7 +19,7 @@ export const register = f({
 export const login = f({
   input: 'LoginInput',
   output: 'LoginOutput',
-  async apply({ input, context, projection, operationId }) {
+  async apply({ input, context, projection }) {
     const userSelect = subProjection(projection, 'user')
     const select = PrismaUtils.projectionToSelection<Prisma.UserSelect>(userSelect, types.User, { posts: { take: 2 } })
     const user = await context.prisma.user.findFirst({ where: input, select })
@@ -30,7 +30,7 @@ export const login = f({
 export const users = f({
   input: 'UserFilter',
   output: 'UserOutputs',
-  async apply({ input, context, projection, operationId }) {
+  async apply({ input, context, projection }) {
     const select = PrismaUtils.projectionToSelection<Prisma.UserSelect>(projection, types.User)
     const users = await context.prisma.user.findMany({ where: input, select })
     return users

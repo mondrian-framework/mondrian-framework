@@ -282,7 +282,7 @@ export type DecoratorShorcuts<
   {
     optional(): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<
       { kind: 'optional-decorator'; type: T },
-      O | 'optional' | 'default'
+      O | 'optional'
     >
     default(
       value: [T] extends [LazyType] ? Infer<T> : never,

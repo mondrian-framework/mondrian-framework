@@ -21,8 +21,20 @@ export const REST_API = {
     users: { method: 'GET', version: { min: 2 } },
     login: { method: 'PUT', path: '/login' },
     publish: { method: 'POST', version: { min: 2 } },
+    myPosts: { method: 'GET', path: '/posts' },
   },
   options: { introspection: true },
+  async errorHandler({ error, reply, log, functionName }) {
+    if (error instanceof Error) {
+      log(error.message)
+      if (functionName === 'login') {
+        reply.status(400)
+        return 'Unauthorized'
+      }
+      reply.status(400)
+      return 'Bad request'
+    }
+  },
 } as const satisfies ModuleRestApi<Functions>
 
 export const GRAPHQL_API = {
@@ -34,6 +46,7 @@ export const GRAPHQL_API = {
     users: { type: 'query' },
     login: { type: 'query' },
     publish: { type: 'mutation', inputName: 'post' },
+    myPosts: { type: 'query', name: 'posts' },
   },
   options: { introspection: true },
 } satisfies ModuleGraphqlApi<Functions>

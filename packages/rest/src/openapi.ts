@@ -135,6 +135,7 @@ async function elabFastifyRestRequest({
   functionBody,
   context,
   globalMaxVersion,
+  api,
 }: {
   request: FastifyRequest
   reply: FastifyReply
@@ -152,7 +153,7 @@ async function elabFastifyRestRequest({
   const version = Number(v ? v.replace('v', '') : Number.NaN)
   if (Number.isNaN(version) || version < minVersion || version > maxVersion) {
     reply.status(404)
-    return { error: 'Invalid version' }
+    return { error: 'Invalid version', minVersion: `v${minVersion}`, maxVersion: `v${maxVersion}` }
   }
 
   const startDate = new Date()
@@ -206,6 +207,24 @@ async function elabFastifyRestRequest({
     return encoded
   } catch (error) {
     log('Failed with exception.')
+    if (api.errorHandler) {
+      const result = await api.errorHandler({
+        request,
+        reply,
+        error,
+        log,
+        functionName,
+        operationId,
+        context: ctx,
+        functionArgs: {
+          projection: finalProjection,
+          input: decoded.value,
+        },
+      })
+      if (result !== undefined) {
+        return result
+      }
+    }
     throw error
   }
 }
@@ -481,13 +500,22 @@ function typeToSchemaObjectInternal(
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { anyOf: [subtype, { type: 'null', description: 'optional' }] }
   }
+  if (type.kind === 'default-decorator') {
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    return {
+      anyOf: [
+        { ...subtype, example: type.opts.default },
+        { type: 'null', description: 'optional' },
+      ],
+    }
+  }
   if (type.kind === 'nullable-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
     return { anyOf: [subtype, { const: null }] }
   }
-  if (type.kind === 'relation-decorator' || type.kind === 'default-decorator') {
+  if (type.kind === 'relation-decorator') {
     const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
-    return { anyOf: [subtype, { type: 'null', description: 'optional' }] }
+    return subtype
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {

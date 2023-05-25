@@ -23,3 +23,16 @@ export const publish = f({
     return post
   },
 })
+
+export const myPosts = f({
+  input: 'BasicFilter',
+  output: 'Posts',
+  async apply({ input, context, projection, operationId }) {
+    if (context.auth?.userId == null) {
+      throw new Error('Unauthorized')
+    }
+    const select = PrismaUtils.projectionToSelection<Prisma.PostSelect>(projection, types.Post)
+    const posts = await context.prisma.post.findMany({ where: { authorId: context.auth.userId }, select, ...input })
+    return posts
+  },
+})

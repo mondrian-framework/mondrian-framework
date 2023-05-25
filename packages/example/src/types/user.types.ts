@@ -57,3 +57,11 @@ export type UserOutputs = t.Infer<typeof UserOutputs>
 
 export const CheckPostOutput = t.object({ passedPosts: Id.array(), blockedPosts: Id.array() })
 export type CheckPostOutput = t.Infer<typeof CheckPostOutput>
+
+export const Posts = t.array(Post)
+
+export const BasicFilter = t.object({
+  skip: t.integer({ minimum: 0 }).default(0),
+  take: t.integer({ minimum: 0, maximum: 20 }).default(20),
+})
+export type BasicFilter = t.Infer<typeof BasicFilter>

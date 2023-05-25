@@ -13,6 +13,7 @@ export const MODULE = module
 
 export const REST_API = {
   functions: {
+    oldRegister: { method: 'PUT', path: '/register' },
     register: [
       { method: 'POST', path: '/subscribe' },
       { method: 'PUT', path: '/register' },
@@ -40,7 +41,7 @@ export const GRAPHQL_API = {
 export const CRON_API = {
   functions: {
     checkPost: {
-      cron: '* 0 * * * *',
+      cron: '*/30 * * * * *',
       runAtStart: false,
     },
   },

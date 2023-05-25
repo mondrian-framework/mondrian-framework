@@ -14,6 +14,10 @@ export type ModuleRestApi<F extends Functions> = {
   }
   options?: {
     introspection?: boolean
+    /**
+     * Default is /api
+     */
+    pathPrefix?: string
   }
 }
 
@@ -28,22 +32,22 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
   server: FastifyInstance
   context: (args: { request: FastifyRequest }) => Promise<CI>
 }): void {
-  const httpPrefix = '/api'
+  const pathPrefix = api.options?.pathPrefix ?? `/${module.name.toLocaleLowerCase()}/api`
   if (api.options?.introspection) {
     server.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
-      prefix: `${httpPrefix}/doc`,
+      prefix: `${pathPrefix}/doc`,
     })
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `http://127.0.0.1:4000${httpPrefix}/doc/schema.json`)
-    server.get(`${httpPrefix}/doc/swagger-initializer.js`, (req, res) => res.send(indexContent))
-    server.get(`${httpPrefix}/doc`, (req, res) => {
-      res.redirect(`${httpPrefix}/doc/index.html`)
+      .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/schema.json`)
+    server.get(`${pathPrefix}/doc/swagger-initializer.js`, (req, res) => res.send(indexContent))
+    server.get(`${pathPrefix}/doc`, (req, res) => {
+      res.redirect(`${pathPrefix}/doc/index.html`)
     })
-    const spec = openapiSpecification({ module, api })
-    server.get(`${httpPrefix}/doc/schema.json`, () => spec)
+    const spec = openapiSpecification({ module, api, pathPrefix })
+    server.get(`${pathPrefix}/doc/schema.json`, () => spec)
   }
-  attachRestMethods({ module, api, server, context })
+  attachRestMethods({ module, api, server, context, pathPrefix })
 }

@@ -555,7 +555,6 @@ type MergeInternal<T1 extends ObjectType, T2 extends ObjectType> = {
   opts: ObjectType['opts']
 }
 
-//TODO & DecoratorShorcuts<Merge<T1, T2>>
 export function merge<
   const T1 extends ObjectType | (() => ObjectType),
   const T2 extends ObjectType | (() => ObjectType),

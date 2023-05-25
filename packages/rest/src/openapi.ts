@@ -23,11 +23,13 @@ export function attachRestMethods({
   server,
   api,
   context,
+  pathPrefix,
 }: {
   module: GenericModule
   server: FastifyInstance
   api: ModuleRestApi<Functions>
   context: (args: { request: FastifyRequest }) => Promise<unknown>
+  pathPrefix: string
 }): void {
   for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
@@ -35,7 +37,7 @@ export function attachRestMethods({
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = `/api${specification.path ?? `/${functionName}`}`
+      const path = `${pathPrefix}${specification.path ?? `/${functionName}`}`
       if (specification.method === 'GET') {
         server.get(path, (request, reply) =>
           elabFastifyRestRequest({ request, reply, functionName, module, api, specification, functionBody, context }),
@@ -112,7 +114,6 @@ async function elabFastifyRestRequest({
   const projectionHeader = request.headers['projection']
   const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
   const fieldType = () => getProjectionType(outputType)
-  //TODO: merge (decoded)projectionObject extractRequiredProjection(outputType)
   const projection = projectionObject != null ? decode(fieldType(), projectionObject, { cast: true }) : undefined
   if (projection && !projection.pass) {
     log('Bad request. (projection)')
@@ -149,9 +150,11 @@ async function elabFastifyRestRequest({
 export function openapiSpecification({
   module,
   api,
+  pathPrefix,
 }: {
   module: GenericModule
   api: ModuleRestApi<Functions>
+  pathPrefix: string
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
   const components = openapiComponents({ module })
@@ -228,7 +231,7 @@ export function openapiSpecification({
       title: module.name,
       license: { name: 'MIT' }, //TODO
     },
-    servers: [{ url: `http://127.0.0.1:4000/api` }], //TODO
+    servers: [{ url: pathPrefix }],
     paths,
     components: { ...components, securitySchemes: openapiSecuritySchemes({ module }) },
     tags: [{ name: module.name }],

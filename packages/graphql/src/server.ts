@@ -12,6 +12,7 @@ export type ModuleGraphqlApi<F extends Functions> = {
   }
   options?: {
     introspection?: boolean
+    pathPrefix?: string
   }
 }
 
@@ -28,11 +29,11 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
 }): void {
   const yoga = createYoga<{ fastify: { request: FastifyRequest; reply: FastifyReply } }>({
     schema: buildGraphqlSchema({ module, api, context }),
-    plugins: api.options?.introspection ? [] : [], //TODO
+    plugins: api.options?.introspection ? [] : [], //TODO: disable introspection
     logging: true,
   })
   server.route({
-    url: '/graphql',
+    url: api.options?.pathPrefix ?? `/${module.name.toLocaleLowerCase()}/graphql`,
     method: ['GET', 'POST', 'OPTIONS'],
     handler: async (request, reply) => {
       const response = await yoga.handleNodeRequest(request, { fastify: { request, reply } })

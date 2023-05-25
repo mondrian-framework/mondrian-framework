@@ -7,7 +7,7 @@ import { AuthInfo } from './functions/functions.commons'
 const prisma = new PrismaClient()
 
 export const module = m.module<Types, Functions, { jwt?: string }>({
-  name: 'Jopla',
+  name: 'reddit',
   types,
   functions: {
     definitions: functions,

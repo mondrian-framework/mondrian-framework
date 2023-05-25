@@ -220,14 +220,14 @@ function generateScalars({ scalarsMap }: { scalarsMap: Record<string, CustomType
         s.name,
         new GraphQLScalarType({
           name: s.name,
-          description: '',
+          description: s.opts?.description,
           serialize(input) {
             return input
           },
           parseValue(input) {
             return input
           },
-          //TODO: how tell graphql sanbox what type to expect
+          //TODO: how tell graphql sanbox what type to expect (same for rest)
         }),
       ] as const
     }),

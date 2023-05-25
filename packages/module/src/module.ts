@@ -99,8 +99,9 @@ export function module<const T extends Types, const F extends Functions<keyof T 
       const f: GenericFunction = {
         ...functionBody,
         async apply(args) {
+          //TODO: avoid encode and decode for performance reason (or need a setting)
           const result = await functionBody.apply(args)
-          const encoded = encode(outputType, result as any) //TODO: avoid encode and decode for performance reason (or need a setting)
+          const encoded = encode(outputType, result as any)
           const projectedType = getProjectedType(outputType, args.projection as GenericProjection)
           const outputDecoded = decode(projectedType, encoded)
           if (!outputDecoded.pass) {

@@ -1,12 +1,9 @@
 export {
   string,
-  email,
   number,
   boolean,
-  nill as null,
-  nothing as void,
+  nullType as null,
   custom,
-  datetime,
   enumerator,
   integer,
   merge,
@@ -15,9 +12,8 @@ export {
   object,
   optional,
   relation,
-  timestamp,
   union,
-  preset as default,
+  defaultType as default,
   literal,
   array,
   types,
@@ -26,3 +22,7 @@ export {
   InferReturn,
   Project,
 } from './type-system'
+
+export { datetime } from './custom/datetime'
+export { timestamp } from './custom/timestamp'
+export { voidType as void } from './custom/void'

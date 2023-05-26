@@ -4,9 +4,10 @@ import { Id, JWT } from './scalars.types'
 export const User = () =>
   t.object({
     id: Id,
-    email: t.email(),
+    email: t.string({ format: 'email' }),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
+    a: t.datetime()
   })
 export type User = t.Infer<typeof User>
 

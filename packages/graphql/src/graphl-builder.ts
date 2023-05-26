@@ -2,7 +2,7 @@ import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
 import { extractProjectionFromGraphqlInfo } from './utils'
 import { createGraphQLError, createSchema } from 'graphql-yoga'
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { CustomType, LazyType, decode, encode, getProjectionType, isVoidType, lazyToType } from '@mondrian-framework/model'
+import { RootCustomType, LazyType, decode, encode, getProjectionType, isVoidType, lazyToType } from '@mondrian-framework/model'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { ModuleGraphqlApi } from './server'
@@ -15,7 +15,7 @@ function typeToGqlType(
   typeRef: Map<Function, string>, // function -> type name
   isInput: boolean,
   isOptional: boolean,
-  scalars: Record<string, CustomType>,
+  scalars: Record<string, RootCustomType>,
   unions: Record<string, (v: unknown) => boolean>,
   isUnion?: (v: unknown) => boolean,
 ): { description?: string; type: string } {
@@ -46,7 +46,7 @@ function typeToGqlTypeInternal(
   typeRef: Map<Function, string>, // function -> type name
   isInput: boolean,
   isOptional: boolean,
-  scalars: Record<string, CustomType>,
+  scalars: Record<string, RootCustomType>,
   unions: Record<string, (v: unknown) => boolean>,
 ): { description?: string; type: string } {
   const isRequired = isOptional ? '' : '!'
@@ -179,7 +179,7 @@ function typeToGqlTypeInternal(
   return assertNever(type)
 }
 
-function generateInputs({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, CustomType> }) {
+function generateInputs({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, RootCustomType> }) {
   const typeMap: Record<string, { description?: string; type: string }> = {}
   const typeRef: Map<Function, string> = new Map()
   const usedTypes = new Set([...Object.values(module.functions.definitions).map((q) => q.input)])
@@ -193,7 +193,7 @@ function generateInputs({ module, scalarsMap }: { module: GenericModule; scalars
     .join('\n\n')
 }
 
-function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, CustomType> }): {
+function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsMap: Record<string, RootCustomType> }): {
   gql: string
   unions: Record<string, (v: unknown) => boolean>
 } {
@@ -214,7 +214,7 @@ function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsM
   }
 }
 
-function generateScalars({ scalarsMap }: { scalarsMap: Record<string, CustomType> }) {
+function generateScalars({ scalarsMap }: { scalarsMap: Record<string, RootCustomType> }) {
   const scalarDefs = Object.values(scalarsMap)
     .map((s) => (s.opts?.description ? `scalar ${s.name}` : `"""${s.opts?.description}"""\nscalar ${s.name}`))
     .join('\n')
@@ -386,7 +386,7 @@ export function buildGraphqlSchema({
     type: 'mutation',
     context,
   })
-  const scalarsMap: Record<string, CustomType> = {}
+  const scalarsMap: Record<string, RootCustomType> = {}
   const { gql: typeDefs, unions } = generateTypes({ module, scalarsMap })
   const inputDefs = generateInputs({ module, scalarsMap })
   const { scalarDefs, scalarResolvers } = generateScalars({ scalarsMap })

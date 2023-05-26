@@ -151,7 +151,7 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
     return success(value)
   } else if (t.kind === 'custom') {
     if (!t.is(value, t.opts)) {
-      const result = t.decode(value, t.opts)
+      const result = t.decode(value, t.opts, opts)
       if (!result.pass) {
         return result
       }

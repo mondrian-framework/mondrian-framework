@@ -223,55 +223,6 @@ function checkStringOptions(value: string, opts: StringType['opts']): DecodeResu
   if (opts?.regex != null && !opts.regex.test(value)) {
     return error(`String regex mismatch (${opts.regex.source})`, value)
   }
-  if (opts?.format) {
-    if (opts.format === 'binary' || opts.format === 'byte' || opts.format === 'password') {
-      // ok
-    } else if (opts.format === 'email') {
-      //thanks to https://github.com/manishsaraan/email-validator
-      const tester =
-        /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
-      const emailParts = value.split('@')
-      if (emailParts.length !== 2) {
-        return error('Invalid email (no @ present)', value)
-      }
-      const account = emailParts[0]
-      const address = emailParts[1]
-
-      if (account.length > 64) {
-        return error('Invalid email (account is longer than 63 characters)', value)
-      } else if (address.length > 255) {
-        return error('Invalid email (domain is longer than 254 characters)', value)
-      }
-      const domainParts = address.split('.')
-      if (
-        domainParts.some(function (part) {
-          return part.length > 63
-        }) ||
-        !tester.test(value)
-      ) {
-        return error('Invalid email', value)
-      }
-    } else if (opts.format === 'ipv4') {
-      const tester =
-        /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
-      if (!tester.test(value)) {
-        return error('Invalid ipv4 address', value)
-      }
-    } else if (opts.format === 'uuid') {
-      const tester = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi
-      if (!tester.test(value)) {
-        return error('Invalid uuid', value)
-      }
-    } else if (opts.format === 'url') {
-      try {
-        new URL(value)
-      } catch {
-        return error('Invalid url', value)
-      }
-    } else {
-      assertNever(opts.format)
-    }
-  }
   return success(value)
 }
 

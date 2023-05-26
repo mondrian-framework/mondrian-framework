@@ -3,11 +3,14 @@ import {
   DefaultDecorator,
   Infer,
   LazyType,
+  StringType,
+  Type,
   array,
   defaultType,
   nullable,
   optional,
 } from './type-system'
+import { LazyToType } from './utils'
 
 export type DecoratorShorcuts<
   T extends LazyType,
@@ -19,7 +22,7 @@ export type DecoratorShorcuts<
       O | 'optional'
     >
     default(
-      value: [T] extends [LazyType] ? Infer<T> : never,
+      value: any, //[LazyToType<T>] extends [{ kind: Type['kind'] }] ? Infer<T> : any,
     ): { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] } & DecoratorShorcuts<
       { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] },
       O | 'default' | 'optional'
@@ -39,7 +42,6 @@ export type DecoratorShorcuts<
 >
 
 export function decoratorShorcuts<T extends LazyType>(t: T): DecoratorShorcuts<T> {
-  //@ts-ignore
   return {
     array: (opts) => array(t, opts),
     optional: () => optional(t),

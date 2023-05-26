@@ -1,6 +1,7 @@
 import { Expand, JSONType } from '@mondrian-framework/utils'
 import { DecodeOptions, DecodeResult } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
+import { LazyToType } from './utils'
 
 export type StringType = {
   kind: 'string'
@@ -8,7 +9,6 @@ export type StringType = {
     maxLength?: number
     regex?: RegExp
     minLength?: number
-    format?: 'password' | 'byte' | 'binary' | 'email' | 'uuid' | 'url' | 'ipv4'
     description?: string
   }
 }
@@ -365,7 +365,6 @@ export function array<const T extends LazyType>(
   opts: ArrayDecorator['opts']
 }> {
   const t = { kind: 'array-decorator', type, opts } as const
-  //@ts-ignore
   return { ...t, ...decoratorShorcuts(t) }
 }
 
@@ -373,7 +372,6 @@ export function optional<const T extends LazyType>(
   type: T,
 ): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<{ kind: 'optional-decorator'; type: T }, 'optional'> {
   const t = { kind: 'optional-decorator', type } as const
-  //@ts-ignore
   return { ...t, ...decoratorShorcuts(t) }
 }
 export function nullable<const T extends LazyType>(
@@ -426,13 +424,7 @@ type SelectionInternal<
       opts: ObjectType['opts']
     }
   : never
-type LazyToType<T extends LazyType> = [T] extends [() => infer R]
-  ? [R] extends [Type]
-    ? R
-    : never
-  : [T] extends [Type]
-  ? T
-  : never
+
 export function select<
   const T extends ObjectType | (() => ObjectType),
   const P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,

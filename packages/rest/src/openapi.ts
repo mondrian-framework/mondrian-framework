@@ -455,7 +455,6 @@ function typeToSchemaObjectInternal(
       pattern: type.opts?.regex?.source,
       minLength: type.opts?.minLength,
       maxLength: type.opts?.maxLength,
-      format: type.opts?.format,
     }
   }
   if (type.kind === 'custom') {
@@ -464,6 +463,9 @@ function typeToSchemaObjectInternal(
     }
     if (type.name === 'datetime') {
       return { type: 'string', format: 'date-time', description: type.opts?.description }
+    }
+    if (type.name === 'email') {
+      return { type: 'string', format: 'email', description: type.opts?.description }
     }
     return { type: 'string', description: type.opts?.description ?? type.name }
   }

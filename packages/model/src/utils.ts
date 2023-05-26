@@ -12,6 +12,14 @@ import {
 } from './type-system'
 import { DefaultDecorator, LazyType, OptionalDecorator, RelationDecorator, Type } from './type-system'
 
+export type LazyToType<T extends LazyType> = [T] extends [() => infer R]
+  ? [R] extends [{ kind: Type['kind'] }]
+    ? R
+    : never
+  : [T] extends [{ kind: Type['kind'] }]
+  ? T
+  : never
+
 export function lazyToType(t: LazyType): Type {
   if (typeof t === 'function') {
     return t()

@@ -4,10 +4,10 @@ import { Id, JWT } from './scalars.types'
 export const User = () =>
   t.object({
     id: Id,
-    email: t.string({ format: 'email' }),
+    email: t.string({}), //TODO: need email
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
-    a: t.datetime()
+    a: t.datetime(),
   })
 export type User = t.Infer<typeof User>
 
@@ -27,7 +27,7 @@ export const UserFilter = t.object({
 export type UserFilter = t.Infer<typeof UserFilter>
 
 export const LoginInput = t.object({
-  email: t.string({ format: 'email' }),
+  email: t.string({}), //TODO: need email
   password: t.string({ minLength: 1, maxLength: 100 }),
 })
 export type LoginInput = t.Infer<typeof LoginInput>

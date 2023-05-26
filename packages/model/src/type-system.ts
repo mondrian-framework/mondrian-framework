@@ -78,9 +78,9 @@ export type RootCustomType<T = any, N extends string = string, O = any> = {
   kind: 'custom'
   type: T
   name: N
-  decode: (input: unknown, context: O | undefined, opts: DecodeOptions | undefined) => DecodeResult<T>
-  encode: (input: T, context: O | undefined) => JSONType | undefined
-  is: (input: unknown, context: O | undefined) => boolean
+  decode: (input: unknown, settings: O | undefined, opts: DecodeOptions | undefined) => DecodeResult<T>
+  encode: (input: T, settings: O | undefined) => JSONType | undefined
+  is: (input: unknown, settings: O | undefined) => boolean
   opts?: O & { description?: string }
 }
 
@@ -366,7 +366,7 @@ export function array<const T extends LazyType>(
 }> {
   const t = { kind: 'array-decorator', type, opts } as const
   //@ts-ignore
-  return { ...t, ...decoratorShorcut(t) }
+  return { ...t, ...decoratorShorcuts(t) }
 }
 
 export function optional<const T extends LazyType>(

@@ -4,7 +4,7 @@ import { Id, JWT } from './scalars.types'
 export const User = () =>
   t.object({
     id: Id,
-    email: t.string({ format: 'email' }),
+    email: t.email(),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
   })

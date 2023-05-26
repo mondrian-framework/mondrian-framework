@@ -1,3 +1,4 @@
+import { assertNever } from '@mondrian/utils'
 import {
   ArrayDecorator,
   BooleanType,
@@ -9,6 +10,12 @@ import {
   ObjectType,
   StringType,
   UnionOperator,
+  array,
+  nullable,
+  object,
+  optional,
+  relation,
+  union,
 } from './type-system'
 import { DefaultDecorator, LazyType, OptionalDecorator, RelationDecorator, Type } from './type-system'
 
@@ -67,3 +74,61 @@ export function hasDecorator(
   }
   return false
 }
+/*
+export function getPartialDeepType(type: LazyType): LazyType {
+  function getPartialDeepTypeInternal(type: LazyType, isAlreadyOptional: boolean): LazyType {
+    if (typeof type === 'function') {
+      return () => lazyToType(getPartialDeepTypeInternal(lazyToType(type), isAlreadyOptional))
+    }
+
+    if (
+      type.kind === 'boolean' ||
+      type.kind === 'string' ||
+      type.kind === 'number' ||
+      type.kind === 'enumerator' ||
+      type.kind === 'custom' ||
+      type.kind === 'literal'
+    ) {
+      return isAlreadyOptional ? type : optional(type)
+    }
+    if (type.kind === 'array-decorator') {
+      return array(getPartialDeepTypeInternal(type.type, false))
+    }
+    if (type.kind === 'optional-decorator') {
+      return isAlreadyOptional
+        ? getPartialDeepTypeInternal(type.type, true)
+        : optional(getPartialDeepTypeInternal(type.type, true))
+    }
+    if (type.kind === 'nullable-decorator') {
+      return nullable(getPartialDeepTypeInternal(type.type, isAlreadyOptional))
+    }
+    if (type.kind === 'default-decorator') {
+      return getPartialDeepTypeInternal(type.type, isAlreadyOptional)
+    }
+    if (type.kind === 'relation-decorator') {
+      return relation(getPartialDeepTypeInternal(type.type, isAlreadyOptional))
+    }
+    if (type.kind === 'union-operator') {
+      return union(
+        Object.fromEntries(
+          Object.entries(type.types).map(([k, t]) => {
+            return [k, getPartialDeepTypeInternal(t, isAlreadyOptional)]
+          }),
+        ),
+      )
+    }
+    if (type.kind === 'object') {
+      const t = object(
+        Object.fromEntries(
+          Object.entries(type.type).map(([k, t]) => {
+            return [k, optional(getPartialDeepTypeInternal(t, true))]
+          }),
+        ),
+      )
+      return isAlreadyOptional ? t : optional(t)
+    }
+    assertNever(type)
+  }
+  return getPartialDeepTypeInternal(type, false)
+}
+*/

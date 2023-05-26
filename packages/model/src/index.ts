@@ -1,4 +1,6 @@
 import * as m from './exports'
+export * from './exports'
+export { m }
 export default m
 
 export * from './type-system'

@@ -332,6 +332,23 @@ export function string(opts?: StringType['opts']): StringType & DecoratorShorcut
   const t = { kind: 'string', opts } as const
   return { ...t, ...decoratorShorcut(t) }
 }
+export function email(opts?: StringType['opts']): StringType & DecoratorShorcuts<StringType> {
+  const t = { kind: 'string', opts: { ...opts, format: 'email' } } as const
+  return { ...t, ...decoratorShorcut(t) }
+}
+
+export function nill(opts?: StringType['opts']): {
+  kind: 'literal'
+  value: null
+  opts?: LiteralType['opts']
+} & DecoratorShorcuts<{
+  kind: 'literal'
+  value: null
+  opts?: LiteralType['opts']
+}> {
+  const t = literal(null)
+  return { ...t, ...decoratorShorcut(t) }
+}
 export function literal<const T extends number | string | boolean | null>(
   value: T,
   opts?: LiteralType['opts'],

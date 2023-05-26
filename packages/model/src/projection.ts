@@ -52,6 +52,7 @@ export function getProjectedType(type: LazyType, projection: GenericProjection |
           return [k, getProjectedType(type.type[k], v)]
         }),
       ),
+      { strict: true },
     )
   }
   assertNever(type)

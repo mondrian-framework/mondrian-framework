@@ -7,6 +7,6 @@ export * from './scalars.types'
 export const types = t.types({
   ...scalars,
   ...users,
-  Void: t.nothing(),
+  Void: t.void(),
 })
 export type Types = typeof types

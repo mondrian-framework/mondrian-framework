@@ -5,11 +5,9 @@ import {
   InferReturn,
   Types,
   decode,
-  encode,
   getProjectedType,
 } from '@mondrian/model'
 import { Logger } from './utils'
-import { JSONType } from '@mondrian/utils'
 
 export type Function<T extends Types, I extends keyof T, O extends keyof T, Context> = Infer<T[I]> extends infer Input
   ? InferReturn<T[O]> extends infer Output
@@ -78,6 +76,7 @@ export type GenericModule = {
   }
   authentication?: AuthenticationMethod
   context: (input: any) => Promise<unknown>
+  options?: ModuleOptions
 }
 
 export type Module<T extends Types, F extends Functions<keyof T extends string ? keyof T : string>, CI> = {
@@ -90,25 +89,39 @@ export type Module<T extends Types, F extends Functions<keyof T extends string ?
   }
   authentication?: AuthenticationMethod
   context: (input: CI) => Promise<ContextType<F>>
+  options?: ModuleOptions
+}
+
+export type ModuleOptions = {
+  checks?: {
+    output?: 'ignore' | 'log' | 'throw'
+  }
 }
 
 export function module<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>(
   module: Module<T, F, CI>,
 ): Module<T, F, CI> {
+  const outputTypeCheck = module.options?.checks?.output ?? 'throw'
   const functions = Object.fromEntries(
     Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
       const outputType = module.types[functionBody.output]
       const f: GenericFunction = {
         ...functionBody,
         async apply(args) {
-          //TODO: avoid encode and decode for performance reason (or need a setting)
           const result = await functionBody.apply(args)
-          const encoded = encode(outputType, result as any)
-          const projectedType = getProjectedType(outputType, args.projection as GenericProjection)
-          const outputDecoded = decode(projectedType, encoded)
-          if (!outputDecoded.pass) {
-            const m = JSON.stringify({ projection: args.projection, errors: outputDecoded.errors })
-            args.log(`Projection is not respected: ${m}`, 'error')
+          if (outputTypeCheck !== 'ignore') {
+            const projectedType = getProjectedType(outputType, args.projection as GenericProjection)
+            const decoded = decode(projectedType, result)
+            if (!decoded.pass) {
+              const m = JSON.stringify({ projection: args.projection, errors: decoded.errors })
+              if (outputTypeCheck === 'log') {
+                args.log(`Invalid output: ${m}`, 'error')
+              } else {
+                throw new Error(`Invalid output: ${m}`)
+              }
+            } else {
+              return decoded.value
+            }
           }
           return result
         },

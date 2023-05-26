@@ -1,4 +1,4 @@
-import { Expand, JSONType } from '@mondrian/utils'
+import { Expand, JSONType } from '@mondrian-framework/utils'
 import { DecodeResult } from './decoder'
 
 export type StringType = {

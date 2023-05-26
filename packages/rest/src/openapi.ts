@@ -12,9 +12,9 @@ import {
   isVoidType,
   lazyToType,
   mergeProjections,
-} from '@mondrian/model'
-import { assertNever, isArray } from '@mondrian/utils'
-import { Functions, GenericFunction, GenericModule, buildLogger, randomOperationId } from '@mondrian/module'
+} from '@mondrian-framework/model'
+import { assertNever, isArray } from '@mondrian-framework/utils'
+import { Functions, GenericFunction, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { decodeQueryObject } from './utils'
 import { ModuleRestApi, RestFunctionSpecs } from './server'
 

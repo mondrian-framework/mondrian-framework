@@ -1,4 +1,4 @@
-import t from '@mondrian/model'
+import t from '@mondrian-framework/model'
 import * as scalars from './scalars.types'
 import * as users from './user.types'
 export * from './user.types'

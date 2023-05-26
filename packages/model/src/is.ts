@@ -1,4 +1,4 @@
-import { JSONType } from '@mondrian/utils'
+import { JSONType } from '@mondrian-framework/utils'
 import { LazyType } from './type-system'
 import { lazyToType } from './utils'
 import { decode } from './decoder'

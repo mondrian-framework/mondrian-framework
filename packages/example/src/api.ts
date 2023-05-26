@@ -1,9 +1,9 @@
-import { ModuleRestApi } from '@mondrian/rest'
+import { ModuleRestApi } from '@mondrian-framework/rest'
 import { Functions } from './functions'
-import { ModuleGraphqlApi } from '@mondrian/graphql'
+import { ModuleGraphqlApi } from '@mondrian-framework/graphql'
 import { module } from './module'
-import { ModuleSqsApi } from '@mondrian/aws-sqs/src/listener'
-import { ModuleCronApi } from '@mondrian/cron/src/executor'
+import { ModuleSqsApi } from '@mondrian-framework/aws-sqs/src/listener'
+import { ModuleCronApi } from '@mondrian-framework/cron/src/executor'
 import { Types } from './types'
 
 //TODO:

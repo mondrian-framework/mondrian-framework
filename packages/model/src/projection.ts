@@ -1,5 +1,5 @@
 import { LazyType, array, boolean, object, optional, union, nullable } from './type-system'
-import { assertNever } from '@mondrian/utils'
+import { assertNever } from '@mondrian-framework/utils'
 import { lazyToType } from './utils'
 
 export type GenericProjection = true | { [K in string]?: true | GenericProjection }

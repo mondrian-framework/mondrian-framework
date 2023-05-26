@@ -1,4 +1,4 @@
-import { JSONType, setTraversingValue } from '@mondrian/utils'
+import { JSONType, setTraversingValue } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
   return internalEncodeQueryObject(input, prefix).join('&')

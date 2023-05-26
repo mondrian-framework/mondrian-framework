@@ -14,17 +14,17 @@
     "skipLibCheck": true,
     "types": ["vitest/importMeta"],
     "paths": {
-      "@mondrian/docs": ["./packages/docs"],
-      "@mondrian/utils": ["./packages/utils"],
-      "@mondrian/model": ["./packages/model"],
-      "@mondrian/module": ["./packages/module"],
-      "@mondrian/prisma": ["./packages/prisma"],
-      "@mondrian/rest": ["./packages/rest"],
-      "@mondrian/graphql": ["./packages/graphql"],
-      "@mondrian/aws-sqs": ["./packages/aws-sqs"],
-      "@mondrian/aws-lambda-sqs": ["./packages/aws-lambda-sqs"],
-      "@mondrian/cron": ["./packages/cron"],
-      "@mondrian/example": ["./packages/example"]
+      "@mondrian-framework/docs": ["./packages/docs"],
+      "@mondrian-framework/utils": ["./packages/utils"],
+      "@mondrian-framework/model": ["./packages/model"],
+      "@mondrian-framework/module": ["./packages/module"],
+      "@mondrian-framework/prisma": ["./packages/prisma"],
+      "@mondrian-framework/rest": ["./packages/rest"],
+      "@mondrian-framework/graphql": ["./packages/graphql"],
+      "@mondrian-framework/aws-sqs": ["./packages/aws-sqs"],
+      "@mondrian-framework/aws-lambda-sqs": ["./packages/aws-lambda-sqs"],
+      "@mondrian-framework/cron": ["./packages/cron"],
+      "@mondrian-framework/example": ["./packages/example"]
     }
   },
   "files": [],

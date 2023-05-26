@@ -1,4 +1,4 @@
-import { GenericProjection, LazyType, getFirstConcreteType, hasDecorator, lazyToType } from '@mondrian/model'
+import { GenericProjection, LazyType, getFirstConcreteType, hasDecorator, lazyToType } from '@mondrian-framework/model'
 
 export function projectionToSelection<T extends Record<string, unknown>>(
   projection: GenericProjection | undefined,

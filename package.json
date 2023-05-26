@@ -1,13 +1,13 @@
 {
-  "name": "@mondrian/root",
+  "name": "@mondrian-framework/root",
   "version": "0.0.0",
   "private": true,
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "build-docs": "npm run build-docs --workspace=@mondrian/docs",
+    "build-docs": "npm run build-docs --workspace=@mondrian-framework/docs",
     "test": "npm run test --workspaces --if-present",
     "pretty": "prettier --write \"./**/*.ts\"",
-    "example": "npm run build --workspace=@mondrian/example && npm run example --workspace=@mondrian/example"
+    "example": "npm run build --workspace=@mondrian-framework/example && npm run example --workspace=@mondrian-framework/example"
   },
   "devDependencies": {
     "typescript": "5.0.4",

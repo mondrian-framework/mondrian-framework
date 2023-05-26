@@ -1,7 +1,7 @@
-import { Types, decode } from '@mondrian/model'
-import { ContextType, Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian/module'
+import { Types, decode } from '@mondrian-framework/model'
+import { ContextType, Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import * as AWS from '@aws-sdk/client-sqs'
-import { sleep } from '@mondrian/utils'
+import { sleep } from '@mondrian-framework/utils'
 
 export type SqsFunctionSpecs = { inputQueueUrl: string; malformedMessagePolicy?: 'ignore' | 'delete' }
 export type ModuleSqsApi<F extends Functions> = {

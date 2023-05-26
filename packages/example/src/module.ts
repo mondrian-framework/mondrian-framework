@@ -1,4 +1,4 @@
-import m from '@mondrian/module'
+import m from '@mondrian-framework/module'
 import { types, Types } from './types'
 import { functions, Functions } from './functions'
 import { PrismaClient } from '@prisma/client'

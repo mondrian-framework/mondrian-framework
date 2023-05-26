@@ -1,4 +1,4 @@
-import { PrismaUtils } from '@mondrian/prisma'
+import { PrismaUtils } from '@mondrian-framework/prisma'
 import f from './functions.commons'
 import { Prisma } from '@prisma/client'
 import { types } from '../types'

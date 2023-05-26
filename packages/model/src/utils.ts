@@ -1,4 +1,4 @@
-import { assertNever } from '@mondrian/utils'
+import { assertNever } from '@mondrian-framework/utils'
 import {
   ArrayDecorator,
   BooleanType,

@@ -1,5 +1,5 @@
-import { Types } from '@mondrian/model'
-import { Functions, Module } from '@mondrian/module'
+import { Types } from '@mondrian-framework/model'
+import { Functions, Module } from '@mondrian-framework/module'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { createYoga } from 'graphql-yoga'
 import { buildGraphqlSchema } from './graphl-builder'

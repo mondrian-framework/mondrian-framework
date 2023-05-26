@@ -1,6 +1,6 @@
-import { Types, decode } from '@mondrian/model'
-import { Functions, Module, buildLogger, randomOperationId } from '@mondrian/module'
-import { isArray } from '@mondrian/utils'
+import { Types, decode } from '@mondrian-framework/model'
+import { Functions, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
 
 export type SqsFunctionSpecs = {

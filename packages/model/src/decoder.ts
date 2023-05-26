@@ -1,4 +1,4 @@
-import { assertNever } from '@mondrian/utils'
+import { assertNever } from '@mondrian-framework/utils'
 import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType } from './type-system'
 import { lazyToType } from './utils'
 

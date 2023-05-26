@@ -1,4 +1,4 @@
-import { JSONType, assertNever } from '@mondrian/utils'
+import { JSONType, assertNever } from '@mondrian-framework/utils'
 import { Infer, LazyType } from './type-system'
 import { hasDecorator, lazyToType } from './utils'
 import { is } from './is'

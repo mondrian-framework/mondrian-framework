@@ -1,4 +1,4 @@
-import { Infer, InferProjection, LazyType, Project, Types } from '@mondrian/model'
+import { Infer, InferProjection, LazyType, Project, Types } from '@mondrian-framework/model'
 import { buildLogger, randomOperationId } from './utils'
 import { ContextType, Functions, Module } from './module'
 

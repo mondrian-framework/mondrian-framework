@@ -1,5 +1,5 @@
-import { Infer, InferProjection, LazyType, Project, Types, decode, encode } from '@mondrian/model'
-import { Functions, Module } from '@mondrian/module'
+import { Infer, InferProjection, LazyType, Project, Types, decode, encode } from '@mondrian-framework/model'
+import { Functions, Module } from '@mondrian-framework/module'
 import { ModuleRestApi } from './server'
 import { encodeQueryObject } from './utils'
 

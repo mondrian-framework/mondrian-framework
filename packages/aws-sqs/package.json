@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian/aws-sqs",
+  "name": "@mondrian-framework/aws-sqs",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -9,9 +9,9 @@
   },
   "keywords": [],
   "dependencies": {
-    "@mondrian/model": "*",
-    "@mondrian/module": "*",
-    "@mondrian/utils": "*",
+    "@mondrian-framework/model": "*",
+    "@mondrian-framework/module": "*",
+    "@mondrian-framework/utils": "*",
     "@aws-sdk/client-sqs": "3.332.0"
   }
 }

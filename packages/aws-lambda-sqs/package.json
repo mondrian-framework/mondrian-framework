@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian/aws-lambda-sqs",
+  "name": "@mondrian-framework/aws-lambda-sqs",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -9,9 +9,9 @@
   },
   "keywords": [],
   "dependencies": {
-    "@mondrian/model": "*",
-    "@mondrian/module": "*",
-    "@mondrian/utils": "*",
+    "@mondrian-framework/model": "*",
+    "@mondrian-framework/module": "*",
+    "@mondrian-framework/utils": "*",
     "aws-lambda": "1.0.7",
     "@types/aws-lambda": "8.10.115"
   }

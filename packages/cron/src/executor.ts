@@ -1,5 +1,5 @@
-import { Infer, Types } from '@mondrian/model'
-import { Functions, Logger, Module, buildLogger, randomOperationId } from '@mondrian/module'
+import { Infer, Types } from '@mondrian-framework/model'
+import { Functions, Logger, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { ScheduledTask } from 'node-cron'
 import { validate, schedule } from 'node-cron'
 

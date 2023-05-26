@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian/rest",
+  "name": "@mondrian-framework/rest",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -9,9 +9,9 @@
   },
   "keywords": [],
   "dependencies": {
-    "@mondrian/model": "*",
-    "@mondrian/module": "*",
-    "@mondrian/utils": "*",
+    "@mondrian-framework/model": "*",
+    "@mondrian-framework/module": "*",
+    "@mondrian-framework/utils": "*",
     "fastify": "4.17.0",
     "@fastify/static": "6.10.1",
     "swagger-ui-dist": "5.0.0-alpha.13",

@@ -1,4 +1,4 @@
-import { GenericProjection, LazyType, lazyToType } from '@mondrian/model'
+import { GenericProjection, LazyType, lazyToType } from '@mondrian-framework/model'
 import { randomBytes } from 'crypto'
 
 export function randomOperationId() {

@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian/model",
+  "name": "@mondrian-framework/model",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -10,6 +10,6 @@
   "keywords": [],
   "devDependencies": {},
   "dependencies": {
-    "@mondrian/utils": "*"
+    "@mondrian-framework/utils": "*"
   }
 }

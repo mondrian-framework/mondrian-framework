@@ -1,23 +1,23 @@
 {
-  "name": "@mondrian/example",
+  "name": "@mondrian-framework/example",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
     "test": "vitest run",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "example": "node -r dotenv/config build/src/app.js"
   },
   "keywords": [],
   "dependencies": {
-    "@mondrian/aws-lambda-sqs": "*",
-    "@mondrian/aws-sqs": "*",
-    "@mondrian/cron": "*",
-    "@mondrian/graphql": "*",
-    "@mondrian/model": "*",
-    "@mondrian/module": "*",
-    "@mondrian/rest": "*",
-    "@mondrian/prisma": "*",
+    "@mondrian-framework/aws-lambda-sqs": "*",
+    "@mondrian-framework/aws-sqs": "*",
+    "@mondrian-framework/cron": "*",
+    "@mondrian-framework/graphql": "*",
+    "@mondrian-framework/model": "*",
+    "@mondrian-framework/module": "*",
+    "@mondrian-framework/rest": "*",
+    "@mondrian-framework/prisma": "*",
     "@prisma/client": "^4.14.1",
     "prisma": "4.14.1",
     "jsonwebtoken": "9.0.0"

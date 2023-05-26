@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian/prisma",
+  "name": "@mondrian-framework/prisma",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "dependencies": {
-    "@mondrian/model": "*",
-    "@mondrian/utils": "*"
+    "@mondrian-framework/model": "*",
+    "@mondrian-framework/utils": "*"
   }
 }

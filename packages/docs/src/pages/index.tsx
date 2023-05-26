@@ -69,7 +69,7 @@ export default function Home(): JSX.Element {
                 <div className={styles.featureButton}>
                   <Link
                     className={`button button--primary button--lg`}
-                    to="/docs/docs/intro">
+                    to="/docs/docs/introduction">
                       Learn more about data model
                   </Link>  
                 </div>

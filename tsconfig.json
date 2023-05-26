@@ -12,19 +12,46 @@
     "incremental": true,
     "composite": true,
     "skipLibCheck": true,
-    "types": ["vitest/importMeta"],
+    "types": [
+      "vitest/importMeta"
+    ],
     "paths": {
-      "@mondrian-framework/docs": ["./packages/docs"],
-      "@mondrian-framework/utils": ["./packages/utils"],
-      "@mondrian-framework/model": ["./packages/model"],
-      "@mondrian-framework/module": ["./packages/module"],
-      "@mondrian-framework/prisma": ["./packages/prisma"],
-      "@mondrian-framework/rest": ["./packages/rest"],
-      "@mondrian-framework/graphql": ["./packages/graphql"],
-      "@mondrian-framework/aws-sqs": ["./packages/aws-sqs"],
-      "@mondrian-framework/aws-lambda-sqs": ["./packages/aws-lambda-sqs"],
-      "@mondrian-framework/cron": ["./packages/cron"],
-      "@mondrian-framework/example": ["./packages/example"]
+      "@mondrian-framework/docs": [
+        "./packages/docs"
+      ],
+      "@mondrian-framework/utils": [
+        "./packages/utils"
+      ],
+      "@mondrian-framework/model": [
+        "./packages/model"
+      ],
+      "@mondrian-framework/model": [
+        "./packages/advanced-types"
+      ],
+      "@mondrian-framework/module": [
+        "./packages/module"
+      ],
+      "@mondrian-framework/prisma": [
+        "./packages/prisma"
+      ],
+      "@mondrian-framework/rest": [
+        "./packages/rest"
+      ],
+      "@mondrian-framework/graphql": [
+        "./packages/graphql"
+      ],
+      "@mondrian-framework/aws-sqs": [
+        "./packages/aws-sqs"
+      ],
+      "@mondrian-framework/aws-lambda-sqs": [
+        "./packages/aws-lambda-sqs"
+      ],
+      "@mondrian-framework/cron": [
+        "./packages/cron"
+      ],
+      "@mondrian-framework/example": [
+        "./packages/example"
+      ]
     }
   },
   "files": [],
@@ -37,6 +64,9 @@
     },
     {
       "path": "packages/model"
+    },
+    {
+      "path": "packages/advanced-types"
     },
     {
       "path": "packages/module"
@@ -63,5 +93,8 @@
       "path": "packages/example"
     }
   ],
-  "exclude": ["**/node_modules", "build"]
+  "exclude": [
+    "**/node_modules",
+    "build"
+  ]
 }

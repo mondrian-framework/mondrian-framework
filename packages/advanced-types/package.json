@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian-framework/model",
+  "name": "@mondrian-framework/advanced-types",
   "version": "0.0.1",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -9,6 +9,6 @@
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/utils": "^0.0.1"
+    "@mondrian-framework/model": "^0.0.1"
   }
 }

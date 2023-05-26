@@ -1,16 +1,12 @@
 import {
   ArrayDecorator,
   DefaultDecorator,
-  Infer,
   LazyType,
-  StringType,
-  Type,
   array,
   defaultType,
   nullable,
   optional,
 } from './type-system'
-import { LazyToType } from './utils'
 
 export type DecoratorShorcuts<
   T extends LazyType,

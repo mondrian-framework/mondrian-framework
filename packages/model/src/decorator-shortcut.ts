@@ -1,7 +1,10 @@
 import {
   ArrayDecorator,
   DefaultDecorator,
+  Infer,
   LazyType,
+  NullableDecorator,
+  OptionalDecorator,
   array,
   defaultType,
   nullable,
@@ -13,26 +16,12 @@ export type DecoratorShorcuts<
   O extends 'optional' | 'nullable' | 'array' | 'default' = never,
 > = Omit<
   {
-    optional(): { kind: 'optional-decorator'; type: T } & DecoratorShorcuts<
-      { kind: 'optional-decorator'; type: T },
-      O | 'optional'
-    >
-    default(
-      value: any, //[LazyToType<T>] extends [{ kind: Type['kind'] }] ? Infer<T> : any,
-    ): { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] } & DecoratorShorcuts<
-      { kind: 'default-decorator'; type: T; opts: DefaultDecorator['opts'] },
-      O | 'default' | 'optional'
-    >
-    nullable(): { kind: 'nullable-decorator'; type: T } & DecoratorShorcuts<
-      { kind: 'nullable-decorator'; type: T },
-      O | 'nullable'
-    >
+    optional(): OptionalDecorator<T> & DecoratorShorcuts<OptionalDecorator<T>, O | 'optional'>
+    default(value: Infer<T>): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, O | 'default' | 'optional'>
+    nullable(): NullableDecorator<T> & DecoratorShorcuts<NullableDecorator<T>, O | 'nullable'>
     array(
       opts?: ArrayDecorator['opts'],
-    ): { kind: 'array-decorator'; type: T } & DecoratorShorcuts<
-      { kind: 'array-decorator'; type: T },
-      Exclude<O, 'optional' | 'nullable'>
-    >
+    ): ArrayDecorator<T> & DecoratorShorcuts<ArrayDecorator<T>, Exclude<O, 'optional' | 'nullable'>>
   },
   O
 >

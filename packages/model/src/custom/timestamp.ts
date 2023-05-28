@@ -1,6 +1,6 @@
 import { CustomType, custom } from '../type-system'
 
-export type TimestampType = CustomType<Date, 'timestamp', { min?: Date; max?: Date }>
+export type TimestampType = CustomType<Date, { min?: Date; max?: Date }>
 export function timestamp(opts?: TimestampType['opts']): TimestampType {
   return custom(
     {

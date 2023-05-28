@@ -201,7 +201,7 @@ function decodeObjectProperties(
   opts: DecodeOptions | undefined,
 ): DecodeResult<Record<string, unknown>> {
   for (const [key, subtype] of Object.entries(type.type)) {
-    const result = decodeInternal(subtype, value[key], opts)
+    const result = decodeInternal(subtype as LazyType, value[key], opts)
     const enrichedResult = enrichErrors(result, key)
     if (!enrichedResult.pass) {
       return enrichedResult

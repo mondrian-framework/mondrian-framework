@@ -1,19 +1,20 @@
 import { CustomType, decode, m } from '@mondrian-framework/model'
 
+const EMAIL_REGEX =
+  /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
+
 type EmailType = CustomType<string, 'email', {}>
 export function email(opts?: EmailType['opts']) {
-  return (
-    m.custom({
+  return m.custom(
+    {
       name: 'email',
       decode: (input, opts, decodeOpts) => {
-        const decoded = decode(m.string(), input)
+        const decoded = decode(m.string(), input, decodeOpts)
         if (!decoded.pass) {
           return decoded
         }
 
         //thanks to https://github.com/manishsaraan/email-validator
-        const tester =
-          /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
         const emailParts = decoded.value.split('@')
         if (emailParts.length !== 2) {
           return {
@@ -39,7 +40,7 @@ export function email(opts?: EmailType['opts']) {
           domainParts.some(function (part) {
             return part.length > 63
           }) ||
-          !tester.test(decoded.value)
+          !EMAIL_REGEX.test(decoded.value)
         ) {
           return {
             pass: false,
@@ -55,7 +56,7 @@ export function email(opts?: EmailType['opts']) {
       is(input) {
         return typeof input === 'string'
       },
-    }),
-    opts
+    },
+    opts,
   )
 }

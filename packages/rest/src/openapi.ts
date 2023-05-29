@@ -5,10 +5,12 @@ import {
   GenericProjection,
   LazyType,
   Types,
+  convert,
   decode,
   encode,
   getProjectionType,
   getRequiredProjection,
+  is,
   isVoidType,
   lazyToType,
   mergeProjections,
@@ -117,9 +119,9 @@ export function attachRestMethods({
 
 function firstOf2<V>(f1: () => DecodeResult<V>, f2: () => DecodeResult<V>): DecodeResult<V> {
   const v1 = f1()
-  if (!v1.pass) {
+  if (!v1.success) {
     const v2 = f2()
-    if (v2.pass) {
+    if (v2.success) {
       return v2
     }
   }
@@ -167,10 +169,10 @@ async function elabFastifyRestRequest({
   const inputIsVoid = isVoidType(inputType)
   const input = inputIsVoid ? null : inputFrom === 'body' ? request.body : decodeQueryObject(query, 'input')
   const decoded = firstOf2(
-    () => decode(inputType, input, { cast: inputFrom !== 'body' }),
-    () => decode(inputType, query['input'], { cast: inputFrom !== 'body' }),
+    () => convert(inputType, input, { cast: true }),
+    () => convert(inputType, query['input'], { cast: true }),
   )
-  if (!decoded.pass) {
+  if (!decoded.success) {
     log('Bad request.')
     reply.status(400)
     return { errors: decoded.errors }
@@ -178,8 +180,9 @@ async function elabFastifyRestRequest({
   const projectionHeader = request.headers['projection']
   const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
   const fieldType = () => getProjectionType(outputType)
-  const projection = projectionObject != null ? decode(fieldType(), projectionObject, { cast: true }) : undefined
-  if (projection && !projection.pass) {
+  const projection =
+    projectionObject != null ? decode(fieldType(), projectionObject, { cast: true, strict: true }) : undefined
+  if (projection && !projection.success) {
     log('Bad request. (projection)')
     reply.status(400)
     return { errors: projection.errors, message: "On 'projection' header" }

@@ -5,14 +5,14 @@ export function voidType(opts?: VoidType['opts']): VoidType {
   return {
     kind: 'custom',
     name: 'void',
-    decode: (input) => {
-      return { pass: true, value: input as void }
+    decode: () => {
+      return { success: true, value: undefined }
     },
-    encode: (input) => {
+    encode: () => {
       return undefined
     },
     is() {
-      return true
+      return { success: true }
     },
     opts,
     type: null as unknown as void,

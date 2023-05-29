@@ -1,12 +1,14 @@
 import { assertNever } from '@mondrian-framework/utils'
-import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType } from './type-system'
+import { ArrayDecorator, Infer, LazyType, ObjectType } from './type-system'
 import { lazyToType } from './utils'
 
 export type DecodeResult<T> =
-  | { pass: true; value: T }
-  | { pass: false; errors: { path?: string; error: string; value: unknown }[] }
+  | { success: true; value: T }
+  | { success: false; errors: { path?: string; error: string; value: unknown }[] }
 
-export type DecodeOptions = { cast?: boolean; castGqlInputUnion?: boolean }
+//cast default is false
+//strict default is true
+export type DecodeOptions = { cast?: boolean; strict?: boolean; castGqlInputUnion?: boolean }
 export function decode<const T extends LazyType>(
   type: T,
   value: unknown,
@@ -16,63 +18,48 @@ export function decode<const T extends LazyType>(
   return enrichErrors(result, '') as DecodeResult<Infer<T>>
 }
 
-function success<T>(value: T): { pass: true; value: T } {
-  return { pass: true, value }
+function success<T>(value: T): { success: true; value: T } {
+  return { success: true, value }
 }
 
-function errors(errors: { path?: string; error: string; value: unknown }[]): {
-  pass: false
+export function errors(errors: { path?: string; error: string; value: unknown }[]): {
+  success: false
   errors: { path?: string; error: string; value: unknown }[]
 } {
-  return { pass: false, errors }
+  return { success: false, errors }
 }
 
-function error(
+export function error(
   error: string,
   value: unknown,
 ): {
-  pass: false
+  success: false
   errors: { path?: string; error: string; value: unknown }[]
 } {
-  return { pass: false, errors: [{ error, value }] }
+  return { success: false, errors: [{ error, value }] }
 }
 
 function enrichErrors<T>(result: DecodeResult<T>, key: string): DecodeResult<T> {
-  if (!result.pass) {
+  if (!result.success) {
     return errors(result.errors.map((e) => ({ ...e, path: e.path != null ? `${key}/${e.path}` : `${key}/` })))
   }
   return result
 }
 
 function concat2<V1, V2>(v1: DecodeResult<V1>, f1: (v: V1) => DecodeResult<V2>): DecodeResult<V2> {
-  if (!v1.pass) {
+  if (!v1.success) {
     return v1
   }
   const v2 = f1(v1.value)
   return v2
 }
-function concat3<V1, V2, V3>(
-  v1: DecodeResult<V1>,
-  f1: (v: V1) => DecodeResult<V2>,
-  f2: (v: V2) => DecodeResult<V3>,
-): DecodeResult<V3> {
-  if (!v1.pass) {
-    return v1
-  }
-  const v2 = f1(v1.value)
-  if (!v2.pass) {
-    return v2
-  }
-  const v3 = f2(v2.value)
-  return v3
-}
 
 function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | undefined): DecodeResult<unknown> {
   const t = lazyToType(type)
   if (t.kind === 'string') {
-    return concat2(assertString(value, opts), (value) => checkStringOptions(value, t.opts))
+    return assertString(value, opts)
   } else if (t.kind === 'number') {
-    return concat2(assertNumber(value, opts), (value) => checkNumberOptions(value, t.opts))
+    return assertNumber(value, opts)
   } else if (t.kind === 'boolean') {
     return assertBoolean(value, opts)
   } else if (t.kind === 'literal') {
@@ -84,26 +71,35 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
     if (value === undefined) {
       return success(value)
     }
+    if (opts?.cast && value === null) {
+      return success(undefined)
+    }
     const result = decodeInternal(t.type, value, opts)
-    if (!result.pass) {
+    if (!result.success) {
       return result.errors.length > 0 ? result : error(`Undefined expected`, value)
     }
     return result
   } else if (t.kind === 'nullable-decorator') {
     if (value === null) {
-      return success(value)
+      return success(null)
+    }
+    if (opts?.cast && value === undefined) {
+      return success(null)
     }
     const result = decodeInternal(t.type, value, opts)
-    if (!result.pass) {
+    if (!result.success) {
       return result.errors.length > 0 ? result : error(`Null expected`, value)
     }
     return result
   } else if (t.kind === 'default-decorator') {
     const result = decodeInternal(t.type, value, opts)
-    if (result.pass) {
+    if (result.success) {
       return result
     }
     if (value === undefined || (opts?.cast && value === null)) {
+      if (typeof t.opts.default === 'function') {
+        return success(t.opts.default())
+      }
       return success(t.opts.default)
     }
     return result
@@ -125,7 +121,7 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
       const errs: { path?: string; error: string; value: unknown }[] = []
       for (const u of Object.values(t.types)) {
         const result = decodeInternal(u, value, opts)
-        if (result.pass) {
+        if (result.success) {
           return result
         }
         errs.push(...result.errors)
@@ -133,31 +129,20 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
       return errors(errs)
     }
   } else if (t.kind === 'object') {
-    return concat3(
-      assertObject(value, opts),
-      (value) => checkObjectOptions(value, t.opts),
-      ({ value, accumulator }) => decodeObjectProperties(value, t, accumulator, opts),
-    )
+    return concat2(assertObject(value, opts), (value) => decodeObjectProperties(value, t, opts))
   } else if (t.kind === 'array-decorator') {
-    return concat3(
-      assertArray(value, opts),
-      (value) => checkArrayOptions(value, t.opts),
-      (value) => decodeArrayElements(value, t, opts),
-    )
+    return concat2(assertArray(value, opts), (value) => decodeArrayElements(value, t, opts))
   } else if (t.kind === 'enum') {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
     }
     return success(value)
   } else if (t.kind === 'custom') {
-    if (!t.is(value, t.opts)) {
-      const result = t.decode(value, t.opts, opts)
-      if (!result.pass) {
-        return result
-      }
+    const result = t.decode(value, t.opts, opts)
+    if (!result.success) {
       return result
     }
-    return success(value)
+    return result
   }
   assertNever(t)
 }
@@ -184,26 +169,26 @@ function assertObject(value: unknown, opts: DecodeOptions | undefined): DecodeRe
   return success(value as Record<string, unknown>)
 }
 
-function checkObjectOptions(
-  value: Record<string, unknown>,
-  opts: ObjectType['opts'],
-): DecodeResult<{ value: Record<string, unknown>; accumulator: Record<string, unknown> }> {
-  if (opts?.strict) {
-    return success({ value, accumulator: {} })
-  }
-  return success({ value, accumulator: { ...value } })
-}
-
 function decodeObjectProperties(
   value: Record<string, unknown>,
   type: ObjectType,
-  accumulator: Record<string, unknown>,
   opts: DecodeOptions | undefined,
 ): DecodeResult<Record<string, unknown>> {
+  const strict = opts?.strict ?? true
+  const cast = opts?.cast
+  if (!cast && strict) {
+    const typeKeys = new Set(Object.keys(type.type))
+    for (const key of Object.keys(value)) {
+      if (!typeKeys.has(key)) {
+        return enrichErrors(error(`Field is not expected`, value), key)
+      }
+    }
+  }
+  const accumulator: Record<string, unknown> = strict ? {} : { ...value }
   for (const [key, subtype] of Object.entries(type.type)) {
     const result = decodeInternal(subtype as LazyType, value[key], opts)
     const enrichedResult = enrichErrors(result, key)
-    if (!enrichedResult.pass) {
+    if (!enrichedResult.success) {
       return enrichedResult
     }
     if (enrichedResult.value !== undefined) {
@@ -211,19 +196,6 @@ function decodeObjectProperties(
     }
   }
   return success(accumulator)
-}
-
-function checkStringOptions(value: string, opts: StringType['opts']): DecodeResult<string> {
-  if (opts?.maxLength != null && value.length > opts.maxLength) {
-    return error(`String longer than max length (${opts.maxLength})`, value)
-  }
-  if (opts?.minLength != null && value.length < opts.minLength) {
-    return error(`String shorter than min length (${opts.minLength})`, value)
-  }
-  if (opts?.regex != null && !opts.regex.test(value)) {
-    return error(`String regex mismatch (${opts.regex.source})`, value)
-  }
-  return success(value)
 }
 
 function assertArray(value: unknown, opts: DecodeOptions | undefined): DecodeResult<unknown[]> {
@@ -251,13 +223,6 @@ function assertArray(value: unknown, opts: DecodeOptions | undefined): DecodeRes
   return error(`Array expected`, value)
 }
 
-function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): DecodeResult<unknown[]> {
-  if (opts?.maxItems != null && value.length > opts.maxItems) {
-    return error(`Array must have maximum ${opts.maxItems} items`, value)
-  }
-  return success(value)
-}
-
 function decodeArrayElements(
   value: unknown[],
   type: ArrayDecorator,
@@ -267,7 +232,7 @@ function decodeArrayElements(
   for (let i = 0; i < value.length; i++) {
     const result = decodeInternal(type.type, value[i], opts)
     const enrichedResult = enrichErrors(result, i.toString())
-    if (!enrichedResult.pass) {
+    if (!enrichedResult.success) {
       return enrichedResult
     }
     values.push(enrichedResult.value)
@@ -286,25 +251,6 @@ function assertNumber(value: unknown, opts: DecodeOptions | undefined): DecodeRe
     }
   }
   return error(`Number expected`, value)
-}
-
-function checkNumberOptions(value: number, opts: NumberType['opts']): DecodeResult<number> {
-  if (opts?.minimum != null && value < opts.minimum) {
-    return error(`Number must be greater than or equal to ${opts.minimum}`, value)
-  }
-  if (opts?.maximum != null && value > opts.maximum) {
-    return error(`Number must be less than or equal to ${opts.maximum}`, value)
-  }
-  if (opts?.exclusiveMinimum != null && value <= opts.exclusiveMinimum) {
-    return error(`Number must be greater than ${opts.exclusiveMinimum}`, value)
-  }
-  if (opts?.exclusiveMaximum != null && value >= opts.exclusiveMaximum) {
-    return error(`Number must be less than ${opts.exclusiveMaximum}`, value)
-  }
-  if (opts?.multipleOf != null && value % opts.multipleOf !== 0) {
-    return error(`Number must be mutiple of ${opts.multipleOf}`, value)
-  }
-  return success(value)
 }
 
 function assertBoolean(value: unknown, opts: DecodeOptions | undefined): DecodeResult<boolean> {

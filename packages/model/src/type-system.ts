@@ -1,6 +1,7 @@
 import { Expand, JSONType } from '@mondrian-framework/utils'
 import { DecodeOptions, DecodeResult } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
+import { IsResult } from './is'
 
 export interface Type {}
 export type LazyType = Type | (() => Type)
@@ -16,7 +17,6 @@ export interface StringType extends Type {
     description?: string
   }
 }
-
 export interface NumberType extends Type {
   kind: 'number'
   opts?: {
@@ -46,7 +46,7 @@ export interface LiteralType<T extends number | string | boolean | null = null> 
 export interface ObjectType<TS extends Types = Types> extends Type {
   kind: 'object'
   type: TS
-  opts?: { strict?: boolean; description?: string }
+  opts?: { description?: string }
 }
 export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   kind: 'array-decorator'
@@ -64,7 +64,7 @@ export interface NullableDecorator<T extends LazyType = Type> extends Type {
 export interface DefaultDecorator<T extends LazyType = Type> extends Type {
   kind: 'default-decorator'
   type: T
-  opts: { default?: unknown }
+  opts: { default?: unknown | (() => unknown) }
 }
 export interface RelationDecorator<T extends LazyType = Type> extends Type {
   kind: 'relation-decorator'
@@ -106,9 +106,9 @@ export interface RootCustomType<T = any, O = any> extends Type {
   kind: 'custom'
   type: T
   name: string
-  decode: (input: unknown, settings: O | undefined, opts: DecodeOptions | undefined) => DecodeResult<T>
-  encode: (input: T, settings: O | undefined) => JSONType | undefined
-  is: (input: unknown, settings: O | undefined) => boolean
+  decode: (input: unknown, options: O | undefined, decodeOptions: DecodeOptions | undefined) => DecodeResult<T>
+  encode: (input: T, options: O | undefined) => JSONType | undefined
+  is: (input: unknown, options: O | undefined) => IsResult
   opts?: O & { description?: string }
 }
 
@@ -195,7 +195,7 @@ export function nullable<const T extends LazyType>(
 
 export function defaultType<const T extends LazyType>(
   type: T,
-  value: Infer<T>,
+  value: Infer<T> | (() => Infer<T>),
 ): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, 'default'> {
   const t = { kind: 'default-decorator', type, opts: { default: value } } as DefaultDecorator<T>
   return { ...t, ...decoratorShorcuts(t) }

@@ -53,7 +53,6 @@ export function getProjectedType(type: LazyType, projection: GenericProjection |
           return [k, getProjectedType(t.type[k], v)]
         }),
       ),
-      { strict: true },
     )
   }
   assertNever(t)
@@ -130,7 +129,6 @@ export function getProjectionType(type: LazyType): LazyType {
             return [k, optional(t)]
           }),
         ),
-        { strict: true },
       ),
     })
   }
@@ -150,7 +148,7 @@ export function getProjectionType(type: LazyType): LazyType {
       }
       return [[k, optional(getProjectionType(t))]] as const
     })
-    return union({ all: boolean(), object: object(Object.fromEntries(subProjection), { strict: true }) })
+    return union({ all: boolean(), object: object(Object.fromEntries(subProjection)) })
   }
   assertNever(t)
 }

@@ -10,6 +10,7 @@ import {
   getProjectionType,
   isVoidType,
   lazyToType,
+  convert,
 } from '@mondrian-framework/model'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
@@ -294,18 +295,18 @@ function generateQueryOrMutation({
             new Date(),
           )
           ctx.fastify.reply.header('operation-id', operationId)
-          const decoded = decode(inputType, input[gqlInputTypeName], {
+          const decoded = convert(inputType, input[gqlInputTypeName], {
             cast: true,
             castGqlInputUnion: true,
           })
-          if (!decoded.pass) {
+          if (!decoded.success) {
             log('Bad request.')
             throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
           }
           const projectionType = () => getProjectionType(outputType)
           const gqlProjection = extractProjectionFromGraphqlInfo(info, outputType)
-          const projection = decode(projectionType(), gqlProjection, { cast: true })
-          if (!projection.pass) {
+          const projection = decode(projectionType(), gqlProjection, { cast: true, strict: true })
+          if (!projection.success) {
             log('Bad request. (projection)')
             throw createGraphQLError(`Invalid input.`, { extensions: projection.errors })
           }

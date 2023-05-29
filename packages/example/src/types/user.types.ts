@@ -7,7 +7,7 @@ export const User = () =>
     email: t.string({}), //TODO: need email
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
-    a: t.datetime(),
+    registeredAt: t.datetime().default(() => new Date()),
   })
 export type User = t.Infer<typeof User>
 

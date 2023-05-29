@@ -16,7 +16,7 @@ export function getProjectedType(type: LazyType, projection: GenericProjection |
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {
@@ -53,7 +53,6 @@ export function getProjectedType(type: LazyType, projection: GenericProjection |
           return [k, getProjectedType(t.type[k], v)]
         }),
       ),
-      { strict: true },
     )
   }
   assertNever(t)
@@ -68,7 +67,7 @@ function ignoreRelations(type: LazyType): LazyType {
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {
@@ -114,7 +113,7 @@ export function getProjectionType(type: LazyType): LazyType {
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {
@@ -130,7 +129,6 @@ export function getProjectionType(type: LazyType): LazyType {
             return [k, optional(t)]
           }),
         ),
-        { strict: true },
       ),
     })
   }
@@ -150,7 +148,7 @@ export function getProjectionType(type: LazyType): LazyType {
       }
       return [[k, optional(getProjectionType(t))]] as const
     })
-    return union({ all: boolean(), object: object(Object.fromEntries(subProjection), { strict: true }) })
+    return union({ all: boolean(), object: object(Object.fromEntries(subProjection)) })
   }
   assertNever(t)
 }
@@ -215,7 +213,7 @@ export function getRequiredProjection(type: LazyType, projection: GenericProject
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {

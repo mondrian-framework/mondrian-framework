@@ -1,6 +1,7 @@
 import { Expand, JSONType } from '@mondrian-framework/utils'
 import { DecodeOptions, DecodeResult } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
+import { IsResult } from './is'
 
 export interface Type {}
 export type LazyType = Type | (() => Type)
@@ -16,7 +17,6 @@ export interface StringType extends Type {
     description?: string
   }
 }
-
 export interface NumberType extends Type {
   kind: 'number'
   opts?: {
@@ -34,7 +34,7 @@ export interface BooleanType extends Type {
 }
 export interface EnumeratorType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]>
   extends Type {
-  kind: 'enumerator'
+  kind: 'enum'
   values: V
   opts?: { description?: string }
 }
@@ -46,7 +46,7 @@ export interface LiteralType<T extends number | string | boolean | null = null> 
 export interface ObjectType<TS extends Types = Types> extends Type {
   kind: 'object'
   type: TS
-  opts?: { strict?: boolean; description?: string }
+  opts?: { description?: string }
 }
 export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   kind: 'array-decorator'
@@ -64,7 +64,7 @@ export interface NullableDecorator<T extends LazyType = Type> extends Type {
 export interface DefaultDecorator<T extends LazyType = Type> extends Type {
   kind: 'default-decorator'
   type: T
-  opts: { default?: unknown }
+  opts: { default?: unknown | (() => unknown) }
 }
 export interface RelationDecorator<T extends LazyType = Type> extends Type {
   kind: 'relation-decorator'
@@ -106,9 +106,9 @@ export interface RootCustomType<T = any, O = any> extends Type {
   kind: 'custom'
   type: T
   name: string
-  decode: (input: unknown, settings: O | undefined, opts: DecodeOptions | undefined) => DecodeResult<T>
-  encode: (input: T, settings: O | undefined) => JSONType | undefined
-  is: (input: unknown, settings: O | undefined) => boolean
+  decode: (input: unknown, options: O | undefined, decodeOptions: DecodeOptions | undefined) => DecodeResult<T>
+  encode: (input: T, options: O | undefined) => JSONType | undefined
+  is: (input: unknown, options: O | undefined) => IsResult
   opts?: O & { description?: string }
 }
 
@@ -156,11 +156,11 @@ export function union<const T extends Types>(
   const t = { kind: 'union-operator', types, opts, static: null as any } as UnionOperator<T>
   return { ...t, ...decoratorShorcuts(t) }
 }
-export function enumerator<const V extends readonly [string, ...string[]]>(
+export function enumeration<const V extends readonly [string, ...string[]]>(
   values: V,
   opts?: EnumeratorType<V>['opts'],
 ): EnumeratorType<V> & DecoratorShorcuts<EnumeratorType<V>> {
-  const t = { kind: 'enumerator', values, opts } as EnumeratorType<V>
+  const t = { kind: 'enum', values, opts } as EnumeratorType<V>
   return { ...t, ...decoratorShorcuts(t) }
 }
 
@@ -195,7 +195,7 @@ export function nullable<const T extends LazyType>(
 
 export function defaultType<const T extends LazyType>(
   type: T,
-  value: Infer<T>,
+  value: Infer<T> | (() => Infer<T>),
 ): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, 'default'> {
   const t = { kind: 'default-decorator', type, opts: { default: value } } as DefaultDecorator<T>
   return { ...t, ...decoratorShorcuts(t) }
@@ -333,7 +333,7 @@ type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T]
   ? ST
   : [T] extends [{ kind: 'custom'; type: infer C }]
   ? C
-  : [T] extends [{ kind: 'enumerator'; values: infer V }]
+  : [T] extends [{ kind: 'enum'; values: infer V }]
   ? V extends readonly string[]
     ? V[number]
     : never
@@ -417,7 +417,7 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
   ? ST
   : [T] extends [{ kind: 'custom'; type: infer C }]
   ? C
-  : [T] extends [{ kind: 'enumerator'; values: infer V }]
+  : [T] extends [{ kind: 'enum'; values: infer V }]
   ? V extends readonly string[]
     ? V[number]
     : never

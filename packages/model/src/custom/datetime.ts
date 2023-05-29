@@ -1,15 +1,15 @@
 import { CustomType, custom } from '../type-system'
 
-type DateTimeType = CustomType<Date, { min?: Date; max?: Date }>
+type DateTimeType = CustomType<Date, { minimum?: Date; maximum?: Date }>
 export function datetime(opts?: DateTimeType['opts']): DateTimeType {
   return custom(
     {
       name: 'datetime',
-      decode: (input, settings, opts) => {
+      decode: (input, options, decodeOptions) => {
         let time: number = Date.parse(typeof input === 'string' ? input : '')
         if (Number.isNaN(time)) {
           if (
-            opts?.cast &&
+            decodeOptions?.cast &&
             typeof input === 'number' &&
             !Number.isNaN(input) &&
             input <= 864000000000000 &&
@@ -17,30 +17,31 @@ export function datetime(opts?: DateTimeType['opts']): DateTimeType {
           ) {
             time = input //try to cast from unix time ms
           } else {
-            return { pass: false, errors: [{ path: '', value: input, error: 'ISO date expected' }] }
+            return { success: false, errors: [{ value: input, error: 'ISO date expected' }] }
           }
         }
-
-        if (settings?.max != null && time > settings.max.getTime()) {
-          return {
-            pass: false,
-            errors: [{ path: '', value: input, error: `Datetime must be maximum ${settings.max.toISOString()}` }],
-          }
-        }
-        if (settings?.min != null && time < settings.min.getTime()) {
-          return {
-            pass: false,
-            errors: [{ path: '', value: input, error: `Datetime must be minimum ${settings.min.toISOString()}` }],
-          }
-        }
-
-        return { pass: true, value: new Date(time) }
+        return { success: true, value: new Date(time) }
       },
       encode: (input) => {
         return input.toISOString()
       },
-      is(input) {
-        return input instanceof Date
+      is(input, options) {
+        if (!(input instanceof Date)) {
+          return { success: false, errors: [{ value: input, error: `Date expected` }] }
+        }
+        if (options?.maximum != null && input.getTime() > options.maximum.getTime()) {
+          return {
+            success: false,
+            errors: [{ value: input, error: `Datetime must be maximum ${options.maximum.toISOString()}` }],
+          }
+        }
+        if (options?.minimum != null && input.getTime() < options.minimum.getTime()) {
+          return {
+            success: false,
+            errors: [{ value: input, error: `Datetime must be minimum ${options.minimum.toISOString()}` }],
+          }
+        }
+        return { success: true }
       },
     },
     opts,

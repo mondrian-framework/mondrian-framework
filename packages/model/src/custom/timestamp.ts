@@ -1,41 +1,47 @@
 import { CustomType, custom } from '../type-system'
 
-export type TimestampType = CustomType<Date, { min?: Date; max?: Date }>
+export type TimestampType = CustomType<Date, { minimum?: Date; maximum?: Date }>
 export function timestamp(opts?: TimestampType['opts']): TimestampType {
   return custom(
     {
       name: 'timestamp',
-      decode: (input, settings) => {
+      decode: (input, options) => {
         if (typeof input !== 'number') {
-          return { pass: false, errors: [{ path: '', value: input, error: 'Unix time expected (ms)' }] }
+          return { success: false, errors: [{ value: input, error: 'Unix time expected (ms)' }] }
         }
         if (input > 864000000000000 || input < -864000000000000) {
           return {
-            pass: false,
+            success: false,
             errors: [
-              { path: '', value: input, error: `Timestamp must be between -864000000000000 and 864000000000000` },
+              {
+                value: input,
+                error: `Timestamp must be between -864000000000000 and 864000000000000`,
+              },
             ],
           }
         }
-        if (settings?.max != null && input > settings.max.getTime()) {
-          return {
-            pass: false,
-            errors: [{ path: '', value: input, error: `Timestamp must be maximum ${settings.max.toISOString()}` }],
-          }
-        }
-        if (settings?.min != null && input < settings.min.getTime()) {
-          return {
-            pass: false,
-            errors: [{ path: '', value: input, error: `Timestamp must be minimum ${settings.min.toISOString()}` }],
-          }
-        }
-        return { pass: true, value: new Date(input) }
+        return { success: true, value: new Date(input) }
       },
       encode: (input) => {
         return input.getTime()
       },
-      is(input) {
-        return input instanceof Date
+      is(input, options) {
+        if (!(input instanceof Date)) {
+          return { success: false, errors: [{ value: input, error: `Date epected` }] }
+        }
+        if (options?.maximum != null && input.getTime() > options.maximum.getTime()) {
+          return {
+            success: false,
+            errors: [{ value: input, error: `Timestamp must be maximum ${options.maximum.toISOString()}` }],
+          }
+        }
+        if (options?.minimum != null && input.getTime() < options.minimum.getTime()) {
+          return {
+            success: false,
+            errors: [{ value: input, error: `Timestamp must be minimum ${options.minimum.toISOString()}` }],
+          }
+        }
+        return { success: true }
       },
     },
     opts,

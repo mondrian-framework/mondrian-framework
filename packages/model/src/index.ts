@@ -3,8 +3,11 @@ export * from './exports'
 export { m }
 export default m
 
+import * as Result from './result'
+export { Result }
+
 export * from './type-system'
-export { decode, DecodeOptions, Result as DecodeResult } from './decoder'
+export { decode, DecodeOptions } from './decoder'
 export { encode } from './encoder'
 export { decodeAndValidate, validateAndEncode } from './converter'
 export { validate, isType, assertType } from './validate'

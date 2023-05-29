@@ -1,9 +1,9 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
-  DecodeResult,
   GenericProjection,
   LazyType,
+  Result,
   Types,
   decode,
   decodeAndValidate,
@@ -116,7 +116,7 @@ export function attachRestMethods({
   }
 }
 
-function firstOf2<V>(f1: () => DecodeResult<V>, f2: () => DecodeResult<V>): DecodeResult<V> {
+function firstOf2<V>(f1: () => Result.Result<V>, f2: () => Result.Result<V>): Result.Result<V> {
   const v1 = f1()
   if (!v1.success) {
     const v2 = f2()

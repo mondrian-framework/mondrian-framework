@@ -6,9 +6,9 @@ import { Result, concat2, enrichErrors, error, errors, success } from './result'
 //cast default is false
 //strict default is true
 export type DecodeOptions = { cast?: boolean; strict?: boolean; castGqlInputUnion?: boolean }
-export function decode<const T extends LazyType>(type: T, value: unknown, opts?: DecodeOptions): Result<Infer<T>> {
+export function decode<const T extends LazyType>(type: T, value: unknown, opts?: DecodeOptions): Result<unknown> {
   const result = decodeInternal(type, value, opts)
-  return enrichErrors(result, '') as Result<Infer<T>>
+  return enrichErrors(result, '')
 }
 
 function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | undefined): Result<unknown> {

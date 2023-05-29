@@ -144,7 +144,7 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
       (value) => checkArrayOptions(value, t.opts),
       (value) => decodeArrayElements(value, t, opts),
     )
-  } else if (t.kind === 'enumerator') {
+  } else if (t.kind === 'enum') {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
     }

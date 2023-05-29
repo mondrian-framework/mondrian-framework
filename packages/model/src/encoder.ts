@@ -14,7 +14,7 @@ export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSON
 
 function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
   const t = lazyToType(type)
-  if (t.kind === 'boolean' || t.kind === 'enumerator' || t.kind === 'number' || t.kind === 'string') {
+  if (t.kind === 'boolean' || t.kind === 'enum' || t.kind === 'number' || t.kind === 'string') {
     return value
   }
   if (t.kind === 'custom') {

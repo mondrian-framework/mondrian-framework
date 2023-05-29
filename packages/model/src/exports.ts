@@ -4,7 +4,7 @@ export {
   boolean,
   nullType as null,
   custom,
-  enumerator,
+  enumeration as enum,
   integer,
   merge,
   select,

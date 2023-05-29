@@ -120,7 +120,7 @@ function typeToGqlTypeInternal(
     }
     return { description, type: `${input}${name}${isRequired}` }
   }
-  if (type.kind === 'enumerator') {
+  if (type.kind === 'enum') {
     typeMap[name] = {
       description,
       type: `${desc}enum ${name} {

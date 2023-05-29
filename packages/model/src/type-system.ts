@@ -34,7 +34,7 @@ export interface BooleanType extends Type {
 }
 export interface EnumeratorType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]>
   extends Type {
-  kind: 'enumerator'
+  kind: 'enum'
   values: V
   opts?: { description?: string }
 }
@@ -156,11 +156,11 @@ export function union<const T extends Types>(
   const t = { kind: 'union-operator', types, opts, static: null as any } as UnionOperator<T>
   return { ...t, ...decoratorShorcuts(t) }
 }
-export function enumerator<const V extends readonly [string, ...string[]]>(
+export function enumeration<const V extends readonly [string, ...string[]]>(
   values: V,
   opts?: EnumeratorType<V>['opts'],
 ): EnumeratorType<V> & DecoratorShorcuts<EnumeratorType<V>> {
-  const t = { kind: 'enumerator', values, opts } as EnumeratorType<V>
+  const t = { kind: 'enum', values, opts } as EnumeratorType<V>
   return { ...t, ...decoratorShorcuts(t) }
 }
 
@@ -333,7 +333,7 @@ type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T]
   ? ST
   : [T] extends [{ kind: 'custom'; type: infer C }]
   ? C
-  : [T] extends [{ kind: 'enumerator'; values: infer V }]
+  : [T] extends [{ kind: 'enum'; values: infer V }]
   ? V extends readonly string[]
     ? V[number]
     : never
@@ -417,7 +417,7 @@ type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer
   ? ST
   : [T] extends [{ kind: 'custom'; type: infer C }]
   ? C
-  : [T] extends [{ kind: 'enumerator'; values: infer V }]
+  : [T] extends [{ kind: 'enum'; values: infer V }]
   ? V extends readonly string[]
     ? V[number]
     : never

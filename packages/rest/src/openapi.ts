@@ -546,7 +546,7 @@ function typeToSchemaObjectInternal(
     }
     return object
   }
-  if (type.kind === 'enumerator') {
+  if (type.kind === 'enum') {
     return { type: 'string', enum: type.values as unknown as string[], description: type.opts?.description } as const
   }
   if (type.kind === 'union-operator') {

@@ -16,7 +16,7 @@ export function getProjectedType(type: LazyType, projection: GenericProjection |
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {
@@ -68,7 +68,7 @@ function ignoreRelations(type: LazyType): LazyType {
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {
@@ -114,7 +114,7 @@ export function getProjectionType(type: LazyType): LazyType {
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {
@@ -215,7 +215,7 @@ export function getRequiredProjection(type: LazyType, projection: GenericProject
     t.kind === 'boolean' ||
     t.kind === 'string' ||
     t.kind === 'number' ||
-    t.kind === 'enumerator' ||
+    t.kind === 'enum' ||
     t.kind === 'custom' ||
     t.kind === 'literal'
   ) {

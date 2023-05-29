@@ -1,5 +1,5 @@
 import { assertNever } from '@mondrian-framework/utils'
-import { ArrayDecorator, LazyType, NumberType, ObjectType, StringType } from './type-system'
+import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType, boolean } from './type-system'
 import { lazyToType } from './utils'
 
 export type IsResult =
@@ -42,7 +42,18 @@ export function error(
   return { success: false, errors: [{ error, value }] }
 }
 
-export function is(type: LazyType, value: unknown): IsResult {
+export function isType<T extends LazyType>(type: T, value: unknown): value is Infer<T> {
+  return is(type, value as Infer<T>).success
+}
+
+export function assertType<T extends LazyType>(type: T, value: unknown): asserts value is Infer<T> {
+  const result = is(type, value as Infer<T>)
+  if (!result.success) {
+    throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
+  }
+}
+
+export function is<T extends LazyType>(type: T, value: Infer<T>): IsResult {
   const result = isInternal(type, value)
   return enrichErrors(result, '')
 }

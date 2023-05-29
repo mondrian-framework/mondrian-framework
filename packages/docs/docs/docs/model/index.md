@@ -10,14 +10,14 @@ The approach through schema definition entails that the developer does not direc
 Mondrian Framework takes inspiration from various libraries for declaring and validating data models, such as [Zod](https://zod.dev/), [io-ts](https://github.com/gcanti/io-ts), [Ajv](https://ajv.js.org/), [typia](https://typia.io/) and many others. It tries to combine their expressiveness, speed, and ease of use adding features not only to declare and validate a schema, but also to easily visit, process it and work with data projections.
 
 Basically a model schema:
-- Represents an entity of the application domain, in terms of data type, structure, attributes, relations and validation rules.
+- Represents an entity of the application domain, in terms of data type, encoding, decoding and validation rules.
 - Is defined using a collection of convenient framework functions to declare fields and their attributes.
 - Provides generated TypeScript type definition.
 
 ## Example
 The following schema describes a blogging platform:
 
-```ts
+```ts showLineNumbers
 import m from '@mondrian-framework/model'
 
 const User = m.object({

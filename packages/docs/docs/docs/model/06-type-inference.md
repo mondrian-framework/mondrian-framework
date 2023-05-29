@@ -1,4 +1,4 @@
-# Typing
+# Type inference
 
 ## Infer
 

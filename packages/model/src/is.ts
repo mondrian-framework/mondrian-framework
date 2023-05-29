@@ -43,17 +43,17 @@ export function error(
 }
 
 export function isType<T extends LazyType>(type: T, value: unknown): value is Infer<T> {
-  return is(type, value as Infer<T>).success
+  return is(type, value).success
 }
 
 export function assertType<T extends LazyType>(type: T, value: unknown): asserts value is Infer<T> {
-  const result = is(type, value as Infer<T>)
+  const result = is(type, value)
   if (!result.success) {
     throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
   }
 }
 
-export function is<T extends LazyType>(type: T, value: Infer<T>): IsResult {
+export function is(type: LazyType, value: unknown): IsResult {
   const result = isInternal(type, value)
   return enrichErrors(result, '')
 }

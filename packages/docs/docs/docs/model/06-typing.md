@@ -1,4 +1,4 @@
-# Type inference
+# Typing
 
 ## Infer
 
@@ -7,3 +7,7 @@
 ## InferProjection
 
 ## Project
+
+## isType
+
+## assertType

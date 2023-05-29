@@ -1,16 +1,12 @@
 import { assertNever } from '@mondrian-framework/utils'
 import { ArrayDecorator, Infer, LazyType, ObjectType } from './type-system'
 import { lazyToType } from './utils'
-import { Result, concat2, enrichErrors, error, errors, success } from './result';
+import { Result, concat2, enrichErrors, error, errors, success } from './result'
 
 //cast default is false
 //strict default is true
 export type DecodeOptions = { cast?: boolean; strict?: boolean; castGqlInputUnion?: boolean }
-export function decode<const T extends LazyType>(
-  type: T,
-  value: unknown,
-  opts?: DecodeOptions,
-): Result<Infer<T>> {
+export function decode<const T extends LazyType>(type: T, value: unknown, opts?: DecodeOptions): Result<Infer<T>> {
   const result = decodeInternal(type, value, opts)
   return enrichErrors(result, '') as Result<Infer<T>>
 }

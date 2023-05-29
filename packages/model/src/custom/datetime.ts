@@ -1,6 +1,6 @@
 import { CustomType, custom } from '../type-system'
 
-type DateTimeType = CustomType<Date, 'datetime', { min?: Date; max?: Date }>
+type DateTimeType = CustomType<Date, { min?: Date; max?: Date }>
 export function datetime(opts?: DateTimeType['opts']): DateTimeType {
   return custom(
     {

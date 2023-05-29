@@ -1,6 +1,6 @@
 import { RootCustomType } from '../type-system'
 
-export type VoidType = RootCustomType<void, 'void', {}>
+export type VoidType = RootCustomType<void, {}>
 export function voidType(opts?: VoidType['opts']): VoidType {
   return {
     kind: 'custom',

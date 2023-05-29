@@ -11,118 +11,121 @@ export function getProjectedType(type: LazyType, projection: GenericProjection |
   if (typeof type === 'function') {
     return () => lazyToType(getProjectedType(lazyToType(type), projection))
   }
+  const t = lazyToType(type)
   if (
-    type.kind === 'boolean' ||
-    type.kind === 'string' ||
-    type.kind === 'number' ||
-    type.kind === 'enumerator' ||
-    type.kind === 'custom' ||
-    type.kind === 'literal'
+    t.kind === 'boolean' ||
+    t.kind === 'string' ||
+    t.kind === 'number' ||
+    t.kind === 'enumerator' ||
+    t.kind === 'custom' ||
+    t.kind === 'literal'
   ) {
     return type
   }
-  if (type.kind === 'array-decorator') {
-    return array(getProjectedType(type.type, projection))
+  if (t.kind === 'array-decorator') {
+    return array(getProjectedType(t.type, projection))
   }
-  if (type.kind === 'optional-decorator') {
-    return optional(getProjectedType(type.type, projection))
+  if (t.kind === 'optional-decorator') {
+    return optional(getProjectedType(t.type, projection))
   }
-  if (type.kind === 'nullable-decorator') {
-    return nullable(getProjectedType(type.type, projection))
+  if (t.kind === 'nullable-decorator') {
+    return nullable(getProjectedType(t.type, projection))
   }
-  if (type.kind === 'default-decorator') {
-    return getProjectedType(type.type, projection)
+  if (t.kind === 'default-decorator') {
+    return getProjectedType(t.type, projection)
   }
-  if (type.kind === 'relation-decorator') {
-    return getProjectedType(type.type, projection)
+  if (t.kind === 'relation-decorator') {
+    return getProjectedType(t.type, projection)
   }
-  if (type.kind === 'union-operator') {
+  if (t.kind === 'union-operator') {
     return union(
       Object.fromEntries(
         Object.entries(projection).map(([k, v]) => {
-          return [k, getProjectedType(type.types[k], v)]
+          return [k, getProjectedType(t.types[k], v)]
         }),
       ),
     )
   }
-  if (type.kind === 'object') {
+  if (t.kind === 'object') {
     return object(
       Object.fromEntries(
         Object.entries(projection).map(([k, v]) => {
-          return [k, getProjectedType(type.type[k], v)]
+          return [k, getProjectedType(t.type[k], v)]
         }),
       ),
       { strict: true },
     )
   }
-  assertNever(type)
+  assertNever(t)
 }
 
 function ignoreRelations(type: LazyType): LazyType {
   if (typeof type === 'function') {
     return () => lazyToType(ignoreRelations(lazyToType(type)))
   }
+  const t = lazyToType(type)
   if (
-    type.kind === 'boolean' ||
-    type.kind === 'string' ||
-    type.kind === 'number' ||
-    type.kind === 'enumerator' ||
-    type.kind === 'custom' ||
-    type.kind === 'literal'
+    t.kind === 'boolean' ||
+    t.kind === 'string' ||
+    t.kind === 'number' ||
+    t.kind === 'enumerator' ||
+    t.kind === 'custom' ||
+    t.kind === 'literal'
   ) {
     return type
   }
-  if (type.kind === 'array-decorator') {
-    return array(ignoreRelations(type.type))
+  if (t.kind === 'array-decorator') {
+    return array(ignoreRelations(t.type))
   }
-  if (type.kind === 'optional-decorator') {
-    return optional(ignoreRelations(type.type))
+  if (t.kind === 'optional-decorator') {
+    return optional(ignoreRelations(t.type))
   }
-  if (type.kind === 'nullable-decorator') {
-    return nullable(ignoreRelations(type.type))
+  if (t.kind === 'nullable-decorator') {
+    return nullable(ignoreRelations(t.type))
   }
-  if (type.kind === 'default-decorator') {
-    return ignoreRelations(type.type)
+  if (t.kind === 'default-decorator') {
+    return ignoreRelations(t.type)
   }
-  if (type.kind === 'relation-decorator') {
-    return optional(ignoreRelations(type.type))
+  if (t.kind === 'relation-decorator') {
+    return optional(ignoreRelations(t.type))
   }
-  if (type.kind === 'union-operator') {
-    return union(Object.fromEntries(Object.entries(type.types).map(([k, t]) => [k, ignoreRelations(t)])))
+  if (t.kind === 'union-operator') {
+    return union(Object.fromEntries(Object.entries(t.types).map(([k, t]) => [k, ignoreRelations(t)])))
   }
-  if (type.kind === 'object') {
+  if (t.kind === 'object') {
     return object(
       Object.fromEntries(
-        Object.entries(type.type).map(([k, lt]) => {
+        Object.entries(t.type).map(([k, lt]) => {
           return [k, ignoreRelations(lt)]
         }),
       ),
-      type.opts,
+      t.opts,
     )
   }
-  assertNever(type)
+  assertNever(t)
 }
 
 export function getProjectionType(type: LazyType): LazyType {
   if (typeof type === 'function') {
     return () => lazyToType(getProjectionType(lazyToType(type)))
   }
+  const t = lazyToType(type)
   if (
-    type.kind === 'boolean' ||
-    type.kind === 'string' ||
-    type.kind === 'number' ||
-    type.kind === 'enumerator' ||
-    type.kind === 'custom' ||
-    type.kind === 'literal'
+    t.kind === 'boolean' ||
+    t.kind === 'string' ||
+    t.kind === 'number' ||
+    t.kind === 'enumerator' ||
+    t.kind === 'custom' ||
+    t.kind === 'literal'
   ) {
     return boolean()
   }
-  if (type.kind === 'object') {
+  if (t.kind === 'object') {
     return union({
       first: boolean(),
       second: object(
         Object.fromEntries(
-          Object.entries(type.type).map(([k, v]) => {
+          Object.entries(t.type).map(([k, v]) => {
             const t = getProjectionType(v)
             return [k, optional(t)]
           }),
@@ -132,16 +135,16 @@ export function getProjectionType(type: LazyType): LazyType {
     })
   }
   if (
-    type.kind === 'array-decorator' ||
-    type.kind === 'optional-decorator' ||
-    type.kind === 'nullable-decorator' ||
-    type.kind === 'default-decorator' ||
-    type.kind === 'relation-decorator'
+    t.kind === 'array-decorator' ||
+    t.kind === 'optional-decorator' ||
+    t.kind === 'nullable-decorator' ||
+    t.kind === 'default-decorator' ||
+    t.kind === 'relation-decorator'
   ) {
-    return getProjectionType(type.type)
+    return getProjectionType(t.type)
   }
-  if (type.kind === 'union-operator') {
-    const subProjection = Object.entries(type.types).flatMap(([k, t]) => {
+  if (t.kind === 'union-operator') {
+    const subProjection = Object.entries(t.types).flatMap(([k, t]) => {
       if (lazyToType(t).kind !== 'object') {
         return []
       }
@@ -149,13 +152,13 @@ export function getProjectionType(type: LazyType): LazyType {
     })
     return union({ all: boolean(), object: object(Object.fromEntries(subProjection), { strict: true }) })
   }
-  assertNever(type)
+  assertNever(t)
 }
 
-type projectionKeys<T extends GenericProjection | undefined> = T extends Record<string, GenericProjection>
+type ProjectionKeys<T extends GenericProjection | undefined> = T extends Record<string, GenericProjection>
   ? keyof T
   : never
-type SubProjection<T extends GenericProjection | undefined, K extends projectionKeys<T>> = T extends undefined
+type SubProjection<T extends GenericProjection | undefined, K extends ProjectionKeys<T>> = T extends undefined
   ? undefined
   : T extends true
   ? true
@@ -163,7 +166,7 @@ type SubProjection<T extends GenericProjection | undefined, K extends projection
   ? T[K]
   : never
 
-export function subProjection<const T extends GenericProjection | undefined, const K extends projectionKeys<T>>(
+export function subProjection<const T extends GenericProjection | undefined, const K extends ProjectionKeys<T>>(
   projection: T,
   v: K,
 ): SubProjection<T, K> {

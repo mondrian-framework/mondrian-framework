@@ -5,12 +5,11 @@ import {
   GenericProjection,
   LazyType,
   Types,
-  convert,
   decode,
+  decodeAndValidate,
   encode,
   getProjectionType,
   getRequiredProjection,
-  is,
   isVoidType,
   lazyToType,
   mergeProjections,
@@ -169,8 +168,8 @@ async function elabFastifyRestRequest({
   const inputIsVoid = isVoidType(inputType)
   const input = inputIsVoid ? null : inputFrom === 'body' ? request.body : decodeQueryObject(query, 'input')
   const decoded = firstOf2(
-    () => convert(inputType, input, { cast: true }),
-    () => convert(inputType, query['input'], { cast: true }),
+    () => decodeAndValidate(inputType, input, { cast: true }),
+    () => decodeAndValidate(inputType, query['input'], { cast: true }),
   )
   if (!decoded.success) {
     log('Bad request.')

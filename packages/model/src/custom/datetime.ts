@@ -25,7 +25,7 @@ export function datetime(opts?: DateTimeType['opts']): DateTimeType {
       encode: (input) => {
         return input.toISOString()
       },
-      is(input, options) {
+      validate(input, options) {
         if (!(input instanceof Date)) {
           return { success: false, errors: [{ value: input, error: `Date expected` }] }
         }

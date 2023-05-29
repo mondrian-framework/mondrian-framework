@@ -1,4 +1,4 @@
-import { Types, convert } from '@mondrian-framework/model'
+import { Types, decodeAndValidate } from '@mondrian-framework/model'
 import { Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import * as AWS from '@aws-sdk/client-sqs'
 import { sleep } from '@mondrian-framework/utils'
@@ -96,7 +96,7 @@ async function listenForMessage({
         log(`Bad message: not a valid json ${m.Body}`)
         continue
       }
-      const decoded = convert(inputType, body)
+      const decoded = decodeAndValidate(inputType, body)
       if (!decoded.success) {
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })

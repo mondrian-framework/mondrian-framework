@@ -25,7 +25,7 @@ export function timestamp(opts?: TimestampType['opts']): TimestampType {
       encode: (input) => {
         return input.getTime()
       },
-      is(input, options) {
+      validate(input, options) {
         if (!(input instanceof Date)) {
           return { success: false, errors: [{ value: input, error: `Date epected` }] }
         }

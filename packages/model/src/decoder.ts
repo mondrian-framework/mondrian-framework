@@ -1,10 +1,7 @@
 import { assertNever } from '@mondrian-framework/utils'
 import { ArrayDecorator, Infer, LazyType, ObjectType } from './type-system'
 import { lazyToType } from './utils'
-
-export type DecodeResult<T> =
-  | { success: true; value: T }
-  | { success: false; errors: { path?: string; error: string; value: unknown }[] }
+import { Result, concat2, enrichErrors, error, errors, success } from './result';
 
 //cast default is false
 //strict default is true
@@ -13,48 +10,12 @@ export function decode<const T extends LazyType>(
   type: T,
   value: unknown,
   opts?: DecodeOptions,
-): DecodeResult<Infer<T>> {
+): Result<Infer<T>> {
   const result = decodeInternal(type, value, opts)
-  return enrichErrors(result, '') as DecodeResult<Infer<T>>
+  return enrichErrors(result, '') as Result<Infer<T>>
 }
 
-function success<T>(value: T): { success: true; value: T } {
-  return { success: true, value }
-}
-
-export function errors(errors: { path?: string; error: string; value: unknown }[]): {
-  success: false
-  errors: { path?: string; error: string; value: unknown }[]
-} {
-  return { success: false, errors }
-}
-
-export function error(
-  error: string,
-  value: unknown,
-): {
-  success: false
-  errors: { path?: string; error: string; value: unknown }[]
-} {
-  return { success: false, errors: [{ error, value }] }
-}
-
-function enrichErrors<T>(result: DecodeResult<T>, key: string): DecodeResult<T> {
-  if (!result.success) {
-    return errors(result.errors.map((e) => ({ ...e, path: e.path != null ? `${key}/${e.path}` : `${key}/` })))
-  }
-  return result
-}
-
-function concat2<V1, V2>(v1: DecodeResult<V1>, f1: (v: V1) => DecodeResult<V2>): DecodeResult<V2> {
-  if (!v1.success) {
-    return v1
-  }
-  const v2 = f1(v1.value)
-  return v2
-}
-
-function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | undefined): DecodeResult<unknown> {
+function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | undefined): Result<unknown> {
   const t = lazyToType(type)
   if (t.kind === 'string') {
     return assertString(value, opts)
@@ -147,7 +108,7 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
   assertNever(t)
 }
 
-function assertString(value: unknown, opts: DecodeOptions | undefined): DecodeResult<string> {
+function assertString(value: unknown, opts: DecodeOptions | undefined): Result<string> {
   if (typeof value === 'string') {
     return success(value)
   }
@@ -162,7 +123,7 @@ function assertString(value: unknown, opts: DecodeOptions | undefined): DecodeRe
   return error(`String expected`, value)
 }
 
-function assertObject(value: unknown, opts: DecodeOptions | undefined): DecodeResult<Record<string, unknown>> {
+function assertObject(value: unknown, opts: DecodeOptions | undefined): Result<Record<string, unknown>> {
   if (typeof value !== 'object' || !value) {
     return error(`Object expected`, value)
   }
@@ -173,7 +134,7 @@ function decodeObjectProperties(
   value: Record<string, unknown>,
   type: ObjectType,
   opts: DecodeOptions | undefined,
-): DecodeResult<Record<string, unknown>> {
+): Result<Record<string, unknown>> {
   const strict = opts?.strict ?? true
   const cast = opts?.cast
   if (!cast && strict) {
@@ -198,7 +159,7 @@ function decodeObjectProperties(
   return success(accumulator)
 }
 
-function assertArray(value: unknown, opts: DecodeOptions | undefined): DecodeResult<unknown[]> {
+function assertArray(value: unknown, opts: DecodeOptions | undefined): Result<unknown[]> {
   if (Array.isArray(value)) {
     return success(value)
   }
@@ -227,7 +188,7 @@ function decodeArrayElements(
   value: unknown[],
   type: ArrayDecorator,
   opts: DecodeOptions | undefined,
-): DecodeResult<unknown[]> {
+): Result<unknown[]> {
   const values: unknown[] = []
   for (let i = 0; i < value.length; i++) {
     const result = decodeInternal(type.type, value[i], opts)
@@ -240,7 +201,7 @@ function decodeArrayElements(
   return success(values)
 }
 
-function assertNumber(value: unknown, opts: DecodeOptions | undefined): DecodeResult<number> {
+function assertNumber(value: unknown, opts: DecodeOptions | undefined): Result<number> {
   if (typeof value === 'number') {
     return success(value)
   }
@@ -253,7 +214,7 @@ function assertNumber(value: unknown, opts: DecodeOptions | undefined): DecodeRe
   return error(`Number expected`, value)
 }
 
-function assertBoolean(value: unknown, opts: DecodeOptions | undefined): DecodeResult<boolean> {
+function assertBoolean(value: unknown, opts: DecodeOptions | undefined): Result<boolean> {
   if (typeof value === 'boolean') {
     return success(value)
   }

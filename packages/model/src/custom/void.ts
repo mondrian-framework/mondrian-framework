@@ -11,7 +11,7 @@ export function voidType(opts?: VoidType['opts']): VoidType {
     encode: () => {
       return undefined
     },
-    is() {
+    validate() {
       return { success: true }
     },
     opts,

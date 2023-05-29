@@ -5,7 +5,7 @@ import {
   InferReturn,
   Types,
   getProjectedType,
-  is,
+  validate,
 } from '@mondrian-framework/model'
 import { Logger } from './utils'
 
@@ -111,7 +111,7 @@ export function module<const T extends Types, const F extends Functions<keyof T 
           const result = await functionBody.apply(args)
           if (outputTypeCheck !== 'ignore') {
             const projectedType = getProjectedType(outputType, args.projection as GenericProjection)
-            const isCheck = is(projectedType, result)
+            const isCheck = validate(projectedType, result)
             if (!isCheck.success) {
               const m = JSON.stringify({ projection: args.projection, errors: isCheck.errors })
               if (outputTypeCheck === 'log') {

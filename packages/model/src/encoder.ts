@@ -1,17 +1,17 @@
 import { JSONType, assertNever } from '@mondrian-framework/utils'
-import { Infer, LazyType } from './type-system'
+import { LazyType } from './type-system'
 import { hasDecorator, lazyToType } from './utils'
-import { is } from './is'
+import { validate } from './validate'
 
-export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
-  const result = encodeInternal(type, value as JSONType)
+export function encode<const T extends LazyType>(type: T, value: unknown): JSONType {
+  const result = encodeInternal(type, value)
   if (result === undefined) {
     return null
   }
-  return result
+  return result as JSONType
 }
 
-function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
+function encodeInternal(type: LazyType, value: unknown): unknown {
   const t = lazyToType(type)
   if (t.kind === 'boolean' || t.kind === 'enum' || t.kind === 'number' || t.kind === 'string') {
     return value
@@ -44,7 +44,7 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
     return encode(t.type, value)
   }
   if (t.kind === 'array-decorator') {
-    const results: JSONType = []
+    const results: unknown[] = []
     for (const v of value as Array<JSONType>) {
       const r = encodeInternal(t.type, v)
       results.push(r === undefined ? null : r)
@@ -74,7 +74,7 @@ function encodeInternal(type: LazyType, value: JSONType): JSONType | undefined {
   }
   if (t.kind === 'union-operator') {
     for (const subtype of Object.values(t.types)) {
-      if (is(subtype, value).success) {
+      if (validate(subtype, value).success) {
         return encode(subtype, value)
       }
     }

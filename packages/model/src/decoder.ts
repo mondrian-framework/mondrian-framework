@@ -95,7 +95,11 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
     }
     return success(value)
   } else if (t.kind === 'custom') {
-    const result = t.decode(value, t.opts, opts)
+    const preDecoded = decodeInternal(t.encodedType, value, opts)
+    if (!preDecoded.success) {
+      return preDecoded
+    }
+    const result = t.decode(preDecoded.value, t.opts, opts)
     if (!result.success) {
       return result
     }

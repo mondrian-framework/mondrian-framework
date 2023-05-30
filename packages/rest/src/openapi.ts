@@ -469,7 +469,11 @@ function typeToSchemaObjectInternal(
     if (type.name === 'email') {
       return { type: 'string', format: 'email', description: type.opts?.description }
     }
-    return { type: 'string', description: type.opts?.description ?? type.name }
+    if (type.name === 'void') {
+      return { type: 'null', const: 'null', description: type.opts?.description }
+    }
+    const items = typeToSchemaObject(name, type.encodedType, types, typeMap, typeRef)
+    return { ...items, description: type.opts?.description ?? type.name }
   }
   if (type.kind === 'boolean') {
     return { type: 'boolean' }

@@ -96,15 +96,19 @@ export type AnyType =
   | RelationDecorator
   | UnionOperator
 
-export type CustomType<T = any, O extends Record<string, unknown> = Record<never, unknown>> = RootCustomType<T, O> &
-  DecoratorShorcuts<RootCustomType<T, O>>
+export type CustomType<
+  T = any,
+  E extends LazyType = Type,
+  O extends Record<string, unknown> = Record<never, unknown>,
+> = RootCustomType<T, E, O> & DecoratorShorcuts<RootCustomType<T, E, O>>
 
-export interface RootCustomType<T = any, O = any> extends Type {
+export interface RootCustomType<T = any, E extends LazyType = Type, O = any> extends Type {
   kind: 'custom'
   type: T
   name: string
-  decode: (input: unknown, options: O | undefined, decodeOptions: DecodeOptions | undefined) => Result<T>
-  encode: (input: T, options: O | undefined) => JSONType | undefined
+  encodedType: E
+  decode: (input: Infer<E>, options: O | undefined, decodeOptions: DecodeOptions | undefined) => Result<T>
+  encode: (input: T, options: O | undefined) => Infer<E>
   validate: (input: unknown, options: O | undefined) => Failure | { success: true }
   opts?: O & { description?: string }
 }
@@ -202,11 +206,15 @@ export function relation<const T extends LazyType>(type: T): RelationDecorator<T
   return { kind: 'relation-decorator', type } as RelationDecorator<T>
 }
 
-export function custom<const T, const O extends Record<string, unknown> = Record<string, unknown>>(
-  custom: Omit<RootCustomType<T, O>, 'kind' | 'type' | 'opts'>,
+export function custom<
+  const T,
+  const E extends LazyType,
+  const O extends Record<string, unknown> = Record<string, unknown>,
+>(
+  custom: Omit<RootCustomType<T, E, O>, 'kind' | 'type' | 'opts'>,
   opts?: O & { description?: string },
-): CustomType<T, O> {
-  const t = { ...custom, kind: 'custom', opts } as RootCustomType<T>
+): CustomType<T, E, O> {
+  const t = { ...custom, kind: 'custom', opts } as RootCustomType<T, E, O>
   return { ...t, ...decoratorShorcuts(t) }
 }
 

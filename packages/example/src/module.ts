@@ -1,9 +1,10 @@
+import { Functions, functions } from './functions'
+import { AuthInfo } from './functions/functions.commons'
+import { Types, types } from './types'
 import m from '@mondrian-framework/module'
-import { types, Types } from './types'
-import { functions, Functions } from './functions'
 import { PrismaClient } from '@prisma/client'
 import jwt from 'jsonwebtoken'
-import { AuthInfo } from './functions/functions.commons'
+
 const prisma = new PrismaClient()
 
 export const module = m.module<Types, Functions, { jwt?: string }>({

@@ -1,7 +1,7 @@
-import { assertNever } from '@mondrian-framework/utils'
+import { Result, concat2, enrichErrors, error, errors, success } from './result'
 import { ArrayDecorator, Infer, LazyType, ObjectType } from './type-system'
 import { lazyToType } from './utils'
-import { Result, concat2, enrichErrors, error, errors, success } from './result'
+import { assertNever } from '@mondrian-framework/utils'
 
 //cast default is false
 //strict default is true

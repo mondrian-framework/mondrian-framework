@@ -1,7 +1,7 @@
-import { JSONType, assertNever } from '@mondrian-framework/utils'
 import { Infer, LazyType } from './type-system'
 import { hasDecorator, lazyToType } from './utils'
 import { validate } from './validate'
+import { JSONType, assertNever } from '@mondrian-framework/utils'
 
 export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
   const result = encodeInternal(type, value)

@@ -1,9 +1,10 @@
 import * as m from './exports'
+import * as Result from './result'
+
 export * from './exports'
 export { m }
 export default m
 
-import * as Result from './result'
 export { Result }
 
 export * from './type-system'

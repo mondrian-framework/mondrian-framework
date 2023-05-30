@@ -1,6 +1,6 @@
+import * as AWS from '@aws-sdk/client-sqs'
 import { Types, decodeAndValidate } from '@mondrian-framework/model'
 import { Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
-import * as AWS from '@aws-sdk/client-sqs'
 import { sleep } from '@mondrian-framework/utils'
 
 export type SqsFunctionSpecs = { inputQueueUrl: string; malformedMessagePolicy?: 'ignore' | 'delete' }

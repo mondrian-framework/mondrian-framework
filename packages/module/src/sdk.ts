@@ -1,6 +1,6 @@
-import { Infer, InferProjection, LazyType, Project, Types } from '@mondrian-framework/model'
-import { buildLogger, randomOperationId } from './utils'
 import { ContextType, Functions, Module } from './module'
+import { buildLogger, randomOperationId } from './utils'
+import { Infer, InferProjection, LazyType, Project, Types } from '@mondrian-framework/model'
 
 type SDK<T extends Types, F extends Functions<keyof T extends string ? keyof T : never>> = {
   [K in keyof F]: Infer<T[F[K]['input']]> extends infer Input

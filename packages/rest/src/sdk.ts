@@ -1,7 +1,7 @@
-import { Infer, InferProjection, LazyType, Project, Types, decodeAndValidate, encode } from '@mondrian-framework/model'
-import { Functions, Module } from '@mondrian-framework/module'
 import { ModuleRestApi } from './server'
 import { encodeQueryObject } from './utils'
+import { Infer, InferProjection, LazyType, Project, Types, decodeAndValidate, encode } from '@mondrian-framework/model'
+import { Functions, Module } from '@mondrian-framework/module'
 
 type SDK<
   T extends Types,

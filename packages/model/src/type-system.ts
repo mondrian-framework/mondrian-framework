@@ -1,7 +1,7 @@
-import { Expand } from '@mondrian-framework/utils'
 import { DecodeOptions } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
 import { Failure, Result } from './result'
+import { Expand } from '@mondrian-framework/utils'
 
 export interface Type {}
 export type LazyType = Type | (() => Type)

@@ -1,4 +1,4 @@
-import { validate, m, CustomTypeOpts, Result } from '@mondrian-framework/model'
+import { CustomTypeOpts, Result, m, validate } from '@mondrian-framework/model'
 import { isArray } from '@mondrian-framework/utils'
 
 export type RegExpOpts = CustomTypeOpts

@@ -1,6 +1,6 @@
-import t from '@mondrian-framework/model'
-import a from '@mondrian-framework/advanced-types'
 import { Id, JWT } from './scalars.types'
+import a from '@mondrian-framework/advanced-types'
+import t from '@mondrian-framework/model'
 
 export const User = () =>
   t.object({

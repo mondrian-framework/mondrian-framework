@@ -1,7 +1,7 @@
 import { Infer, Types } from '@mondrian-framework/model'
 import { Functions, Logger, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { ScheduledTask } from 'node-cron'
-import { validate, schedule } from 'node-cron'
+import { schedule, validate } from 'node-cron'
 
 export type CronFunctionSpecs<Input> = ([Input] extends [void] ? {} : { input: () => Promise<Input> }) & {
   cron: string

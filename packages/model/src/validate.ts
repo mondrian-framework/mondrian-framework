@@ -1,7 +1,7 @@
-import { assertNever } from '@mondrian-framework/utils'
+import { Result, concat2, enrichErrors, error, errors, success } from './result'
 import { ArrayDecorator, Infer, LazyType, NumberType, StringType } from './type-system'
 import { lazyToType } from './utils'
-import { Result, concat2, enrichErrors, error, errors, success } from './result'
+import { assertNever } from '@mondrian-framework/utils'
 
 export function isType<T extends LazyType>(type: T, value: unknown): value is Infer<T> {
   return validate(type, value).success

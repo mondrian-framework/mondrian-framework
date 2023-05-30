@@ -1,4 +1,4 @@
-import { validate, m, CustomTypeOpts, Result } from '@mondrian-framework/model'
+import { CustomTypeOpts, Result, m, validate } from '@mondrian-framework/model'
 
 const EMAIL_REGEX =
   /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/

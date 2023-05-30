@@ -1,12 +1,12 @@
+import { attachRestMethods, openapiSpecification } from './openapi'
+import { fastifyStatic } from '@fastify/static'
 import { Types } from '@mondrian-framework/model'
 import { Functions, Logger, Module } from '@mondrian-framework/module'
-import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { fastifyStatic } from '@fastify/static'
-import { getAbsoluteFSPath } from 'swagger-ui-dist'
-import path from 'path'
-import fs from 'fs'
-import { attachRestMethods, openapiSpecification } from './openapi'
 import { JSONType, isArray } from '@mondrian-framework/utils'
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import fs from 'fs'
+import path from 'path'
+import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type RestFunctionSpecs = {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'

@@ -1,4 +1,5 @@
 import {
+  AnyType,
   ArrayDecorator,
   BooleanType,
   EnumType,
@@ -8,7 +9,6 @@ import {
   ObjectType,
   RootCustomType,
   StringType,
-  AnyType,
   UnionOperator,
 } from './type-system'
 import { DefaultDecorator, LazyType, OptionalDecorator, RelationDecorator } from './type-system'

@@ -1,9 +1,9 @@
-import jwt from 'jsonwebtoken'
-import f from './functions.commons'
-import { Prisma } from '@prisma/client'
 import { types } from '../types'
-import { PrismaUtils } from '@mondrian-framework/prisma'
+import f from './functions.commons'
 import { subProjection } from '@mondrian-framework/model'
+import { PrismaUtils } from '@mondrian-framework/prisma'
+import { Prisma } from '@prisma/client'
+import jwt from 'jsonwebtoken'
 
 export const register = f({
   input: 'RegisterInput',

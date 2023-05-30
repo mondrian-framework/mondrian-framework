@@ -1,5 +1,5 @@
-import { OpenAPIV3_1 } from 'openapi-types'
-import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { ModuleRestApi, RestFunctionSpecs } from './server'
+import { decodeQueryObject } from './utils'
 import {
   GenericProjection,
   LazyType,
@@ -14,10 +14,10 @@ import {
   lazyToType,
   mergeProjections,
 } from '@mondrian-framework/model'
-import { assertNever, isArray } from '@mondrian-framework/utils'
 import { Functions, GenericFunction, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
-import { decodeQueryObject } from './utils'
-import { ModuleRestApi, RestFunctionSpecs } from './server'
+import { assertNever, isArray } from '@mondrian-framework/utils'
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { OpenAPIV3_1 } from 'openapi-types'
 
 export function attachRestMethods({
   module,

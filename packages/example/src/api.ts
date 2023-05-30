@@ -1,10 +1,10 @@
-import { ModuleRestApi } from '@mondrian-framework/rest'
 import { Functions } from './functions'
-import { ModuleGraphqlApi } from '@mondrian-framework/graphql'
 import { module } from './module'
+import { Types } from './types'
 import { ModuleSqsApi } from '@mondrian-framework/aws-sqs/src/listener'
 import { ModuleCronApi } from '@mondrian-framework/cron/src/executor'
-import { Types } from './types'
+import { ModuleGraphqlApi } from '@mondrian-framework/graphql'
+import { ModuleRestApi } from '@mondrian-framework/rest'
 
 //TODO:
 //How to exlude function implementation in package release?

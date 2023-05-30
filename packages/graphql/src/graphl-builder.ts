@@ -1,20 +1,20 @@
-import { GraphQLSchema, GraphQLResolveInfo, GraphQLScalarType } from 'graphql'
+import { ModuleGraphqlApi } from './server'
 import { extractProjectionFromGraphqlInfo } from './utils'
-import { createGraphQLError, createSchema } from 'graphql-yoga'
-import { FastifyReply, FastifyRequest } from 'fastify'
 import {
-  RootCustomType,
   LazyType,
+  RootCustomType,
   decode,
+  decodeAndValidate,
   encode,
   getProjectionType,
   isVoidType,
   lazyToType,
-  decodeAndValidate,
 } from '@mondrian-framework/model'
-import { assertNever, isArray } from '@mondrian-framework/utils'
 import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
-import { ModuleGraphqlApi } from './server'
+import { assertNever, isArray } from '@mondrian-framework/utils'
+import { FastifyReply, FastifyRequest } from 'fastify'
+import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
+import { createGraphQLError, createSchema } from 'graphql-yoga'
 
 function typeToGqlType(
   name: string,

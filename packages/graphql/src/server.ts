@@ -1,9 +1,9 @@
+import { buildGraphqlSchema } from './graphl-builder'
 import { Types } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { createYoga } from 'graphql-yoga'
-import { buildGraphqlSchema } from './graphl-builder'
 import { GraphQLResolveInfo } from 'graphql'
+import { createYoga } from 'graphql-yoga'
 
 export type GraphqlFunctionSpecs = { type: 'query' | 'mutation'; name?: string; inputName?: string }
 export type ModuleGraphqlApi<F extends Functions> = {

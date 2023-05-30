@@ -1,9 +1,9 @@
 import { DecodeOptions, decode } from './decoder'
-import { validate } from './validate'
-import { Infer, LazyType } from './type-system'
 import { encode } from './encoder'
-import { JSONType } from '@mondrian-framework/utils'
 import { Result, success } from './result'
+import { Infer, LazyType } from './type-system'
+import { validate } from './validate'
+import { JSONType } from '@mondrian-framework/utils'
 
 export function decodeAndValidate<const T extends LazyType>(
   type: T,

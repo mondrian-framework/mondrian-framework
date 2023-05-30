@@ -1,3 +1,4 @@
+import { Logger } from './utils'
 import {
   GenericProjection,
   Infer,
@@ -7,7 +8,6 @@ import {
   getProjectedType,
   validate,
 } from '@mondrian-framework/model'
-import { Logger } from './utils'
 
 export type Function<T extends Types, I extends keyof T, O extends keyof T, Context> = Infer<T[I]> extends infer Input
   ? InferReturn<T[O]> extends infer Output

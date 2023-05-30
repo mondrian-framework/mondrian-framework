@@ -1,4 +1,4 @@
-import { CustomType, decode, encode, is, m } from '@mondrian-framework/model'
+import { CustomType, decode, encode, validate, m } from '@mondrian-framework/model'
 
 const EMAIL_REGEX =
   /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
@@ -14,8 +14,8 @@ export function email(opts?: EmailType['opts']) {
       encode: (input, opts) => {
         return encode(m.string(), input)
       },
-      is(input) {
-        const isString = is(m.string(), input)
+      validate(input) {
+        const isString = validate(m.string(), input)
         if (!isString.success) {
           return isString
         }

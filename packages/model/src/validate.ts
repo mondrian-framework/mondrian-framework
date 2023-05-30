@@ -112,7 +112,7 @@ function validateInternal(type: LazyType, value: unknown): IsResult {
   }
   if (t.kind === 'custom') {
     const result = t.validate(value, t.opts)
-    if (result) {
+    if (result.success) {
       return ok()
     }
     return result

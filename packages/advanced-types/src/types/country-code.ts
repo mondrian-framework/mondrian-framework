@@ -5,8 +5,9 @@ const COUNTRY_CODE_REGEX =
 
 type CountryCodeType = CustomType<string, {}>
 export function countryCode(opts?: CountryCodeType['opts']) {
-  return (
-    m.custom({
+  return m.custom(
+    {
+      name: 'country-code',
       decode: (input, opts, decodeOpts) => {
         return decode(m.string(), input, decodeOpts)
       },
@@ -26,7 +27,7 @@ export function countryCode(opts?: CountryCodeType['opts']) {
         }
         return { success: true }
       },
-    }),
-    opts
+    },
+    opts,
   )
 }

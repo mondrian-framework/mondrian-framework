@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "build"
+  },
+  "include": [
+    "vite.config.ts",
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "build",
+    "node_modules"
+  ],
+  "references": [
+    {
+      "path": "../model"
+    }
+  ]
+}

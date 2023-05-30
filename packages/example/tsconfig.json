@@ -4,14 +4,24 @@
     "baseUrl": ".",
     "outDir": "build"
   },
-  "include": ["vite.config.ts", "src", "tests"],
-  "exclude": ["build", "node_modules"],
+  "include": [
+    "vite.config.ts",
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "build",
+    "node_modules"
+  ],
   "references": [
     {
       "path": "../module"
     },
     {
       "path": "../model"
+    },
+    {
+      "path": "../advanced-types"
     },
     {
       "path": "../prisma"

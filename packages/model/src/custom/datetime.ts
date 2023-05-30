@@ -1,14 +1,11 @@
 import { error, success } from '../result'
-import { CustomType, custom, string } from '../type-system'
+import { CustomType, CustomTypeOpts, custom, string } from '../type-system'
 
-const DateTimeEncodedType = string()
-type DateTimeEncodedType = typeof DateTimeEncodedType
-type DateTimeType = CustomType<Date, DateTimeEncodedType, { minimum?: Date; maximum?: Date }>
-export function datetime(opts?: DateTimeType['opts']): DateTimeType {
+export function datetime(opts?: CustomTypeOpts & { minimum?: Date; maximum?: Date }) {
   return custom(
     {
       name: 'datetime',
-      encodedType: DateTimeEncodedType,
+      encodedType: string(),
       decode: (input, options, decodeOptions) => {
         let time: number = Date.parse(input)
         if (Number.isNaN(time)) {

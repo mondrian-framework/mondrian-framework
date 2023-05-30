@@ -7,3 +7,7 @@
 ## InferProjection
 
 ## Project
+
+## isType
+
+## assertType

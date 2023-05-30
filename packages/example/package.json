@@ -15,6 +15,7 @@
     "@mondrian-framework/cron": "*",
     "@mondrian-framework/graphql": "*",
     "@mondrian-framework/model": "*",
+    "@mondrian-framework/advanced-types": "*",
     "@mondrian-framework/module": "*",
     "@mondrian-framework/rest": "*",
     "@mondrian-framework/prisma": "*",

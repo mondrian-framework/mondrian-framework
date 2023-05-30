@@ -1,14 +1,11 @@
 import { error, success } from '../result'
-import { CustomType, custom, integer } from '../type-system'
+import { CustomTypeOpts, custom, integer } from '../type-system'
 
-const TimestampEncodedType = integer()
-type TimestampEncodedType = typeof TimestampEncodedType
-export type TimestampType = CustomType<Date, TimestampEncodedType, { minimum?: Date; maximum?: Date }>
-export function timestamp(opts?: TimestampType['opts']): TimestampType {
+export function timestamp(opts?: CustomTypeOpts & { minimum?: Date; maximum?: Date }) {
   return custom(
     {
       name: 'timestamp',
-      encodedType: TimestampEncodedType,
+      encodedType: integer(),
       decode: (input, options) => {
         if (input > 864000000000000 || input < -864000000000000) {
           return error(`Timestamp must be between -864000000000000 and 864000000000000`, input)

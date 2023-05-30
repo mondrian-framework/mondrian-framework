@@ -1,12 +1,12 @@
-import t from '@mondrian-framework/model'
+import m from '@mondrian-framework/model'
 import * as scalars from './scalars.types'
 import * as users from './user.types'
 export * from './user.types'
 export * from './scalars.types'
 
-export const types = t.types({
+export const types = m.types({
   ...scalars,
   ...users,
-  Void: t.void(),
+  Void: m.void(),
 })
 export type Types = typeof types

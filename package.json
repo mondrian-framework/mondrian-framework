@@ -18,6 +18,7 @@
     "packages/docs",
     "packages/utils",
     "packages/model",
+    "packages/advanced-types",
     "packages/module",
     "packages/prisma",
     "packages/rest",
@@ -28,7 +29,7 @@
     "packages/example"
   ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=18"
   },
   "dependencies": {}
 }

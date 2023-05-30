@@ -62,13 +62,13 @@ Following a list of the main features of Mondrian Framework:
   - Container based
   - AWS Lambda
   - others from the community
-- Basic RBAC security framework
-- Advanced resource based security framework
+[//]: #- Basic RBAC security framework
+[//]: #- Advanced resource based security framework
 - Automatic client SDK generation
 - Dependency Injection
-- 100% TypeScript
 - Exception management 
 - Built-in mocking
 - Built-in logging
 - Built-in metrics
 - Built-in tracing 
+- 100% TypeScript

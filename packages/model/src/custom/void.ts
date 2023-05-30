@@ -4,7 +4,7 @@ import { RootCustomType, literal } from '../type-system'
 const VoidEncodeType = literal(null).optional()
 type VoidEncodeType = typeof VoidEncodeType
 export type VoidType = RootCustomType<void, VoidEncodeType, {}>
-export function voidType(opts?: VoidType['opts']): VoidType {
+export function voidType(opts?: VoidType['opts']): RootCustomType<void, VoidEncodeType, {}> {
   return {
     kind: 'custom',
     name: 'void',

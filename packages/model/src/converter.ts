@@ -26,6 +26,6 @@ export function validateAndEncode<const T extends LazyType>(type: T, value: unkn
   if (!isCheck.success) {
     return isCheck
   }
-  const encoded = encode(type, value)
+  const encoded = encode(type, isCheck.value)
   return success(encoded)
 }

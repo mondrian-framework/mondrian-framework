@@ -1,22 +1,18 @@
-import { CustomType, custom } from '../type-system'
+import { CustomType, custom, string } from '../type-system'
 
-type DateTimeType = CustomType<Date, { minimum?: Date; maximum?: Date }>
+const DateTimeEncodedType = string()
+type DateTimeEncodedType = typeof DateTimeEncodedType
+type DateTimeType = CustomType<Date, DateTimeEncodedType, { minimum?: Date; maximum?: Date }>
 export function datetime(opts?: DateTimeType['opts']): DateTimeType {
   return custom(
     {
       name: 'datetime',
+      encodedType: DateTimeEncodedType,
       decode: (input, options, decodeOptions) => {
-        let time: number = Date.parse(typeof input === 'string' ? input : '')
+        let time: number = Date.parse(input)
         if (Number.isNaN(time)) {
-          if (
-            decodeOptions?.cast &&
-            typeof input === 'number' &&
-            !Number.isNaN(input) &&
-            input <= 864000000000000 &&
-            input >= -864000000000000
-          ) {
-            time = input //try to cast from unix time ms
-          } else {
+          time = Number(input)
+          if (!decodeOptions?.cast || Number.isNaN(time) || time > 864000000000000 || time < -864000000000000) {
             return { success: false, errors: [{ value: input, error: 'ISO date expected' }] }
           }
         }

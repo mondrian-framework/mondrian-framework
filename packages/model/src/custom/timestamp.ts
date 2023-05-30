@@ -1,14 +1,14 @@
-import { CustomType, custom } from '../type-system'
+import { CustomType, custom, integer } from '../type-system'
 
-export type TimestampType = CustomType<Date, { minimum?: Date; maximum?: Date }>
+const TimestampEncodedType = integer()
+type TimestampEncodedType = typeof TimestampEncodedType
+export type TimestampType = CustomType<Date, TimestampEncodedType, { minimum?: Date; maximum?: Date }>
 export function timestamp(opts?: TimestampType['opts']): TimestampType {
   return custom(
     {
       name: 'timestamp',
+      encodedType: TimestampEncodedType,
       decode: (input, options) => {
-        if (typeof input !== 'number') {
-          return { success: false, errors: [{ value: input, error: 'Unix time expected (ms)' }] }
-        }
         if (input > 864000000000000 || input < -864000000000000) {
           return {
             success: false,

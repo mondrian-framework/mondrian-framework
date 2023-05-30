@@ -46,23 +46,31 @@ Besides primitive types, the framework provides a wide range of utility types th
 ```ts showLineNumbers
 import m from '@mondrian-framework/advanced-types'
 
-m.countryCode() // ISO 3166-1 alpha-2
-m.currency() // ISO 4217
-m.date() // date string without time
-m.email() 
-m.IP() // IPv4 or IPv6 address
-m.ISBN() // ISBN-10 or ISBN-13
-m.JWT() // Json Web Token
+// DATE AND TIME RELATED
+m.date() // date string without time, ex: 2023-01-24
+m.time() // time only string RFC 3339, ex: 12:05:55Z
+m.timezone() // IANA Time Zone, ex: Europe/Rome
+
+// LOCATION RELATED
+m.countryCode() // ISO 3166-1 alpha-2, ex: IT
 m.latitude() 
-m.locale() // ISO 639-1
 m.longitude()
+m.locale() // ISO 639-1, ex: it
+m.currency() // ISO 4217, ex: EUR
+
+// OTHERS
+m.email() 
+m.phoneNumber() // E.164 ex: +17895551234
 m.MAC() // IEEE 802 48-bit
-m.phoneNumber() // E.164
+m.IP() // IPv4 or IPv6 address
 m.port() // TCP port
-m.time() // time only string RFC 3339
-m.timezone() // IANA Time Zone
-m.URL() // RFC 3986
+m.version() // semantic version, ex: 1.1.2
+m.JWT() // JSON Web Token
+m.URL() // RFC 3986, ex: https://www.google.com
 m.UUID() // Universal Unique Identifier
+m.ISBN() // ISBN-10 or ISBN-13
+m.RGB() // CSS RGB, ex: rgb(255, 220, 200)
+m.RGBA() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
 ```
 ## Custom types
 

@@ -9,26 +9,25 @@ test('Email - encode', async () => {
 })
 
 test('Email - decode', async () => {
-  expect(decode(email, 'any-string')).toEqual({ success: true, value: 'any-string' })
+  expect(decode(email, 'any-string')).toStrictEqual({ success: true, value: 'any-string' })
+  expect(decode(email, 10).success).toBe(false)
+  expect(decode(email, true).success).toBe(false)
+  expect(decode(email, null).success).toBe(false)
+  expect(decode(email, undefined).success).toBe(false)
 })
 
 test('Email - valid', async () => {
-  expect(validate(email, 'test@test.com')).toEqual({ success: true })
+  const values = ['test@test.com']
+  values.forEach((value) => expect(validate(email, value)).toStrictEqual({ success: true, value }))
 })
 
 test('Email - invalid', async () => {
-  expect(validate(email, 'testest.com ').success).toBe(false)
-  expect(
-    validate(
-      email,
-      'tesksajhdjkshdkjhsakjdhkjashdjksahkdhksahdjkshadjksahdjkhaskjaskjhdkjsahkdhskjhdkjsahkdhsakhdkashjksadh@test.com ',
-    ).success,
-  ).toBe(false)
-  expect(
-    validate(
-      email,
-      'test@sakjhdkjashdkhakjshdjashkdhasjkdhkjashdjhjksahdjksahjdhsahdsahdkshakjdhskajdhkjsahdkjhsakjdhkjsahdkjhsakjdhkjsahdkjhsakjdhksajhdksahdkjsahjkdhsakjhdkjashkdjhaskjdhakhdjksahdkjashkjdhasjkhdkashdkjsahdkjsahkjdhaksjhdkash.com ',
-    ).success,
-  ).toBe(false)
-  expect(validate(email, 'tes@testcom ').success).toBe(false)
+  const values = [
+    '',
+    'testest.com',
+    'tesksajhdjkshdkjhsakjdhkjashdjksahkdhksahdjkshadjksahdjkhaskjaskjhdkjsahkdhskjhdkjsahkdhsakhdkashjksadh@test.com',
+    'test@sakjhdkjashdkhakjshdjashkdhasjkdhkjashdjhjksahdjksahjdhsahdsahdkshakjdhskajdhkjsahdkjhsakjdhkjsahdkjhsakjdhkjsahdkjhsakjdhksajhdksahdkjsahjkdhsakjhdkjashkdjhaskjdhakhdjksahdkjashkjdhasjkhdkashdkjsahdkjsahkjdhaksjhdkash.com',
+    'tes@testcom',
+  ]
+  values.forEach((value) => expect(validate(email, value).success).toBe(false))
 })

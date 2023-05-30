@@ -24,8 +24,6 @@ export type Post = t.Infer<typeof Post>
 
 export const UserFilter = t.object({
   id: Id.optional(),
-  a: t.timestamp().optional(),
-  b: a.MAC().optional()
 })
 export type UserFilter = t.Infer<typeof UserFilter>
 

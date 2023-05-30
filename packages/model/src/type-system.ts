@@ -1,4 +1,4 @@
-import { Expand, JSONType } from '@mondrian-framework/utils'
+import { Expand } from '@mondrian-framework/utils'
 import { DecodeOptions } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
 import { Failure, Result } from './result'

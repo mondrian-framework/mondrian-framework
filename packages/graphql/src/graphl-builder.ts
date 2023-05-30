@@ -64,7 +64,6 @@ function typeToGqlTypeInternal(
   const description = 'opts' in type && type.opts && 'description' in type.opts ? type.opts.description : undefined
   const desc = description ? `"""${description}"""\n` : ''
   if (type.kind === 'string') {
-    //TODO: create scalar for some format (eg: Email)
     return { description, type: `String${isRequired}` }
   }
   if (type.kind === 'custom') {

@@ -1,4 +1,4 @@
-import { Expand, JSONType } from '@mondrian-framework/utils'
+import { Expand } from '@mondrian-framework/utils'
 import { DecodeOptions } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
 import { Failure, Result } from './result'
@@ -111,7 +111,7 @@ export interface RootCustomType<T = any, E extends LazyType = Type, O = any> ext
   encodedType: E
   decode: (input: Infer<E>, options: O | undefined, decodeOptions: DecodeOptions | undefined) => Result<T>
   encode: (input: T, options: O | undefined) => Infer<E>
-  validate: (input: unknown, options: O | undefined) => Failure | { success: true }
+  validate: (input: unknown, options: O | undefined) => Result<T>
   opts?: O & CustomTypeOpts
 }
 

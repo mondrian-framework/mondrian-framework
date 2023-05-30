@@ -1,3 +1,4 @@
+import { error, success } from '../result'
 import { CustomType, custom, string } from '../type-system'
 
 const DateTimeEncodedType = string()
@@ -13,31 +14,25 @@ export function datetime(opts?: DateTimeType['opts']): DateTimeType {
         if (Number.isNaN(time)) {
           time = Number(input)
           if (!decodeOptions?.cast || Number.isNaN(time) || time > 864000000000000 || time < -864000000000000) {
-            return { success: false, errors: [{ value: input, error: 'ISO date expected' }] }
+            return error('ISO date expected', input)
           }
         }
-        return { success: true, value: new Date(time) }
+        return success(new Date(time))
       },
       encode: (input) => {
         return input.toISOString()
       },
       validate(input, options) {
         if (!(input instanceof Date)) {
-          return { success: false, errors: [{ value: input, error: `Date expected` }] }
+          return error(`Date expected`, input)
         }
         if (options?.maximum != null && input.getTime() > options.maximum.getTime()) {
-          return {
-            success: false,
-            errors: [{ value: input, error: `Datetime must be maximum ${options.maximum.toISOString()}` }],
-          }
+          return error(`Datetime must be maximum ${options.maximum.toISOString()}`, input)
         }
         if (options?.minimum != null && input.getTime() < options.minimum.getTime()) {
-          return {
-            success: false,
-            errors: [{ value: input, error: `Datetime must be minimum ${options.minimum.toISOString()}` }],
-          }
+          return error(`Datetime must be minimum ${options.minimum.toISOString()}`, input)
         }
-        return { success: true }
+        return success(input)
       },
     },
     opts,

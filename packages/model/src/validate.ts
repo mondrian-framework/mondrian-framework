@@ -1,13 +1,7 @@
 import { assertNever } from '@mondrian-framework/utils'
-import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType, boolean } from './type-system'
+import { ArrayDecorator, Infer, LazyType, NumberType, StringType } from './type-system'
 import { lazyToType } from './utils'
-import { Result, Success, concat2, enrichErrors, error, errors, success } from './result'
-
-type IsResult = Result<void>
-
-function ok(): Success<undefined> {
-  return success(undefined)
-}
+import { Result, concat2, enrichErrors, error, errors, success } from './result'
 
 export function isType<T extends LazyType>(type: T, value: unknown): value is Infer<T> {
   return validate(type, value).success
@@ -20,12 +14,12 @@ export function assertType<T extends LazyType>(type: T, value: unknown): asserts
   }
 }
 
-export function validate(type: LazyType, value: unknown): IsResult {
+export function validate<T extends LazyType>(type: T, value: unknown): Result<Infer<T>> {
   const result = validateInternal(type, value)
-  return enrichErrors(result, '')
+  return enrichErrors(result, '') as Result<Infer<T>>
 }
 
-function validateInternal(type: LazyType, value: unknown): IsResult {
+function validateInternal(type: LazyType, value: unknown): Result<unknown> {
   const t = lazyToType(type)
   if (t.kind === 'string') {
     if (typeof value !== 'string') {
@@ -43,11 +37,11 @@ function validateInternal(type: LazyType, value: unknown): IsResult {
     if (typeof value !== 'number') {
       return error(`Boolean expected`, value)
     }
-    return ok()
+    return success(value)
   }
   if (t.kind === 'literal') {
     if (value === t.value) {
-      return ok()
+      return success(value)
     }
     return error(`Literal ${t.value} expected`, value)
   }
@@ -56,7 +50,7 @@ function validateInternal(type: LazyType, value: unknown): IsResult {
   }
   if (t.kind === 'optional-decorator') {
     if (value === undefined) {
-      return ok()
+      return success(value)
     }
     const result = validateInternal(t.type, value)
     if (!result.success) {
@@ -66,7 +60,7 @@ function validateInternal(type: LazyType, value: unknown): IsResult {
   }
   if (t.kind === 'nullable-decorator') {
     if (value === null) {
-      return ok()
+      return success(value)
     }
     const result = validateInternal(t.type, value)
     if (!result.success) {
@@ -84,7 +78,7 @@ function validateInternal(type: LazyType, value: unknown): IsResult {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
     }
-    return ok()
+    return success(value)
   }
   if (t.kind === 'object') {
     if (typeof value !== 'object' || !value) {
@@ -97,7 +91,7 @@ function validateInternal(type: LazyType, value: unknown): IsResult {
         return enrichedResult
       }
     }
-    return ok()
+    return success(value)
   }
   if (t.kind === 'union-operator') {
     const errs: { path?: string; error: string; value: unknown }[] = []
@@ -113,14 +107,14 @@ function validateInternal(type: LazyType, value: unknown): IsResult {
   if (t.kind === 'custom') {
     const result = t.validate(value, t.opts)
     if (result.success) {
-      return ok()
+      return success(value)
     }
     return result
   }
   assertNever(t)
 }
 
-function checkStringOptions(value: string, opts: StringType['opts']): IsResult {
+function checkStringOptions(value: string, opts: StringType['opts']): Result<string> {
   if (opts?.maxLength != null && value.length > opts.maxLength) {
     return error(`String longer than max length (${opts.maxLength})`, value)
   }
@@ -130,10 +124,10 @@ function checkStringOptions(value: string, opts: StringType['opts']): IsResult {
   if (opts?.regex != null && !opts.regex.test(value)) {
     return error(`String regex misInternalmatch (${opts.regex.source})`, value)
   }
-  return ok()
+  return success(value)
 }
 
-function checkNumberOptions(value: number, opts: NumberType['opts']): IsResult {
+function checkNumberOptions(value: number, opts: NumberType['opts']): Result<number> {
   if (opts?.minimum != null && value < opts.minimum) {
     return error(`Number must be greater than or equal to ${opts.minimum}`, value)
   }
@@ -149,17 +143,17 @@ function checkNumberOptions(value: number, opts: NumberType['opts']): IsResult {
   if (opts?.multipleOf != null && value % opts.multipleOf !== 0) {
     return error(`Number must be mutiple of ${opts.multipleOf}`, value)
   }
-  return ok()
+  return success(value)
 }
 
-function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): IsResult {
+function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): Result<unknown[]> {
   if (opts?.maxItems != null && value.length > opts.maxItems) {
     return error(`Array must have maximum ${opts.maxItems} items`, value)
   }
-  return ok()
+  return success(value)
 }
 
-function arrayElementIs(value: unknown[], type: ArrayDecorator): IsResult {
+function arrayElementIs(value: unknown[], type: ArrayDecorator): Result<unknown[]> {
   for (let i = 0; i < value.length; i++) {
     const result = validateInternal(type.type, value[i])
     const enrichedResult = enrichErrors(result, i.toString())
@@ -167,5 +161,5 @@ function arrayElementIs(value: unknown[], type: ArrayDecorator): IsResult {
       return enrichedResult
     }
   }
-  return ok()
+  return success(value)
 }

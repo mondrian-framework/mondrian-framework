@@ -1,3 +1,4 @@
+import { error, success } from '../result'
 import { CustomType, custom, integer } from '../type-system'
 
 const TimestampEncodedType = integer()
@@ -10,38 +11,24 @@ export function timestamp(opts?: TimestampType['opts']): TimestampType {
       encodedType: TimestampEncodedType,
       decode: (input, options) => {
         if (input > 864000000000000 || input < -864000000000000) {
-          return {
-            success: false,
-            errors: [
-              {
-                value: input,
-                error: `Timestamp must be between -864000000000000 and 864000000000000`,
-              },
-            ],
-          }
+          return error(`Timestamp must be between -864000000000000 and 864000000000000`, input)
         }
-        return { success: true, value: new Date(input) }
+        return success(new Date(input))
       },
       encode: (input) => {
         return input.getTime()
       },
       validate(input, options) {
         if (!(input instanceof Date)) {
-          return { success: false, errors: [{ value: input, error: `Date epected` }] }
+          return error(`Date epected`, input)
         }
         if (options?.maximum != null && input.getTime() > options.maximum.getTime()) {
-          return {
-            success: false,
-            errors: [{ value: input, error: `Timestamp must be maximum ${options.maximum.toISOString()}` }],
-          }
+          return error(`Timestamp must be maximum ${options.maximum.toISOString()}`, input)
         }
         if (options?.minimum != null && input.getTime() < options.minimum.getTime()) {
-          return {
-            success: false,
-            errors: [{ value: input, error: `Timestamp must be minimum ${options.minimum.toISOString()}` }],
-          }
+          return error(`Timestamp must be minimum ${options.minimum.toISOString()}`, input)
         }
-        return { success: true }
+        return success(input)
       },
     },
     opts,

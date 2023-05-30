@@ -18,7 +18,7 @@ export function decodeAndValidate<const T extends LazyType>(
   if (!isCheck.success) {
     return isCheck
   }
-  return success(decoded.value as Infer<T>)
+  return isCheck
 }
 
 export function validateAndEncode<const T extends LazyType>(type: T, value: unknown): Result<JSONType> {

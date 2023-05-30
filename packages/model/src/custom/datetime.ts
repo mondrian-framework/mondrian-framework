@@ -5,6 +5,7 @@ export function datetime(opts?: CustomTypeOpts & { minimum?: Date; maximum?: Dat
   return custom(
     {
       name: 'datetime',
+      format: 'date-time',
       encodedType: string(),
       decode: (input, options, decodeOptions) => {
         let time: number = Date.parse(input)

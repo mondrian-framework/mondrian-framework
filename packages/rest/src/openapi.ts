@@ -460,20 +460,11 @@ function typeToSchemaObjectInternal(
     }
   }
   if (type.kind === 'custom') {
-    if (type.name === 'timestamp') {
-      return { type: 'integer', description: type.opts?.description ?? 'Unixtime (ms)' }
-    }
-    if (type.name === 'datetime') {
-      return { type: 'string', format: 'date-time', description: type.opts?.description }
-    }
-    if (type.name === 'email') {
-      return { type: 'string', format: 'email', description: type.opts?.description }
-    }
     if (type.name === 'void') {
-      return { type: 'null', const: 'null', description: type.opts?.description }
+      return { type: 'null', const: 'null', description: 'void' }
     }
-    const items = typeToSchemaObject(name, () => lazyToType(type.encodedType), types, typeMap, typeRef)
-    return { ...items, description: type.opts?.description ?? type.name }
+    const t = typeToSchemaObject(type.name, type.encodedType, types, typeMap, typeRef)
+    return { ...t, description: type.opts?.description ?? type.name, format: type.format }
   }
   if (type.kind === 'boolean') {
     return { type: 'boolean' }

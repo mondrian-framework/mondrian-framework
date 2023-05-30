@@ -108,6 +108,7 @@ export interface RootCustomType<T = any, E extends LazyType = Type, O = any> ext
   kind: 'custom'
   type: T
   name: string
+  format?: string
   encodedType: E
   decode: (input: Infer<E>, options: O | undefined, decodeOptions: DecodeOptions | undefined) => Result<T>
   encode: (input: T, options: O | undefined) => Infer<E>

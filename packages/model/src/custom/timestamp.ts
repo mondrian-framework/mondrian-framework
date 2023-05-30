@@ -5,6 +5,7 @@ export function timestamp(opts?: CustomTypeOpts & { minimum?: Date; maximum?: Da
   return custom(
     {
       name: 'timestamp',
+      format: 'unixtime (ms)',
       encodedType: integer(),
       decode: (input, options) => {
         if (input > 864000000000000 || input < -864000000000000) {

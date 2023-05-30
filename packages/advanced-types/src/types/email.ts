@@ -7,6 +7,7 @@ export function email(opts?: CustomTypeOpts) {
   return m.custom(
     {
       name: 'email',
+      format: 'email',
       encodedType: m.string(),
       decode: (input, opts, decodeOpts) => {
         return { success: true, value: input }

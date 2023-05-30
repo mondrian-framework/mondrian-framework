@@ -7,7 +7,7 @@
     "build-docs": "npm run build-docs --workspace=@mondrian-framework/docs",
     "test": "npm run test --workspaces --if-present",
     "pretty": "prettier --write \"./**/*.ts\"",
-    "example": "npm run build --workspace=@mondrian-framework/example && npm run example --workspace=@mondrian-framework/example"
+    "example": "npm run example --workspace=@mondrian-framework/example"
   },
   "devDependencies": {
     "typescript": "5.0.4",

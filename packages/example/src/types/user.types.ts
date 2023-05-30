@@ -1,10 +1,11 @@
 import t from '@mondrian-framework/model'
+import a from '@mondrian-framework/advanced-types'
 import { Id, JWT } from './scalars.types'
 
 export const User = () =>
   t.object({
     id: Id,
-    email: t.string({}), //TODO: need email
+    email: a.email(),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
     registeredAt: t.datetime().default(() => new Date()),
@@ -23,11 +24,13 @@ export type Post = t.Infer<typeof Post>
 
 export const UserFilter = t.object({
   id: Id.optional(),
+  a: t.timestamp().optional(),
+  b: a.MAC().optional()
 })
 export type UserFilter = t.Infer<typeof UserFilter>
 
 export const LoginInput = t.object({
-  email: t.string({}), //TODO: need email
+  email: a.email(),
   password: t.string({ minLength: 1, maxLength: 100 }),
 })
 export type LoginInput = t.Infer<typeof LoginInput>
@@ -37,7 +40,9 @@ export const RegisterInput = t.merge(
     email: true,
     name: true,
   }),
-  t.object({ password: t.string({ minLength: 5, maxLength: 100 }), a: t.literal(1.1) }),
+  t.object({
+    password: t.string({ minLength: 5, maxLength: 100 }),
+  }),
 )
 export type RegisterInput = t.Infer<typeof RegisterInput>
 

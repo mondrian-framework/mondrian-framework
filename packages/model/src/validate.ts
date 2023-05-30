@@ -1,64 +1,31 @@
 import { assertNever } from '@mondrian-framework/utils'
 import { ArrayDecorator, Infer, LazyType, NumberType, ObjectType, StringType, boolean } from './type-system'
 import { lazyToType } from './utils'
+import { Result, Success, concat2, enrichErrors, error, errors, success } from './result'
 
-export type IsResult =
-  | { success: true }
-  | { success: false; errors: { path?: string; error: string; value: unknown }[] }
+type IsResult = Result<void>
 
-function success(): { success: true } {
-  return { success: true }
-}
-
-function concat2<V1>(v1: IsResult, f1: () => IsResult): IsResult {
-  if (!v1.success) {
-    return v1
-  }
-  const v2 = f1()
-  return v2
-}
-
-function enrichErrors<T>(result: IsResult, key: string): IsResult {
-  if (!result.success) {
-    return errors(result.errors.map((e) => ({ ...e, path: e.path != null ? `${key}/${e.path}` : `${key}/` })))
-  }
-  return result
-}
-
-export function errors(errors: { path?: string; error: string; value: unknown }[]): {
-  success: false
-  errors: { path?: string; error: string; value: unknown }[]
-} {
-  return { success: false, errors }
-}
-
-export function error(
-  error: string,
-  value: unknown,
-): {
-  success: false
-  errors: { path?: string; error: string; value: unknown }[]
-} {
-  return { success: false, errors: [{ error, value }] }
+function ok(): Success<undefined> {
+  return success(undefined)
 }
 
 export function isType<T extends LazyType>(type: T, value: unknown): value is Infer<T> {
-  return is(type, value).success
+  return validate(type, value).success
 }
 
 export function assertType<T extends LazyType>(type: T, value: unknown): asserts value is Infer<T> {
-  const result = is(type, value)
+  const result = validate(type, value)
   if (!result.success) {
     throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
   }
 }
 
-export function is(type: LazyType, value: unknown): IsResult {
-  const result = isInternal(type, value)
+export function validate(type: LazyType, value: unknown): IsResult {
+  const result = validateInternal(type, value)
   return enrichErrors(result, '')
 }
 
-function isInternal(type: LazyType, value: unknown): IsResult {
+function validateInternal(type: LazyType, value: unknown): IsResult {
   const t = lazyToType(type)
   if (t.kind === 'string') {
     if (typeof value !== 'string') {
@@ -76,22 +43,22 @@ function isInternal(type: LazyType, value: unknown): IsResult {
     if (typeof value !== 'number') {
       return error(`Boolean expected`, value)
     }
-    return success()
+    return ok()
   }
   if (t.kind === 'literal') {
     if (value === t.value) {
-      return success()
+      return ok()
     }
     return error(`Literal ${t.value} expected`, value)
   }
   if (t.kind === 'relation-decorator' || t.kind === 'default-decorator') {
-    return isInternal(t.type, value)
+    return validateInternal(t.type, value)
   }
   if (t.kind === 'optional-decorator') {
     if (value === undefined) {
-      return success()
+      return ok()
     }
-    const result = isInternal(t.type, value)
+    const result = validateInternal(t.type, value)
     if (!result.success) {
       return result.errors.length > 0 ? result : error(`Undefined expected`, value)
     }
@@ -99,9 +66,9 @@ function isInternal(type: LazyType, value: unknown): IsResult {
   }
   if (t.kind === 'nullable-decorator') {
     if (value === null) {
-      return success()
+      return ok()
     }
-    const result = isInternal(t.type, value)
+    const result = validateInternal(t.type, value)
     if (!result.success) {
       return result.errors.length > 0 ? result : error(`Null expected`, value)
     }
@@ -117,25 +84,25 @@ function isInternal(type: LazyType, value: unknown): IsResult {
     if (typeof value !== 'string' || !t.values.includes(value)) {
       return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
     }
-    return success()
+    return ok()
   }
   if (t.kind === 'object') {
     if (typeof value !== 'object' || !value) {
       return error(`Object expected`, value)
     }
     for (const [key, subtype] of Object.entries(t.type)) {
-      const result = isInternal(subtype as LazyType, (value as Record<string, unknown>)[key])
+      const result = validateInternal(subtype as LazyType, (value as Record<string, unknown>)[key])
       const enrichedResult = enrichErrors(result, key)
       if (!enrichedResult.success) {
         return enrichedResult
       }
     }
-    return success()
+    return ok()
   }
   if (t.kind === 'union-operator') {
     const errs: { path?: string; error: string; value: unknown }[] = []
     for (const u of Object.values(t.types)) {
-      const result = isInternal(u, value)
+      const result = validateInternal(u, value)
       if (result.success) {
         return result
       }
@@ -144,7 +111,11 @@ function isInternal(type: LazyType, value: unknown): IsResult {
     return errors(errs)
   }
   if (t.kind === 'custom') {
-    return t.is(value, t.opts)
+    const result = t.validate(value, t.opts)
+    if (result) {
+      return ok()
+    }
+    return result
   }
   assertNever(t)
 }
@@ -159,7 +130,7 @@ function checkStringOptions(value: string, opts: StringType['opts']): IsResult {
   if (opts?.regex != null && !opts.regex.test(value)) {
     return error(`String regex misInternalmatch (${opts.regex.source})`, value)
   }
-  return success()
+  return ok()
 }
 
 function checkNumberOptions(value: number, opts: NumberType['opts']): IsResult {
@@ -178,23 +149,23 @@ function checkNumberOptions(value: number, opts: NumberType['opts']): IsResult {
   if (opts?.multipleOf != null && value % opts.multipleOf !== 0) {
     return error(`Number must be mutiple of ${opts.multipleOf}`, value)
   }
-  return success()
+  return ok()
 }
 
 function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): IsResult {
   if (opts?.maxItems != null && value.length > opts.maxItems) {
     return error(`Array must have maximum ${opts.maxItems} items`, value)
   }
-  return success()
+  return ok()
 }
 
 function arrayElementIs(value: unknown[], type: ArrayDecorator): IsResult {
   for (let i = 0; i < value.length; i++) {
-    const result = isInternal(type.type, value[i])
+    const result = validateInternal(type.type, value[i])
     const enrichedResult = enrichErrors(result, i.toString())
     if (!enrichedResult.success) {
       return enrichedResult
     }
   }
-  return success()
+  return ok()
 }

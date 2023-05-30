@@ -1,4 +1,4 @@
-import { Types, convert, decode } from '@mondrian-framework/model'
+import { Types, decodeAndValidate } from '@mondrian-framework/model'
 import { Functions, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
@@ -76,7 +76,7 @@ export function handler<
           }
           batchItemFailures.push({ itemIdentifier: m.messageId })
         }
-        const decoded = convert(inputType, body)
+        const decoded = decodeAndValidate(inputType, body)
         if (!decoded.success) {
           log(`Bad message: ${JSON.stringify(decoded.errors)}`)
           if (specification.malformedMessagePolicy === 'delete') {

@@ -1,16 +1,15 @@
 import { OpenAPIV3_1 } from 'openapi-types'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
-  DecodeResult,
   GenericProjection,
   LazyType,
+  Result,
   Types,
-  convert,
   decode,
+  decodeAndValidate,
   encode,
   getProjectionType,
   getRequiredProjection,
-  is,
   isVoidType,
   lazyToType,
   mergeProjections,
@@ -117,7 +116,7 @@ export function attachRestMethods({
   }
 }
 
-function firstOf2<V>(f1: () => DecodeResult<V>, f2: () => DecodeResult<V>): DecodeResult<V> {
+function firstOf2<V>(f1: () => Result.Result<V>, f2: () => Result.Result<V>): Result.Result<V> {
   const v1 = f1()
   if (!v1.success) {
     const v2 = f2()
@@ -169,8 +168,8 @@ async function elabFastifyRestRequest({
   const inputIsVoid = isVoidType(inputType)
   const input = inputIsVoid ? null : inputFrom === 'body' ? request.body : decodeQueryObject(query, 'input')
   const decoded = firstOf2(
-    () => convert(inputType, input, { cast: true }),
-    () => convert(inputType, query['input'], { cast: true }),
+    () => decodeAndValidate(inputType, input, { cast: true }),
+    () => decodeAndValidate(inputType, query['input'], { cast: true }),
   )
   if (!decoded.success) {
     log('Bad request.')

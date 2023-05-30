@@ -16,8 +16,10 @@ export type DecoratorShorcuts<
   O extends 'optional' | 'nullable' | 'array' | 'default' = never,
 > = Omit<
   {
-    optional(): OptionalDecorator<T> & DecoratorShorcuts<OptionalDecorator<T>, O |'default' | 'optional'>
-    default(value: Infer<T> | (() => Infer<T>)): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, O | 'default' >
+    optional(): OptionalDecorator<T> & DecoratorShorcuts<OptionalDecorator<T>, O | 'default' | 'optional'>
+    default(
+      value: Infer<T> | (() => Infer<T>),
+    ): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, O | 'default'>
     nullable(): NullableDecorator<T> & DecoratorShorcuts<NullableDecorator<T>, O | 'nullable'>
     array(
       opts?: ArrayDecorator['opts'],

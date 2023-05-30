@@ -1,8 +1,7 @@
 import {
   ArrayDecorator,
   BooleanType,
-  EnumeratorType,
-  AnyLazyType,
+  EnumType,
   LiteralType,
   NullableDecorator,
   NumberType,
@@ -12,7 +11,7 @@ import {
   AnyType,
   UnionOperator,
 } from './type-system'
-import { DefaultDecorator, LazyType, OptionalDecorator, RelationDecorator, Type } from './type-system'
+import { DefaultDecorator, LazyType, OptionalDecorator, RelationDecorator } from './type-system'
 
 export function lazyToType(t: LazyType): AnyType {
   if (typeof t === 'function') {
@@ -23,7 +22,7 @@ export function lazyToType(t: LazyType): AnyType {
 
 export function getFirstConcreteType(
   type: LazyType,
-): NumberType | StringType | EnumeratorType | BooleanType | RootCustomType | LiteralType | ObjectType | UnionOperator {
+): NumberType | StringType | EnumType | BooleanType | RootCustomType | LiteralType | ObjectType | UnionOperator {
   const t = lazyToType(type)
   if (
     t.kind === 'default-decorator' ||

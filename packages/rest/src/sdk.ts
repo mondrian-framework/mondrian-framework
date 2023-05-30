@@ -1,14 +1,4 @@
-import {
-  Infer,
-  InferProjection,
-  LazyType,
-  Project,
-  Types,
-  convert,
-  decode,
-  encode,
-  is,
-} from '@mondrian-framework/model'
+import { Infer, InferProjection, LazyType, Project, Types, decodeAndValidate, encode } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'
 import { ModuleRestApi } from './server'
 import { encodeQueryObject } from './utils'
@@ -72,7 +62,7 @@ export function createRestSdk<
         const operationId = response.headers.get('operation-id')
         if (response.status === 200) {
           const json = await response.json()
-          const result = convert(module.types[functionBody.output], json)
+          const result = decodeAndValidate(module.types[functionBody.output], json)
           if (!result.success) {
             throw new Error(JSON.stringify(result.errors))
           }

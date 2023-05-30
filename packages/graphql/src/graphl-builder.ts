@@ -10,7 +10,7 @@ import {
   getProjectionType,
   isVoidType,
   lazyToType,
-  convert,
+  decodeAndValidate,
 } from '@mondrian-framework/model'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
@@ -295,7 +295,7 @@ function generateQueryOrMutation({
             new Date(),
           )
           ctx.fastify.reply.header('operation-id', operationId)
-          const decoded = convert(inputType, input[gqlInputTypeName], {
+          const decoded = decodeAndValidate(inputType, input[gqlInputTypeName], {
             cast: true,
             castGqlInputUnion: true,
           })

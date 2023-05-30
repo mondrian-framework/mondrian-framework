@@ -1,41 +1,41 @@
-import { CustomType, decode, m } from '@mondrian-framework/model'
+import { CustomType, decode, encode, m, validate } from '@mondrian-framework/model'
 
 const MIN_LON = -180.0
 const MAX_LON = 180.0
 const MAX_PRECISION = 8
 
-type LongitudeType = CustomType<string, 'longitude', {}>
+type LongitudeType = CustomType<number, {}>
 export function longitude(opts?: LongitudeType['opts']) {
-  return (
-    m.custom({
+  return m.custom(
+    {
       name: 'longitude',
       decode: (input, opts, decodeOpts) => {
-        const decoded = decode(m.number(), input, decodeOpts)
-        if (!decoded.pass) {
-          return decoded
+        return decode(m.number(), input, decodeOpts)
+      },
+      encode: (input, opts) => {
+        return encode(m.number(), input)
+      },
+      validate(input) {
+        const isNumber = validate(m.number(), input)
+        if (!isNumber.success) {
+          return isNumber
         }
-
-        if (decoded.value < MIN_LON || decoded.value > MAX_LON) {
+        const inputNumber = input as number
+        if (inputNumber < MIN_LON || inputNumber > MAX_LON) {
           return {
-            pass: false,
+            success: false,
             errors: [{ error: `Invalid longitude number (must be between ${MIN_LON} and ${MAX_LON})`, value: input }],
           }
         }
-        if (decoded.value !== Number.parseFloat(decoded.value.toFixed(MAX_PRECISION))) {
+        if (inputNumber !== Number.parseFloat(inputNumber.toFixed(MAX_PRECISION))) {
           return {
-            pass: false,
+            success: false,
             errors: [{ error: `Invalid longitude number (max precision must be ${MAX_PRECISION})`, value: input }],
           }
         }
-        return decoded
+        return { success: true }
       },
-      encode: (input) => {
-        return input
-      },
-      is(input) {
-        return typeof input === 'number'
-      },
-    }),
-    opts
+    },
+    opts,
   )
 }

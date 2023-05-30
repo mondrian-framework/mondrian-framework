@@ -19,7 +19,7 @@ export function email(opts?: EmailType['opts']) {
         if (!isString.success) {
           return isString
         }
-        const inputString = <string>input
+        const inputString = input as string
 
         //thanks to https://github.com/manishsaraan/email-validator
         const emailParts = inputString.split('@')

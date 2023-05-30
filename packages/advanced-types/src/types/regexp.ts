@@ -1,4 +1,4 @@
-import { validate, m, CustomTypeOpts } from '@mondrian-framework/model'
+import { validate, m, CustomTypeOpts, Result } from '@mondrian-framework/model'
 import { isArray } from '@mondrian-framework/utils'
 
 export type RegExpOpts = CustomTypeOpts
@@ -19,10 +19,10 @@ export function regexp(name: string, regexp: RegExp | RegExp[], error: string, o
           return isString
         }
         const regexArray = isArray(regexp) ? regexp : [regexp]
-        if (!regexArray.some((r) => r.test(input as string))) {
-          return { success: false, errors: [{ error, value: input }] }
+        if (!regexArray.some((r) => r.test(isString.value))) {
+          return Result.error(error, input)
         }
-        return { success: true }
+        return Result.success(isString.value)
       },
     },
     opts,

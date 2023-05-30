@@ -1,4 +1,4 @@
-import { CustomTypeOpts, m, validate } from '@mondrian-framework/model'
+import { CustomTypeOpts, Result, m, validate } from '@mondrian-framework/model'
 
 const MIN_LAT = -90.0
 const MAX_LAT = 90.0
@@ -20,20 +20,14 @@ export function latitude(opts?: CustomTypeOpts) {
         if (!isNumber.success) {
           return isNumber
         }
-        const inputNumber = input as number
+        const inputNumber = isNumber.value
         if (inputNumber < MIN_LAT || inputNumber > MAX_LAT) {
-          return {
-            success: false,
-            errors: [{ error: `Invalid latitude number (must be between ${MIN_LAT} and ${MAX_LAT})`, value: input }],
-          }
+          return Result.error(`Invalid latitude number (must be between ${MIN_LAT} and ${MAX_LAT})`, input)
         }
         if (inputNumber !== Number.parseFloat(inputNumber.toFixed(MAX_PRECISION))) {
-          return {
-            success: false,
-            errors: [{ error: `Invalid latitude number (max precision must be ${MAX_PRECISION})`, value: input }],
-          }
+          return Result.error(`Invalid latitude number (max precision must be ${MAX_PRECISION})`, input)
         }
-        return { success: true }
+        return Result.success(inputNumber)
       },
     },
     opts,

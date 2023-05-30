@@ -1,4 +1,4 @@
-import { CustomType, decode, encode, validate, m, StringType, CustomTypeOpts, Result } from '@mondrian-framework/model'
+import { validate, m, CustomTypeOpts, Result } from '@mondrian-framework/model'
 
 const EMAIL_REGEX =
   /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
@@ -19,7 +19,7 @@ export function email(opts?: CustomTypeOpts) {
         if (!isString.success) {
           return isString
         }
-        const inputString = input as string
+        const inputString = isString.value
 
         //thanks to https://github.com/manishsaraan/email-validator
         const emailParts = inputString.split('@')
@@ -37,7 +37,7 @@ export function email(opts?: CustomTypeOpts) {
         if (domainParts.some((part) => part.length > 63) || !EMAIL_REGEX.test(inputString)) {
           return Result.error('Invalid email', input)
         }
-        return Result.success(input)
+        return Result.success(inputString)
       },
     },
     opts,

@@ -1,19 +1,19 @@
-import { CustomType, decode, encode, m, validate } from '@mondrian-framework/model'
+import { CustomType, CustomTypeOpts, NumberType, decode, encode, m, validate } from '@mondrian-framework/model'
 
 const MIN_LON = -180.0
 const MAX_LON = 180.0
 const MAX_PRECISION = 8
 
-type LongitudeType = CustomType<number, {}>
-export function longitude(opts?: LongitudeType['opts']) {
+export function longitude(opts?: CustomTypeOpts) {
   return m.custom(
     {
       name: 'longitude',
+      encodedType: m.number(),
       decode: (input, opts, decodeOpts) => {
-        return decode(m.number(), input, decodeOpts)
+        return { success: true, value: input }
       },
       encode: (input, opts) => {
-        return encode(m.number(), input)
+        return input
       },
       validate(input) {
         const isNumber = validate(m.number(), input)

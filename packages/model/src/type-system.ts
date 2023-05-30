@@ -96,6 +96,8 @@ export type AnyType =
   | RelationDecorator
   | UnionOperator
 
+export type CustomTypeOpts = { description?: string }
+
 export type CustomType<
   T = any,
   E extends LazyType = Type,
@@ -110,7 +112,7 @@ export interface RootCustomType<T = any, E extends LazyType = Type, O = any> ext
   decode: (input: Infer<E>, options: O | undefined, decodeOptions: DecodeOptions | undefined) => Result<T>
   encode: (input: T, options: O | undefined) => Infer<E>
   validate: (input: unknown, options: O | undefined) => Failure | { success: true }
-  opts?: O & { description?: string }
+  opts?: O & CustomTypeOpts
 }
 
 export function types<const TS extends Types>(types: TS): TS {

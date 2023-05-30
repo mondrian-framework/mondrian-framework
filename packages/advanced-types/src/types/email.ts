@@ -1,18 +1,18 @@
-import { CustomType, decode, encode, validate, m } from '@mondrian-framework/model'
+import { CustomType, decode, encode, validate, m, StringType, CustomTypeOpts, Result } from '@mondrian-framework/model'
 
 const EMAIL_REGEX =
   /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
 
-type EmailType = CustomType<string, {}>
-export function email(opts?: EmailType['opts']) {
+export function email(opts?: CustomTypeOpts) {
   return m.custom(
     {
       name: 'email',
+      encodedType: m.string(),
       decode: (input, opts, decodeOpts) => {
-        return decode(m.string(), input, decodeOpts)
+        return { success: true, value: input }
       },
       encode: (input, opts) => {
-        return encode(m.string(), input)
+        return input
       },
       validate(input) {
         const isString = validate(m.string(), input)
@@ -24,37 +24,20 @@ export function email(opts?: EmailType['opts']) {
         //thanks to https://github.com/manishsaraan/email-validator
         const emailParts = inputString.split('@')
         if (emailParts.length !== 2) {
-          return {
-            success: false,
-            errors: [{ error: 'Invalid email (no @ present)', value: input }],
-          }
+          return Result.error('Invalid email (no @ present)', input)
         }
         const account = emailParts[0]
         const address = emailParts[1]
         if (account.length > 64) {
-          return {
-            success: false,
-            errors: [{ error: 'Invalid email (account is longer than 63 characters)', value: input }],
-          }
+          return Result.error('Invalid email (account is longer than 63 characters)', input)
         } else if (address.length > 255) {
-          return {
-            success: false,
-            errors: [{ error: 'Invalid email (domain is longer than 254 characters)', value: input }],
-          }
+          return Result.error('Invalid email (domain is longer than 254 characters)', input)
         }
         const domainParts = address.split('.')
-        if (
-          domainParts.some(function (part) {
-            return part.length > 63
-          }) ||
-          !EMAIL_REGEX.test(inputString)
-        ) {
-          return {
-            success: false,
-            errors: [{ error: 'Invalid email', value: input }],
-          }
+        if (domainParts.some((part) => part.length > 63) || !EMAIL_REGEX.test(inputString)) {
+          return Result.error('Invalid email', input)
         }
-        return { success: true }
+        return Result.success(input)
       },
     },
     opts,

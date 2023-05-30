@@ -1,16 +1,17 @@
-import { CustomType, validate, encode, decode, m } from '@mondrian-framework/model'
+import { validate, m, CustomTypeOpts } from '@mondrian-framework/model'
 import { isArray } from '@mondrian-framework/utils'
 
-export type RegExpType = CustomType<string, {}>
-export function regexp(name: string, regexp: RegExp | RegExp[], error: string, opts?: RegExpType['opts']) {
+export type RegExpOpts = CustomTypeOpts
+export function regexp(name: string, regexp: RegExp | RegExp[], error: string, opts?: RegExpOpts) {
   return m.custom(
     {
       name,
+      encodedType: m.string(),
       decode: (input, opts, decodeOpts) => {
-        return decode(m.string(), input, decodeOpts)
+        return { success: true, value: input }
       },
       encode: (input, opts) => {
-        return encode(m.string(), input)
+        return input
       },
       validate(input) {
         const isString = validate(m.string(), input)

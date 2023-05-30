@@ -1,19 +1,19 @@
-import { CustomType, decode, encode, m, validate } from '@mondrian-framework/model'
+import { CustomTypeOpts, m, validate } from '@mondrian-framework/model'
 
 const MIN_LAT = -90.0
 const MAX_LAT = 90.0
 const MAX_PRECISION = 8
 
-type LatitudeType = CustomType<number, {}>
-export function latitude(opts?: LatitudeType['opts']) {
+export function latitude(opts?: CustomTypeOpts) {
   return m.custom(
     {
       name: 'latitude',
+      encodedType: m.number(),
       decode: (input, opts, decodeOpts) => {
-        return decode(m.number(), input, decodeOpts)
+        return { success: true, value: input }
       },
       encode: (input, opts) => {
-        return encode(m.number(), input)
+        return input
       },
       validate(input) {
         const isNumber = validate(m.number(), input)

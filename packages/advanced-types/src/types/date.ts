@@ -5,7 +5,7 @@ const RFC_3339_REGEX = /^(\d{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01]))$/
 export function date(opts?: CustomTypeOpts & { minimum?: Date; maximum?: Date }) {
   return m.custom(
     {
-      name: 'datetime',
+      name: 'date',
       encodedType: m.string(),
       decode: (input, options, decodeOptions) => {
         if (!RFC_3339_REGEX.test(input)) {

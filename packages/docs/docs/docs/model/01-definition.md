@@ -73,7 +73,66 @@ m.RGB() // CSS RGB, ex: rgb(255, 220, 200)
 m.RGBA() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
 ```
 ## Custom types
+In addition to [primitive types](#primitives), it is possible to define custom types with completely arbitrary logics. The mentioned [advanced types](#advanced-types) are built exactly in this way.
 
+Below is an example implementation of the `port` type that represents a TCP port.
+```ts showLineNumbers
+import { CustomTypeOpts, Result, number, integer, validate } from '@mondrian-framework/model'
+
+const MIN_PORT_NUMBER = 0
+const MAX_PORT_NUMBER = 65535
+
+export function port(opts?: CustomTypeOpts) {
+  return m.custom(
+    {
+      name: 'port',
+      encodedType: number(),
+      decode: (input, opts, decodeOpts) => {
+        return { success: true, value: input }
+      },
+      encode: (input, opts) => {
+        return input
+      },
+      validate(input) {
+        const isInteger = validate(integer(), input)
+        if (!isInteger.success) {
+          return isInteger
+        }
+        const inputInteger = isInteger.value
+        if (inputInteger <= MIN_PORT_NUMBER || inputInteger > MAX_PORT_NUMBER) {
+          return Result.error(
+            `Invalid TCP port number ` +
+            `(must be between ${MIN_PORT_NUMBER + 1} and ${MAX_PORT_NUMBER})`,
+            input,
+          )
+        }
+        return Result.success(inputNumber)
+      },
+    },
+    opts,
+  )
+}
+```
+Please note that the implementation of the custom type requires the definition of:
+  - `encodedType`: which identifies the type representing this encoded custom type, typically in JSON format. In this specific case, the TCP port is a number.
+  - `decode`: a function that translates, if necessary, the encoded type into the internal type. In the example, no translation is needed because the TCP port is represented by a number in both the encoded and decoded models.
+  - `encode`: similar to decode, encode is a translation function from the internal type to the encoded type.
+  - `validate`: a validation function for the already decoded data, where custom and even complex rules can be added."
+
+A custom type can be used exactly as a primitive, simply calling its definition function.
+```ts showLineNumbers
+import { m } from '@mondrian-framework/model'
+// highlight-start
+import { port } from './port'
+// highlight-end
+
+const NetworkAddress = m.object({
+  ip: m.string(),
+  // highlight-start
+  port: port(),
+  // highlight-end
+})
+```
 ## Enums
 Enums allow a developer to define a set of named constants. Using enums can make it easier to document intent, or create a set of distinct cases. Mondrian provides only string-based enums.
 
@@ -195,6 +254,32 @@ decode(ArrayOfNullableStrings, null) // => error
 decode(ArrayOfNullableStrings, [null]) // => [null]
 ```
 ## Unions
+Mondrian provides an union function that allows you to compose multiple types with an `or` semantics.
+```ts showLineNumbers
+const StringOrNumber = m.union({ string: m.string(), number: m.number() })
+
+m.validate(StringOrNumber, "a string").success // => true
+m.validate(StringOrNumber, 10).success // => true
+m.validate(StringOrNumber, true).success // => false
+```
+Every element of the union must be named in order to support advanced functionalities like [projections](./05-projection.md). 
+
+You can also combine complex types like objects or custom types.
+```ts showLineNumbers
+
+const Book = m.object({
+  id: m.string(),
+  title: m.string()
+})
+
+const Collection = m.object({
+  id: m.string(),
+  title: m.string(),
+  books: Book.array(),
+})
+
+const SearchResult = m.union({ book: Book, collection: Collection })
+```
 
 ## Reference
 

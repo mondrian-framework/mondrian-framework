@@ -32,3 +32,5 @@ export function port(opts?: CustomTypeOpts) {
     opts,
   )
 }
+
+const StringOrNumber = m.union({ string: m.string(), number: m.number() })

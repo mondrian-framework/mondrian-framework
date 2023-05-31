@@ -10,5 +10,5 @@ jobs:
       GIT_USER: twinlogix
       GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Graphql code generation
-        run: npm run deploy-docs
+      - name: Docs deploy
+        run: npm ci && npm run deploy-docs

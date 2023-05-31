@@ -1,0 +1,14 @@
+name: CI
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      GIT_USER: twinlogix
+      GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Graphql code generation
+        run: npm run deploy-docs

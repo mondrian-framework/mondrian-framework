@@ -1,10 +1,10 @@
-import { ModuleRestApi } from '@mondrian-framework/openapi'
 import { Functions } from './functions'
 import { module } from './module'
 import { Types } from './types'
 import { ModuleSqsApi } from '@mondrian-framework/aws-sqs/src/listener'
 import { ModuleCronApi } from '@mondrian-framework/cron/src/executor'
 import { ModuleGraphqlApi } from '@mondrian-framework/graphql'
+import { ModuleRestApi } from '@mondrian-framework/openapi'
 
 //TODO:
 //How to exlude function implementation in package release?
@@ -47,6 +47,7 @@ export const GRAPHQL_API = {
     login: { type: 'query' },
     publish: { type: 'mutation', inputName: 'post' },
     myPosts: { type: 'query', name: 'posts' },
+    asd: { type: 'query', name: 'asd' },
   },
   options: { introspection: true },
 } satisfies ModuleGraphqlApi<Functions>

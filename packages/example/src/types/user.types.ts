@@ -68,3 +68,23 @@ export const BasicFilter = t.object({
   take: t.integer({ minimum: 0, maximum: 20 }).default(20),
 })
 export type BasicFilter = t.Infer<typeof BasicFilter>
+
+export const Asd = t
+  .union(
+    {
+      a: t.object({ a: t.literal('a'), value: t.string() }),
+      b: t.object({ a: t.literal('b'), content: t.number() }),
+    },
+    {
+      is: {
+        a: (v) => typeof v !== 'number' && v.a === 'a',
+        b: (v) => typeof v !== 'number' && v.a === 'b',
+      },
+      requiredProjection: {
+        a: { a: true },
+        b: { a: true },
+      },
+    },
+  )
+  .array()
+export type Asd = t.Infer<typeof Asd>

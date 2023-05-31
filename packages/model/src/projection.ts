@@ -248,11 +248,14 @@ export function getRequiredProjection(type: LazyType, projection: GenericProject
     const p = Object.fromEntries(
       Object.entries(t.types).flatMap(([k, type]) => {
         const subF = projection[k]
-        if (!subF && !t.opts?.discriminant) {
+        if (!subF && !t.opts?.requiredProjection) {
           return []
         }
         const subP = subF ? getRequiredProjection(type, subF) : null
-        const reqP = t.opts?.discriminant ? ({ [t.opts!.discriminant!]: true } as GenericProjection) : null
+        const reqP =
+          t.opts?.requiredProjection && t.opts.requiredProjection[k]
+            ? (t.opts.requiredProjection[k] as GenericProjection)
+            : null
         const res = subP && reqP ? mergeProjections(reqP, subP) : reqP
         return res != null ? [[k, res]] : []
       }),

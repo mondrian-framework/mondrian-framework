@@ -36,3 +36,12 @@ export const users = f({
     return users
   },
 })
+
+export const asd = f({
+  input: 'Void',
+  output: 'Asd',
+  async apply({ input, context, projection }) {
+    console.log(projection)
+    return [{ a: 'a', value: 'asd' }, { a: 'b' }]
+  },
+})

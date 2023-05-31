@@ -1,3 +1,4 @@
+import { decodeAndValidate } from './converter'
 import { Result, concat2, enrichErrors, error, errors, success } from './result'
 import { ArrayDecorator, Infer, LazyType, ObjectType } from './type-system'
 import { lazyToType } from './utils'
@@ -95,7 +96,7 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
     }
     return success(value)
   } else if (t.kind === 'custom') {
-    const preDecoded = decodeInternal(t.encodedType, value, opts)
+    const preDecoded = decodeAndValidate(t.encodedType, value, opts)
     if (!preDecoded.success) {
       return preDecoded
     }

@@ -69,14 +69,17 @@ export interface RelationDecorator<T extends LazyType = Type> extends Type {
   kind: 'relation-decorator'
   type: T
 }
-export interface UnionOperator<TS extends Types = Types> extends Type {
+export interface UnionOperator<
+  TS extends Types = Types,
+  P extends InferProjection<{ kind: 'union-operator'; types: TS }> | boolean = false,
+> extends Type {
   kind: 'union-operator'
-  types: Types
+  types: TS
   opts?: {
     is?: {
-      [K in keyof TS]: (value: Infer<TS[K]>) => boolean
+      [K in keyof TS]: (value: Project<P, { kind: 'union-operator'; types: TS }>) => boolean
     }
-    discriminant?: keyof TS
+    requiredProjection?: P
     description?: string
   }
 }
@@ -153,12 +156,17 @@ export function literal<const T extends number | string | boolean | null>(
   const t = { kind: 'literal', value, opts } as LiteralType<T>
   return { ...t, ...decoratorShorcuts(t) }
 }
-export function union<const T extends Types>(
-  types: T,
-  opts?: UnionOperator<T>['opts'],
-): UnionOperator<T> & DecoratorShorcuts<UnionOperator<T>> {
-  const t = { kind: 'union-operator', types, opts, static: null as any } as UnionOperator<T>
-  return { ...t, ...decoratorShorcuts(t) }
+export function union<
+  const T extends Types,
+  const P extends InferProjection<{ kind: 'union-operator'; types: T }> | boolean = false,
+>(types: T, opts?: UnionOperator<T, P>['opts']): UnionOperator<T, P> & DecoratorShorcuts<UnionOperator<T>> {
+  const t = {
+    kind: 'union-operator',
+    types,
+    opts: { ...opts, requiredProjection: opts?.requiredProjection ?? true },
+    static: null as any,
+  } as UnionOperator<T, P>
+  return { ...t, ...decoratorShorcuts(t) } as UnionOperator<T, P> & DecoratorShorcuts<UnionOperator<T>>
 }
 export function enumeration<const V extends readonly [string, ...string[]]>(
   values: V,

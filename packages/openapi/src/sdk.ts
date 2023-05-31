@@ -1,4 +1,4 @@
-import { ModuleRestApi } from './server'
+import { ModuleRestApi } from './api'
 import { encodeQueryObject } from './utils'
 import { Infer, InferProjection, LazyType, Project, Types, decodeAndValidate, encode } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'

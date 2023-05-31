@@ -34,8 +34,11 @@
       "@mondrian-framework/prisma": [
         "./packages/prisma"
       ],
-      "@mondrian-framework/rest": [
-        "./packages/rest"
+      "@mondrian-framework/openapi": [
+        "./packages/openapi"
+      ],
+      "@mondrian-framework/fastify-openapi": [
+        "./packages/fastify-openapi"
       ],
       "@mondrian-framework/graphql": [
         "./packages/graphql"
@@ -75,7 +78,10 @@
       "path": "packages/prisma"
     },
     {
-      "path": "packages/rest"
+      "path": "packages/openapi"
+    },
+    {
+      "path": "packages/fastify-openapi"
     },
     {
       "path": "packages/aws-sqs"

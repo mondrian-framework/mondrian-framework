@@ -1,44 +1,13 @@
-import { attachRestMethods, openapiSpecification } from './openapi'
+import { attachRestMethods } from './methods'
 import { fastifyStatic } from '@fastify/static'
 import { Types } from '@mondrian-framework/model'
-import { Functions, Logger, Module } from '@mondrian-framework/module'
-import { JSONType, isArray } from '@mondrian-framework/utils'
-import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { Functions, Module } from '@mondrian-framework/module'
+import { ModuleRestApi, generateOpenapiDocument } from '@mondrian-framework/openapi'
+import { isArray } from '@mondrian-framework/utils'
+import { FastifyInstance, FastifyRequest } from 'fastify'
 import fs from 'fs'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
-
-export type RestFunctionSpecs = {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-  path?: string
-  version?: { min?: number; max?: number }
-}
-export type ModuleRestApi<F extends Functions> = {
-  functions: {
-    [K in keyof F]?: RestFunctionSpecs | readonly RestFunctionSpecs[]
-  }
-  options?: {
-    introspection?: boolean
-    /**
-     * Default is /api
-     */
-    pathPrefix?: string
-  }
-  version?: number
-  errorHandler?: (args: {
-    request: FastifyRequest
-    reply: FastifyReply
-    error: unknown
-    log: Logger
-    functionName: keyof F
-    context: unknown
-    operationId: string
-    functionArgs: {
-      projection: unknown
-      input: unknown
-    }
-  }) => Promise<JSONType | void>
-}
 
 export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
   module,
@@ -51,7 +20,7 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
   server: FastifyInstance
   context: (args: { request: FastifyRequest }) => Promise<CI>
 }): void {
-  const pathPrefix = api.options?.pathPrefix ?? `/${module.name.toLocaleLowerCase()}/api`
+  const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
   const globalMaxVersion = Object.values(api.functions)
     .flatMap((v) => (v ? (isArray(v) ? v : [v]) : []))
     .map((v) => Math.max(v.version?.max ?? 0, v.version?.min ?? 0))
@@ -76,7 +45,7 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
         reply.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${globalMaxVersion}` }
       }
-      return openapiSpecification({ module, api, pathPrefix, version })
+      return generateOpenapiDocument({ module, api, version })
     })
   }
   attachRestMethods({ module, api, server, context, pathPrefix, globalMaxVersion })

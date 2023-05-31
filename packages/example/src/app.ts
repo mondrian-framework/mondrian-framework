@@ -1,8 +1,8 @@
 import { CRON_API, GRAPHQL_API, REST_API } from './api'
 import { module } from './module'
 import cron from '@mondrian-framework/cron'
+import rest from '@mondrian-framework/fastify-openapi'
 import graphql from '@mondrian-framework/graphql'
-import rest from '@mondrian-framework/rest'
 import { fastify } from 'fastify'
 
 async function main() {

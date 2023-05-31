@@ -1,0 +1,23 @@
+{
+  "name": "@mondrian-framework/fastify-openapi",
+  "version": "0.0.0",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@mondrian-framework/model": "*",
+    "@mondrian-framework/module": "*",
+    "@mondrian-framework/utils": "*",
+    "@mondrian-framework/openapi": "*",
+    "fastify": "4.17.0",
+    "@fastify/static": "6.10.1",
+    "swagger-ui-dist": "5.0.0-alpha.13"
+  },
+  "devDependencies": {
+    "@types/swagger-ui-dist": "3.30.1"
+  }
+}

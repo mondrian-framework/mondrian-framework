@@ -1,6 +1,5 @@
 import { Infer, LazyType } from './type-system'
 import { hasDecorator, lazyToType } from './utils'
-import { validate } from './validate'
 import { JSONType, assertNever } from '@mondrian-framework/utils'
 
 export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
@@ -83,6 +82,5 @@ function encodeInternal(type: LazyType, value: unknown): unknown {
     }
     throw new Error(`Invalid value for this union: ${Object.keys(t.types).join(' | ')}`)
   }
-
   assertNever(t)
 }

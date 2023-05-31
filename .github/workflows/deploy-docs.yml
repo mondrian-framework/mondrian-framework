@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      GIT_USER: twinlogix
+      GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: npm
+      - name: Npm install
+        run: npm ci
+      - name: Docs deploy
+        run: npm run deploy-docs

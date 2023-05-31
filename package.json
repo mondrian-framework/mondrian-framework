@@ -5,6 +5,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "build-docs": "npm run build-docs --workspace=@mondrian-framework/docs",
+    "deploy-docs": "npm run deploy-docs --workspace=@mondrian-framework/docs",
     "test": "npm run test --workspaces --if-present",
     "pretty": "prettier --write \"./**/*.ts\"",
     "example": "npm run example --workspace=@mondrian-framework/example"

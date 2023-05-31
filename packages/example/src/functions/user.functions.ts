@@ -21,7 +21,7 @@ export const login = f({
   output: 'LoginOutput',
   async apply({ input, context, projection }) {
     const userSelect = subProjection(projection, 'user')
-    const select = PrismaUtils.projectionToSelection<Prisma.UserSelect>(userSelect, types.User, { posts: { take: 2 } })
+    const select = PrismaUtils.projectionToSelection<Prisma.UserSelect>(userSelect, types.User, { posts: { take: 0 } })
     const user = await context.prisma.user.findFirst({ where: input, select })
     return user ? { user, jwt: jwt.sign({ userId: user.id }, 'shhhhh') } : null
   },

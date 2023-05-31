@@ -1,4 +1,4 @@
-import { Id, JWT } from './scalars.types'
+import { Id } from './scalars.types'
 import a from '@mondrian-framework/advanced-types'
 import t from '@mondrian-framework/model'
 
@@ -8,7 +8,6 @@ export const User = () =>
     email: a.email(),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
-    registeredAt: t.datetime().default(() => new Date()),
   })
 export type User = t.Infer<typeof User>
 
@@ -50,10 +49,10 @@ export const PostInput = t.select(Post, {
 })
 export type PostInput = t.Infer<typeof PostInput>
 
-export const RegisterOutput = t.object({ user: User, jwt: JWT })
+export const RegisterOutput = t.object({ user: User, jwt: a.JWT() })
 export type RegisterOutput = t.Infer<typeof RegisterOutput>
 
-export const LoginOutput = t.object({ user: User, jwt: JWT }).nullable()
+export const LoginOutput = t.object({ user: User, jwt: a.JWT() }).nullable()
 export type LoginOutput = t.Infer<typeof LoginOutput>
 
 export const UserOutputs = t.array(User)

@@ -1,6 +1,6 @@
-import { test, expect } from 'vitest'
-import { decode, encode, validate } from '@mondrian-framework/model'
 import { m } from '../../src/index'
+import { decode, encode, validate } from '@mondrian-framework/model'
+import { test, expect } from 'vitest'
 
 const latitude = m.latitude()
 

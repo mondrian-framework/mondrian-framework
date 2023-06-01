@@ -4,7 +4,7 @@ import { Types } from './types'
 import { ModuleSqsApi } from '@mondrian-framework/aws-sqs/src/listener'
 import { ModuleCronApi } from '@mondrian-framework/cron/src/executor'
 import { ModuleGraphqlApi } from '@mondrian-framework/graphql'
-import { ModuleRestApi } from '@mondrian-framework/openapi'
+import { RestApi } from '@mondrian-framework/rest'
 
 //TODO:
 //How to exlude function implementation in package release?
@@ -15,27 +15,16 @@ export const REST_API = {
   version: 100,
   functions: {
     register: [
-      { method: 'POST', path: '/subscribe', version: { max: 1 } },
-      { method: 'PUT', path: '/register', version: { min: 2 } },
+      { method: 'post', path: '/subscribe', version: { max: 1 } },
+      { method: 'put', path: '/register', version: { min: 2 } },
     ],
-    users: { method: 'GET', version: { min: 2 } },
-    login: { method: 'PUT', path: '/login' },
-    publish: { method: 'POST', version: { min: 2 } },
-    myPosts: { method: 'GET', path: '/posts' },
+    users: { method: 'get', version: { min: 2 } },
+    login: { method: 'put', path: '/login' },
+    publish: { method: 'post', version: { min: 2 } },
+    myPosts: { method: 'get', path: '/posts' },
   },
   options: { introspection: true },
-  async errorHandler({ error, reply, log, functionName }) {
-    if (error instanceof Error) {
-      log(error.message)
-      if (functionName === 'login') {
-        reply.status(400)
-        return 'Unauthorized'
-      }
-      reply.status(400)
-      return 'Bad request'
-    }
-  },
-} as const satisfies ModuleRestApi<Functions>
+} as const satisfies RestApi<Functions>
 
 export const GRAPHQL_API = {
   functions: {
@@ -47,7 +36,6 @@ export const GRAPHQL_API = {
     login: { type: 'query' },
     publish: { type: 'mutation', inputName: 'post' },
     myPosts: { type: 'query', name: 'posts' },
-    asd: { type: 'query', name: 'asd' },
   },
   options: { introspection: true },
 } satisfies ModuleGraphqlApi<Functions>

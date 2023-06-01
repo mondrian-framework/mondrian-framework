@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian-framework/openapi",
+  "name": "@mondrian-framework/rest",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",

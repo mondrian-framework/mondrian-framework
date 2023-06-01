@@ -8,7 +8,7 @@
   "exclude": ["build", "node_modules"],
   "references": [
     {
-      "path": "../openapi"
+      "path": "../rest"
     },
     {
       "path": "../model"

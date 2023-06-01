@@ -17,7 +17,7 @@
     "@mondrian-framework/model": "*",
     "@mondrian-framework/advanced-types": "*",
     "@mondrian-framework/module": "*",
-    "@mondrian-framework/fastify-openapi": "*",
+    "@mondrian-framework/rest-fastify": "*",
     "@mondrian-framework/prisma": "*",
     "@prisma/client": "^4.14.1",
     "prisma": "4.14.1",

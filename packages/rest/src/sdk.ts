@@ -1,13 +1,9 @@
-import { ModuleRestApi } from './api'
+import { RestApi } from './api'
 import { encodeQueryObject } from './utils'
 import { Infer, InferProjection, LazyType, Project, Types, decodeAndValidate, encode } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'
 
-type SDK<
-  T extends Types,
-  F extends Functions<keyof T extends string ? keyof T : never>,
-  API extends ModuleRestApi<F>,
-> = {
+type SDK<T extends Types, F extends Functions<keyof T extends string ? keyof T : never>, API extends RestApi<F>> = {
   [K in keyof F & keyof API['functions']]: Infer<T[F[K]['input']]> extends infer Input
     ? InferProjection<T[F[K]['output']]> extends infer Projection
       ? SdkResolver<Input, Projection, T[F[K]['output']]>
@@ -24,7 +20,7 @@ type SdkResolver<Input, Projection, OutputType extends LazyType> = <const F exte
 export function createRestSdk<
   const T extends Types,
   const F extends Functions<keyof T extends string ? keyof T : never>,
-  const API extends ModuleRestApi<F>,
+  const API extends RestApi<F>,
 >({
   module,
   defaultHeaders,
@@ -47,7 +43,7 @@ export function createRestSdk<
         const url = `${endpoint}/api${specification.path ?? `/${functionName}`}`
         const encodedInput = encode(module.types[functionBody.input], input)
         const realUrl =
-          specification.method === 'GET' || specification.method === 'DELETE'
+          specification.method === 'get' || specification.method === 'delete'
             ? `${url}?${encodeQueryObject(encodedInput, 'input')}`
             : url
         const projectionHeader = projection != null ? { projection: JSON.stringify(projection) } : {}
@@ -55,7 +51,7 @@ export function createRestSdk<
           headers: { 'content-type': 'application/json', ...defaultHeaders, ...headers, ...projectionHeader },
           method: specification.method,
           body:
-            specification.method !== 'GET' && specification.method !== 'DELETE'
+            specification.method !== 'get' && specification.method !== 'delete'
               ? JSON.stringify(encodedInput)
               : undefined,
         })

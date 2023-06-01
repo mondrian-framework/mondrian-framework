@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian-framework/fastify-openapi",
+  "name": "@mondrian-framework/rest-fastify",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -12,7 +12,7 @@
     "@mondrian-framework/model": "*",
     "@mondrian-framework/module": "*",
     "@mondrian-framework/utils": "*",
-    "@mondrian-framework/openapi": "*",
+    "@mondrian-framework/rest": "*",
     "fastify": "4.17.0",
     "@fastify/static": "6.10.1",
     "swagger-ui-dist": "5.0.0-alpha.13"

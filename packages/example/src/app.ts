@@ -1,8 +1,8 @@
 import { CRON_API, GRAPHQL_API, REST_API } from './api'
 import { module } from './module'
 import cron from '@mondrian-framework/cron'
-import rest from '@mondrian-framework/fastify-openapi'
 import graphql from '@mondrian-framework/graphql'
+import rest from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
 async function main() {
@@ -14,6 +14,17 @@ async function main() {
     api: REST_API,
     context: async ({ request }) => {
       return { jwt: request.headers.authorization }
+    },
+    async error({ error, reply, log, functionName }) {
+      if (error instanceof Error) {
+        log(error.message)
+        if (functionName === 'login') {
+          reply.status(400)
+          return 'Unauthorized'
+        }
+        reply.status(400)
+        return 'Bad request'
+      }
     },
   })
   graphql.serve({

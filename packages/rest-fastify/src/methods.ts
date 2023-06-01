@@ -1,3 +1,4 @@
+import { ErrorHandler } from './server'
 import { decodeQueryObject } from './utils'
 import {
   GenericProjection,
@@ -11,7 +12,7 @@ import {
   mergeProjections,
 } from '@mondrian-framework/model'
 import { Functions, GenericFunction, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
-import { ModuleRestApi, RestFunctionSpecs } from '@mondrian-framework/openapi'
+import { RestApi, RestFunctionSpecs } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
@@ -22,13 +23,15 @@ export function attachRestMethods({
   context,
   pathPrefix,
   globalMaxVersion,
+  error,
 }: {
   module: GenericModule
   server: FastifyInstance
-  api: ModuleRestApi<Functions>
+  api: RestApi<Functions>
   context: (args: { request: FastifyRequest }) => Promise<unknown>
   pathPrefix: string
   globalMaxVersion: number
+  error?: ErrorHandler<Functions>
 }): void {
   for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
@@ -37,90 +40,21 @@ export function attachRestMethods({
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
       const path = `${pathPrefix}/:v${specification.path ?? `/${functionName}`}`
-      if (specification.method === 'GET') {
-        server.get(path, (request, reply) =>
-          elabFastifyRestRequest({
-            request,
-            reply,
-            functionName,
-            module,
-            api,
-            specification,
-            functionBody,
-            context,
-            globalMaxVersion,
-          }),
-        )
-      } else if (specification.method === 'POST') {
-        server.post(path, (request, reply) =>
-          elabFastifyRestRequest({
-            request,
-            reply,
-            functionName,
-            module,
-            api,
-            specification,
-            functionBody,
-            context,
-            globalMaxVersion,
-          }),
-        )
-      } else if (specification.method === 'PUT') {
-        server.put(path, (request, reply) =>
-          elabFastifyRestRequest({
-            request,
-            reply,
-            functionName,
-            module,
-            api,
-            specification,
-            functionBody,
-            context,
-            globalMaxVersion,
-          }),
-        )
-      } else if (specification.method === 'DELETE') {
-        server.delete(path, (request, reply) =>
-          elabFastifyRestRequest({
-            request,
-            reply,
-            functionName,
-            module,
-            api,
-            specification,
-            functionBody,
-            context,
-            globalMaxVersion,
-          }),
-        )
-      } else if (specification.method === 'PATCH') {
-        server.patch(path, (request, reply) =>
-          elabFastifyRestRequest({
-            request,
-            reply,
-            functionName,
-            module,
-            api,
-            specification,
-            functionBody,
-            context,
-            globalMaxVersion,
-          }),
-        )
-      }
+      server[specification.method](path, (request, reply) =>
+        elabFastifyRestRequest({
+          request,
+          reply,
+          functionName,
+          module,
+          specification,
+          functionBody,
+          context,
+          globalMaxVersion,
+          error,
+        }),
+      )
     }
   }
-}
-
-function firstOf2<V>(f1: () => Result.Result<V>, f2: () => Result.Result<V>): Result.Result<V> {
-  const v1 = f1()
-  if (!v1.success) {
-    const v2 = f2()
-    if (v2.success) {
-      return v2
-    }
-  }
-  return v1
 }
 
 async function elabFastifyRestRequest({
@@ -132,18 +66,19 @@ async function elabFastifyRestRequest({
   functionBody,
   context,
   globalMaxVersion,
-  api,
+  error,
 }: {
   request: FastifyRequest
   reply: FastifyReply
   functionName: string
   module: GenericModule
   functionBody: GenericFunction
-  api: ModuleRestApi<Functions>
   specification: RestFunctionSpecs
   context: (args: { request: FastifyRequest }) => Promise<unknown>
   globalMaxVersion: number
+  error?: ErrorHandler<Functions>
 }): Promise<unknown> {
+  request.method
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
   const v = (request.params as Record<string, string>).v
@@ -155,7 +90,7 @@ async function elabFastifyRestRequest({
 
   const startDate = new Date()
   const operationId = randomOperationId()
-  const log = buildLogger(module.name, operationId, specification.method, functionName, 'REST', startDate)
+  const log = buildLogger(module.name, operationId, specification.method.toUpperCase(), functionName, 'REST', startDate)
   reply.header('operation-id', operationId)
   const inputFrom = request.method === 'GET' || request.method === 'DELETE' ? 'query' : 'body'
   const outputType = module.types[functionBody.output]
@@ -163,7 +98,7 @@ async function elabFastifyRestRequest({
   const query = request.query as Record<string, unknown>
   const inputIsVoid = isVoidType(inputType)
   const input = inputIsVoid ? null : inputFrom === 'body' ? request.body : decodeQueryObject(query, 'input')
-  const decoded = firstOf2(
+  const decoded = Result.firstOf2(
     () => decodeAndValidate(inputType, input, { cast: true }),
     () => decodeAndValidate(inputType, query['input'], { cast: true }),
   )
@@ -203,13 +138,13 @@ async function elabFastifyRestRequest({
     const encoded = encode(outputType, result)
     log('Completed.')
     return encoded
-  } catch (error) {
+  } catch (e) {
     log('Failed with exception.')
-    if (api.errorHandler) {
-      const result = await api.errorHandler({
+    if (error) {
+      const result = await error({
         request,
         reply,
-        error,
+        error: e,
         log,
         functionName,
         operationId,
@@ -223,6 +158,6 @@ async function elabFastifyRestRequest({
         return result
       }
     }
-    throw error
+    throw e
   }
 }

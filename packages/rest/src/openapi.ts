@@ -1,4 +1,4 @@
-import { ModuleRestApi } from './api'
+import { RestApi } from './api'
 import { LazyType, Types, isVoidType, lazyToType } from '@mondrian-framework/model'
 import { Functions, GenericModule } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
@@ -10,7 +10,7 @@ export function generateOpenapiDocument({
   version,
 }: {
   module: GenericModule
-  api: ModuleRestApi<Functions>
+  api: RestApi<Functions>
   version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
@@ -31,7 +31,7 @@ export function generateOpenapiDocument({
       const inputIsVoid = isVoidType(module.types[functionBody.input])
       const operationObj: OpenAPIV3_1.OperationObject = {
         parameters: [
-          ...((specification.method === 'GET' || specification.method === 'DELETE') && !inputIsVoid
+          ...((specification.method === 'get' || specification.method === 'delete') && !inputIsVoid
             ? [
                 {
                   name: 'input',
@@ -51,7 +51,7 @@ export function generateOpenapiDocument({
           },
         ],
         requestBody:
-          specification.method !== 'GET' && specification.method !== 'DELETE' && !inputIsVoid
+          specification.method !== 'get' && specification.method !== 'delete' && !inputIsVoid
             ? {
                 content: {
                   'application/json': {
@@ -153,7 +153,7 @@ function openapiComponents({
 }: {
   module: GenericModule
   version: number
-  api: ModuleRestApi<Functions>
+  api: RestApi<Functions>
 }): OpenAPIV3_1.ComponentsObject {
   const usedTypes: string[] = []
   for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {

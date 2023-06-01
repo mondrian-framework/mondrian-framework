@@ -27,7 +27,7 @@
       "path": "../prisma"
     },
     {
-      "path": "../fastify-openapi"
+      "path": "../rest-fastify"
     },
     {
       "path": "../graphql"

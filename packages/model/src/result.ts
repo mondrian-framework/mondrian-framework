@@ -28,3 +28,14 @@ export function concat2<V1, V2>(v1: Result<V1>, f1: (v: V1) => Result<V2>): Resu
   const v2 = f1(v1.value)
   return v2
 }
+
+export function firstOf2<V>(f1: () => Result<V>, f2: () => Result<V>): Result<V> {
+  const v1 = f1()
+  if (!v1.success) {
+    const v2 = f2()
+    if (v2.success) {
+      return v2
+    }
+  }
+  return v1
+}

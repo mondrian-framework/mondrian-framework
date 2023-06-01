@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian-framework/graphql",
+  "name": "@mondrian-framework/graphql-yoga",
   "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
@@ -12,8 +12,8 @@
     "@mondrian-framework/model": "*",
     "@mondrian-framework/module": "*",
     "@mondrian-framework/utils": "*",
-    "graphql": "16.6.0",
-    "@graphql-tools/utils": "9.2.1",
-    "@graphql-tools/schema": "9.0.19"
+    "@mondrian-framework/graphql": "*",
+    "graphql-yoga": "3.9.1",
+    "fastify": "4.17.0"
   }
 }

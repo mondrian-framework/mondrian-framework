@@ -10,8 +10,7 @@ import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type ErrorHandler<F extends Functions> = (args: {
-  request: FastifyRequest
-  reply: FastifyReply
+  fastify: { request: FastifyRequest; reply: FastifyReply }
   error: unknown
   log: Logger
   functionName: keyof F
@@ -33,7 +32,7 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
   module: Module<T, F, CI>
   api: RestApi<F>
   server: FastifyInstance
-  context: (args: { request: FastifyRequest }) => Promise<CI>
+  context: (args: { fastify: { request: FastifyRequest; reply: FastifyReply } }) => Promise<CI>
   error?: ErrorHandler<F>
 }): void {
   const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`

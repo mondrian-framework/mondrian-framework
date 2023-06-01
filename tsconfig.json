@@ -43,6 +43,9 @@
       "@mondrian-framework/graphql": [
         "./packages/graphql"
       ],
+      "@mondrian-framework/graphql-yoga": [
+        "./packages/graphql-yoga"
+      ],
       "@mondrian-framework/aws-sqs": [
         "./packages/aws-sqs"
       ],
@@ -94,6 +97,9 @@
     },
     {
       "path": "packages/graphql"
+    },
+    {
+      "path": "packages/graphql-yoga"
     },
     {
       "path": "packages/example"

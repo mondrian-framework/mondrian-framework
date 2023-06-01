@@ -3,7 +3,7 @@ import { module } from './module'
 import { Types } from './types'
 import { ModuleSqsApi } from '@mondrian-framework/aws-sqs/src/listener'
 import { ModuleCronApi } from '@mondrian-framework/cron/src/executor'
-import { ModuleGraphqlApi } from '@mondrian-framework/graphql'
+import { GraphqlApi } from '@mondrian-framework/graphql'
 import { RestApi } from '@mondrian-framework/rest'
 
 //TODO:
@@ -38,7 +38,7 @@ export const GRAPHQL_API = {
     myPosts: { type: 'query', name: 'posts' },
   },
   options: { introspection: true },
-} satisfies ModuleGraphqlApi<Functions>
+} satisfies GraphqlApi<Functions>
 
 export const CRON_API = {
   functions: {

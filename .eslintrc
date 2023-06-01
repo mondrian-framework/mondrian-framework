@@ -17,6 +17,7 @@
       "./packages/rest/tsconfig.json",
       "./packages/rest-fastify/tsconfig.json",
       "./packages/graphql/tsconfig.json",
+      "./packages/graphql-yoga/tsconfig.json",
       "./packages/aws-sqs/tsconfig.json",
       "./packages/aws-lmabda-sqs/tsconfig.json",
       "./packages/cron/tsconfig.json",

@@ -13,14 +13,14 @@
     "@mondrian-framework/aws-lambda-sqs": "*",
     "@mondrian-framework/aws-sqs": "*",
     "@mondrian-framework/cron": "*",
-    "@mondrian-framework/graphql": "*",
     "@mondrian-framework/model": "*",
     "@mondrian-framework/advanced-types": "*",
     "@mondrian-framework/module": "*",
     "@mondrian-framework/rest-fastify": "*",
+    "@mondrian-framework/graphql-yoga": "*",
     "@mondrian-framework/prisma": "*",
-    "@prisma/client": "^4.14.1",
-    "prisma": "4.14.1",
+    "@prisma/client": "4.15.0",
+    "prisma": "4.15.0",
     "jsonwebtoken": "9.0.0"
   },
   "devDependencies": {

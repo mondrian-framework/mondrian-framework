@@ -1,7 +1,7 @@
 import { CRON_API, GRAPHQL_API, REST_API } from './api'
 import { module } from './module'
 import cron from '@mondrian-framework/cron'
-import graphql from '@mondrian-framework/graphql'
+import graphql from '@mondrian-framework/graphql-yoga'
 import rest from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
@@ -12,17 +12,17 @@ async function main() {
     server,
     module,
     api: REST_API,
-    context: async ({ request }) => {
-      return { jwt: request.headers.authorization }
+    context: async ({ fastify }) => {
+      return { jwt: fastify.request.headers.authorization }
     },
-    async error({ error, reply, log, functionName }) {
+    async error({ error, fastify, log, functionName }) {
       if (error instanceof Error) {
         log(error.message)
         if (functionName === 'login') {
-          reply.status(400)
+          fastify.reply.status(400)
           return 'Unauthorized'
         }
-        reply.status(400)
+        fastify.reply.status(400)
         return 'Bad request'
       }
     },
@@ -31,8 +31,14 @@ async function main() {
     server,
     module,
     api: GRAPHQL_API,
-    context: async ({ request }) => {
-      return { jwt: request.headers.authorization }
+    context: async ({ fastify }) => {
+      return { jwt: fastify.request.headers.authorization }
+    },
+    async error({ error, fastify, log, functionName }) {
+      if (error instanceof Error) {
+        log(error.message)
+        return { message: 'Invalid JWT' }
+      }
     },
   })
   cron.start({

@@ -28,7 +28,7 @@ export function attachRestMethods({
   module: GenericModule
   server: FastifyInstance
   api: RestApi<Functions>
-  context: (args: { request: FastifyRequest }) => Promise<unknown>
+  context: (args: { fastify: { request: FastifyRequest; reply: FastifyReply } }) => Promise<unknown>
   pathPrefix: string
   globalMaxVersion: number
   error?: ErrorHandler<Functions>
@@ -74,7 +74,7 @@ async function elabFastifyRestRequest({
   module: GenericModule
   functionBody: GenericFunction
   specification: RestFunctionSpecs
-  context: (args: { request: FastifyRequest }) => Promise<unknown>
+  context: (args: { fastify: { request: FastifyRequest; reply: FastifyReply } }) => Promise<unknown>
   globalMaxVersion: number
   error?: ErrorHandler<Functions>
 }): Promise<unknown> {
@@ -125,12 +125,12 @@ async function elabFastifyRestRequest({
       : projection != null
       ? projection.value
       : undefined
-  const contextInput = await context({ request })
-  const ctx = await module.context(contextInput)
+  const contextInput = await context({ fastify: { request, reply } })
+  const moduleCtx = await module.context(contextInput)
   try {
     const result = await functionBody.apply({
       projection: finalProjection,
-      context: ctx,
+      context: moduleCtx,
       input: decoded.value,
       operationId,
       log,
@@ -142,13 +142,12 @@ async function elabFastifyRestRequest({
     log('Failed with exception.')
     if (error) {
       const result = await error({
-        request,
-        reply,
+        fastify: { request, reply },
         error: e,
         log,
         functionName,
         operationId,
-        context: ctx,
+        context: moduleCtx,
         functionArgs: {
           projection: finalProjection,
           input: decoded.value,

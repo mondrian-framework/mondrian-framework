@@ -1,5 +1,7 @@
-import { ModuleGraphqlApi } from './server'
-import { extractProjectionFromGraphqlInfo } from './utils'
+import { ErrorHandler, GraphqlApi } from './api'
+import { graphqlInfoToProjection } from './utils'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { createGraphQLError } from '@graphql-tools/utils'
 import {
   LazyType,
   RootCustomType,
@@ -12,9 +14,7 @@ import {
 } from '@mondrian-framework/model'
 import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
-import { FastifyReply, FastifyRequest } from 'fastify'
 import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
-import { createGraphQLError, createSchema } from 'graphql-yoga'
 
 function typeToGqlType(
   name: string,
@@ -250,16 +250,20 @@ function generateScalars({ scalarsMap }: { scalarsMap: Record<string, RootCustom
   return { scalarDefs, scalarResolvers }
 }
 
-function generateQueryOrMutation({
+function generateQueryOrMutation<ContextInput>({
   module,
   type,
   api,
   context,
+  setHeader,
+  error,
 }: {
   type: 'query' | 'mutation'
   module: GenericModule
-  api: ModuleGraphqlApi<Functions>
-  context: (args: { request: FastifyRequest; info: GraphQLResolveInfo }) => Promise<ContextType<Functions>>
+  api: GraphqlApi<Functions>
+  context: (ctx: ContextInput, info: GraphQLResolveInfo) => Promise<ContextType<Functions>>
+  setHeader: (ctx: ContextInput, name: string, value: string) => void
+  error?: ErrorHandler<Functions, ContextInput>
 }) {
   const resolvers = Object.fromEntries(
     Object.entries(module.functions.definitions).flatMap(([functionName, functionBody]) => {
@@ -284,19 +288,19 @@ function generateQueryOrMutation({
         const resolver = async (
           parent: unknown,
           input: Record<string, unknown>,
-          ctx: { fastify: { request: FastifyRequest; reply: FastifyReply } },
+          ctx: ContextInput,
           info: GraphQLResolveInfo,
         ) => {
           const operationId = randomOperationId()
           const log = buildLogger(
             module.name,
             operationId,
-            specification.type.toUpperCase(),
+            specification.type,
             specification.name ?? functionName,
             'GQL',
             new Date(),
           )
-          ctx.fastify.reply.header('operation-id', operationId)
+          setHeader(ctx, 'operation-id', operationId)
           const decoded = decodeAndValidate(inputType, input[gqlInputTypeName], {
             cast: true,
             castGqlInputUnion: true,
@@ -306,16 +310,17 @@ function generateQueryOrMutation({
             throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
           }
           const projectionType = () => getProjectionType(outputType)
-          const gqlProjection = extractProjectionFromGraphqlInfo(info, outputType)
+          const gqlProjection = graphqlInfoToProjection(info, outputType)
           const projection = decode(projectionType(), gqlProjection, { cast: true, strict: true })
           if (!projection.success) {
             log('Bad request. (projection)')
             throw createGraphQLError(`Invalid input.`, { extensions: projection.errors })
           }
+          const contextInput = await context(ctx, info)
+          const moduleCtx = await module.context(contextInput)
           try {
-            const contextInput = await context({ request: ctx.fastify.request, info })
             const result = await functionBody.apply({
-              context: await module.context(contextInput),
+              context: moduleCtx,
               projection: projection.value,
               input: decoded.value,
               operationId,
@@ -324,9 +329,26 @@ function generateQueryOrMutation({
             const encoded = encode(outputType, result)
             log('Completed.')
             return encoded
-          } catch (error) {
+          } catch (e) {
             log('Failed with exception.')
-            throw error
+            if (error) {
+              const result = await error({
+                error: e,
+                log,
+                functionName,
+                operationId,
+                context: moduleCtx,
+                functionArgs: {
+                  projection: projection.value,
+                  input: decoded.value,
+                },
+                ...contextInput,
+              })
+              if (result) {
+                throw createGraphQLError(result.message, result.options)
+              }
+            }
+            throw e
           }
         }
         return [[specification.name ?? functionName, resolver]]
@@ -376,26 +398,34 @@ function generateQueryOrMutation({
   return { defs, resolvers }
 }
 
-export function buildGraphqlSchema({
+export function generateGraphqlSchema<ContextInput>({
   module,
   api,
   context,
+  setHeader,
+  error,
 }: {
   module: GenericModule
-  api: ModuleGraphqlApi<Functions>
-  context: (args: { request: FastifyRequest; info: GraphQLResolveInfo }) => Promise<ContextType<Functions>>
+  api: GraphqlApi<Functions>
+  context: (ctx: ContextInput, info: GraphQLResolveInfo) => Promise<ContextType<Functions>>
+  setHeader: (ctx: ContextInput, name: string, value: string) => void
+  error?: ErrorHandler<Functions, ContextInput>
 }): GraphQLSchema {
   const { defs: queryDefs, resolvers: queryResolvers } = generateQueryOrMutation({
     module,
     api,
     type: 'query',
     context,
+    setHeader,
+    error,
   })
   const { defs: mutationDefs, resolvers: mutationResolvers } = generateQueryOrMutation({
     module,
     api,
     type: 'mutation',
     context,
+    setHeader,
+    error,
   })
   const scalarsMap: Record<string, RootCustomType> = {}
   const { gql: typeDefs, unions } = generateTypes({ module, scalarsMap })
@@ -423,7 +453,7 @@ export function buildGraphqlSchema({
   `
   const unionResolvers = Object.fromEntries(Object.entries(unions).map(([k, v]) => [k, { __isTypeOf: v }]))
   try {
-    const schema = createSchema({
+    const schema = makeExecutableSchema({
       typeDefs: schemaDefs,
       resolvers: {
         ...(Object.keys(queryResolvers).length > 0 ? { Query: queryResolvers } : {}),

@@ -2,4 +2,4 @@ import * as m from './server'
 
 export default m
 
-export { serve, ErrorHandler } from './server'
+export { serve } from './server'

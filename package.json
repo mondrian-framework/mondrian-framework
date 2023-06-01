@@ -26,6 +26,7 @@
     "packages/rest",
     "packages/rest-fastify",
     "packages/graphql",
+    "packages/graphql-yoga",
     "packages/aws-sqs",
     "packages/aws-lambda-sqs",
     "packages/cron",

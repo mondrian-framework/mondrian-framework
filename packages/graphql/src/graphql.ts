@@ -250,7 +250,7 @@ function generateScalars({ scalarsMap }: { scalarsMap: Record<string, RootCustom
   return { scalarDefs, scalarResolvers }
 }
 
-function generateQueryOrMutation<ContextInput>({
+function generateQueryOrMutation<ServerContext, ContextInput>({
   module,
   type,
   api,
@@ -261,9 +261,9 @@ function generateQueryOrMutation<ContextInput>({
   type: 'query' | 'mutation'
   module: GenericModule
   api: GraphqlApi<Functions>
-  context: (ctx: ContextInput, info: GraphQLResolveInfo) => Promise<ContextType<Functions>>
-  setHeader: (ctx: ContextInput, name: string, value: string) => void
-  error?: ErrorHandler<Functions, ContextInput>
+  context: (server: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
+  setHeader: (server: ServerContext, name: string, value: string) => void
+  error?: ErrorHandler<Functions, ServerContext>
 }) {
   const resolvers = Object.fromEntries(
     Object.entries(module.functions.definitions).flatMap(([functionName, functionBody]) => {
@@ -288,7 +288,7 @@ function generateQueryOrMutation<ContextInput>({
         const resolver = async (
           parent: unknown,
           input: Record<string, unknown>,
-          ctx: ContextInput,
+          serverContext: ServerContext,
           info: GraphQLResolveInfo,
         ) => {
           const operationId = randomOperationId()
@@ -300,7 +300,7 @@ function generateQueryOrMutation<ContextInput>({
             'GQL',
             new Date(),
           )
-          setHeader(ctx, 'operation-id', operationId)
+          setHeader(serverContext, 'operation-id', operationId)
           const decoded = decodeAndValidate(inputType, input[gqlInputTypeName], {
             cast: true,
             castGqlInputUnion: true,
@@ -316,7 +316,7 @@ function generateQueryOrMutation<ContextInput>({
             log('Bad request. (projection)')
             throw createGraphQLError(`Invalid input.`, { extensions: projection.errors })
           }
-          const contextInput = await context(ctx, info)
+          const contextInput = await context(serverContext, info)
           const moduleCtx = await module.context(contextInput)
           try {
             const result = await functionBody.apply({
@@ -342,7 +342,7 @@ function generateQueryOrMutation<ContextInput>({
                   projection: projection.value,
                   input: decoded.value,
                 },
-                ...contextInput,
+                ...serverContext,
               })
               if (result) {
                 throw createGraphQLError(result.message, result.options)
@@ -398,7 +398,7 @@ function generateQueryOrMutation<ContextInput>({
   return { defs, resolvers }
 }
 
-export function generateGraphqlSchema<ContextInput>({
+export function generateGraphqlSchema<ServerContext, ContextInput>({
   module,
   api,
   context,
@@ -407,9 +407,9 @@ export function generateGraphqlSchema<ContextInput>({
 }: {
   module: GenericModule
   api: GraphqlApi<Functions>
-  context: (ctx: ContextInput, info: GraphQLResolveInfo) => Promise<ContextType<Functions>>
-  setHeader: (ctx: ContextInput, name: string, value: string) => void
-  error?: ErrorHandler<Functions, ContextInput>
+  context: (server: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
+  setHeader: (server: ServerContext, name: string, value: string) => void
+  error?: ErrorHandler<Functions, ServerContext>
 }): GraphQLSchema {
   const { defs: queryDefs, resolvers: queryResolvers } = generateQueryOrMutation({
     module,

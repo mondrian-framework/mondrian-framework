@@ -1,4 +1,18 @@
-import { Functions } from '@mondrian-framework/module'
+import { Functions, Logger } from '@mondrian-framework/module'
+
+export type ErrorHandler<F extends Functions, RestContext> = (
+  args: {
+    error: unknown
+    log: Logger
+    functionName: keyof F
+    context: unknown
+    operationId: string
+    functionArgs: {
+      projection: unknown
+      input: unknown
+    }
+  } & RestContext,
+) => Promise<{ status: number; body: unknown; headers?: Record<string, string> } | void>
 
 export type RestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch'
 

@@ -15,15 +15,13 @@ async function main() {
     context: async ({ fastify }) => {
       return { jwt: fastify.request.headers.authorization }
     },
-    async error({ error, fastify, log, functionName }) {
+    async error({ error, log, functionName }) {
       if (error instanceof Error) {
         log(error.message)
         if (functionName === 'login') {
-          fastify.reply.status(400)
-          return 'Unauthorized'
+          return { status: 400, body: 'Unauthorized' }
         }
-        fastify.reply.status(400)
-        return 'Bad request'
+        return { status: 400, body: 'Bad request' }
       }
     },
   })

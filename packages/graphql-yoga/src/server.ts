@@ -5,7 +5,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { GraphQLResolveInfo } from 'graphql'
 import { createYoga } from 'graphql-yoga'
 
-type ContextInput = { fastify: { request: FastifyRequest; reply: FastifyReply } }
+type ServerContext = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
 export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
   module,
@@ -17,10 +17,10 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
   module: Module<T, F, CI>
   api: GraphqlApi<F>
   server: FastifyInstance
-  context: (ctx: ContextInput, info: GraphQLResolveInfo) => Promise<CI>
-  error?: ErrorHandler<F, ContextInput>
+  context: (serve: ServerContext, info: GraphQLResolveInfo) => Promise<CI>
+  error?: ErrorHandler<F, ServerContext>
 }): void {
-  const schema = generateGraphqlSchema<ContextInput>({
+  const schema = generateGraphqlSchema<ServerContext, CI>({
     module,
     api,
     context,

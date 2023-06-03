@@ -1,4 +1,6 @@
-import { JSONType, setTraversingValue } from '@mondrian-framework/utils'
+import { RestApi, RestFunctionSpecs } from './api'
+import { Functions } from '@mondrian-framework/module'
+import { JSONType, isArray, setTraversingValue } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
   return internalEncodeQueryObject(input, prefix).join('&')
@@ -37,4 +39,15 @@ export function decodeQueryObject(input: Record<string, unknown>, prefix: string
     setTraversingValue(value, path, output)
   }
   return output
+}
+
+export function pathFromSpecification(functionName: string, spec: RestFunctionSpecs, prefix: string): string {
+  return `${prefix}/:v${spec.path ?? `/${functionName}`}`
+}
+
+export function getMaxVersion(api: RestApi<Functions>): number {
+  return Object.values(api.functions)
+    .flatMap((v) => (v ? (isArray(v) ? v : [v]) : []))
+    .map((v) => Math.max(v.version?.max ?? 0, v.version?.min ?? 0))
+    .reduce((p, c) => Math.max(p, c), api.version ?? 1)
 }

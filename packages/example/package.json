@@ -4,7 +4,6 @@
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
-    "test": "vitest run",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "example": "node -r dotenv/config build/src/app.js"
   },

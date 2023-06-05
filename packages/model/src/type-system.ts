@@ -337,7 +337,7 @@ type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T]
     : never
   : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
   ? ST extends LazyType
-    ? InferType<ST, Partial, Shader> | null
+    ? InferType<ST, Partial, Shader>
     : never
   : [T] extends [{ kind: 'string' }]
   ? string

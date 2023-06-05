@@ -1,15 +1,21 @@
 import { decodeAndValidate } from './converter'
-import { Result, concat2, enrichErrors, error, errors, success } from './result'
+import { Error, Result, concat2, enrichErrors, error, errors, richError, success } from './result'
 import { ArrayDecorator, Infer, LazyType, ObjectType } from './type-system'
 import { lazyToType } from './utils'
 import { assertNever } from '@mondrian-framework/utils'
 
 //cast default is false
 //strict default is true
-export type DecodeOptions = { cast?: boolean; strict?: boolean; castGqlInputUnion?: boolean }
+//errors default is 'minimum'
+export type DecodeOptions = {
+  cast?: boolean
+  strict?: boolean
+  errors?: 'exhaustive' | 'minimum'
+  castGqlInputUnion?: boolean
+}
 export function decode<const T extends LazyType>(type: T, value: unknown, opts?: DecodeOptions): Result<unknown> {
   const result = decodeInternal(type, value, opts)
-  return enrichErrors(result, '')
+  return enrichErrors(result)
 }
 
 function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | undefined): Result<unknown> {
@@ -76,13 +82,13 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
       }
       return error(`Expect exactly one of this property ${ts.map((v) => `'${v[0]}'`).join(', ')}`, value)
     } else {
-      const errs: { path?: string; error: string; value: unknown }[] = []
-      for (const u of Object.values(t.types)) {
+      const errs: Error[] = []
+      for (const [key, u] of Object.entries(t.types)) {
         const result = decodeInternal(u, value, opts)
         if (result.success) {
           return result
         }
-        errs.push(...result.errors)
+        errs.push(...result.errors.map((e) => ({ ...e, unionElement: key })))
       }
       return errors(errs)
     }
@@ -137,25 +143,38 @@ function decodeObjectProperties(
   opts: DecodeOptions | undefined,
 ): Result<Record<string, unknown>> {
   const strict = opts?.strict ?? true
-  const cast = opts?.cast
+  const cast = opts?.cast ?? false
+  const errorLevel = opts?.errors ?? 'minimum'
+  const errs: Error[] = []
   if (!cast && strict) {
     const typeKeys = new Set(Object.keys(type.type))
-    for (const key of Object.keys(value)) {
-      if (!typeKeys.has(key)) {
-        return enrichErrors(error(`Field is not expected`, value), key)
+    for (const [key, subvalue] of Object.entries(value)) {
+      if (!typeKeys.has(key) && subvalue !== undefined) {
+        errs.push(richError(`Value not expected`, subvalue, key))
+        if (errorLevel === 'minimum') {
+          break
+        }
       }
     }
+  }
+  if (errorLevel === 'minimum' && errs.length > 0) {
+    return errors(errs)
   }
   const accumulator: Record<string, unknown> = strict ? {} : { ...value }
   for (const [key, subtype] of Object.entries(type.type)) {
     const result = decodeInternal(subtype as LazyType, value[key], opts)
-    const enrichedResult = enrichErrors(result, key)
+    const enrichedResult = enrichErrors(result, [key])
     if (!enrichedResult.success) {
-      return enrichedResult
-    }
-    if (enrichedResult.value !== undefined) {
+      errs.push(...enrichedResult.errors)
+      if (errorLevel === 'minimum') {
+        break
+      }
+    } else if (enrichedResult.value !== undefined) {
       accumulator[key] = enrichedResult.value
     }
+  }
+  if (errs.length > 0) {
+    return errors(errs)
   }
   return success(accumulator)
 }
@@ -190,14 +209,23 @@ function decodeArrayElements(
   type: ArrayDecorator,
   opts: DecodeOptions | undefined,
 ): Result<unknown[]> {
+  const errs: Error[] = []
+  const errorLevel = opts?.errors ?? 'minimum'
   const values: unknown[] = []
   for (let i = 0; i < value.length; i++) {
     const result = decodeInternal(type.type, value[i], opts)
-    const enrichedResult = enrichErrors(result, i.toString())
+    const enrichedResult = enrichErrors(result, [i])
     if (!enrichedResult.success) {
-      return enrichedResult
+      errs.push(...enrichedResult.errors)
+      if (errorLevel === 'minimum') {
+        break
+      }
+    } else {
+      values.push(enrichedResult.value)
     }
-    values.push(enrichedResult.value)
+  }
+  if (errs.length > 0) {
+    return errors(errs)
   }
   return success(values)
 }

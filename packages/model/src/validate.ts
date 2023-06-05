@@ -1,4 +1,4 @@
-import { Result, concat2, enrichErrors, error, errors, success } from './result'
+import { Error, Result, concat2, enrichErrors, error, errors, richError, success } from './result'
 import { ArrayDecorator, Infer, LazyType, NumberType, StringType } from './type-system'
 import { lazyToType } from './utils'
 import { assertNever } from '@mondrian-framework/utils'
@@ -14,12 +14,13 @@ export function assertType<T extends LazyType>(type: T, value: unknown): asserts
   }
 }
 
-export function validate<T extends LazyType>(type: T, value: unknown): Result<Infer<T>> {
-  const result = validateInternal(type, value)
-  return enrichErrors(result, '') as Result<Infer<T>>
+export type ValidateOptions = { errors?: 'exhaustive' | 'minimum'; strict?: boolean }
+export function validate<T extends LazyType>(type: T, value: unknown, opts?: ValidateOptions): Result<Infer<T>> {
+  const result = validateInternal(type, value, opts)
+  return enrichErrors(result) as Result<Infer<T>>
 }
 
-function validateInternal(type: LazyType, value: unknown): Result<unknown> {
+function validateInternal(type: LazyType, value: unknown, opts: ValidateOptions | undefined): Result<unknown> {
   const t = lazyToType(type)
   if (t.kind === 'string') {
     if (typeof value !== 'string') {
@@ -34,7 +35,7 @@ function validateInternal(type: LazyType, value: unknown): Result<unknown> {
     return checkNumberOptions(value, t.opts)
   }
   if (t.kind === 'boolean') {
-    if (typeof value !== 'number') {
+    if (typeof value !== 'boolean') {
       return error(`Boolean expected`, value)
     }
     return success(value)
@@ -46,13 +47,13 @@ function validateInternal(type: LazyType, value: unknown): Result<unknown> {
     return error(`Literal ${t.value} expected`, value)
   }
   if (t.kind === 'relation-decorator' || t.kind === 'default-decorator') {
-    return validateInternal(t.type, value)
+    return validateInternal(t.type, value, opts)
   }
   if (t.kind === 'optional-decorator') {
     if (value === undefined) {
       return success(value)
     }
-    const result = validateInternal(t.type, value)
+    const result = validateInternal(t.type, value, opts)
     if (!result.success) {
       return result.errors.length > 0 ? result : error(`Undefined expected`, value)
     }
@@ -62,7 +63,7 @@ function validateInternal(type: LazyType, value: unknown): Result<unknown> {
     if (value === null) {
       return success(value)
     }
-    const result = validateInternal(t.type, value)
+    const result = validateInternal(t.type, value, opts)
     if (!result.success) {
       return result.errors.length > 0 ? result : error(`Null expected`, value)
     }
@@ -72,7 +73,7 @@ function validateInternal(type: LazyType, value: unknown): Result<unknown> {
     if (!Array.isArray(value)) {
       return error(`Array expected`, value)
     }
-    return concat2(checkArrayOptions(value, t.opts), () => arrayElementIs(value, t))
+    return concat2(checkArrayOptions(value, t.opts), () => validateArrayElements(value, t, opts))
   }
   if (t.kind === 'enum') {
     if (typeof value !== 'string' || !t.values.includes(value)) {
@@ -84,23 +85,45 @@ function validateInternal(type: LazyType, value: unknown): Result<unknown> {
     if (typeof value !== 'object' || !value) {
       return error(`Object expected`, value)
     }
+    const strict = opts?.strict ?? true
+    const errorLevel = opts?.errors ?? 'minimum'
+    const errs: Error[] = []
     for (const [key, subtype] of Object.entries(t.type)) {
-      const result = validateInternal(subtype as LazyType, (value as Record<string, unknown>)[key])
-      const enrichedResult = enrichErrors(result, key)
+      const result = validateInternal(subtype as LazyType, (value as Record<string, unknown>)[key], opts)
+      const enrichedResult = enrichErrors(result, [key])
       if (!enrichedResult.success) {
-        return enrichedResult
+        errs.push(...enrichedResult.errors)
+        if (errorLevel === 'minimum') {
+          break
+        }
       }
+    }
+    if (errorLevel === 'minimum' && errs.length > 0) {
+      return errors(errs)
+    }
+    if (strict) {
+      for (const [key, subvalue] of Object.entries(value)) {
+        if (!(key in t.type) && subvalue !== undefined) {
+          errs.push(richError(`Value not expected`, subvalue, key))
+          if (errorLevel === 'minimum') {
+            break
+          }
+        }
+      }
+    }
+    if (errs.length > 0) {
+      return errors(errs)
     }
     return success(value)
   }
   if (t.kind === 'union-operator') {
     const errs: { path?: string; error: string; value: unknown }[] = []
-    for (const u of Object.values(t.types)) {
-      const result = validateInternal(u, value)
+    for (const [key, u] of Object.entries(t.types)) {
+      const result = validateInternal(u, value, opts)
       if (result.success) {
         return result
       }
-      errs.push(...result.errors)
+      errs.push(...result.errors.map((e) => ({ ...e, unionElement: key })))
     }
     return errors(errs)
   }
@@ -149,13 +172,25 @@ function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): Resu
   return success(value)
 }
 
-function arrayElementIs(value: unknown[], type: ArrayDecorator): Result<unknown[]> {
+function validateArrayElements(
+  value: unknown[],
+  type: ArrayDecorator,
+  opts: ValidateOptions | undefined,
+): Result<unknown[]> {
+  const errs: Error[] = []
+  const errorLevel = opts?.errors ?? 'minimum'
   for (let i = 0; i < value.length; i++) {
-    const result = validateInternal(type.type, value[i])
-    const enrichedResult = enrichErrors(result, i.toString())
+    const result = validateInternal(type.type, value[i], opts)
+    const enrichedResult = enrichErrors(result, [i])
     if (!enrichedResult.success) {
-      return enrichedResult
+      errs.push(...enrichedResult.errors)
+      if (errorLevel === 'minimum') {
+        break
+      }
     }
+  }
+  if (errs.length > 0) {
+    return errors(errs)
   }
   return success(value)
 }

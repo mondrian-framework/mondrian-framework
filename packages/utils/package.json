@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json",
-    "release": "release-it"
+    "release": "release-it --npm.skipChecks"
   },
   "keywords": []
 }

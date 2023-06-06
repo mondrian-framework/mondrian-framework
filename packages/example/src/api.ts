@@ -1,7 +1,7 @@
-import { CronApi } from '@mondrian-framework/cron'
 import { Functions } from './functions'
 import { module } from './module'
 import { Types } from './types'
+import { CronApi } from '@mondrian-framework/cron'
 import { GraphqlApi } from '@mondrian-framework/graphql'
 import { RestApi } from '@mondrian-framework/rest'
 

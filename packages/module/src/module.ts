@@ -1,4 +1,4 @@
-import { Logger } from './utils'
+import { Logger, projectionDepth } from './utils'
 import {
   GenericProjection,
   Infer,
@@ -95,6 +95,7 @@ export type Module<T extends Types, F extends Functions<keyof T extends string ?
 export type ModuleOptions = {
   checks?: {
     output?: 'ignore' | 'log' | 'throw'
+    maxProjectionDepth?: number
   }
 }
 
@@ -102,16 +103,27 @@ export function module<const T extends Types, const F extends Functions<keyof T 
   module: Module<T, F, CI>,
 ): Module<T, F, CI> {
   const outputTypeCheck = module.options?.checks?.output ?? 'throw'
+  const maxProjectionDepth = module.options?.checks?.maxProjectionDepth ?? null
   const functions = Object.fromEntries(
     Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
       const outputType = module.types[functionBody.output]
       const f: GenericFunction = {
         ...functionBody,
         async apply(args) {
+          //PROJECTION DEPTH
+          if (maxProjectionDepth != null) {
+            const depth = projectionDepth(args.projection)
+            if (depth > maxProjectionDepth) {
+              throw new Error(`Max projection depth reached: ${depth}`)
+            }
+          }
+
           const result = await functionBody.apply(args)
+
+          //OUTPUT CHECK
           if (outputTypeCheck !== 'ignore') {
             const projectedType = getProjectedType(outputType, args.projection as GenericProjection)
-            const isCheck = validate(projectedType, result, { errors: 'exhaustive', strict: false })
+            const isCheck = validate(projectedType, result, { strict: false })
             if (!isCheck.success) {
               const m = JSON.stringify({ projection: args.projection, errors: isCheck.errors })
               if (outputTypeCheck === 'log') {

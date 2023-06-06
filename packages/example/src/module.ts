@@ -18,6 +18,12 @@ export const module = m.module<Types, Functions, { jwt?: string }>({
       checkPost: { authentication: 'NONE' },
     },
   },
+  options: {
+    checks: {
+      output: 'log',
+      maxProjectionDepth: 5,
+    },
+  },
   authentication: { type: 'bearer', format: 'jwt' },
   async context(input: { jwt?: string }) {
     if (input.jwt) {

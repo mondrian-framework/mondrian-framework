@@ -5,7 +5,8 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "test": "vitest run",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "release": "release-it"
   },
   "keywords": []
 }

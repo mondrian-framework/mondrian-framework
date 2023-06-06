@@ -8,7 +8,7 @@ export type CronFunctionSpecs<Input> = ([Input] extends [void] ? {} : { input: (
   runAtStart?: boolean
   timezone?: string
 }
-export type ModuleCronApi<T extends Types, F extends Functions> = {
+export type CronApi<T extends Types, F extends Functions> = {
   functions: {
     [K in keyof F]?: CronFunctionSpecs<Infer<T[F[K]['input']]>>
   }
@@ -20,7 +20,7 @@ export function start<const T extends Types, const F extends Functions<keyof T e
   context,
 }: {
   module: Module<T, F, CI>
-  api: ModuleCronApi<T, F>
+  api: CronApi<T, F>
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const scheduledTasks: { task: ScheduledTask; logger: () => Logger }[] = []

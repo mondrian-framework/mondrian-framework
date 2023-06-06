@@ -2,4 +2,4 @@ import * as m from './listener'
 
 export default m
 
-export { handler } from './listener'
+export { handler, SqsApi, SqsFunctionSpecs } from './listener'

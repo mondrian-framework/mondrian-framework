@@ -2,4 +2,4 @@ import * as m from './executor'
 
 export default m
 
-export { start } from './executor'
+export { start, CronFunctionSpecs, CronApi } from './executor'

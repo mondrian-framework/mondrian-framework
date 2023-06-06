@@ -3,12 +3,20 @@ import { ArrayDecorator, Infer, LazyType, NumberType, StringType } from './type-
 import { lazyToType } from './utils'
 import { assertNever } from '@mondrian-framework/utils'
 
-export function isType<T extends LazyType>(type: T, value: unknown): value is Infer<T> {
-  return validate(type, value).success
+export function isType<T extends LazyType>(
+  type: T,
+  value: unknown,
+  opts?: Omit<ValidateOptions, 'errors'>,
+): value is Infer<T> {
+  return validate(type, value, opts).success
 }
 
-export function assertType<T extends LazyType>(type: T, value: unknown): asserts value is Infer<T> {
-  const result = validate(type, value)
+export function assertType<T extends LazyType>(
+  type: T,
+  value: unknown,
+  opts?: Omit<ValidateOptions, 'errors'>,
+): asserts value is Infer<T> {
+  const result = validate(type, value, opts)
   if (!result.success) {
     throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
   }

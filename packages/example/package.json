@@ -5,11 +5,13 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.build.json",
-    "example": "node -r dotenv/config build/src/app.js"
+    "example": "node -r dotenv/config build/src/app.js",
+    "example-serverless": "serverless offline"
   },
   "keywords": [],
   "dependencies": {
     "@mondrian-framework/aws-lambda-sqs": "*",
+    "@mondrian-framework/aws-lambda-rest": "*",
     "@mondrian-framework/aws-sqs": "*",
     "@mondrian-framework/cron": "*",
     "@mondrian-framework/model": "*",
@@ -20,7 +22,12 @@
     "@mondrian-framework/prisma": "*",
     "@prisma/client": "4.15.0",
     "prisma": "4.15.0",
-    "jsonwebtoken": "9.0.0"
+    "jsonwebtoken": "9.0.0",
+    "serverless": "3.29.0",
+    "serverless-offline": "12.0.4",
+    "serverless-plugin-typescript": "2.1.5",
+    "serverless-plugin-monorepo": "0.11.0",
+    "rest": "2.0.0"
   },
   "devDependencies": {
     "dotenv": "16.0.3",

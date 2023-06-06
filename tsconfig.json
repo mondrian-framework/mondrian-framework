@@ -9,7 +9,7 @@
     "noErrorTruncation": false,
     "sourceMap": true,
     "declaration": true,
-    "incremental": true,
+    //"incremental": true,
     "composite": true,
     "skipLibCheck": true,
     "types": [
@@ -52,6 +52,9 @@
       "@mondrian-framework/aws-lambda-sqs": [
         "./packages/aws-lambda-sqs"
       ],
+      "@mondrian-framework/aws-lambda-rest": [
+        "./packages/aws-lambda-rest"
+      ],
       "@mondrian-framework/cron": [
         "./packages/cron"
       ],
@@ -91,6 +94,9 @@
     },
     {
       "path": "packages/aws-lambda-sqs"
+    },
+    {
+      "path": "packages/aws-lambda-rest"
     },
     {
       "path": "packages/cron"

@@ -1,7 +1,7 @@
 import { Functions } from './functions'
 import { module } from './module'
 import { Types } from './types'
-import { ModuleSqsApi } from '@mondrian-framework/aws-sqs/src/listener'
+import { SqsApi } from '@mondrian-framework/aws-sqs/src/listener'
 import { ModuleCronApi } from '@mondrian-framework/cron/src/executor'
 import { GraphqlApi } from '@mondrian-framework/graphql'
 import { RestApi } from '@mondrian-framework/rest'

@@ -3,8 +3,8 @@ import { Types, decodeAndValidate } from '@mondrian-framework/model'
 import { Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
-export type SqsFunctionSpecs = { inputQueueUrl: string; malformedMessagePolicy?: 'ignore' | 'delete' }
-export type ModuleSqsApi<F extends Functions> = {
+export type SqsFunctionSpecs = { queueUrl: string; malformedMessagePolicy?: 'ignore' | 'delete' }
+export type SqsApi<F extends Functions> = {
   functions: {
     [K in keyof F]?: SqsFunctionSpecs
   }
@@ -23,7 +23,7 @@ export function listen<
   context,
 }: {
   module: Module<T, F, CI>
-  api: ModuleSqsApi<F>
+  api: SqsApi<F>
   context: (args: { message: AWS.Message }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
@@ -36,7 +36,7 @@ export function listen<
       continue
     }
     const p = listenForMessage({
-      queueUrl: specifications.inputQueueUrl,
+      queueUrl: specifications.queueUrl,
       alive,
       client,
       module,

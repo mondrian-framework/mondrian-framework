@@ -20,6 +20,7 @@
       "./packages/graphql-yoga/tsconfig.json",
       "./packages/aws-sqs/tsconfig.json",
       "./packages/aws-lmabda-sqs/tsconfig.json",
+      "./packages/aws-lmabda-rest/tsconfig.json",
       "./packages/cron/tsconfig.json",
       "./packages/example/tsconfig.json"
     ]

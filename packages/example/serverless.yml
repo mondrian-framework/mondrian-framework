@@ -1,0 +1,19 @@
+service: example
+
+plugins:
+  - serverless-offline
+  - serverless-plugin-typescript
+  - serverless-plugin-monorepo
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  environment:
+    DEBUG: connections,api,error
+functions:
+  hello:
+    handler: src/rest-handler.default
+    events:
+      - httpApi:
+          method: '*'
+          path: /{proxy+}

@@ -12,12 +12,11 @@ export type SqsFunctionSpecs = {
     }
   | { anyQueue: true }
 )
-export type ModuleSqsApi<F extends Functions> = {
+export type SqsApi<F extends Functions> = {
   functions: {
     [K in keyof F]?: SqsFunctionSpecs | readonly SqsFunctionSpecs[]
   }
 }
-type A = SQSHandler
 export function handler<
   const T extends Types,
   const F extends Functions<keyof T extends string ? keyof T : string>,
@@ -28,7 +27,7 @@ export function handler<
   context,
 }: {
   module: Module<T, F, CI>
-  api: ModuleSqsApi<F>
+  api: SqsApi<F>
   context: (args: { event: SQSEvent; context: Context; recordIndex: number }) => Promise<CI>
 }): SQSHandler {
   const specifications = Object.entries(api.functions).flatMap(([functionName, specifications]) => {

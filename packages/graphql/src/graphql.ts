@@ -242,7 +242,6 @@ function generateScalars({ scalarsMap }: { scalarsMap: Record<string, RootCustom
           parseValue(input) {
             return input
           },
-          //TODO: how tell graphql sanbox what type to expect (same for rest)
         }),
       ] as const
     }),

@@ -8,7 +8,8 @@
     "deploy-docs": "npm run deploy-docs --workspace=@mondrian-framework/docs",
     "test": "npm run test --workspaces --if-present",
     "pretty": "prettier --write \"./**/*.ts\"",
-    "example": "npm run example --workspace=@mondrian-framework/example"
+    "example": "npm run example --workspace=@mondrian-framework/example",
+    "example-serverless": "npm run example-serverless --workspace=@mondrian-framework/example"
   },
   "devDependencies": {
     "typescript": "5.0.4",
@@ -29,6 +30,7 @@
     "packages/graphql-yoga",
     "packages/aws-sqs",
     "packages/aws-lambda-sqs",
+    "packages/aws-lambda-rest",
     "packages/cron",
     "packages/example"
   ],

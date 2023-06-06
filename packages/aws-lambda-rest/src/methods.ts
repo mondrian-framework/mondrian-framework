@@ -9,21 +9,19 @@ import {
   pathFromSpecification,
 } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
-import { FastifyInstance } from 'fastify'
+import { API, HandlerFunction, METHODS } from 'lambda-api'
 
 export function attachRestMethods<ContextInput>({
   module,
   server,
   api,
   context,
-  pathPrefix,
   error,
 }: {
   module: GenericModule
-  server: FastifyInstance
+  server: API
   api: RestApi<Functions>
   context: (serverContext: ServerContext) => Promise<ContextInput>
-  pathPrefix: string
   error?: ErrorHandler<Functions, ServerContext>
 }): void {
   const maxVersion = getMaxVersion(api)
@@ -33,8 +31,8 @@ export function attachRestMethods<ContextInput>({
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = pathFromSpecification(functionName, specification, pathPrefix)
-      server[specification.method](path, async (request, reply) => {
+      const path = pathFromSpecification(functionName, specification, '')
+      const handler: HandlerFunction = async (request, response) => {
         const result = await handleRestRequest<ServerContext, ContextInput>({
           module,
           context,
@@ -43,7 +41,7 @@ export function attachRestMethods<ContextInput>({
           functionBody,
           globalMaxVersion: maxVersion,
           error,
-          serverContext: { fastify: { request, reply } },
+          serverContext: { lambdaApi: { request, response } },
           request: {
             body: request.body as string,
             headers: request.headers,
@@ -52,12 +50,15 @@ export function attachRestMethods<ContextInput>({
             query: request.query as Record<string, string>,
           },
         })
-        reply.status(result.status)
+        response.status(result.status)
         if (result.headers) {
-          reply.headers(result.headers)
+          for (const [key, value] of Object.entries(result.headers)) {
+            response.header(key, value)
+          }
         }
         return result.body
-      })
+      }
+      server.METHOD(specification.method.toUpperCase() as METHODS, path, handler)
     }
   }
 }

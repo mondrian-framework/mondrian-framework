@@ -3,7 +3,8 @@ import { Types } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { GraphQLResolveInfo } from 'graphql'
-import { createYoga } from 'graphql-yoga'
+import { NoSchemaIntrospectionCustomRule } from 'graphql'
+import { createYoga, Plugin } from 'graphql-yoga'
 
 type ServerContext = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
@@ -29,9 +30,14 @@ export function serve<const T extends Types, const F extends Functions<keyof T e
     },
     error,
   })
+  const disableIntrospection: Plugin = {
+    onValidate({ addValidationRule }) {
+      addValidationRule(NoSchemaIntrospectionCustomRule)
+    },
+  }
   const yoga = createYoga({
     schema,
-    plugins: api.options?.introspection ? [] : [], //TODO: disable introspection
+    plugins: api.options?.introspection ? [] : [disableIntrospection],
     logging: true,
   })
   server.route({

@@ -9,8 +9,8 @@
     "release": "release-it --npm.skipChecks"
   },
   "keywords": [],
-  "dependencies": {
-    "@mondrian-framework/model": "*",
-    "@mondrian-framework/utils": "*"
+  "peerDependencies": {
+    "@mondrian-framework/model": "^0.0.1",
+    "@mondrian-framework/utils": "^0.0.1"
   }
 }

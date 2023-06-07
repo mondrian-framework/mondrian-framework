@@ -5,7 +5,8 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "release": "release-it --npm.skipChecks"
   },
   "keywords": [],
   "peerDependencies": {

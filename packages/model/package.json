@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/model",
-  "version": "0.0.2",
+  "version": "0.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {

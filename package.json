@@ -11,6 +11,7 @@
     "example": "npm run example --workspace=@mondrian-framework/example",
     "example-serverless": "npm run example-serverless --workspace=@mondrian-framework/example",
     "clear": "rimraf packages/*/build/** && rimraf packages/*/.build/**",
+    "clear-modules": "rimraf packages/*/node_modules/**",
     "release-model": "npm run clear && npm run build && npm run release --workspace=@mondrian-framework/model",
     "release-utils": "npm run clear && npm run build && npm run release --workspace=@mondrian-framework/utils"
   },

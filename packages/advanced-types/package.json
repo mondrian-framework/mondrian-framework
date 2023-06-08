@@ -10,6 +10,6 @@
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/model": "^0.0.1"
+    "@mondrian-framework/model": "^0.0.2"
   }
 }

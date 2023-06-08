@@ -15,7 +15,7 @@
     "@graphql-tools/schema": "9.0.19"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^0.0.1",
+    "@mondrian-framework/model": "^0.0.2",
     "@mondrian-framework/module": "^0.0.1",
     "@mondrian-framework/utils": "^0.0.1"
   }

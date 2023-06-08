@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/prisma",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/model": "^0.0.3",
-    "@mondrian-framework/utils": "^0.0.1"
+    "@mondrian-framework/model": "^1.0.0",
+    "@mondrian-framework/utils": "^1.0.0"
   }
 }

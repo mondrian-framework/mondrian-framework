@@ -16,18 +16,18 @@
     "release-utils": "npm run clear && npm run build && npm run release --workspace=@mondrian-framework/utils"
   },
   "devDependencies": {
-    "typescript": "5.0.4",
-    "vitest": "0.31.0",
-    "prettier": "2.8.8",
+    "@changesets/cli": "^2.26.1",
     "@trivago/prettier-plugin-sort-imports": "4.1.1",
+    "prettier": "2.8.8",
     "release-it": "15.11.0",
-    "rimraf": "4.4.1"
+    "rimraf": "4.4.1",
+    "typescript": "5.0.4",
+    "vitest": "0.31.0"
   },
   "workspaces": [
     "packages/*"
   ],
   "engines": {
     "node": ">=18"
-  },
-  "dependencies": {}
+  }
 }

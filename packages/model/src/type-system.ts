@@ -1,6 +1,8 @@
 import { DecodeOptions } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
+import { GenericProjection } from './projection'
 import { Failure, Result } from './result'
+import { lazyToType } from './utils'
 import { Expand } from '@mondrian-framework/utils'
 
 export interface Type {}
@@ -229,37 +231,123 @@ export function custom<
   return { ...t, ...decoratorShorcuts(t) }
 }
 
-type LazyToType<T extends LazyType> = T extends () => infer R ? R : T
+type LazyToType<T extends LazyType> = [T] extends [() => infer R] ? R : T
 
-type Selection<
-  T extends ObjectType | (() => ObjectType),
-  P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
-> = [T] extends [ObjectType]
+type Selection<T extends LazyType, P extends InferProjection<T>> = [T] extends [ObjectType]
   ? SelectionInternal<T, P> & DecoratorShorcuts<SelectionInternal<T, P>>
   : () => SelectionInternal<T, P> & DecoratorShorcuts<SelectionInternal<T, P>>
-type SelectionInternal<
-  T extends ObjectType | (() => ObjectType),
-  P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
-> = LazyToType<T> extends ObjectType
-  ? {
-      kind: 'object'
-      type: { [K in keyof LazyToType<T>['type'] & keyof P]: LazyToType<T>['type'][K] }
-      opts: ObjectType['opts']
-    }
+
+type SelectionInternal<LT extends LazyType, P extends GenericProjection> = LazyToType<LT> extends infer T
+  ? [T] extends [{ kind: 'object'; type: infer ST }]
+    ? {
+        kind: 'object'
+        type: {
+          [K in keyof ST & keyof P]: ST[K] extends LazyType
+            ? P[K] extends true
+              ? ST[K]
+              : P[K] extends GenericProjection
+              ? SelectionInternal<ST[K], P[K]>
+              : never
+            : never
+        }
+        opts: ObjectType['opts']
+      }
+    : [T] extends [{ kind: 'union-operator'; types: infer ST }]
+    ? {
+        kind: 'union-operator'
+        types: {
+          [K in keyof ST & keyof P]: ST[K] extends LazyType
+            ? P[K] extends true
+              ? ST[K]
+              : P[K] extends GenericProjection
+              ? SelectionInternal<ST[K], P[K]>
+              : never
+            : never
+        }
+      }
+    : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
+    ? ST extends LazyType
+      ? { kind: 'relation-decorator'; type: SelectionInternal<ST, P> }
+      : never
+    : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+    ? ST extends LazyType
+      ? { kind: 'default-decorator'; type: SelectionInternal<ST, P> }
+      : never
+    : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
+    ? ST extends LazyType
+      ? { kind: 'optional-decorator'; type: SelectionInternal<ST, P> }
+      : never
+    : [T] extends [{ kind: 'array-decorator'; type: infer ST }]
+    ? ST extends LazyType
+      ? { kind: 'array-decorator'; type: SelectionInternal<ST, P> }
+      : never
+    : LT
   : never
 
-export function select<
-  const T extends ObjectType | (() => ObjectType),
-  const P extends Partial<Record<LazyToType<T> extends ObjectType ? keyof LazyToType<T>['type'] : never, true>>,
->(type: T, selection: P, opts?: ObjectType['opts']): Selection<T, P> {
-  if (typeof type === 'function') {
-    return (() => select(type(), selection, opts)) as unknown as Selection<T, P>
+const o = object({
+  a: string(),
+  b: relation(() => object({ c: string().array(), d: number() })),
+  u: union({ e1: object({ a: boolean(), b: number() }), e2: object({ a: string(), k: number() }) }),
+})
+type A = SelectionInternal<typeof o, { a: true; b: { c: true }; u: { e1: true; e2: { k: true } } }>
+type B = Infer<A>
+
+export function select<const T extends LazyType, const P extends InferProjection<T>>(
+  type: T,
+  projection: P,
+): Selection<T, P> {
+  function selection(type: LazyType, projection: GenericProjection): LazyType {
+    if (projection === true) {
+      return type
+    }
+    if (typeof type === 'function') {
+      return () => selection(type(), projection)
+    }
+    const t = type as AnyType
+    if (t.kind === 'object') {
+      return {
+        kind: 'object',
+        type: Object.fromEntries(
+          Object.entries(t.type).flatMap(([k, v]) => {
+            const subProjection = projection[k]
+            if (subProjection) {
+              return [[k, selection(v, subProjection)]]
+            }
+            return []
+          }),
+        ),
+      }
+    }
+    if (t.kind === 'union-operator') {
+      return {
+        kind: 'union-operator',
+        types: Object.fromEntries(
+          Object.entries(t.types).flatMap(([k, v]) => {
+            const subProjection = projection[k]
+            if (subProjection) {
+              return [[k, selection(v, subProjection)]]
+            }
+            return []
+          }),
+        ),
+      }
+    }
+    if (
+      t.kind === 'array-decorator' ||
+      t.kind === 'optional-decorator' ||
+      t.kind === 'nullable-decorator' ||
+      t.kind === 'default-decorator' ||
+      t.kind === 'relation-decorator'
+    ) {
+      return { kind: t.kind, type: selection(t.type, projection) }
+    }
+    return type
   }
-  const t = {
-    kind: 'object',
-    type: Object.fromEntries(Object.entries(type.type).filter((v) => (selection as Record<string, boolean>)[v[0]])),
-    opts,
-  } as Selection<T, P>
+
+  const t = selection(type, projection)
+  if (typeof t === 'function') {
+    return (() => t()) as unknown as Selection<T, P>
+  }
   return { ...t, ...decoratorShorcuts(t) } as Selection<T, P> & DecoratorShorcuts<Selection<T, P>>
 }
 

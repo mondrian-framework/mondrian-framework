@@ -200,6 +200,29 @@ test('Decode & validate (6)', async () => {
   })
 })
 
+test('Decode & validate (7)', async () => {
+  const result = decodeAndValidate(
+    m.select(UserPost, { Post: { type: true }, User: { type: true, posts: { title: true } } }),
+    {
+      type: 'USER',
+      posts: [
+        {
+          title: 'Hello',
+        },
+      ],
+    },
+    { cast: false, strict: true, errors: 'exhaustive' },
+  )
+  expectSuccess(result, {
+    type: 'USER',
+    posts: [
+      {
+        title: 'Hello',
+      },
+    ],
+  })
+})
+
 function expectSuccess<T>(result: Result<T>, value: T) {
   expect(result.success).true
   if (result.success) {

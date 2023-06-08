@@ -24,21 +24,7 @@
     "rimraf": "4.4.1"
   },
   "workspaces": [
-    "packages/docs",
-    "packages/utils",
-    "packages/model",
-    "packages/advanced-types",
-    "packages/module",
-    "packages/prisma",
-    "packages/rest",
-    "packages/rest-fastify",
-    "packages/graphql",
-    "packages/graphql-yoga",
-    "packages/aws-sqs",
-    "packages/aws-lambda-sqs",
-    "packages/aws-lambda-rest",
-    "packages/cron",
-    "packages/example"
+    "packages/*"
   ],
   "engines": {
     "node": ">=18"

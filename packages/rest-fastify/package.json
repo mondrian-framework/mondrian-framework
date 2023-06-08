@@ -18,7 +18,7 @@
     "@types/swagger-ui-dist": "3.30.1"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^0.0.2",
+    "@mondrian-framework/model": "^0.0.3",
     "@mondrian-framework/module": "^0.0.1",
     "@mondrian-framework/utils": "^0.0.1",
     "@mondrian-framework/rest": "^0.0.1"

@@ -18,7 +18,7 @@ export const publish = f({
     if (context.auth?.userId == null) {
       throw new Error('Unauthorized')
     }
-    const select = PrismaUtils.projectionToSelection<Prisma.PostSelect>(projection, types.Post)
+    const select = PrismaUtils.projectionToSelection<Prisma.PostSelect>(types.Post, projection)
     const post = await context.prisma.post.create({ data: { ...input, authorId: context.auth.userId }, select })
     return post
   },
@@ -31,7 +31,7 @@ export const myPosts = f({
     if (context.auth?.userId == null) {
       throw new Error('Unauthorized')
     }
-    const select = PrismaUtils.projectionToSelection<Prisma.PostSelect>(projection, types.Post)
+    const select = PrismaUtils.projectionToSelection<Prisma.PostSelect>(types.Post, projection)
     const posts = await context.prisma.post.findMany({ where: { authorId: context.auth.userId }, select, ...input })
     return posts
   },

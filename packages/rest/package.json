@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/rest",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -15,8 +15,8 @@
     "openapi-types": "12.1.0"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^1.0.2",
-    "@mondrian-framework/module": "^1.0.2",
-    "@mondrian-framework/utils": "^1.0.2"
+    "@mondrian-framework/model": "^1.0.3",
+    "@mondrian-framework/module": "^1.0.3",
+    "@mondrian-framework/utils": "^1.0.3"
   }
 }

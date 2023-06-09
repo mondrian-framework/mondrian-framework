@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 1.0.3
+
+### Patch Changes
+
+- improve type system lazyness
+
 ## 1.0.2
 
 ### Patch Changes

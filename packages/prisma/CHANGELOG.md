@@ -1,5 +1,14 @@
 # @mondrian-framework/prisma
 
+## 1.0.3
+
+### Patch Changes
+
+- improve type system lazyness
+- Updated dependencies
+  - @mondrian-framework/model@1.0.3
+  - @mondrian-framework/utils@1.0.3
+
 ## 1.0.2
 
 ### Patch Changes

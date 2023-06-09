@@ -1,5 +1,15 @@
 # @mondrian-framework/graphql
 
+## 1.0.4
+
+### Patch Changes
+
+- improve type system lazyness
+- Updated dependencies
+  - @mondrian-framework/module@1.0.3
+  - @mondrian-framework/model@1.0.3
+  - @mondrian-framework/utils@1.0.3
+
 ## 1.0.3
 
 ### Patch Changes

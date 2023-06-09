@@ -8,8 +8,15 @@ export const User = () =>
     email: a.email(),
     name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
     posts: t.relation(t.array(Post)),
+    audit: Audit,
   })
 export type User = t.Infer<typeof User>
+
+export const Audit = () =>
+  t.object({
+    createdAt: t.datetime(),
+  })
+export type Audit = t.Infer<typeof Audit>
 
 export const Post = () =>
   t.object({
@@ -39,6 +46,7 @@ export const RegisterInput = t.merge(
   }),
   t.object({
     password: t.string({ minLength: 5, maxLength: 100 }),
+    audit: Audit,
   }),
 )
 export type RegisterInput = t.Infer<typeof RegisterInput>

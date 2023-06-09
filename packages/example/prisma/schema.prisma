@@ -3,23 +3,28 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
   email    String  @unique
   password String
   name     String?
   posts    Post[]
+  audit    Audit
 }
 
 model Post {
-  id        Int     @id @default(autoincrement())
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
   title     String
   content   String?
   published Boolean @default(false)
+  authorId  String  @db.ObjectId
   author    User    @relation(fields: [authorId], references: [id])
-  authorId  Int
+}
+
+type Audit {
+  createdAt DateTime
 }

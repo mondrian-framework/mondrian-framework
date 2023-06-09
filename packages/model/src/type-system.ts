@@ -238,70 +238,66 @@ type Selection<T extends LazyType, P extends InferProjection<T>> = [T] extends [
   : () => SelectionInternal<T, P> & DecoratorShorcuts<SelectionInternal<T, P>>
 
 type SelectionInternal<LT extends LazyType, P extends GenericProjection> = LazyToType<LT> extends infer T
-  ? [T] extends [{ kind: 'object'; type: infer ST }]
-    ? {
-        kind: 'object'
-        type: {
-          [K in keyof ST & keyof P]: ST[K] extends LazyType
-            ? P[K] extends true
-              ? ST[K]
-              : P[K] extends GenericProjection
-              ? SelectionInternal<ST[K], P[K]>
+  ? T extends Type
+    ? P extends true
+      ? T
+      : [T] extends [{ kind: 'object'; type: infer ST }]
+      ? {
+          kind: 'object'
+          type: {
+            [K in keyof ST & keyof P]: ST[K] extends LazyType
+              ? P[K] extends true
+                ? ST[K]
+                : P[K] extends GenericProjection
+                ? SelectionInternal<ST[K], P[K]>
+                : never
               : never
-            : never
+          }
+          opts: ObjectType['opts']
         }
-        opts: ObjectType['opts']
-      }
-    : [T] extends [{ kind: 'union-operator'; types: infer ST }]
-    ? {
-        kind: 'union-operator'
-        types: {
-          [K in keyof ST & keyof P]: ST[K] extends LazyType
-            ? P[K] extends true
-              ? ST[K]
-              : P[K] extends GenericProjection
-              ? SelectionInternal<ST[K], P[K]>
+      : [T] extends [{ kind: 'union-operator'; types: infer ST }]
+      ? {
+          kind: 'union-operator'
+          types: {
+            [K in keyof ST & keyof P]: ST[K] extends LazyType
+              ? P[K] extends true
+                ? ST[K]
+                : P[K] extends GenericProjection
+                ? SelectionInternal<ST[K], P[K]>
+                : never
               : never
-            : never
+          }
         }
-      }
-    : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
-    ? ST extends LazyType
-      ? { kind: 'relation-decorator'; type: SelectionInternal<ST, P> }
-      : never
-    : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-    ? ST extends LazyType
-      ? { kind: 'default-decorator'; type: SelectionInternal<ST, P> }
-      : never
-    : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
-    ? ST extends LazyType
-      ? { kind: 'optional-decorator'; type: SelectionInternal<ST, P> }
-      : never
-    : [T] extends [{ kind: 'array-decorator'; type: infer ST }]
-    ? ST extends LazyType
-      ? { kind: 'array-decorator'; type: SelectionInternal<ST, P> }
-      : never
-    : LT
+      : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
+      ? ST extends LazyType
+        ? { kind: 'relation-decorator'; type: SelectionInternal<ST, P> }
+        : never
+      : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
+      ? ST extends LazyType
+        ? { kind: 'default-decorator'; type: SelectionInternal<ST, P> }
+        : never
+      : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
+      ? ST extends LazyType
+        ? { kind: 'optional-decorator'; type: SelectionInternal<ST, P> }
+        : never
+      : [T] extends [{ kind: 'array-decorator'; type: infer ST }]
+      ? ST extends LazyType
+        ? { kind: 'array-decorator'; type: SelectionInternal<ST, P> }
+        : never
+      : T
+    : never
   : never
-
-const o = object({
-  a: string(),
-  b: relation(() => object({ c: string().array(), d: number() })),
-  u: union({ e1: object({ a: boolean(), b: number() }), e2: object({ a: string(), k: number() }) }),
-})
-type A = SelectionInternal<typeof o, { a: true; b: { c: true }; u: { e1: true; e2: { k: true } } }>
-type B = Infer<A>
 
 export function select<const T extends LazyType, const P extends InferProjection<T>>(
   type: T,
   projection: P,
 ): Selection<T, P> {
   function selection(type: LazyType, projection: GenericProjection): LazyType {
-    if (projection === true) {
-      return type
-    }
     if (typeof type === 'function') {
       return () => selection(type(), projection)
+    }
+    if (projection === true) {
+      return type
     }
     const t = type as AnyType
     if (t.kind === 'object') {

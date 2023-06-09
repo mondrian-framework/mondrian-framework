@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/model": "^1.0.0",
-    "@mondrian-framework/utils": "^1.0.0"
+    "@mondrian-framework/model": "^1.0.1",
+    "@mondrian-framework/utils": "^1.0.1"
   }
 }

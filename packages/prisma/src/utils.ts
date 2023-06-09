@@ -8,9 +8,9 @@ export function projectionToSelection<T extends Record<string, unknown>>(
 ): T {
   const select = projectionToSelectionInternal<T>(type, projection)
   if (overrides) {
-    return mergeSelections(select, overrides)
+    return mergeSelections(select.select as T, overrides)
   }
-  return select
+  return select.select as T
 }
 function projectionToSelectionInternal<T extends Record<string, unknown>>(
   type: LazyType,
@@ -27,24 +27,25 @@ function projectionToSelectionInternal<T extends Record<string, unknown>>(
           return [[k, true]]
         }),
       )
-      return selection as any
+      return { select: selection } as any
     }
     const selection = Object.fromEntries(
       Object.entries(t.type).flatMap(([k, t]) => {
-        if (getFirstConcreteType(t).kind === 'union-operator') {
+        const concreteType = getFirstConcreteType(t)
+        if (concreteType.kind === 'union-operator') {
           return []
         }
         if (projection[k]) {
           const subSelection = projectionToSelectionInternal(t, projection[k])
-          if (hasDecorator(t, 'relation-decorator')) {
-            return [[k, { select: subSelection }]]
+          if (concreteType.kind === 'object' || hasDecorator(t, 'relation-decorator')) {
+            return [[k, subSelection]]
           }
-          return [[k, subSelection]]
+          return [[k, subSelection.select]]
         }
         return []
       }),
     )
-    return selection as any
+    return { select: selection } as any
   }
   if (
     t.kind === 'array-decorator' ||
@@ -58,7 +59,7 @@ function projectionToSelectionInternal<T extends Record<string, unknown>>(
   if (t.kind === 'union-operator') {
     throw new Error('PrismaUtils does not support union type')
   }
-  return true as any
+  return { select: true } as any
 }
 
 export function mergeSelections<T extends Record<string, unknown>>(select: T, overrides: T): T {

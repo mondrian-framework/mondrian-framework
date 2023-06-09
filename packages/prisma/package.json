@@ -8,8 +8,7 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "build": "tsc",
-    "release": "release-it --npm.skipChecks"
+    "build": "tsc"
   },
   "keywords": [],
   "peerDependencies": {

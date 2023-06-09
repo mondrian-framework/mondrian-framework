@@ -10,22 +10,36 @@
     "pretty": "prettier --write \"./**/*.ts\"",
     "example": "npm run example --workspace=@mondrian-framework/example",
     "example-serverless": "npm run example-serverless --workspace=@mondrian-framework/example",
-    "clear": "rimraf packages/*/build/** && rimraf packages/*/.build/**",
+    "clear": "rimraf packages/*/build/** && rimraf packages/*/.build/** && rimraf packages/*/tsconfig.tsbuildinfo",
     "clear-modules": "rimraf packages/*/node_modules/**",
-    "release-model": "npm run clear && npm run build && npm run release --workspace=@mondrian-framework/model",
-    "release-utils": "npm run clear && npm run build && npm run release --workspace=@mondrian-framework/utils"
+    "prerelease": "npm run clear && npm run build",
+    "release": "changeset add && changeset version",
+    "publish": "changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.1",
     "@trivago/prettier-plugin-sort-imports": "4.1.1",
     "prettier": "2.8.8",
-    "release-it": "15.11.0",
     "rimraf": "4.4.1",
     "typescript": "5.0.4",
     "vitest": "0.31.0"
   },
   "workspaces": [
-    "packages/*"
+    "packages/docs",
+    "packages/utils",
+    "packages/model",
+    "packages/advanced-types",
+    "packages/module",
+    "packages/prisma",
+    "packages/rest",
+    "packages/rest-fastify",
+    "packages/graphql",
+    "packages/graphql-yoga",
+    "packages/aws-sqs",
+    "packages/aws-lambda-sqs",
+    "packages/aws-lambda-rest",
+    "packages/cron",
+    "packages/example"
   ],
   "engines": {
     "node": ">=18"

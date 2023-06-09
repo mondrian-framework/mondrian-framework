@@ -1,11 +1,14 @@
 {
   "name": "@mondrian-framework/utils",
-  "version": "1.0.1",
-  "main": "build/src/index.js",
-  "types": "build/src/index.d.ts",
+  "version": "1.0.2",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
   "scripts": {
     "test": "vitest run",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc",
     "release": "release-it --npm.skipChecks"
   },
   "keywords": []

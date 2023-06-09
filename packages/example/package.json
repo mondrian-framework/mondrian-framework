@@ -1,11 +1,15 @@
 {
   "name": "@mondrian-framework/example",
   "version": "1.0.0",
-  "main": "build/src/index.js",
-  "types": "build/src/index.d.ts",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "private": true,
+  "files": [
+    "build"
+  ],
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.build.json",
-    "example": "node -r dotenv/config build/src/app.js",
+    "build": "prisma generate && tsc",
+    "example": "node -r dotenv/config build/app.js",
     "example-serverless": "serverless offline"
   },
   "keywords": [],

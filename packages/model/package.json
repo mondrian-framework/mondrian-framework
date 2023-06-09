@@ -1,15 +1,18 @@
 {
   "name": "@mondrian-framework/model",
-  "version": "1.0.1",
-  "main": "build/src/index.js",
-  "types": "build/src/index.d.ts",
+  "version": "1.0.2",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc",
     "test": "vitest run",
-    "release": "release-it --npm.skipChecks"
+    "prerelease": "tsc -p tsconfig.build.json"
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/utils": "^1.0.1"
+    "@mondrian-framework/utils": "^1.0.2"
   }
 }

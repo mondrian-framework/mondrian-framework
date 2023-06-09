@@ -1,69 +1,38 @@
 {
+  "exclude": ["**/node_modules", "**/build"],
   "compilerOptions": {
     "esModuleInterop": true,
     "module": "commonjs",
-    "target": "esnext",
+    "target": "ESNext",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "noErrorTruncation": false,
     "sourceMap": true,
     "declaration": true,
-    //"incremental": true,
+    "incremental": true,
     "composite": true,
     "skipLibCheck": true,
-    "types": [
-      "vitest/importMeta"
-    ],
+    "resolveJsonModule": true,
+    "types": ["vitest/importMeta"],
     "paths": {
-      "@mondrian-framework/docs": [
-        "./packages/docs"
-      ],
-      "@mondrian-framework/utils": [
-        "./packages/utils"
-      ],
-      "@mondrian-framework/model": [
-        "./packages/model"
-      ],
-      "@mondrian-framework/advanced-types": [
-        "./packages/advanced-types"
-      ],
-      "@mondrian-framework/module": [
-        "./packages/module"
-      ],
-      "@mondrian-framework/prisma": [
-        "./packages/prisma"
-      ],
-      "@mondrian-framework/rest": [
-        "./packages/rest"
-      ],
-      "@mondrian-framework/rest-fastify": [
-        "./packages/rest-fastify"
-      ],
-      "@mondrian-framework/graphql": [
-        "./packages/graphql"
-      ],
-      "@mondrian-framework/graphql-yoga": [
-        "./packages/graphql-yoga"
-      ],
-      "@mondrian-framework/aws-sqs": [
-        "./packages/aws-sqs"
-      ],
-      "@mondrian-framework/aws-lambda-sqs": [
-        "./packages/aws-lambda-sqs"
-      ],
-      "@mondrian-framework/aws-lambda-rest": [
-        "./packages/aws-lambda-rest"
-      ],
-      "@mondrian-framework/cron": [
-        "./packages/cron"
-      ],
-      "@mondrian-framework/example": [
-        "./packages/example"
-      ]
+      "@mondrian-framework/docs": ["./packages/docs"],
+      "@mondrian-framework/utils": ["./packages/utils"],
+      "@mondrian-framework/model": ["./packages/model"],
+      "@mondrian-framework/advanced-types": ["./packages/advanced-types"],
+      "@mondrian-framework/module": ["./packages/module"],
+      "@mondrian-framework/prisma": ["./packages/prisma"],
+      "@mondrian-framework/rest": ["./packages/rest"],
+      "@mondrian-framework/rest-fastify": ["./packages/rest-fastify"],
+      "@mondrian-framework/graphql": ["./packages/graphql"],
+      "@mondrian-framework/graphql-yoga": ["./packages/graphql-yoga"],
+      "@mondrian-framework/aws-sqs": ["./packages/aws-sqs"],
+      "@mondrian-framework/aws-lambda-sqs": ["./packages/aws-lambda-sqs"],
+      "@mondrian-framework/aws-lambda-rest": ["./packages/aws-lambda-rest"],
+      "@mondrian-framework/cron": ["./packages/cron"],
+      "@mondrian-framework/example": ["./packages/example"]
     }
   },
-  "files": [],
   "references": [
     {
       "path": "packages/docs"
@@ -110,9 +79,5 @@
     {
       "path": "packages/example"
     }
-  ],
-  "exclude": [
-    "**/node_modules",
-    "build"
   ]
 }

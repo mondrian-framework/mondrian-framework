@@ -40,7 +40,7 @@ function typeToGqlType(
   if (typeof t === 'function') {
     const n = typeRef.get(t)
     if (n) {
-      return { type: `${n}${isRequired}`, description: typeMap[n]?.description }
+      return { type: `${isInput ? 'I' : ''}${n}${isRequired}`, description: typeMap[n]?.description }
     }
     typeRef.set(t, name)
   }
@@ -62,7 +62,7 @@ function typeToGqlTypeInternal(
   const input = isInput ? 'I' : ''
   const type = lazyToType(t)
   const description = 'opts' in type && type.opts && 'description' in type.opts ? type.opts.description : undefined
-  const desc = description ? `"""${description}"""\n` : ''
+  const desc = description?.length > 0 ? `"""${description}"""\n` : ''
   if (type.kind === 'string') {
     return { description, type: `String${isRequired}` }
   }
@@ -227,7 +227,7 @@ function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsM
 
 function generateScalars({ scalarsMap }: { scalarsMap: Record<string, RootCustomType> }) {
   const scalarDefs = Object.values(scalarsMap)
-    .map((s) => (s.opts?.description ? `scalar ${s.name}` : `"""${s.opts?.description}"""\nscalar ${s.name}`))
+    .map((s) => (s.opts?.description ? `"""${s.opts?.description}"""\nscalar ${s.name}` : `scalar ${s.name}`))
     .join('\n')
   const scalarResolvers = Object.fromEntries(
     Object.values(scalarsMap).map((s) => {

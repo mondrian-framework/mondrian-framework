@@ -1,6 +1,6 @@
 import { Id } from './scalars.types'
 import a from '@mondrian-framework/advanced-types'
-import t from '@mondrian-framework/model'
+import t, { validate } from '@mondrian-framework/model'
 
 export const User = () =>
   t.object({

@@ -2,6 +2,7 @@ import { DecodeOptions } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
 import { GenericProjection } from './projection'
 import { Failure, Result } from './result'
+import { LazyTypeWrapper } from './unsafe'
 import { lazyToType } from './utils'
 import { Expand } from '@mondrian-framework/utils'
 
@@ -233,10 +234,8 @@ export function custom<
 
 type LazyToType<T extends LazyType> = [T] extends [() => infer R] ? R : T
 
-type Selection<T extends LazyType, P extends InferProjection<T>> = [T] extends [ObjectType]
-  ? SelectionInternal<T, P> & DecoratorShorcuts<SelectionInternal<T, P>>
-  : () => SelectionInternal<T, P> & DecoratorShorcuts<SelectionInternal<T, P>>
-
+type Selection<T extends LazyType, P extends InferProjection<T>> = SelectionInternal<T, P> &
+  DecoratorShorcuts<SelectionInternal<T, P>>
 type SelectionInternal<LT extends LazyType, P extends GenericProjection> = LazyToType<LT> extends infer T
   ? T extends Type
     ? P extends true
@@ -342,9 +341,9 @@ export function select<const T extends LazyType, const P extends InferProjection
 
   const t = selection(type, projection)
   if (typeof t === 'function') {
-    return (() => t()) as unknown as Selection<T, P>
+    return new LazyTypeWrapper(() => t()) as Selection<T, P>
   }
-  return { ...t, ...decoratorShorcuts(t) } as Selection<T, P> & DecoratorShorcuts<Selection<T, P>>
+  return { ...t, ...decoratorShorcuts(t) } as Selection<T, P>
 }
 
 type Merge<T1 extends ObjectType | (() => ObjectType), T2 extends ObjectType | (() => ObjectType)> = [T1] extends [
@@ -353,15 +352,15 @@ type Merge<T1 extends ObjectType | (() => ObjectType), T2 extends ObjectType | (
   ? [T2] extends [ObjectType]
     ? MergeInternal<T1, T2> & DecoratorShorcuts<MergeInternal<T1, T2>>
     : LazyToType<T2> extends ObjectType
-    ? () => MergeInternal<T1, LazyToType<T2>>
+    ? MergeInternal<T1, LazyToType<T2>> & DecoratorShorcuts<MergeInternal<T1, LazyToType<T2>>>
     : never
   : [T2] extends [ObjectType]
   ? LazyToType<T1> extends ObjectType
-    ? () => MergeInternal<LazyToType<T1>, T2>
+    ? MergeInternal<LazyToType<T1>, T2> & DecoratorShorcuts<MergeInternal<LazyToType<T1>, T2>>
     : never
   : LazyToType<T1> extends ObjectType
   ? LazyToType<T2> extends ObjectType
-    ? () => MergeInternal<LazyToType<T1>, LazyToType<T2>>
+    ? MergeInternal<LazyToType<T1>, LazyToType<T2>> & DecoratorShorcuts<MergeInternal<LazyToType<T1>, LazyToType<T2>>>
     : never
   : never
 
@@ -388,7 +387,7 @@ export function merge<
     return result
   }
   if (typeof t1 === 'function' || typeof t2 === 'function') {
-    return (() => {
+    return new LazyTypeWrapper(() => {
       return internal(typeof t1 === 'function' ? t1() : t1, typeof t2 === 'function' ? t2() : t2)
     }) as unknown as Merge<T1, T2>
   }

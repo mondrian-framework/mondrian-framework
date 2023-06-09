@@ -1,20 +1,8 @@
-import { GenericProjection, LazyType, lazyToType } from '@mondrian-framework/model'
 import { randomBytes } from 'crypto'
 
 export function randomOperationId() {
   //same length until Tue, 02 Aug 10889 05:31:50 GMT
   return `${new Date().getTime().toString(16).padStart(12, '0')}-${randomBytes(6).toString('hex')}`
-}
-
-export function projectionDepth(p: GenericProjection, start = 0): number {
-  if (typeof p === 'object') {
-    const max = Object.values(p).reduce((depth, sb) => {
-      const d = sb ? projectionDepth(sb, start + 1) : start
-      return d > depth ? d : depth
-    }, start)
-    return max
-  }
-  return start
 }
 
 export type Logger = (message: string, level?: 'log' | 'warn' | 'error') => void | Promise<void>

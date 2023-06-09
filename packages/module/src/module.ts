@@ -1,4 +1,4 @@
-import { Logger, projectionDepth } from './utils'
+import { Logger } from './utils'
 import {
   GenericProjection,
   Infer,
@@ -6,6 +6,7 @@ import {
   InferReturn,
   Types,
   getProjectedType,
+  projectionDepth,
   validate,
 } from '@mondrian-framework/model'
 

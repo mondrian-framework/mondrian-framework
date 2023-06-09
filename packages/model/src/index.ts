@@ -20,4 +20,5 @@ export {
   getProjectedType,
   getRequiredProjection,
   mergeProjections,
+  projectionDepth,
 } from './projection'

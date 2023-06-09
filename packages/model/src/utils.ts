@@ -1,3 +1,4 @@
+import { GenericProjection } from './projection'
 import {
   AnyType,
   ArrayDecorator,

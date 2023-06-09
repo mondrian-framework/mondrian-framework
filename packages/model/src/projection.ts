@@ -174,6 +174,17 @@ export function subProjection<const T extends GenericProjection | undefined, con
   return (projection as any)[v]
 }
 
+export function projectionDepth(p: GenericProjection, start = 0): number {
+  if (typeof p === 'object') {
+    const max = Object.values(p).reduce((depth, sb) => {
+      const d = sb ? projectionDepth(sb, start + 1) : start
+      return d > depth ? d : depth
+    }, start)
+    return max
+  }
+  return start
+}
+
 export type MergeGenericProjection<T1 extends GenericProjection, T2 extends GenericProjection> = [T1] extends [true]
   ? T1
   : [T2] extends [true]

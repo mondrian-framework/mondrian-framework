@@ -1,5 +1,13 @@
 # @mondrian-framework/graphql-yoga
 
+## 1.0.3
+
+### Patch Changes
+
+- fix graphql schema generation
+- Updated dependencies
+  - @mondrian-framework/graphql@1.0.3
+
 ## 1.0.2
 
 ### Patch Changes

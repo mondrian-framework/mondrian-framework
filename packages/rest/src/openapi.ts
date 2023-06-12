@@ -192,6 +192,10 @@ function typeToSchemaObject(
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
 ): OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject {
+  const mt = lazyToType(t)
+  if (mt.kind === 'custom' && mt.name === 'void') {
+    return { type: 'null', const: 'null', description: 'void' }
+  }
   for (const [n, type] of Object.entries(types)) {
     if (type === t) {
       name = n
@@ -232,9 +236,6 @@ function typeToSchemaObjectInternal(
     }
   }
   if (type.kind === 'custom') {
-    if (type.name === 'void') {
-      return { type: 'null', const: 'null', description: 'void' }
-    }
     const t = typeToSchemaObject(type.name, type.encodedType, types, typeMap, typeRef)
     return { ...t, description: type.opts?.description ?? type.name, format: type.format }
   }

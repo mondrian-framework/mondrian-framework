@@ -1,5 +1,11 @@
 # @mondrian-framework/rest
 
+## 1.0.4
+
+### Patch Changes
+
+- fix void type
+
 ## 1.0.3
 
 ### Patch Changes

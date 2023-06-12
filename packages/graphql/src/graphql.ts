@@ -70,7 +70,7 @@ function typeToGqlTypeInternal(
     scalars[type.name] = type
     return {
       description: type.format && description ? `${description}\n${type.format}` : type.format ?? description,
-      type: `${type.name}${isRequired}`,
+      type: type.name === 'void' ? type.name : `${type.name}${isRequired}`,
     }
   }
   if (type.kind === 'boolean') {

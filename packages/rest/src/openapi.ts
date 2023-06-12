@@ -175,7 +175,7 @@ function openapiComponents({
   const schemas: Record<string, OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject> = {}
   const typeMap: Record<string, OpenAPIV3_1.SchemaObject> = {}
   const typeRef: Map<Function, string> = new Map()
-  for (const [name, type] of Object.entries(module.types).filter(([k, t]) => usedTypes.includes(k) && !isVoidType(t))) {
+  for (const [name, type] of Object.entries(module.types).filter(([k]) => usedTypes.includes(k))) {
     const result = typeToSchemaObject(name, type, module.types, typeMap, typeRef)
     schemas[name] = result
   }

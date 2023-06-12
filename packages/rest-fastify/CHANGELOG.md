@@ -1,5 +1,13 @@
 # @mondrian-framework/rest-fastify
 
+## 1.0.5
+
+### Patch Changes
+
+- fix void type
+- Updated dependencies
+  - @mondrian-framework/rest@1.0.5
+
 ## 1.0.4
 
 ### Patch Changes

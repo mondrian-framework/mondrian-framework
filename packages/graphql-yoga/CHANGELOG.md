@@ -1,5 +1,13 @@
 # @mondrian-framework/graphql-yoga
 
+## 1.0.5
+
+### Patch Changes
+
+- fix void type generation in graphql
+- Updated dependencies
+  - @mondrian-framework/graphql@1.0.5
+
 ## 1.0.4
 
 ### Patch Changes

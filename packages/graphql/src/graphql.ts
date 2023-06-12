@@ -212,9 +212,7 @@ function generateTypes({ module, scalarsMap }: { module: GenericModule; scalarsM
   const typeRef: Map<Function, string> = new Map()
   const unions: Record<string, (v: unknown) => boolean> = {}
   const usedTypes = new Set([...Object.values(module.functions.definitions).map((q) => q.output)])
-  for (const [name, type] of Object.entries(module.types).filter(
-    ([name, type]) => usedTypes.has(name) && !isVoidType(type),
-  )) {
+  for (const [name, type] of Object.entries(module.types).filter(([name]) => usedTypes.has(name))) {
     typeToGqlType(name, type, module.types, typeMap, typeRef, false, false, scalarsMap, unions)
   }
   return {

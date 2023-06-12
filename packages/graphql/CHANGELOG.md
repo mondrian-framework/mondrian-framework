@@ -1,5 +1,11 @@
 # @mondrian-framework/graphql
 
+## 1.0.5
+
+### Patch Changes
+
+- fix void type generation in graphql
+
 ## 1.0.4
 
 ### Patch Changes

@@ -35,7 +35,16 @@ function internalEncodeQueryObject(input: JSONType, prefix: string): string[] {
 export function decodeQueryObject(input: Record<string, unknown>, prefix: string): JSONType {
   const output = {}
   for (const [key, value] of Object.entries(input)) {
+    if (!key.startsWith(prefix)) {
+      continue
+    }
     const path = key.replace(prefix, '').split('][').join('.').replace('[', '').replace(']', '')
+    if (path === '') {
+      if (Array.isArray(value)) {
+        return value.map((v) => JSON.parse(v as string))
+      }
+      return value as JSONType
+    }
     setTraversingValue(value, path, output)
   }
   return output

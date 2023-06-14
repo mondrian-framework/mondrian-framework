@@ -19,7 +19,10 @@ export const publish = f({
       throw new Error('Unauthorized')
     }
     const select = PrismaUtils.projectionToSelection<Prisma.PostSelect>(types.Post, projection)
-    const post = await context.prisma.post.create({ data: { ...input, authorId: context.auth.userId }, select })
+    const post = await context.prisma.post.create({
+      data: { title: input.title, content: input.content, authorId: context.auth.userId },
+      select,
+    })
     return post
   },
 })

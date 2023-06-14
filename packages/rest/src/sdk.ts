@@ -44,7 +44,7 @@ export function createRestSdk<
         const encodedInput = encode(module.types[functionBody.input], input)
         const realUrl =
           specification.method === 'get' || specification.method === 'delete'
-            ? `${url}?${encodeQueryObject(encodedInput, 'input')}`
+            ? `${url}?${encodeQueryObject(encodedInput, specification.inputName ?? 'input')}`
             : url
         const projectionHeader = projection != null ? { projection: JSON.stringify(projection) } : {}
         const response = await fetch(realUrl, {

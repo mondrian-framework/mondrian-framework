@@ -96,7 +96,7 @@ async function listenForMessage({
         log(`Bad message: not a valid json ${m.Body}`)
         continue
       }
-      const decoded = decodeAndValidate(inputType, body)
+      const decoded = decodeAndValidate(inputType, body, { inputUnion: true })
       if (!decoded.success) {
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })

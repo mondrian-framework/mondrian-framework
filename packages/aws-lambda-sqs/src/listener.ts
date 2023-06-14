@@ -75,7 +75,7 @@ export function handler<
           }
           batchItemFailures.push({ itemIdentifier: m.messageId })
         }
-        const decoded = decodeAndValidate(inputType, body)
+        const decoded = decodeAndValidate(inputType, body, { inputUnion: true })
         if (!decoded.success) {
           log(`Bad message: ${JSON.stringify(decoded.errors)}`)
           if (specification.malformedMessagePolicy === 'delete') {

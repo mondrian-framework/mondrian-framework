@@ -1,8 +1,224 @@
-import { RestApi } from './api'
-import { LazyType, Types, isVoidType, lazyToType } from '@mondrian-framework/model'
-import { Functions, GenericModule } from '@mondrian-framework/module'
+import { RestApi, RestFunctionSpecs, RestMethod, RestRequest } from './api'
+import { decodeQueryObject } from './utils'
+import {
+  LazyType,
+  ObjectType,
+  Types,
+  getFirstConcreteType,
+  getProjectionType,
+  hasDecorator,
+  encodedTypeIsScalar,
+  isVoidType,
+  lazyToType,
+  object,
+} from '@mondrian-framework/model'
+import { Functions, GenericFunction, GenericModule } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
+
+function isInputRequired(type: LazyType): boolean {
+  return (
+    !hasDecorator(type, 'nullable-decorator') &&
+    !hasDecorator(type, 'optional-decorator') &&
+    !hasDecorator(type, 'default-decorator')
+  )
+}
+function generatePathParameters({
+  parameters,
+  type,
+  module,
+  typeMap,
+  typeRef,
+}: {
+  parameters: string[]
+  type: ObjectType
+  module: GenericModule
+  typeMap: Record<string, OpenAPIV3_1.SchemaObject>
+  typeRef: Map<Function, string>
+}): OpenAPIV3_1.ParameterObject[] {
+  const result: OpenAPIV3_1.ParameterObject[] = []
+  for (const parameter of parameters) {
+    const subtype = type.type[parameter]
+    const schema = typeToSchemaObject(parameter, subtype, module.types, typeMap, typeRef, true)
+    result.push({ in: 'path', name: parameter, required: true, schema: schema as any })
+  }
+  return result
+}
+
+export function getInputExtractor(args: {
+  specification: RestFunctionSpecs
+  functionBody: GenericFunction
+  module: GenericModule
+}): (request: RestRequest) => unknown {
+  return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
+}
+
+function generateOpenapiInput({
+  specification,
+  functionBody,
+  typeMap,
+  typeRef,
+  module,
+}: {
+  specification: RestFunctionSpecs
+  functionBody: GenericFunction
+  typeMap: Record<string, OpenAPIV3_1.SchemaObject>
+  typeRef: Map<Function, string>
+  module: GenericModule
+}): {
+  parameters?: (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.ParameterObject)[]
+  requestBody?: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.RequestBodyObject
+  input: (request: RestRequest) => unknown
+} {
+  if (specification.openapi) {
+    return {
+      parameters:
+        specification.openapi.specification.parameters === null
+          ? undefined
+          : specification.openapi.specification.parameters,
+      requestBody:
+        specification.openapi.specification.requestBody === null
+          ? undefined
+          : specification.openapi.specification.requestBody,
+      input: specification.openapi.input,
+    }
+  }
+  const parametersInPath = specification.path
+    ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
+    : []
+  const inputType = module.types[functionBody.input]
+  const isScalar = encodedTypeIsScalar(inputType)
+  const isArray = hasDecorator(inputType, 'array-decorator')
+  const isRequired = isInputRequired(inputType)
+  if (isVoidType(inputType)) {
+    return { input: () => undefined }
+  }
+  const t = getFirstConcreteType(inputType)
+  if (t.kind === 'object') {
+    for (const p of parametersInPath) {
+      if (!t.type[p] || !encodedTypeIsScalar(t.type[p])) {
+        throw new Error(
+          `Error while generating openapi input type ${functionBody.input}. Path parameter ${p} can only be scalar type. Path ${specification.path}`,
+        )
+      }
+    }
+  }
+  if (isArray && parametersInPath.length > 0) {
+    throw new Error(
+      `Error while generating openapi input type ${functionBody.input}. Path parameter with array are not supported. Path ${specification.path}`,
+    )
+  }
+  if (isScalar && parametersInPath.length > 1) {
+    throw new Error(
+      `Error while generating openapi input type ${functionBody.input}. Only one parameter is needed. Path ${specification.path}`,
+    )
+  }
+  if (isScalar && parametersInPath.length === 1) {
+    const schema = typeToSchemaObject(parametersInPath[0], inputType, module.types, typeMap, typeRef, true)
+    return {
+      parameters: [{ in: 'path', name: parametersInPath[0], schema: schema as any, required: true }],
+      input: (request) => {
+        return request.params[parametersInPath[0]]
+      },
+    }
+  }
+  if (specification.method === 'get' || specification.method === 'delete') {
+    if (parametersInPath.length === 0) {
+      const schema = typeToSchemaObject(
+        specification.inputName ?? 'input',
+        inputType,
+        module.types,
+        typeMap,
+        typeRef,
+        true,
+      )
+      return {
+        parameters: [
+          {
+            name: specification.inputName ?? 'input',
+            in: 'query',
+            required: isScalar ? isRequired : true,
+            style: isScalar ? undefined : 'deepObject',
+            explode: true,
+            schema: isScalar
+              ? (schema as any)
+              : {
+                  $ref: `#/components/schemas/${functionBody.input}`,
+                },
+          },
+        ],
+        input: (request: RestRequest) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
+      }
+    }
+    if (t.kind === 'object') {
+      const parameters = generatePathParameters({ parameters: parametersInPath, module, type: t, typeMap, typeRef })
+      for (const [key, subtype] of Object.entries(t.type).filter((v) => !parametersInPath.includes(v[0]))) {
+        const schema = typeToSchemaObject(key, subtype, module.types, typeMap, typeRef, true)
+        parameters.push({
+          name: key,
+          in: 'query',
+          required: isInputRequired(subtype),
+          style: encodedTypeIsScalar(subtype) ? undefined : 'deepObject',
+          explode: true,
+          schema: schema as any,
+        })
+      }
+      return {
+        parameters,
+        input: (request) => {
+          const object: Record<string, unknown> = Object.fromEntries(
+            parametersInPath.map((p) => [p, request.params[p]]),
+          )
+          for (const [key, subtype] of Object.entries(t.type).filter((v) => !parametersInPath.includes(v[0]))) {
+            if (encodedTypeIsScalar(subtype)) {
+              object[key] = request.query[key]
+            } else {
+              object[key] = decodeQueryObject(request.query, key)
+            }
+          }
+          return object
+        },
+      }
+    }
+  } else {
+    //BODY CAN EXIST
+    if (parametersInPath.length === 0) {
+      return {
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                $ref: `#/components/schemas/${functionBody.input}`,
+              },
+            },
+          },
+        },
+        input: (request) => request.body,
+      }
+    }
+    if (t.kind === 'object') {
+      const parameters = generatePathParameters({ parameters: parametersInPath, module, type: t, typeMap, typeRef })
+      const remainingObject = object(
+        Object.fromEntries(Object.entries(t.type).filter((v) => !parametersInPath.includes(v[0]))),
+      )
+      const schema = typeToSchemaObject(parametersInPath[0], remainingObject, module.types, typeMap, typeRef)
+      return {
+        parameters,
+        requestBody: { content: { 'application/json': { schema } } },
+        input: (request) => {
+          const result = Object.fromEntries(parametersInPath.map((p) => [p, request.params[p]]))
+          if (typeof request.body === 'object') {
+            return { ...result, ...request.body }
+          }
+          return result
+        },
+      }
+    }
+  }
+  throw new Error(
+    `Error while generating openapi input type ${functionBody.input}. Not supported. Path ${specification.path}`,
+  )
+}
 
 export function generateOpenapiDocument({
   module,
@@ -14,7 +230,7 @@ export function generateOpenapiDocument({
   version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
-  const components = openapiComponents({ module, version, api })
+  const { components, typeMap, typeRef } = openapiComponents({ module, version, api })
   for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
@@ -28,58 +244,51 @@ export function generateOpenapiDocument({
         continue
       }
       const path = `${specification.path ?? `/${functionName}`}`
-      const inputIsVoid = isVoidType(module.types[functionBody.input])
+
+      const { parameters, requestBody } = generateOpenapiInput({
+        specification,
+        functionBody,
+        module,
+        typeMap,
+        typeRef,
+      })
+
       const operationObj: OpenAPIV3_1.OperationObject = {
-        parameters: [
-          ...((specification.method === 'get' || specification.method === 'delete') && !inputIsVoid
-            ? [
-                {
-                  name: 'input',
-                  in: 'query',
-                  required: true,
-                  style: 'deepObject',
-                  explode: true,
-                  schema: {
-                    $ref: `#/components/schemas/${functionBody.input}`,
-                  },
-                },
-              ]
-            : []),
-          {
-            name: 'projection',
-            in: 'header',
-          },
-        ],
-        requestBody:
-          specification.method !== 'get' && specification.method !== 'delete' && !inputIsVoid
-            ? {
-                content: {
-                  'application/json': {
-                    schema: {
-                      $ref: `#/components/schemas/${functionBody.input}`,
+        ...specification.openapi?.specification.parameters,
+        parameters: parameters
+          ? [...parameters, { name: 'projection', in: 'header', example: true }]
+          : [{ name: 'projection', in: 'header', example: true }],
+        requestBody,
+        responses:
+          specification.openapi?.specification.responses === null
+            ? undefined
+            : specification.openapi?.specification.responses ?? {
+                '200': {
+                  description: 'Success',
+                  content: {
+                    'application/json': {
+                      schema: {
+                        $ref: `#/components/schemas/${functionBody.output}`,
+                      },
                     },
                   },
                 },
-              }
-            : undefined,
-        responses: {
-          '200': {
-            description: 'Success',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: `#/components/schemas/${functionBody.output}`,
+                '400': {
+                  description: 'Validation error',
                 },
               },
-            },
-          },
-          '400': {
-            description: 'Validation error',
-          },
-        },
-        description: functionBody.opts?.description,
-        tags: [module.name],
-        security: openapiSecurityRequirements({ module, functionName }),
+        description:
+          specification.openapi?.specification.description === null
+            ? undefined
+            : specification.openapi?.specification.description ?? functionBody.opts?.description,
+        tags:
+          specification.openapi?.specification.tags === null
+            ? undefined
+            : specification.openapi?.specification.tags ?? [module.name],
+        security:
+          specification.openapi?.specification.security === null
+            ? undefined
+            : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),
       }
       paths[path] = {
         summary: functionName,
@@ -154,7 +363,11 @@ function openapiComponents({
   module: GenericModule
   version: number
   api: RestApi<Functions>
-}): OpenAPIV3_1.ComponentsObject {
+}): {
+  components: OpenAPIV3_1.ComponentsObject
+  typeMap: Record<string, OpenAPIV3_1.SchemaObject>
+  typeRef: Map<Function, string>
+} {
   const usedTypes: string[] = []
   for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
     const specifications = api.functions[functionName]
@@ -182,7 +395,7 @@ function openapiComponents({
   for (const [name, type] of Object.entries(typeMap)) {
     schemas[name] = type
   }
-  return { schemas }
+  return { components: { schemas }, typeMap, typeRef }
 }
 
 function typeToSchemaObject(
@@ -191,6 +404,7 @@ function typeToSchemaObject(
   types: Types,
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
+  ignoreFirstLevelOptionality?: boolean,
 ): OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject {
   const mt = lazyToType(t)
   if (mt.kind === 'custom' && mt.name === 'void') {
@@ -208,12 +422,12 @@ function typeToSchemaObject(
     }
     typeRef.set(t, name)
   }
-  const type = typeToSchemaObjectInternal(name, t, types, typeMap, typeRef)
+  const type = typeToSchemaObjectInternal(name, t, types, typeMap, typeRef, ignoreFirstLevelOptionality)
   if (typeof t === 'function' || name in types) {
-    typeMap[name] = type
     if ('anyOf' in type && type.anyOf?.some((v) => '$ref' in v && v.$ref === `#/components/schemas/${name}`)) {
       return type
     }
+    typeMap[name] = type
     return { $ref: `#/components/schemas/${name}` }
   }
   return type
@@ -225,6 +439,7 @@ function typeToSchemaObjectInternal(
   types: Types,
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
+  ignoreFirstLevelOptionality?: boolean,
 ): OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject {
   const type = lazyToType(t)
   if (type.kind === 'string') {
@@ -269,11 +484,17 @@ function typeToSchemaObjectInternal(
     return { type: 'array', items }
   }
   if (type.kind === 'optional-decorator') {
-    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef, ignoreFirstLevelOptionality)
+    if (ignoreFirstLevelOptionality) {
+      return subtype
+    }
     return { anyOf: [subtype, { type: 'null', description: 'optional' }] }
   }
   if (type.kind === 'default-decorator') {
-    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef, ignoreFirstLevelOptionality)
+    if (ignoreFirstLevelOptionality) {
+      return subtype
+    }
     return {
       anyOf: [
         { ...subtype, example: type.opts.default },
@@ -282,12 +503,15 @@ function typeToSchemaObjectInternal(
     }
   }
   if (type.kind === 'nullable-decorator') {
-    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef, ignoreFirstLevelOptionality)
+    if (ignoreFirstLevelOptionality) {
+      return subtype
+    }
     return { anyOf: [subtype, { const: null }] }
   }
   if (type.kind === 'relation-decorator') {
-    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef)
-    return subtype
+    const subtype = typeToSchemaObject(name, type.type, types, typeMap, typeRef, ignoreFirstLevelOptionality)
+    return { anyOf: [subtype, { type: 'null', description: 'optional' }] }
   }
   if (type.kind === 'object') {
     const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {

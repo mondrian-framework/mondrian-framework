@@ -21,6 +21,27 @@ export function lazyToType(t: LazyType): AnyType {
   return t as AnyType
 }
 
+export function encodedTypeIsScalar(type: LazyType): boolean {
+  const t = lazyToType(type)
+  if (t.kind === 'boolean' || t.kind === 'enum' || t.kind === 'number' || t.kind === 'literal' || t.kind === 'string') {
+    return true
+  }
+  if (
+    t.kind === 'default-decorator' ||
+    t.kind === 'nullable-decorator' ||
+    t.kind === 'optional-decorator' ||
+    t.kind === 'relation-decorator'
+  ) {
+    return encodedTypeIsScalar(t.type)
+  }
+  if (t.kind === 'custom') {
+    return encodedTypeIsScalar(t.encodedType)
+  }
+  if (t.kind === 'union-operator') {
+    return Object.values(t.types).every((t) => encodedTypeIsScalar(t))
+  }
+  return false
+}
 export function getFirstConcreteType(
   type: LazyType,
 ): NumberType | StringType | EnumType | BooleanType | RootCustomType | LiteralType | ObjectType | UnionOperator {

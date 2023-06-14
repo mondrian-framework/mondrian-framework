@@ -8,7 +8,7 @@
     "build"
   ],
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "tsc",
     "example": "node -r dotenv/config build/app.js",
     "example-serverless": "serverless offline"
   },

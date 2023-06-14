@@ -1,6 +1,6 @@
 import { decodeAndValidate } from './converter'
 import { Error, Result, concat2, enrichErrors, error, errors, richError, success } from './result'
-import { ArrayDecorator, Infer, LazyType, ObjectType } from './type-system'
+import { ArrayDecorator, Infer, LazyType, ObjectType, boolean, number, string, union } from './type-system'
 import { lazyToType } from './utils'
 import { assertNever } from '@mondrian-framework/utils'
 
@@ -11,7 +11,7 @@ export type DecodeOptions = {
   cast?: boolean
   strict?: boolean
   errors?: 'exhaustive' | 'minimum'
-  castGqlInputUnion?: boolean
+  inputUnion?: boolean
 }
 export function decode<const T extends LazyType>(type: T, value: unknown, opts?: DecodeOptions): Result<unknown> {
   const result = decodeInternal(type, value, opts)
@@ -29,6 +29,17 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
   } else if (t.kind === 'literal') {
     if (value === t.value) {
       return success(value)
+    }
+    if (opts?.cast) {
+      const castedValue = decodeInternal(union({ n: number(), b: boolean(), s: string() }), value, opts)
+      if (castedValue.success) {
+        if (t.value === castedValue.value) {
+          return success(t.value)
+        }
+      }
+      if (t.value === null && value === 'null') {
+        return success(null)
+      }
     }
     return error(`Literal ${t.value} expected`, value)
   } else if (t.kind === 'optional-decorator') {
@@ -70,8 +81,7 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
   } else if (t.kind === 'relation-decorator') {
     return decodeInternal(t.type, value, opts)
   } else if (t.kind === 'union-operator') {
-    if (opts?.castGqlInputUnion) {
-      //special graphql @oneOf
+    if (opts?.inputUnion) {
       const ts = Object.entries(t.types)
       if (typeof value === 'object' && value) {
         const keys = Object.keys(value)
@@ -249,10 +259,10 @@ function assertBoolean(value: unknown, opts: DecodeOptions | undefined): Result<
   }
   if (opts?.cast) {
     if (typeof value === 'number') {
-      return success(value ? true : false)
+      return success(value !== 0)
     }
-    if (typeof value === 'string') {
-      return success(value ? true : false)
+    if (value === 'true' || value === 'false') {
+      return success(value === 'true')
     }
   }
   return error(`Boolean expected`, value)

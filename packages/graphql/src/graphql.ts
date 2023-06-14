@@ -182,6 +182,30 @@ function typeToGqlTypeInternal(
   if (type.kind === 'literal') {
     const t = typeof type.value
     const tp = t === 'boolean' ? 'Boolean' : t === 'number' ? 'Float' : t === 'string' ? 'String' : null
+    if (type.value === null) {
+      scalars['Null'] = {
+        name: 'Null',
+        kind: 'custom',
+        decode() {
+          return { success: true, value: null }
+        },
+        encode() {
+          return null
+        },
+        encodedType: type,
+        type: null,
+        validate(input, options) {
+          if (input === null) {
+            return { success: true, value: null }
+          }
+          return { success: false, errors: [{ value: input, error: `Null expected` }] }
+        },
+      }
+      return {
+        description: description,
+        type: 'Null',
+      }
+    }
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
     }
@@ -298,10 +322,7 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
             new Date(),
           )
           setHeader(serverContext, 'operation-id', operationId)
-          const decoded = decodeAndValidate(inputType, input[gqlInputTypeName], {
-            cast: true,
-            castGqlInputUnion: true,
-          })
+          const decoded = decodeAndValidate(inputType, input[gqlInputTypeName], { cast: true, inputUnion: true })
           if (!decoded.success) {
             log('Bad request.')
             throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })

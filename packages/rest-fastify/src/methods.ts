@@ -5,7 +5,7 @@ import {
   RestApi,
   RestMethod,
   getMaxVersion,
-  handleRestRequest,
+  generateRestRequestHandler,
   pathFromSpecification,
 } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
@@ -33,16 +33,18 @@ export function attachRestMethods<ContextInput>({
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = pathFromSpecification(functionName, specification, pathPrefix)
+      const path = pathFromSpecification(functionName, specification, pathPrefix).replace(/{(.*?)}/g, ':$1')
+      const handler = generateRestRequestHandler<ServerContext, ContextInput>({
+        module,
+        context,
+        specification,
+        functionName,
+        functionBody,
+        globalMaxVersion: maxVersion,
+        error,
+      })
       server[specification.method](path, async (request, reply) => {
-        const result = await handleRestRequest<ServerContext, ContextInput>({
-          module,
-          context,
-          specification,
-          functionName,
-          functionBody,
-          globalMaxVersion: maxVersion,
-          error,
+        const result = await handler({
           serverContext: { fastify: { request, reply } },
           request: {
             body: request.body as string,

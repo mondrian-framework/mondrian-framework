@@ -10,7 +10,7 @@ import { RestApi } from '@mondrian-framework/rest'
 //create a genetaror that writes a sdk.ts with only the required information
 export const MODULE = module
 
-export const REST_API = {
+export const REST_API: RestApi<Functions> = {
   version: 100,
   functions: {
     register: [
@@ -18,12 +18,13 @@ export const REST_API = {
       { method: 'put', path: '/register', version: { min: 2 } },
     ],
     users: { method: 'get', version: { min: 2 } },
-    login: { method: 'put', path: '/login' },
-    publish: { method: 'post', version: { min: 2 } },
-    myPosts: { method: 'get', path: '/posts' },
+    login: { method: 'get', path: '/login/{email}' },
+    publish: { method: 'get', version: { min: 2 }, path: '/publish/{title}' },
+    myPosts: { method: 'post', path: '/posts' },
+    test: { method: 'post', path: '/test/{tenantId}' },
   },
   options: { introspection: true },
-} as const satisfies RestApi<Functions>
+}
 
 export const GRAPHQL_API = {
   functions: {

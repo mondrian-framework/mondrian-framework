@@ -12,7 +12,7 @@ export { decode, DecodeOptions } from './decoder'
 export { encode } from './encoder'
 export { decodeAndValidate, validateAndEncode } from './converter'
 export { validate, isType, assertType } from './validate'
-export { lazyToType, isNullable, isVoidType, hasDecorator, getFirstConcreteType } from './utils'
+export { lazyToType, isNullable, isVoidType, hasDecorator, getFirstConcreteType, encodedTypeIsScalar } from './utils'
 export {
   getProjectionType,
   GenericProjection,

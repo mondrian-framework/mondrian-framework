@@ -1,6 +1,6 @@
 import { Id } from './scalars.types'
 import a from '@mondrian-framework/advanced-types'
-import t, { validate } from '@mondrian-framework/model'
+import t, { number, validate } from '@mondrian-framework/model'
 
 export const User = () =>
   t.object({
@@ -54,6 +54,7 @@ export type RegisterInput = t.Infer<typeof RegisterInput>
 export const PostInput = t.select(Post, {
   title: true,
   content: true,
+  author: { name: true, posts: { title: true } },
 })
 export type PostInput = t.Infer<typeof PostInput>
 
@@ -76,3 +77,11 @@ export const BasicFilter = t.object({
   take: t.integer({ minimum: 0, maximum: 20 }).default(20),
 })
 export type BasicFilter = t.Infer<typeof BasicFilter>
+
+export const TestInput = t.object({
+  tenantId: t.string(),
+  filter: t.object({ id: t.string() }),
+  skip: t.number().default(0),
+  asd: t.object({ a: t.number().array() }),
+})
+export const TestOutput = t.string({ maxLength: 100 })

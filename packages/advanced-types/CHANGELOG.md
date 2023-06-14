@@ -1,5 +1,13 @@
 # @mondrian-framework/advanced-types
 
+## 1.0.4
+
+### Patch Changes
+
+- Improve performance
+- Updated dependencies
+  - @mondrian-framework/model@1.0.4
+
 ## 1.0.3
 
 ### Patch Changes

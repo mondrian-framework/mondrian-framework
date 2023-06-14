@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/graphql",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -17,8 +17,8 @@
     "@graphql-tools/schema": "9.0.19"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^1.0.3",
-    "@mondrian-framework/module": "^1.0.3",
-    "@mondrian-framework/utils": "^1.0.3"
+    "@mondrian-framework/model": "^1.0.4",
+    "@mondrian-framework/module": "^1.0.4",
+    "@mondrian-framework/utils": "^1.0.4"
   }
 }

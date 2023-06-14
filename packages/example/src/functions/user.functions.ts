@@ -39,3 +39,11 @@ export const users = f({
     return users
   },
 })
+
+export const test = f({
+  input: 'TestInput',
+  output: 'TestOutput',
+  async apply({ input, context, projection }) {
+    return JSON.stringify(input)
+  },
+})

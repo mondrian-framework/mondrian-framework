@@ -32,7 +32,7 @@ export const GRAPHQL_API = {
       { type: 'mutation', name: 'subscribe', inputName: 'user' },
       { type: 'mutation', name: 'register', inputName: 'user' },
     ],
-    users: { type: 'query' },
+    users: { type: 'query', namespace: null },
     login: { type: 'query' },
     publish: { type: 'mutation', inputName: 'post' },
     myPosts: { type: 'query', name: 'posts' },

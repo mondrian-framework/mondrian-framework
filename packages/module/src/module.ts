@@ -16,6 +16,7 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
       ? {
           input: I
           output: O
+          namespace?: string
           apply: (args: {
             input: Input
             projection: Projection | undefined
@@ -30,13 +31,16 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
 export type GenericFunction<TypesName extends string = string> = {
   input: TypesName
   output: TypesName
+  namespace?: string
   apply: (args: { input: any; projection: any; context: any; operationId: string; log: Logger }) => Promise<unknown>
   opts?: { description?: string }
 }
 
 export type Functions<Types extends string = string> = Record<string, GenericFunction<Types>>
 
-export function functionBuilder<const T extends Types, Context>(): <const I extends keyof T, const O extends keyof T>(
+export function functionBuilder<const T extends Types, Context>(args?: {
+  namespace?: string
+}): <const I extends keyof T, const O extends keyof T>(
   f: Function<T, I, O, Context>,
   opts?: { description?: string },
 ) => Function<T, I, O, Context> & { opts?: { description?: string } } {
@@ -44,7 +48,7 @@ export function functionBuilder<const T extends Types, Context>(): <const I exte
     f: Function<T, I, O, Context>,
     opts?: { description?: string },
   ): Function<T, I, O, Context> & { opts?: { description?: string } } {
-    return { ...f, opts }
+    return { ...f, opts, namespace: f.namespace ?? args?.namespace }
   }
   return builder
 }

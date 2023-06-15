@@ -33,6 +33,7 @@ export type RestFunctionSpecs = {
     specification: NullableOperationObject
     input: (request: RestRequest) => unknown
   }
+  namespace?: string | null
 }
 
 type NullableOperationObject = {

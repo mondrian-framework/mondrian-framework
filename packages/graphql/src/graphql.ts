@@ -12,7 +12,7 @@ import {
   isVoidType,
   lazyToType,
 } from '@mondrian-framework/model'
-import { ContextType, Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
 
@@ -373,6 +373,8 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
       })
     }),
   )
+
+  const namespaces: Record<string, string[]> = {}
   const defs = Object.entries(module.functions.definitions)
     .flatMap(([functionName, functionBody]) => {
       const specifications = api.functions[functionName]
@@ -386,6 +388,14 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
         return []
       }
       return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {
+        const namespace = specification.namespace !== null ? functionBody.namespace ?? specification.namespace : null
+        if (namespace) {
+          if (namespaces[namespace]) {
+            namespaces[namespace].push(specification.name ?? functionName)
+          } else {
+            namespaces[namespace] = [specification.name ?? functionName]
+          }
+        }
         const inputType = lazyToType(module.types[functionBody.input])
         const inputIsVoid = isVoidType(inputType)
         const gqlInputType = inputIsVoid
@@ -409,11 +419,38 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
           : `${specification.name ?? functionName}(${specification.inputName ?? 'input'}: ${gqlInputType?.type}): ${
               gqlOutputType.type
             }`
-        return description ? [description, def] : [def]
+        const operationType = type === 'query' ? 'Query' : 'Mutation'
+        if (namespace) {
+          return [
+            `type ${operationType} {`,
+            `${namespace}: ${namespace}${operationType}!`,
+            '}',
+            `type ${namespace}${operationType} {`,
+            description,
+            def,
+            '}',
+          ]
+        }
+        return [`type ${operationType} {`, description, def, '}']
       })
     })
+    .flatMap((v) => (v != null ? [v] : []))
     .join('\n')
-  return { defs, resolvers }
+
+  const namespacesResolvers = Object.fromEntries(
+    Object.entries(namespaces).map(([namespace, resolverNames]) => [
+      `${namespace}${type === 'query' ? 'Query' : 'Mutation'}`,
+      Object.fromEntries(
+        resolverNames.map((resolverName) => {
+          const result = [resolverName, resolvers[resolverName]]
+          delete resolvers[resolverName]
+          return result
+        }),
+      ),
+    ]),
+  )
+  const otherResolvers = Object.fromEntries(Object.keys(namespaces).map((namespace) => [namespace, () => ({})]))
+  return { defs, resolvers: { ...resolvers, ...otherResolvers }, namespacesResolvers }
 }
 
 export function generateGraphqlSchema<ServerContext, ContextInput>({
@@ -429,7 +466,11 @@ export function generateGraphqlSchema<ServerContext, ContextInput>({
   setHeader: (server: ServerContext, name: string, value: string) => void
   error?: ErrorHandler<Functions, ServerContext>
 }): GraphQLSchema {
-  const { defs: queryDefs, resolvers: queryResolvers } = generateQueryOrMutation({
+  const {
+    defs: queryDefs,
+    resolvers: queryResolvers,
+    namespacesResolvers: queryNamespacesResolvers,
+  } = generateQueryOrMutation({
     module,
     api,
     type: 'query',
@@ -437,7 +478,11 @@ export function generateGraphqlSchema<ServerContext, ContextInput>({
     setHeader,
     error,
   })
-  const { defs: mutationDefs, resolvers: mutationResolvers } = generateQueryOrMutation({
+  const {
+    defs: mutationDefs,
+    resolvers: mutationResolvers,
+    namespacesResolvers: mutationNamespacesResolvers,
+  } = generateQueryOrMutation({
     module,
     api,
     type: 'mutation',
@@ -454,20 +499,8 @@ export function generateGraphqlSchema<ServerContext, ContextInput>({
   ${scalarDefs}
   ${typeDefs}
   ${inputDefs}
-  ${
-    queryDefs.length === 0
-      ? ''
-      : `type Query {
-    ${queryDefs}
-  }`
-  }
-  ${
-    mutationDefs.length === 0
-      ? ''
-      : `type Mutation {
-    ${mutationDefs}
-  }`
-  }
+  ${queryDefs}
+  ${mutationDefs}
   `
   const unionResolvers = Object.fromEntries(Object.entries(unions).map(([k, v]) => [k, { __isTypeOf: v }]))
   try {
@@ -478,6 +511,8 @@ export function generateGraphqlSchema<ServerContext, ContextInput>({
         ...(Object.keys(mutationResolvers).length > 0 ? { Mutation: mutationResolvers } : {}),
         ...scalarResolvers,
         ...unionResolvers,
+        ...queryNamespacesResolvers,
+        ...mutationNamespacesResolvers,
       },
     })
     return schema

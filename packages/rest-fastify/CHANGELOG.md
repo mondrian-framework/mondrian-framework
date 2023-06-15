@@ -1,5 +1,13 @@
 # @mondrian-framework/rest-fastify
 
+## 1.0.7
+
+### Patch Changes
+
+- add namespaces
+- Updated dependencies
+  - @mondrian-framework/rest@1.0.7
+
 ## 1.0.6
 
 ### Patch Changes

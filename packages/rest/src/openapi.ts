@@ -198,16 +198,15 @@ function generateOpenapiInput({
     }
     if (t.kind === 'object') {
       const parameters = generatePathParameters({ parameters: parametersInPath, module, type: t, typeMap, typeRef })
-      const remainingObject = object(
-        Object.fromEntries(Object.entries(t.type).filter((v) => !parametersInPath.includes(v[0]))),
-      )
+      const remainingFields = Object.entries(t.type).filter((v) => !parametersInPath.includes(v[0]))
+      const remainingObject = object(Object.fromEntries(remainingFields))
       const schema = typeToSchemaObject(parametersInPath[0], remainingObject, module.types, typeMap, typeRef)
       return {
         parameters,
-        requestBody: { content: { 'application/json': { schema } } },
+        requestBody: remainingFields.length > 0 ? { content: { 'application/json': { schema } } } : undefined,
         input: (request) => {
           const result = Object.fromEntries(parametersInPath.map((p) => [p, request.params[p]]))
-          if (typeof request.body === 'object') {
+          if (remainingFields.length > 0 && typeof request.body === 'object') {
             return { ...result, ...request.body }
           }
           return result
@@ -284,7 +283,11 @@ export function generateOpenapiDocument({
         tags:
           specification.openapi?.specification.tags === null
             ? undefined
-            : specification.openapi?.specification.tags ?? [module.name],
+            : specification.openapi?.specification.tags ?? specification.namespace === null
+            ? []
+            : functionBody.namespace ?? specification.namespace
+            ? [functionBody.namespace ?? specification.namespace ?? '']
+            : [],
         security:
           specification.openapi?.specification.security === null
             ? undefined
@@ -302,7 +305,6 @@ export function generateOpenapiDocument({
     servers: [{ url: `${`/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
     paths,
     components: { ...components, securitySchemes: openapiSecuritySchemes({ module }) },
-    tags: [{ name: module.name }],
   }
 }
 

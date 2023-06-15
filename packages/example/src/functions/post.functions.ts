@@ -1,7 +1,10 @@
-import { types } from '../types'
-import f from './functions.commons'
+import { Types, types } from '../types'
+import { SharedContext } from './functions.commons'
+import { functionBuilder } from '@mondrian-framework/module'
 import { PrismaUtils } from '@mondrian-framework/prisma'
 import { Prisma } from '@prisma/client'
+
+const f = functionBuilder<Types, SharedContext>({ namespace: 'post' })
 
 export const checkPost = f({
   input: 'Void',

@@ -1,9 +1,12 @@
-import { types } from '../types'
-import f from './functions.commons'
+import { Types, types } from '../types'
+import { SharedContext } from './functions.commons'
 import { subProjection } from '@mondrian-framework/model'
+import { functionBuilder } from '@mondrian-framework/module'
 import { PrismaUtils } from '@mondrian-framework/prisma'
 import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
+
+const f = functionBuilder<Types, SharedContext>({ namespace: 'user' })
 
 export const register = f({
   input: 'RegisterInput',
@@ -14,6 +17,7 @@ export const register = f({
     const user = await context.prisma.user.create({ data: input, select })
     return { user, jwt: jwt.sign({ userId: user.id }, 'shhhhh') }
   },
+  namespace: 'authentication',
 })
 
 export const login = f({
@@ -28,6 +32,7 @@ export const login = f({
     const user = await context.prisma.user.findFirst({ where: input, select })
     return user ? { user, jwt: jwt.sign({ userId: user.id }, 'shhhhh') } : null
   },
+  namespace: 'authentication',
 })
 
 export const users = f({

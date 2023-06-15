@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 1.0.5
+
+### Patch Changes
+
+- fix dependencies
+
 ## 1.0.4
 
 ### Patch Changes

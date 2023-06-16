@@ -1,5 +1,11 @@
 # @mondrian-framework/rest
 
+## 1.0.9
+
+### Patch Changes
+
+- fix openapi minor bug
+
 ## 1.0.8
 
 ### Patch Changes

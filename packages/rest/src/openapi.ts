@@ -123,33 +123,6 @@ function generateOpenapiInput({
     }
   }
   if (specification.method === 'get' || specification.method === 'delete') {
-    if (parametersInPath.length === 0) {
-      const schema = typeToSchemaObject(
-        specification.inputName ?? 'input',
-        inputType,
-        module.types,
-        typeMap,
-        typeRef,
-        true,
-      )
-      return {
-        parameters: [
-          {
-            name: specification.inputName ?? 'input',
-            in: 'query',
-            required: isScalar ? isRequired : true,
-            style: isScalar ? undefined : 'deepObject',
-            explode: true,
-            schema: isScalar
-              ? (schema as any)
-              : {
-                  $ref: `#/components/schemas/${functionBody.input}`,
-                },
-          },
-        ],
-        input: (request: RestRequest) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
-      }
-    }
     if (t.kind === 'object') {
       const parameters = generatePathParameters({ parameters: parametersInPath, module, type: t, typeMap, typeRef })
       for (const [key, subtype] of Object.entries(t.type).filter((v) => !parametersInPath.includes(v[0]))) {
@@ -178,6 +151,33 @@ function generateOpenapiInput({
           }
           return object
         },
+      }
+    }
+    if (parametersInPath.length === 0) {
+      const schema = typeToSchemaObject(
+        specification.inputName ?? 'input',
+        inputType,
+        module.types,
+        typeMap,
+        typeRef,
+        true,
+      )
+      return {
+        parameters: [
+          {
+            name: specification.inputName ?? 'input',
+            in: 'query',
+            required: isScalar ? isRequired : true,
+            style: isScalar ? undefined : 'deepObject',
+            explode: true,
+            schema: isScalar
+              ? (schema as any)
+              : {
+                  $ref: `#/components/schemas/${functionBody.input}`,
+                },
+          },
+        ],
+        input: (request: RestRequest) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
       }
     }
   } else {
@@ -293,9 +293,10 @@ export function generateOpenapiDocument({
             ? undefined
             : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),
       }
-      paths[path] = {
-        summary: functionName,
-        [specification.method.toLocaleLowerCase()]: operationObj,
+      if (paths[path]) {
+        ;(paths[path] as Record<string, unknown>)[specification.method.toLocaleLowerCase()] = operationObj
+      } else {
+        paths[path] = { [specification.method.toLocaleLowerCase()]: operationObj }
       }
     }
   }

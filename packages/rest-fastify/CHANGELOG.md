@@ -1,5 +1,13 @@
 # @mondrian-framework/rest-fastify
 
+## 1.0.9
+
+### Patch Changes
+
+- fix openapi minor bug
+- Updated dependencies
+  - @mondrian-framework/rest@1.0.9
+
 ## 1.0.8
 
 ### Patch Changes

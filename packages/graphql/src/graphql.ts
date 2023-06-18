@@ -3,11 +3,13 @@ import { graphqlInfoToProjection } from './utils'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { createGraphQLError } from '@graphql-tools/utils'
 import {
+  GenericProjection,
   LazyType,
   RootCustomType,
   decode,
   decodeAndValidate,
   encode,
+  getProjectedType,
   getProjectionType,
   isVoidType,
   lazyToType,
@@ -344,7 +346,8 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
               operationId,
               log,
             })
-            const encoded = encode(outputType, result)
+            const projectedType = getProjectedType(outputType, projection.value as GenericProjection)
+            const encoded = encode(projectedType, result)
             log('Completed.')
             return encoded
           } catch (e) {

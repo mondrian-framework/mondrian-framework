@@ -1,5 +1,13 @@
 # @mondrian-framework/aws-lambda-rest
 
+## 1.0.8
+
+### Patch Changes
+
+- fix encoding of rest and graphql
+- Updated dependencies
+  - @mondrian-framework/rest@1.0.10
+
 ## 1.0.7
 
 ### Patch Changes

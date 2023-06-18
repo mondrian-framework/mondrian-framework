@@ -1,5 +1,11 @@
 # @mondrian-framework/graphql
 
+## 1.0.10
+
+### Patch Changes
+
+- fix encoding of rest and graphql
+
 ## 1.0.9
 
 ### Patch Changes

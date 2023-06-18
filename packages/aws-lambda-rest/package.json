@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/aws-lambda-rest",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -12,12 +12,14 @@
   },
   "keywords": [],
   "dependencies": {
-    "@mondrian-framework/model": "*",
-    "@mondrian-framework/module": "*",
-    "@mondrian-framework/utils": "*",
-    "@mondrian-framework/rest": "*",
     "aws-lambda": "1.0.7",
     "@types/aws-lambda": "8.10.115",
     "lambda-api": "1.0.2"
+  },
+  "peerDependencies": {
+    "@mondrian-framework/model": "1.0.5",
+    "@mondrian-framework/module": "1.0.5",
+    "@mondrian-framework/utils": "1.0.5",
+    "@mondrian-framework/rest": "1.0.10"
   }
 }

@@ -1,5 +1,13 @@
 # @mondrian-framework/graphql-yoga
 
+## 1.0.10
+
+### Patch Changes
+
+- fix encoding of rest and graphql
+- Updated dependencies
+  - @mondrian-framework/graphql@1.0.10
+
 ## 1.0.9
 
 ### Patch Changes

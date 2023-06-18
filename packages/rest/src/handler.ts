@@ -6,6 +6,7 @@ import {
   decode,
   decodeAndValidate,
   encode,
+  getProjectedType,
   getProjectionType,
   getRequiredProjection,
   mergeProjections,
@@ -96,7 +97,8 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
         operationId,
         log,
       })
-      const encoded = encode(outputType, result)
+      const projectedType = getProjectedType(outputType, finalProjection as GenericProjection)
+      const encoded = encode(projectedType, result)
       log('Completed.')
       return { status: 200, body: encoded, headers }
     } catch (e) {

@@ -35,10 +35,8 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
 }) => Promise<{ status: number; body: unknown; headers?: Record<string, string | string[]> }> {
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
-  const outputType = module.types[functionBody.output]
-  const inputType = module.types[functionBody.input]
   const inputExtractor = getInputExtractor({ functionBody, module, specification })
-  const projectionType = getProjectionType(outputType)
+  const projectionType = getProjectionType(functionBody.output)
 
   return async ({ request, serverContext }) => {
     const startDate = new Date()
@@ -64,10 +62,11 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
     const projectionHeader = request.headers['projection']
     const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
     const decoded = specification.openapi
-      ? decodeAndValidate(inputType, input, { cast: true })
+      ? decodeAndValidate(functionBody.input, input, { cast: true })
       : Result.firstOf2(
-          () => decodeAndValidate(inputType, input, { cast: true }),
-          () => decodeAndValidate(inputType, request.query[specification.inputName ?? 'input'], { cast: true }),
+          () => decodeAndValidate(functionBody.input, input, { cast: true }),
+          () =>
+            decodeAndValidate(functionBody.input, request.query[specification.inputName ?? 'input'], { cast: true }),
         )
     if (!decoded.success) {
       log('Bad request.')
@@ -80,7 +79,7 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
       return { status: 400, body: { errors: projection.errors, message: "On 'projection' header" }, headers }
     }
     const requiredProction =
-      projection != null ? getRequiredProjection(outputType, projection.value as GenericProjection) : undefined
+      projection != null ? getRequiredProjection(functionBody.output, projection.value as GenericProjection) : undefined
     const finalProjection =
       projection != null && requiredProction != null
         ? mergeProjections(projection.value as GenericProjection, requiredProction)
@@ -97,7 +96,7 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
         operationId,
         log,
       })
-      const projectedType = getProjectedType(outputType, finalProjection as GenericProjection)
+      const projectedType = getProjectedType(functionBody.output, finalProjection as GenericProjection)
       const encoded = encode(projectedType, result)
       log('Completed.')
       return { status: 200, body: encoded, headers }

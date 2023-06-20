@@ -1,7 +1,6 @@
 import { attachRestMethods } from './methods'
 import { ServerContext } from './utils'
 import { fastifyStatic } from '@fastify/static'
-import { Types } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'
 import { ErrorHandler, RestApi, generateOpenapiDocument, getMaxVersion } from '@mondrian-framework/rest'
 import { FastifyInstance } from 'fastify'
@@ -9,14 +8,14 @@ import fs from 'fs'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
-export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
+export function serve<const F extends Functions, CI>({
   module,
   api,
   server,
   context,
   error,
 }: {
-  module: Module<T, F, CI>
+  module: Module<F, CI>
   api: RestApi<F>
   server: FastifyInstance
   context: (serverContext: ServerContext) => Promise<CI>

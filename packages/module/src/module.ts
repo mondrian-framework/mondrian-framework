@@ -4,15 +4,16 @@ import {
   Infer,
   InferProjection,
   InferReturn,
-  Types,
+  LazyType,
   getProjectedType,
+  lazyToType,
   projectionDepth,
   validate,
 } from '@mondrian-framework/model'
 
-export type Function<T extends Types, I extends keyof T, O extends keyof T, Context> = Infer<T[I]> extends infer Input
-  ? InferReturn<T[O]> extends infer Output
-    ? InferProjection<T[O]> extends infer Projection
+export type Function<I extends LazyType, O extends LazyType, Context> = Infer<I> extends infer Input
+  ? InferReturn<O> extends infer Output
+    ? InferProjection<O> extends infer Projection
       ? {
           input: I
           output: O
@@ -28,29 +29,35 @@ export type Function<T extends Types, I extends keyof T, O extends keyof T, Cont
       : never
     : never
   : never
-export type GenericFunction<TypesName extends string = string> = {
-  input: TypesName
-  output: TypesName
+export type GenericFunction = {
+  input: LazyType
+  output: LazyType
   namespace?: string
   apply: (args: { input: any; projection: any; context: any; operationId: string; log: Logger }) => Promise<unknown>
   opts?: { description?: string }
 }
 
-export type Functions<Types extends string = string> = Record<string, GenericFunction<Types>>
+export type Functions = Record<string, GenericFunction>
 
-export function functionBuilder<const T extends Types, Context>(args?: {
+export function functionBuilder<const Context>(args?: {
   namespace?: string
-}): <const I extends keyof T, const O extends keyof T>(
-  f: Function<T, I, O, Context>,
+}): <const I extends LazyType, const O extends LazyType>(
+  f: Function<I, O, Context>,
   opts?: { description?: string },
-) => Function<T, I, O, Context> & { opts?: { description?: string } } {
-  function builder<const I extends keyof T, const O extends keyof T>(
-    f: Function<T, I, O, Context>,
+) => Function<I, O, Context> & { opts?: { description?: string } } {
+  function builder<const I extends LazyType, const O extends LazyType>(
+    f: Function<I, O, Context>,
     opts?: { description?: string },
-  ): Function<T, I, O, Context> & { opts?: { description?: string } } {
+  ): Function<I, O, Context> & { opts?: { description?: string } } {
     return { ...f, opts, namespace: f.namespace ?? args?.namespace }
   }
   return builder
+}
+
+export function func<const I extends LazyType, const O extends LazyType, const Context>(
+  f: Function<I, O, Context>,
+): Function<I, O, Context> {
+  return f
 }
 
 export function functions<const F extends Functions>(functions: F): F {
@@ -73,7 +80,6 @@ export type ContextType<F extends Functions> = {
 export type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 export type GenericModule = {
   name: string
-  types: Types
   version: string
   functions: {
     definitions: Record<string, GenericFunction>
@@ -84,10 +90,9 @@ export type GenericModule = {
   options?: ModuleOptions
 }
 
-export type Module<T extends Types, F extends Functions<keyof T extends string ? keyof T : string>, CI> = {
+export type Module<F extends Functions, CI> = {
   name: string
   version: string
-  types: T
   functions: {
     definitions: F
     options?: { [K in keyof F]?: { authentication?: AuthenticationMethod | 'NONE' } }
@@ -104,14 +109,54 @@ export type ModuleOptions = {
   }
 }
 
-export function module<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>(
-  module: Module<T, F, CI>,
-): Module<T, F, CI> {
+function gatherTypes(types: LazyType[], explored?: Set<LazyType>): LazyType[] {
+  explored = explored ?? new Set<LazyType>()
+  for (const type of types) {
+    if (explored.has(type)) {
+      continue
+    }
+    explored.add(type)
+    const t = lazyToType(type)
+    if (
+      t.kind === 'array-decorator' ||
+      t.kind === 'default-decorator' ||
+      t.kind === 'nullable-decorator' ||
+      t.kind === 'optional-decorator' ||
+      t.kind === 'relation-decorator'
+    ) {
+      gatherTypes([t.type], explored)
+    } else if (t.kind === 'object') {
+      gatherTypes(Object.values(t.type), explored)
+    } else if (t.kind === 'union-operator') {
+      gatherTypes(Object.values(t.types), explored)
+    }
+  }
+  return [...explored.values()]
+}
+function gatherNames(types: LazyType[]): string[] {
+  const names: string[] = []
+  for (const type of types) {
+    const t = lazyToType(type)
+    if (t.opts?.name) {
+      names.push(t.opts.name)
+    }
+  }
+  return names
+}
+
+export function module<const F extends Functions, CI>(module: Module<F, CI>): Module<F, CI> {
+  //check for double type names
+  const allTypes = gatherTypes(Object.values(module.functions.definitions).flatMap((f) => [f.input, f.output]))
+  const allNames = gatherNames(allTypes)
+  for (let i = 0; i < allNames.length; i++) {
+    if (allNames.indexOf(allNames[i]) !== i) {
+      throw new Error(`Duplicated type name "${allNames[i]}"`)
+    }
+  }
   const outputTypeCheck = module.options?.checks?.output ?? 'throw'
   const maxProjectionDepth = module.options?.checks?.maxProjectionDepth ?? null
   const functions = Object.fromEntries(
     Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
-      const outputType = module.types[functionBody.output]
       const f: GenericFunction = {
         ...functionBody,
         async apply(args) {
@@ -127,7 +172,7 @@ export function module<const T extends Types, const F extends Functions<keyof T 
 
           //OUTPUT CHECK
           if (outputTypeCheck !== 'ignore') {
-            const projectedType = getProjectedType(outputType, args.projection as GenericProjection)
+            const projectedType = getProjectedType(functionBody.output, args.projection as GenericProjection)
             const isCheck = validate(projectedType, result, { strict: false })
             if (!isCheck.success) {
               const m = JSON.stringify({ projection: args.projection, errors: isCheck.errors })

@@ -3,10 +3,10 @@ import { encodeQueryObject } from './utils'
 import { Infer, InferProjection, LazyType, Project, Types, decodeAndValidate, encode } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'
 
-type SDK<T extends Types, F extends Functions<keyof T extends string ? keyof T : never>, API extends RestApi<F>> = {
-  [K in keyof F & keyof API['functions']]: Infer<T[F[K]['input']]> extends infer Input
-    ? InferProjection<T[F[K]['output']]> extends infer Projection
-      ? SdkResolver<Input, Projection, T[F[K]['output']]>
+type SDK<F extends Functions, API extends RestApi<F>> = {
+  [K in keyof F & keyof API['functions']]: Infer<F[K]['input']> extends infer Input
+    ? InferProjection<F[K]['output']> extends infer Projection
+      ? SdkResolver<Input, Projection, F[K]['output']>
       : never
     : never
 }
@@ -17,21 +17,17 @@ type SdkResolver<Input, Projection, OutputType extends LazyType> = <const F exte
   projection?: F
 }) => Promise<Project<F, OutputType>>
 
-export function createRestSdk<
-  const T extends Types,
-  const F extends Functions<keyof T extends string ? keyof T : never>,
-  const API extends RestApi<F>,
->({
+export function createRestSdk<const F extends Functions, const API extends RestApi<F>>({
   module,
   defaultHeaders,
   api,
   endpoint,
 }: {
-  module: Module<T, F, any>
+  module: Module<F, any>
   api: API
   defaultHeaders?: Record<string, string>
   endpoint: string
-}): SDK<T, F, API> {
+}): SDK<F, API> {
   const functions = Object.fromEntries(
     Object.entries(module.functions.definitions).flatMap(([functionName, functionBody]) => {
       const specs = api.functions[functionName]
@@ -41,7 +37,7 @@ export function createRestSdk<
       }
       const resolver = async ({ input, projection, headers }: { input: any; headers?: any; projection: any }) => {
         const url = `${endpoint}/api${specification.path ?? `/${functionName}`}`
-        const encodedInput = encode(module.types[functionBody.input], input)
+        const encodedInput = encode(functionBody.input, input)
         const realUrl =
           specification.method === 'get' || specification.method === 'delete'
             ? `${url}?${encodeQueryObject(encodedInput, specification.inputName ?? 'input')}`
@@ -58,7 +54,7 @@ export function createRestSdk<
         const operationId = response.headers.get('operation-id')
         if (response.status === 200) {
           const json = await response.json()
-          const result = decodeAndValidate(module.types[functionBody.output], json)
+          const result = decodeAndValidate(functionBody.output, json)
           if (!result.success) {
             throw new Error(JSON.stringify(result.errors))
           }
@@ -71,5 +67,5 @@ export function createRestSdk<
     }),
   )
 
-  return functions as SDK<T, F, API>
+  return functions as SDK<F, API>
 }

@@ -1,26 +1,20 @@
 import { attachRestMethods } from './methods'
 import { ServerContext } from './utils'
-import { Types, decodeAndValidate } from '@mondrian-framework/model'
-import { Functions, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { Functions, Module } from '@mondrian-framework/module'
 import { ErrorHandler, RestApi, generateOpenapiDocument, getMaxVersion } from '@mondrian-framework/rest'
-import { isArray } from '@mondrian-framework/utils'
-import { Context, APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from 'aws-lambda'
+import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import fs from 'fs'
 import lambdaApi, { Request, Response } from 'lambda-api'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
-export function handler<
-  const T extends Types,
-  const F extends Functions<keyof T extends string ? keyof T : string>,
-  CI,
->({
+export function handler<const F extends Functions, CI>({
   module,
   api,
   context,
   error,
 }: {
-  module: Module<T, F, CI>
+  module: Module<F, CI>
   api: RestApi<F>
   context: (serverContext: ServerContext) => Promise<CI>
   error?: ErrorHandler<F, ServerContext>

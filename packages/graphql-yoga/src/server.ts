@@ -1,5 +1,4 @@
 import { ErrorHandler, GraphqlApi, generateGraphqlSchema } from '@mondrian-framework/graphql'
-import { Types } from '@mondrian-framework/model'
 import { Functions, Module } from '@mondrian-framework/module'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { GraphQLResolveInfo } from 'graphql'
@@ -8,14 +7,14 @@ import { createYoga, Plugin } from 'graphql-yoga'
 
 type ServerContext = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
-export function serve<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
+export function serve<const F extends Functions, CI>({
   module,
   server,
   api,
   context,
   error,
 }: {
-  module: Module<T, F, CI>
+  module: Module<F, CI>
   api: GraphqlApi<F>
   server: FastifyInstance
   context: (serve: ServerContext, info: GraphQLResolveInfo) => Promise<CI>

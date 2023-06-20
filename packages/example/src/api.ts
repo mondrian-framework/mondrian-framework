@@ -1,6 +1,5 @@
 import { Functions } from './functions'
 import { module } from './module'
-import { Types } from './types'
 import { CronApi } from '@mondrian-framework/cron'
 import { GraphqlApi } from '@mondrian-framework/graphql'
 import { RestApi } from '@mondrian-framework/rest'
@@ -21,7 +20,6 @@ export const REST_API: RestApi<Functions> = {
     login: { method: 'get', path: '/login/{email}' },
     publish: { method: 'get', version: { min: 2 }, path: '/publish/{title}' },
     myPosts: { method: 'post', path: '/posts' },
-    test: { method: 'post', path: '/test/{tenantId}' },
   },
   options: { introspection: true },
 }
@@ -47,4 +45,4 @@ export const CRON_API = {
       runAtStart: false,
     },
   },
-} satisfies CronApi<Types, Functions>
+} satisfies CronApi<Functions>

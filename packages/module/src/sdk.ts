@@ -1,11 +1,11 @@
 import { ContextType, Functions, Module } from './module'
 import { buildLogger, randomOperationId } from './utils'
-import { Infer, InferProjection, LazyType, Project, Types } from '@mondrian-framework/model'
+import { Infer, InferProjection, LazyType, Project } from '@mondrian-framework/model'
 
-type SDK<T extends Types, F extends Functions<keyof T extends string ? keyof T : never>> = {
-  [K in keyof F]: Infer<T[F[K]['input']]> extends infer Input
-    ? InferProjection<T[F[K]['output']]> extends infer Projection
-      ? SdkResolver<Input, Projection, T[F[K]['output']]>
+type SDK<F extends Functions> = {
+  [K in keyof F]: Infer<F[K]['input']> extends infer Input
+    ? InferProjection<F[K]['output']> extends infer Projection
+      ? SdkResolver<Input, Projection, F[K]['output']>
       : never
     : never
 }
@@ -15,11 +15,13 @@ type SdkResolver<Input, Projection, OutputType extends LazyType> = <const P exte
   projection?: P
 }) => Promise<Project<P, OutputType>>
 
-export function createLocalSdk<
-  const T extends Types,
-  const F extends Functions<keyof T extends string ? keyof T : never>,
-  CI,
->({ module, context }: { module: Module<T, F, CI>; context: () => Promise<ContextType<F>> }): SDK<T, F> {
+export function createLocalSdk<const F extends Functions, CI>({
+  module,
+  context,
+}: {
+  module: Module<F, CI>
+  context: () => Promise<ContextType<F>>
+}): SDK<F> {
   const functions = Object.fromEntries(
     Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
       const wrapper = async ({ input, projection }: { input: any; projection: any }) => {
@@ -38,5 +40,5 @@ export function createLocalSdk<
     }),
   )
 
-  return functions as SDK<T, F>
+  return functions as SDK<F>
 }

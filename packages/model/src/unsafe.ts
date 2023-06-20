@@ -10,17 +10,24 @@ import {
   DefaultDecorator,
   NullableDecorator,
   ArrayDecorator,
+  named,
+  LazyType,
+  AnyType,
 } from './type-system'
+import { lazyToType } from './utils'
 
 /**
  * Type unsafe class for making a lazy type seems like a type.
  * It's used on operator that is not supported first-class as example 'merge' and 'select'
  */
-export class LazyTypeWrapper<T extends Type> implements Type, DecoratorShorcuts<T> {
+export class LazyTypeWrapper<T extends LazyType> implements Type, DecoratorShorcuts<T> {
   public get kind(): any {
     return this.getType().kind
   }
   public get opts(): any {
+    if (this.optsOverrides) {
+      return { ...this.getType().opts, ...this.optsOverrides }
+    }
     return this.getType().opts
   }
   public get values(): any {
@@ -32,11 +39,13 @@ export class LazyTypeWrapper<T extends Type> implements Type, DecoratorShorcuts<
   public get types(): any {
     return this.getType().values
   }
-  private cachedType: T | null
-  private getter: () => T
-  constructor(getter: () => T) {
+  private cachedType: AnyType | null
+  private getter: T
+  private optsOverrides?: Record<string, unknown>
+  constructor(getter: T, opts?: Record<string, unknown>) {
     this.getter = getter
     this.cachedType = null
+    this.optsOverrides = opts
   }
 
   public optional(): OptionalDecorator<T> & DecoratorShorcuts<OptionalDecorator<T>, 'optional' | 'default'> {
@@ -55,10 +64,13 @@ export class LazyTypeWrapper<T extends Type> implements Type, DecoratorShorcuts<
   ): ArrayDecorator<T> & DecoratorShorcuts<ArrayDecorator<T>, never> {
     return array(this, opts) as any
   }
+  public named(name: string): T & DecoratorShorcuts<T, 'named'> {
+    return named(this, name) as any
+  }
 
   private getType(): any {
     if (this.cachedType === null) {
-      this.cachedType = this.getter()
+      this.cachedType = lazyToType(this.getter)
     }
     return this.cachedType
   }

@@ -1,7 +1,12 @@
 import { Functions, Logger } from '@mondrian-framework/module'
-import { GraphQLError, GraphQLErrorOptions } from 'graphql'
+import { GraphQLErrorOptions } from 'graphql'
 
-export type GraphqlFunctionSpecs = { type: 'query' | 'mutation'; name?: string; inputName?: string; namespace?: string | null }
+export type GraphqlFunctionSpecs = {
+  type: 'query' | 'mutation'
+  name?: string
+  inputName?: string
+  namespace?: string | null
+}
 
 export type GraphqlApi<F extends Functions> = {
   functions: {

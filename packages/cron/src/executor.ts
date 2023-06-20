@@ -1,4 +1,4 @@
-import { Infer, Types } from '@mondrian-framework/model'
+import { Infer } from '@mondrian-framework/model'
 import { Functions, Logger, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { ScheduledTask } from 'node-cron'
 import { schedule, validate } from 'node-cron'
@@ -8,19 +8,19 @@ export type CronFunctionSpecs<Input> = ([Input] extends [void] ? {} : { input: (
   runAtStart?: boolean
   timezone?: string
 }
-export type CronApi<T extends Types, F extends Functions> = {
+export type CronApi<F extends Functions> = {
   functions: {
-    [K in keyof F]?: CronFunctionSpecs<Infer<T[F[K]['input']]>>
+    [K in keyof F]?: CronFunctionSpecs<Infer<F[K]['input']>>
   }
 }
 
-export function start<const T extends Types, const F extends Functions<keyof T extends string ? keyof T : string>, CI>({
+export function start<const F extends Functions, CI>({
   module,
   api,
   context,
 }: {
-  module: Module<T, F, CI>
-  api: CronApi<T, F>
+  module: Module<F, CI>
+  api: CronApi<F>
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const scheduledTasks: { task: ScheduledTask; logger: () => Logger }[] = []

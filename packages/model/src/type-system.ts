@@ -1,9 +1,8 @@
 import { DecodeOptions } from './decoder'
 import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
 import { GenericProjection } from './projection'
-import { Failure, Result } from './result'
+import { Result } from './result'
 import { LazyTypeWrapper } from './unsafe'
-import { lazyToType } from './utils'
 import { Expand } from '@mondrian-framework/utils'
 
 export interface Type {}
@@ -18,6 +17,7 @@ export interface StringType extends Type {
     regex?: RegExp
     minLength?: number
     description?: string
+    name?: string
   }
 }
 export interface NumberType extends Type {
@@ -29,48 +29,52 @@ export interface NumberType extends Type {
     maximum?: number
     multipleOf?: number
     description?: string
+    name?: string
   }
 }
 export interface BooleanType extends Type {
   kind: 'boolean'
-  opts?: { description?: string }
+  opts?: { description?: string; name?: string }
 }
 export interface EnumType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]> extends Type {
   kind: 'enum'
   values: V
-  opts?: { description?: string }
+  opts?: { description?: string; name?: string }
 }
 export interface LiteralType<T extends number | string | boolean | null = null> extends Type {
   kind: 'literal'
   value: T
-  opts?: { description?: string }
+  opts?: { description?: string; name?: string }
 }
 export interface ObjectType<TS extends Types = Types> extends Type {
   kind: 'object'
   type: TS
-  opts?: { description?: string }
+  opts?: { description?: string; name?: string }
 }
 export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   kind: 'array-decorator'
   type: T
-  opts?: { maxItems?: number }
+  opts?: { maxItems?: number; description?: string; name?: string }
 }
 export interface OptionalDecorator<T extends LazyType = Type> extends Type {
   kind: 'optional-decorator'
   type: T
+  opts?: { description?: string; name?: string }
 }
 export interface NullableDecorator<T extends LazyType = Type> extends Type {
   kind: 'nullable-decorator'
   type: T
+  opts?: { description?: string; name?: string }
 }
 export interface DefaultDecorator<T extends LazyType = Type> extends Type {
   kind: 'default-decorator'
   type: T
-  opts: { default?: Infer<T> | (() => Infer<T>) }
+  opts: { default?: Infer<T> | (() => Infer<T>); description?: string; name?: string }
 }
 export interface RelationDecorator<T extends LazyType = Type> extends Type {
   kind: 'relation-decorator'
   type: T
+  opts?: { description?: string; name?: string }
 }
 export interface UnionOperator<
   TS extends Types = Types,
@@ -84,6 +88,7 @@ export interface UnionOperator<
     }
     requiredProjection?: P
     description?: string
+    name?: string
   }
 }
 
@@ -102,7 +107,7 @@ export type AnyType =
   | RelationDecorator
   | UnionOperator
 
-export type CustomTypeOpts = { description?: string }
+export type CustomTypeOpts = { description?: string; name?: string }
 
 export type CustomType<
   T = any,
@@ -120,10 +125,6 @@ export interface RootCustomType<T = any, E extends LazyType = Type, O = any> ext
   encode: (input: T, options: O | undefined) => Infer<E>
   validate: (input: unknown, options: O | undefined) => Result<T>
   opts?: O & CustomTypeOpts
-}
-
-export function types<const TS extends Types>(types: TS): TS {
-  return types
 }
 
 export function number(opts?: NumberType['opts']): NumberType & DecoratorShorcuts<NumberType> {
@@ -156,7 +157,7 @@ export function literal<const T extends number | string | boolean | null>(
   value: T,
   opts?: LiteralType['opts'],
 ): LiteralType<T> & DecoratorShorcuts<LiteralType<T>> {
-  const t = { kind: 'literal', value, opts } as LiteralType<T>
+  const t: LiteralType<T> = { kind: 'literal', value, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
 export function union<
@@ -175,7 +176,7 @@ export function enumeration<const V extends readonly [string, ...string[]]>(
   values: V,
   opts?: EnumType<V>['opts'],
 ): EnumType<V> & DecoratorShorcuts<EnumType<V>> {
-  const t = { kind: 'enum', values, opts } as EnumType<V>
+  const t: EnumType<V> = { kind: 'enum', values, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
 
@@ -183,7 +184,7 @@ export function object<T extends Types>(
   type: T,
   opts?: ObjectType['opts'],
 ): ObjectType<T> & DecoratorShorcuts<ObjectType<T>> {
-  const t = { kind: 'object', type, opts } as ObjectType<T>
+  const t: ObjectType<T> = { kind: 'object', type, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
 
@@ -191,33 +192,42 @@ export function array<const T extends LazyType>(
   type: T,
   opts?: ArrayDecorator['opts'],
 ): ArrayDecorator<T> & DecoratorShorcuts<ArrayDecorator<T>> {
-  const t = { kind: 'array-decorator', type, opts } as ArrayDecorator<T>
+  const t: ArrayDecorator<T> = { kind: 'array-decorator', type, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
 
 export function optional<const T extends LazyType>(
   type: T,
+  opts?: OptionalDecorator['opts'],
 ): OptionalDecorator<T> & DecoratorShorcuts<OptionalDecorator<T>, 'optional'> {
-  const t = { kind: 'optional-decorator', type } as OptionalDecorator<T>
+  const t: OptionalDecorator<T> = { kind: 'optional-decorator', type, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
+
 export function nullable<const T extends LazyType>(
   type: T,
+  opts?: NullableDecorator['opts'],
 ): NullableDecorator<T> & DecoratorShorcuts<NullableDecorator<T>, 'nullable'> {
-  const t = { kind: 'nullable-decorator', type } as NullableDecorator<T>
+  const t: NullableDecorator<T> = { kind: 'nullable-decorator', type, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
 
 export function defaultType<const T extends LazyType>(
   type: T,
   value: Infer<T> | (() => Infer<T>),
+  opts?: Omit<DefaultDecorator['opts'], 'default'>,
 ): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, 'default'> {
-  const t = { kind: 'default-decorator', type, opts: { default: value } } as DefaultDecorator<T>
+  const t: DefaultDecorator<T> = { kind: 'default-decorator', type, opts: { ...opts, default: value } }
   return { ...t, ...decoratorShorcuts(t) }
 }
 
 export function relation<const T extends LazyType>(type: T): RelationDecorator<T> {
-  return { kind: 'relation-decorator', type } as RelationDecorator<T>
+  const t: RelationDecorator<T> = { kind: 'relation-decorator', type }
+  return t
+}
+
+export function named<const T extends LazyType>(type: T, name: string): T & DecoratorShorcuts<T, 'named'> {
+  return new LazyTypeWrapper(type, { name }) as unknown as T & DecoratorShorcuts<T, 'named'>
 }
 
 export function custom<

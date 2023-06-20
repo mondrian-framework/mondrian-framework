@@ -1,4 +1,4 @@
-import { Types, decodeAndValidate } from '@mondrian-framework/model'
+import { decodeAndValidate } from '@mondrian-framework/model'
 import { Functions, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
@@ -17,16 +17,12 @@ export type SqsApi<F extends Functions> = {
     [K in keyof F]?: SqsFunctionSpecs | readonly SqsFunctionSpecs[]
   }
 }
-export function handler<
-  const T extends Types,
-  const F extends Functions<keyof T extends string ? keyof T : string>,
-  CI,
->({
+export function handler<const F extends Functions, CI>({
   module,
   api,
   context,
 }: {
-  module: Module<T, F, CI>
+  module: Module<F, CI>
   api: SqsApi<F>
   context: (args: { event: SQSEvent; context: Context; recordIndex: number }) => Promise<CI>
 }): SQSHandler {
@@ -55,7 +51,6 @@ export function handler<
         continue
       }
       const functionBody = module.functions.definitions[functionName]
-      const inputType = module.types[functionBody.input]
       spec = specification
       const operationId = randomOperationId()
       const log = buildLogger(module.name, operationId, url, functionName, 'LAMBDA-SQS', new Date())
@@ -75,7 +70,7 @@ export function handler<
           }
           batchItemFailures.push({ itemIdentifier: m.messageId })
         }
-        const decoded = decodeAndValidate(inputType, body, { inputUnion: true })
+        const decoded = decodeAndValidate(functionBody.input, body, { inputUnion: true })
         if (!decoded.success) {
           log(`Bad message: ${JSON.stringify(decoded.errors)}`)
           if (specification.malformedMessagePolicy === 'delete') {

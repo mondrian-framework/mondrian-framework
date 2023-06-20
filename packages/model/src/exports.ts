@@ -16,7 +16,7 @@ export {
   defaultType as default,
   literal,
   array,
-  types,
+  named,
   Infer,
   InferProjection,
   InferReturn,

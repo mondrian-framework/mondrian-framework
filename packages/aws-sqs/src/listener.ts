@@ -1,5 +1,5 @@
 import * as AWS from '@aws-sdk/client-sqs'
-import { Types, decodeAndValidate } from '@mondrian-framework/model'
+import { decodeAndValidate } from '@mondrian-framework/model'
 import { Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
@@ -13,16 +13,12 @@ export type SqsApi<F extends Functions> = {
   }
 }
 
-export function listen<
-  const T extends Types,
-  const F extends Functions<keyof T extends string ? keyof T : string>,
-  CI,
->({
+export function listen<const F extends Functions, CI>({
   module,
   api,
   context,
 }: {
-  module: Module<T, F, CI>
+  module: Module<F, CI>
   api: SqsApi<F>
   context: (args: { message: AWS.Message }) => Promise<CI>
 }): { close: () => Promise<void> } {
@@ -74,7 +70,6 @@ async function listenForMessage({
   specifications: SqsFunctionSpecs
 }) {
   const functionBody = module.functions.definitions[functionName]
-  const inputType = module.types[functionBody.input]
   const listenerLog = buildLogger(module.name, null, queueUrl, functionName, 'SQS', new Date())
   listenerLog('Started.')
   while (alive.yes) {
@@ -96,7 +91,7 @@ async function listenForMessage({
         log(`Bad message: not a valid json ${m.Body}`)
         continue
       }
-      const decoded = decodeAndValidate(inputType, body, { inputUnion: true })
+      const decoded = decodeAndValidate(functionBody.input, body, { inputUnion: true })
       if (!decoded.success) {
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })

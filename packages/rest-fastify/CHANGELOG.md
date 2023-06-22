@@ -1,5 +1,16 @@
 # @mondrian-framework/rest-fastify
 
+## 1.0.11
+
+### Patch Changes
+
+- Name system rework
+- Updated dependencies
+  - @mondrian-framework/module@1.0.6
+  - @mondrian-framework/model@1.0.6
+  - @mondrian-framework/utils@1.0.6
+  - @mondrian-framework/rest@1.0.11
+
 ## 1.0.10
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @mondrian-framework/aws-lambda-sqs
 
+## 1.0.6
+
+### Patch Changes
+
+- Name system rework
+- Updated dependencies
+  - @mondrian-framework/module@1.0.6
+  - @mondrian-framework/model@1.0.6
+  - @mondrian-framework/utils@1.0.6
+
 ## 1.0.5
 
 ### Patch Changes

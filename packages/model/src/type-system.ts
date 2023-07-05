@@ -4,7 +4,7 @@ import { GenericProjection } from './projection'
 import { Result } from './result'
 import { LazyTypeWrapper } from './unsafe'
 import { Expand } from '@mondrian-framework/utils'
-
+ 
 export interface Type {}
 export type LazyType = Type | (() => Type)
 

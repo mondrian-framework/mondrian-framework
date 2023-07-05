@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/graphql-yoga",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -19,6 +19,6 @@
     "@mondrian-framework/model": "^1.0.6",
     "@mondrian-framework/module": "^1.0.6",
     "@mondrian-framework/utils": "^1.0.6",
-    "@mondrian-framework/graphql": "^1.0.11"
+    "@mondrian-framework/graphql": "^1.0.12"
   }
 }

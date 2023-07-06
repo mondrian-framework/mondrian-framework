@@ -137,7 +137,7 @@ export interface NumberType extends Type {
  * The model of a `boolean` in the mondrian framework.
  * It can hold additional information in its optional `opts` field:
  * - `description?`: a description for the role of the boolean
- * - `name?`: TODO
+ * - `name?`: a name for the boolean
  *
  * ## Examples
  *
@@ -146,14 +146,12 @@ export interface NumberType extends Type {
  *
  * ```ts
  * type AdminFlag = Infer<typeof adminFlag>
- * const adminFlag : BooleanType = {
- *   kind: "boolean",
- *   opts: {
- *     description: "a flag that is True if the user is also an admin"
- *   }
- * }
+ * const adminFlag: BooleanType = boolean({
+ *   name: "isAdmin",
+ *   description: "a flag that is True if the user is also an admin",
+ * })
  *
- * const exampleAdminFlag: AdminFlag = True
+ * const exampleAdminFlag: AdminFlag = true
  * ```
  *
  */

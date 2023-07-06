@@ -60,24 +60,23 @@ export type Types = Record<string, LazyType>
  * - `regex?`: a regex used to determine if the string is valid or not
  * - `minLength?`: the minimum length of the string
  * - `description?`: a description to explain the role of the string
- * - `name?`: TODO
+ * - `name?`: a name for the string
  *
  * ## Example
  *
  * Imagine you have to deal with string usernames that can never be empty. A
- * model for such username could look like this:
+ * model for such username could be defined as a `StringType` using the `string`
+ * utility function and passing it the needed options:
  *
  * ```ts
  * type Username = Infer<typeof username>
- * const username : StringType = {
- *   kind: "string",
- *   opts: {
- *     minLength: 1,
- *     description: "a username that is never empty"
- *   }
- * }
+ * const username : StringType = string({
+ *   name: "username",
+ *   description: "a username that is never empty",
+ *   minLength: 1,
+ * })
  *
- * const exampleUsername: username = "my_cool_username"
+ * const exampleUsername: Username = "my_cool_username"
  * ```
  *
  */

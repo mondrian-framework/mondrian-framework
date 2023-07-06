@@ -7,21 +7,21 @@ import { Expand } from '@mondrian-framework/utils'
 
 /**
  * A type that can be defined with the Mondrian framework.
- * 
+ *
  * To learn more you can read about [the Mondrian model.](https://twinlogix.github.io/mondrian-framework/docs/docs/model)
- * 
+ *
  * ## Examples
- * 
+ *
  * The library function `integer()` can be used to define the model for an
  * integer type:
- * 
+ *
  * ```ts
  * const intType : Type = integer()
  * ```
- * 
+ *
  * The library function `string()` can be used to define the model for a string
  * type:
- * 
+ *
  * ```ts
  * const intType : Type = string()
  * ```
@@ -31,13 +31,13 @@ export interface Type {}
 /**
  * A type defined lazily as a function returning a `Type`. This can be used
  * to define recursive or mutually-recursive types.
- * 
+ *
  * To learn more you can read about [recursive types.](https://twinlogix.github.io/mondrian-framework/docs/docs/model/definition#recursion)
- * 
+ *
  * ## Examples
- * 
+ *
  * One can define the model of a list of integers recursively:
- * 
+ *
  * ```ts
  * type IntegerList = Infer<typeof integerList>
  * const integerList = () => object({
@@ -45,11 +45,11 @@ export interface Type {}
  *   tail: union({ empty: literal("empty"), list: integerList })
  * })
  * ```
- * 
+ *
  * Here, `integerList` is defined in terms of itself: its tail can either be
  * an the `"empty"` literal or another list. A value of that type would look
  * like this:
- * 
+ *
  * ```ts
  * const list : IntegerList = {
  *   head: 1,
@@ -76,12 +76,12 @@ export type Types = Record<string, LazyType>
  * - `minLength?`: the minimum length of the string
  * - `description?`: a description to explain the role of the string
  * - `name?`: TODO
- * 
+ *
  * ## Example
- * 
+ *
  * Imagine you have to deal with string usernames that can never be empty. A
  * model for such username could look like this:
- * 
+ *
  * ```ts
  * type Username = Infer<typeof username>
  * const username : StringType = {
@@ -89,12 +89,12 @@ export type Types = Record<string, LazyType>
  *   opts: {
  *     minLength: 1,
  *     description: "a username that is never empty"
- *   }  
+ *   }
  * }
- * 
+ *
  * const exampleUsername: username = "my_cool_username"
  * ```
- * 
+ *
  */
 export interface StringType extends Type {
   kind: 'string'
@@ -117,13 +117,13 @@ export interface StringType extends Type {
  * - `multipleOf?`: defines a number that it must be the multiple of
  * - `description?`: a description for the role of the number
  * - `name?`: TODO
- * 
+ *
  * ## Examples
- * 
+ *
  * Imagine you have to deal with the age of a users: it can be thought of as a
  * number that can never be lower than zero. A model for such a data type could
  * look like this:
- * 
+ *
  * ```ts
  * type Age = Infer<typeof age>
  * const age : Age = {
@@ -133,10 +133,10 @@ export interface StringType extends Type {
  *     description: "an age that is never negative"
  *   }
  * }
- * 
+ *
  * const exampleAge: Age = 24
  * ```
- * 
+ *
  */
 export interface NumberType extends Type {
   kind: 'number'
@@ -156,12 +156,12 @@ export interface NumberType extends Type {
  * It can hold additional information in its optional `opts` field:
  * - `description?`: a description for the role of the boolean
  * - `name?`: TODO
- * 
+ *
  * ## Examples
- * 
+ *
  * Imagine you have to keep track of a flag that is used to check wether a user
  * is an admin or not. The corresponding model could look like this:
- * 
+ *
  * ```ts
  * type AdminFlag = Infer<typeof adminFlag>
  * const adminFlag : BooleanType = {
@@ -170,10 +170,10 @@ export interface NumberType extends Type {
  *     description: "a flag that is True if the user is also an admin"
  *   }
  * }
- * 
+ *
  * const exampleAdminFlag: AdminFlag = True
  * ```
- * 
+ *
  */
 export interface BooleanType extends Type {
   kind: 'boolean'
@@ -186,19 +186,19 @@ export interface BooleanType extends Type {
 /**
  * The model of an enumeration in the Mondrian framework.
  * It is used to describe a set of string-based named constants.
- * 
+ *
  * ## Examples
- * 
+ *
  * Imagine you have to deal with two kind of users: admins and normal users,
  * their type can be modelled with an enum like this:
- * 
+ *
  * ```ts
  * type UserKind = Infer<typeof userKind>
  * const userKind = enumeration(["ADMIN", "NORMAL"])
- * 
+ *
  * const exampleUserKind : UserKind = "ADMIN"
  * ```
- * 
+ *
  */
 export interface EnumType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]> extends Type {
   kind: 'enum'

@@ -5,6 +5,7 @@ import { Result } from './result'
 import { LazyTypeWrapper } from './unsafe'
 import { Expand } from '@mondrian-framework/utils'
 
+
 /**
  * A type that can be defined with the Mondrian framework.
  *

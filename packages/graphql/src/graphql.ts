@@ -92,7 +92,7 @@ function typeToGqlTypeInternal(
   const isRequired = isOptional ? '' : '!'
   const type = lazyToType(t)
   let name: string | undefined = type.opts?.name ?? suggestedName
-  const description = 'opts' in type && type.opts && 'description' in type.opts ? type.opts.description : undefined
+  const description = type.opts && 'description' in type.opts ? type.opts.description : undefined
 
   if (type.kind === 'string') {
     return `String${isRequired}`

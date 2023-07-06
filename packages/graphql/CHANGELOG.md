@@ -1,5 +1,11 @@
 # @mondrian-framework/graphql
 
+## 1.0.12
+
+### Patch Changes
+
+- fix minor bug in graphql generation
+
 ## 1.0.11
 
 ### Patch Changes

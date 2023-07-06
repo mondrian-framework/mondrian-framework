@@ -105,4 +105,21 @@ describe('enumeration', () => {
       expect(testEnum.values).toEqual(strings)
     },
   )
+
+  describe('array', () => {
+    test('the array decorator can turn a type into an array of that type', () => {
+      type StringArray = m.Infer<typeof stringArray>
+      const stringArray = m.string().array({
+        name: 'a list of at most 3 strings',
+        maxItems: 3,
+      })
+      expectTypeOf<StringArray>().toEqualTypeOf<string[]>()
+    })
+
+    test('type inference works on nested arrays', () => {
+      type Grid = m.Infer<typeof grid>
+      const grid = m.number().array().array()
+      expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
+    })
+  })
 })

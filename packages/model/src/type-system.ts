@@ -56,6 +56,7 @@ export type Types = Record<string, LazyType>
 
 /**
  * The model of a `string` in the mondrian framework.
+ *
  * It can hold additional information in its optional `opts` field:
  * - `maxLength?`: the maximum length of the string
  * - `regex?`: a regex used to determine if the string is valid or not
@@ -94,6 +95,7 @@ export interface StringType extends Type {
 
 /**
  * The model of a `number` in the mondrian framework.
+ *
  * It can hold additional information in its optional `opts` field:
  * - `exclusiveMaximum?`: the upper limit (exclusive) of the number
  * - `exclusiveMinimum?`: the lower limit (exclusive) of the number
@@ -136,6 +138,7 @@ export interface NumberType extends Type {
 
 /**
  * The model of a `boolean` in the mondrian framework.
+ *
  * It can hold additional information in its optional `opts` field:
  * - `description?`: a description for the role of the boolean
  * - `name?`: a name for the boolean
@@ -166,6 +169,7 @@ export interface BooleanType extends Type {
 
 /**
  * The model of an enumeration in the Mondrian framework.
+ *
  * It is used to describe a set of string-based named constants.
  * It can hold additional information in its optional `opts` field:
  * - `name?`: a name for the enum
@@ -198,6 +202,7 @@ export interface EnumType<V extends readonly [string, ...string[]] = readonly [s
 
 /**
  * The model of a literal type in the Mondrian framework.
+ *
  * It can hold additional information in its optional `opts` field:
  * - `name?`: a name for the literal
  * - `description?`: a description for the role of the literal
@@ -230,6 +235,7 @@ export interface LiteralType<T extends number | string | boolean | null = null> 
 
 /**
  * The model of an object in the Mondrian framework.
+ *
  * It can contain many fields each one with an associated `Type`;
  * it can also hold additional information in its optional `opts` field:
  * - `name?`: a name for the object
@@ -275,6 +281,32 @@ export interface ObjectType<TS extends Types = Types> extends Type {
   }
 }
 
+/**
+ * The model of a sequence of elements in the Mondrian framework.
+ *
+ * This decorator can be used to turn a `Type` in the model of an array
+ * of elements of that type.
+ *
+ * It can also hold additional information in its optional `opts` field:
+ * - `name`: a name for the array
+ * - `description`: a description for the role of the array
+ * - `maxItems`: the maximum number of items the array can hold
+ *
+ * ## Example
+ *
+ * Any model can be turned into the corresponding array model using the
+ * `.array()` method:
+ *
+ * ```ts
+ * type StringArray = Infer<typeof stringArray>
+ * const stringArray = string().array({
+ *   name: "a list of at most 3 strings",
+ *   maxItems: 3,
+ * })
+ *
+ * const strings: StringArray = ["hello", " ", "world!"]
+ * ```
+ */
 export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   kind: 'array-decorator'
   type: T
@@ -284,6 +316,7 @@ export interface ArrayDecorator<T extends LazyType = Type> extends Type {
     maxItems?: number
   }
 }
+
 export interface OptionalDecorator<T extends LazyType = Type> extends Type {
   kind: 'optional-decorator'
   type: T

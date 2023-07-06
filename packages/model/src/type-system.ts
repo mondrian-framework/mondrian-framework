@@ -10,21 +10,6 @@ import { Expand } from '@mondrian-framework/utils'
  *
  * To learn more you can read about [the Mondrian model.](https://twinlogix.github.io/mondrian-framework/docs/docs/model)
  *
- * ## Examples
- *
- * The library function `integer()` can be used to define the model for an
- * integer type:
- *
- * ```ts
- * const intType : Type = integer()
- * ```
- *
- * The library function `string()` can be used to define the model for a string
- * type:
- *
- * ```ts
- * const intType : Type = string()
- * ```
  */
 export interface Type {}
 

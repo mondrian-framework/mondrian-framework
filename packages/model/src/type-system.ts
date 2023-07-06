@@ -70,7 +70,7 @@ export type Types = Record<string, LazyType>
  *
  * ```ts
  * type Username = Infer<typeof username>
- * const username : StringType = string({
+ * const username: StringType = string({
  *   name: "username",
  *   description: "a username that is never empty",
  *   minLength: 1,
@@ -100,7 +100,7 @@ export interface StringType extends Type {
  * - `maximum?`: the upper limit of the number
  * - `multipleOf?`: defines a number that it must be the multiple of
  * - `description?`: a description for the role of the number
- * - `name?`: TODO
+ * - `name?`: a name for the number
  *
  * ## Examples
  *
@@ -110,13 +110,11 @@ export interface StringType extends Type {
  *
  * ```ts
  * type Age = Infer<typeof age>
- * const age : Age = {
- *   kind: "number",
- *   opts: {
- *     minimum: 0,
- *     description: "an age that is never negative"
- *   }
- * }
+ * const age: NumberType = number({
+ *   name: "age",
+ *   description: "an age that is never negative",
+ *   minimum: 0,
+ * })
  *
  * const exampleAge: Age = 24
  * ```

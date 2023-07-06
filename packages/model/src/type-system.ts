@@ -5,7 +5,6 @@ import { Result } from './result'
 import { LazyTypeWrapper } from './unsafe'
 import { Expand } from '@mondrian-framework/utils'
 
-
 /**
  * A type that can be defined with the Mondrian framework.
  *
@@ -350,6 +349,31 @@ export interface OptionalDecorator<T extends LazyType = Type> extends Type {
     description?: string
   }
 }
+
+/**
+ * The model of an element that could be null in the Mondrian framework.
+ *
+ * This decorator can be used to turn a `Type` in the model of a nullable
+ * version of that element.
+ *
+ * It can also hold additional information in its optional `opts` field:
+ * - `name`: a name for the nullable type
+ * - `description`: a description for the role of the nullable type
+ *
+ * ## Examples
+ *
+ * A non-nullable `Type` can be turned into the corresponding nullable type
+ * using the `.nullable()` method:
+ *
+ * ```ts
+ * type NullableString = Infer<typeof nullableString>
+ * const nullableString = string().nullable()
+ *
+ * const exampleNull: NullableString = null
+ * const examplePresent: NullableString = "Hello, Mondrian!"
+ * ```
+ *
+ */
 export interface NullableDecorator<T extends LazyType = Type> extends Type {
   kind: 'nullable-decorator'
   type: T

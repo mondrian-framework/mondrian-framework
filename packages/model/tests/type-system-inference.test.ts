@@ -105,37 +105,53 @@ describe('enumeration', () => {
       expect(testEnum.values).toEqual(strings)
     },
   )
+})
 
-  describe('array', () => {
-    test('the array decorator can turn a type into an array of that type', () => {
-      type StringArray = m.Infer<typeof stringArray>
-      const stringArray = m.string().array({
-        name: 'a list of at most 3 strings',
-        maxItems: 3,
-      })
-      expectTypeOf<StringArray>().toEqualTypeOf<string[]>()
+describe('array', () => {
+  test('the array decorator can turn a type into an array of that type', () => {
+    type StringArray = m.Infer<typeof stringArray>
+    const stringArray = m.string().array({
+      name: 'a list of at most 3 strings',
+      maxItems: 3,
     })
-
-    test('type inference works on nested arrays', () => {
-      type Grid = m.Infer<typeof grid>
-      const grid = m.number().array().array()
-      expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
-    })
+    expectTypeOf<StringArray>().toEqualTypeOf<string[]>()
   })
 
-  describe('optional', () => {
-    test('the optional decorator can turn a type into an optional version', () => {
-      type OptionalString = m.Infer<typeof optionalString>
-      const optionalString = m.string().optional()
-      expectTypeOf<OptionalString>().toEqualTypeOf<undefined | string>()
-    })
+  test('type inference works on nested arrays', () => {
+    type Grid = m.Infer<typeof grid>
+    const grid = m.number().array().array()
+    expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
+  })
+})
 
-    test('the optional decorator is idempotent with regard to type inference', () => {
-      type One = m.Infer<typeof one>
-      type Other = m.Infer<typeof other>
-      const one = m.optional(m.optional(m.string()))
-      const other = m.optional(m.string())
-      expectTypeOf<One>().toEqualTypeOf<Other>()
-    })
+describe('optional', () => {
+  test('the optional decorator can turn a type into an optional version', () => {
+    type OptionalString = m.Infer<typeof optionalString>
+    const optionalString = m.string().optional()
+    expectTypeOf<OptionalString>().toEqualTypeOf<undefined | string>()
+  })
+
+  test('the optional decorator is idempotent with regard to type inference', () => {
+    type One = m.Infer<typeof one>
+    type Other = m.Infer<typeof other>
+    const one = m.optional(m.optional(m.string()))
+    const other = m.optional(m.string())
+    expectTypeOf<One>().toEqualTypeOf<Other>()
+  })
+})
+
+describe('nullable', () => {
+  test('the nullable decorator can turn a type into a nullable version', () => {
+    type NullableString = m.Infer<typeof nullableString>
+    const nullableString = m.string().nullable()
+    expectTypeOf<NullableString>().toEqualTypeOf<null | string>()
+  })
+
+  test('the nullable decorator is idempotent with regard to type inference', () => {
+    type One = m.Infer<typeof one>
+    type Other = m.Infer<typeof other>
+    const one = m.nullable(m.nullable(m.string()))
+    const other = m.nullable(m.string())
+    expectTypeOf<One>().toEqualTypeOf<Other>()
   })
 })

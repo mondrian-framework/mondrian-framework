@@ -57,6 +57,34 @@ describe('literal', () => {
   })
 })
 
+describe('object', () => {
+  test('an object type is inferred to be an object with the corresponding fields', () => {
+    type User = m.Infer<typeof user>
+    const user = m.object(
+      {
+        name: m.string(),
+        age: m.number(),
+        isAdmin: m.boolean(),
+      },
+      {
+        name: 'user',
+        description: 'a user',
+      },
+    )
+    expectTypeOf<User>().toEqualTypeOf<{ name: string; age: number; isAdmin: boolean }>()
+  })
+
+  test('type inference works on nested objects', () => {
+    type Nested = m.Infer<typeof nested>
+    const nested = m.object({
+      field: m.object({
+        name: m.string(),
+      }),
+    })
+    expectTypeOf<Nested>().toEqualTypeOf<{ field: { name: string } }>()
+  })
+})
+
 describe('enumeration', () => {
   test('enum type is inferred to be a union of literal strings', () => {
     type TestEnum = m.Infer<typeof testEnum>

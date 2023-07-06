@@ -227,6 +227,45 @@ export interface LiteralType<T extends number | string | boolean | null = null> 
     description?: string
   }
 }
+
+/**
+ * The model of an object in the Mondrian framework.
+ * It can contain many fields each one with an associated `Type`;
+ * it can also hold additional information in its optional `opts` field:
+ * - `name?`: a name for the object
+ * - `description?`: a description for the role of the object
+ *
+ * ## Examples
+ *
+ * Objects act as the basic building blocks to describe complex structures
+ * with Mondrian.
+ *
+ * Imagine you are modelling a `User` that has a username, an age
+ * and a boolean flag to tell if it is an admin or not.
+ * Its definition could look like this:
+ *
+ * ```ts
+ * type User = Infer<typeof user>
+ * const user = object(
+ *   {
+ *     username: string(),
+ *     age: number(),
+ *     isAdmin: boolean(),
+ *   },
+ *   {
+ *     name: 'user',
+ *     description: 'a description of a user',
+ *   },
+ * )
+ *
+ * const exampleUser: User = {
+ *   username: 'Giacomo',
+ *   age: 24,
+ *   isAdmin: false,
+ * }
+ * ```
+ *
+ */
 export interface ObjectType<TS extends Types = Types> extends Type {
   kind: 'object'
   type: TS
@@ -235,6 +274,7 @@ export interface ObjectType<TS extends Types = Types> extends Type {
     description?: string
   }
 }
+
 export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   kind: 'array-decorator'
   type: T

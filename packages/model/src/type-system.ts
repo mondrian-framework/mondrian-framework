@@ -166,6 +166,9 @@ export interface BooleanType extends Type {
 /**
  * The model of an enumeration in the Mondrian framework.
  * It is used to describe a set of string-based named constants.
+ * It can hold additional information in its optional `opts` field:
+ * - `name?`: a name for the enum
+ * - `description?`: a description for the role of the enum
  *
  * ## Examples
  *
@@ -174,7 +177,10 @@ export interface BooleanType extends Type {
  *
  * ```ts
  * type UserKind = Infer<typeof userKind>
- * const userKind = enumeration(["ADMIN", "NORMAL"])
+ * const userKind = enumeration(["ADMIN", "NORMAL"], {
+ *   name: "user_kind",
+ *   description: "the kind of a user",
+ * })
  *
  * const exampleUserKind : UserKind = "ADMIN"
  * ```

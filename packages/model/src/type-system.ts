@@ -382,15 +382,29 @@ export interface NullableDecorator<T extends LazyType = Type> extends Type {
     description?: string
   }
 }
+
+/**
+ * The model of an element with a default value in the Mondrian framework.
+ *
+ * This decorator can be used to add a default value to any `Type`.
+ *
+ * It can also hold additional information in its optional `opts` field:
+ * - `name`: a name for the nullable type
+ * - `description`: a description for the role of the nullable type
+ *
+ * ## Examples
+ *
+ */
 export interface DefaultDecorator<T extends LazyType = Type> extends Type {
   kind: 'default-decorator'
   type: T
-  opts: {
+  defaultValue: Infer<T> | (() => Infer<T>)
+  opts?: {
     name?: string
     description?: string
-    default?: Infer<T> | (() => Infer<T>)
   }
 }
+
 export interface RelationDecorator<T extends LazyType = Type> extends Type {
   kind: 'relation-decorator'
   type: T
@@ -399,6 +413,7 @@ export interface RelationDecorator<T extends LazyType = Type> extends Type {
     description?: string
   }
 }
+
 export interface UnionOperator<
   TS extends Types = Types,
   P extends InferProjection<{ kind: 'union-operator'; types: TS }> | boolean = false,
@@ -540,10 +555,10 @@ export function nullable<const T extends LazyType>(
 
 export function defaultType<const T extends LazyType>(
   type: T,
-  value: Infer<T> | (() => Infer<T>),
+  defaultValue: Infer<T> | (() => Infer<T>),
   opts?: Omit<DefaultDecorator['opts'], 'default'>,
 ): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, 'default'> {
-  const t: DefaultDecorator<T> = { kind: 'default-decorator', type, opts: { ...opts, default: value } }
+  const t: DefaultDecorator<T> = { kind: 'default-decorator', type, defaultValue, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
 

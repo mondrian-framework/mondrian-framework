@@ -72,10 +72,10 @@ function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | un
       return result
     }
     if (value === undefined || (opts?.cast && value === null)) {
-      if (typeof t.opts.default === 'function') {
-        return success(t.opts.default())
+      if (typeof t.defaultValue === 'function') {
+        return success(t.defaultValue())
       }
-      return success(t.opts.default)
+      return success(t.defaultValue)
     }
     return result
   } else if (t.kind === 'relation-decorator') {

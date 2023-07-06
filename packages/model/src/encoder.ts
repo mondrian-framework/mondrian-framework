@@ -35,7 +35,7 @@ function encodeInternal(type: LazyType, value: unknown): unknown {
   }
   if (t.kind === 'default-decorator') {
     if (value === undefined && !hasDecorator(t.type, 'optional-decorator')) {
-      return t.opts.default as JSONType
+      return t.defaultValue as JSONType
     }
     return encodeInternal(t.type, value)
   }

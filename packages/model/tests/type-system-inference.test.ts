@@ -155,3 +155,13 @@ describe('NullableDecorator', () => {
     expectTypeOf<One>().toEqualTypeOf<Other>()
   })
 })
+
+describe('DefaultDecorator', () => {
+  test('DefaultDecorator does not change the inferred type', () => {
+    type One = m.Infer<typeof one>
+    type Other = m.Infer<typeof other>
+    const one = m.string()
+    const other = m.string().default('Hello, Mondrian!')
+    expectTypeOf<One>().toEqualTypeOf<Other>()
+  })
+})

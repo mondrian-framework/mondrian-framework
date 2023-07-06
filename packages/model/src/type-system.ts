@@ -196,6 +196,29 @@ export interface EnumType<V extends readonly [string, ...string[]] = readonly [s
   }
 }
 
+/**
+ * The model of a literal type in the Mondrian framework.
+ * It can hold additional information in its optional `opts` field:
+ * - `name?`: a name for the literal
+ * - `description?`: a description for the role of the literal
+ *
+ * ## Examples
+ *
+ * Imagine you have to deal with HTTP requests whose HTTP version must be `"2.0"`.
+ * The version field could be modelled with a literal type to can guarantee that
+ * a request can only be built if its version is the string `"2.0"`:
+ *
+ * ```ts
+ * type RequiredVersion = Infer<typeof requiredVersion>
+ * const requiredVersion = literal("2.0", {
+ *   name: "requiredVersion",
+ *   description: "the required version for the HTTPS requests",
+ * })
+ *
+ * const version: RequiredVersion = "2.0"
+ * ```
+ *
+ */
 export interface LiteralType<T extends number | string | boolean | null = null> extends Type {
   kind: 'literal'
   value: T

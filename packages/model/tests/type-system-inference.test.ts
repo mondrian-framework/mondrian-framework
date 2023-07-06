@@ -27,6 +27,36 @@ describe('boolean', () => {
   })
 })
 
+describe('literal', () => {
+  test('string literal is inferred to be the corresponding string literal', () => {
+    type Literal = m.Infer<typeof literal>
+    const literal = m.literal('literal')
+    expectTypeOf<Literal>().toEqualTypeOf<'literal'>()
+  })
+
+  test('number literal is inferred to be the corresponding number literal', () => {
+    type Literal = m.Infer<typeof literal>
+    const literal = m.literal(1)
+    expectTypeOf<Literal>().toEqualTypeOf<1>()
+  })
+
+  test('boolean literal is inferred to be the corresponding boolean literal', () => {
+    type LiteralTrue = m.Infer<typeof literalTrue>
+    const literalTrue = m.literal(true)
+    expectTypeOf<LiteralTrue>().toEqualTypeOf<true>()
+
+    type LiteralFalse = m.Infer<typeof literalFalse>
+    const literalFalse = m.literal(false)
+    expectTypeOf<LiteralFalse>().toEqualTypeOf<false>()
+  })
+
+  test('null literal is inferred to be the null literal', () => {
+    type Literal = m.Infer<typeof literal>
+    const literal = m.literal(null)
+    expectTypeOf<Literal>().toEqualTypeOf<null>()
+  })
+})
+
 describe('enumeration', () => {
   test('enum type is inferred to be a union of literal strings', () => {
     type TestEnum = m.Infer<typeof testEnum>

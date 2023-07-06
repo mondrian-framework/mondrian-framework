@@ -84,11 +84,11 @@ export type Types = Record<string, LazyType>
 export interface StringType extends Type {
   kind: 'string'
   opts?: {
+    name?: string
+    description?: string
     maxLength?: number
     regex?: RegExp
     minLength?: number
-    description?: string
-    name?: string
   }
 }
 
@@ -124,13 +124,13 @@ export interface StringType extends Type {
 export interface NumberType extends Type {
   kind: 'number'
   opts?: {
+    name?: string
+    description?: string
+    maximum?: number
+    minimum?: number
     exclusiveMaximum?: number
     exclusiveMinimum?: number
-    minimum?: number
-    maximum?: number
     multipleOf?: number
-    description?: string
-    name?: string
   }
 }
 
@@ -159,8 +159,8 @@ export interface NumberType extends Type {
 export interface BooleanType extends Type {
   kind: 'boolean'
   opts?: {
-    description?: string
     name?: string
+    description?: string
   }
 }
 
@@ -191,44 +191,68 @@ export interface EnumType<V extends readonly [string, ...string[]] = readonly [s
   kind: 'enum'
   values: V
   opts?: {
-    description?: string
     name?: string
+    description?: string
   }
 }
+
 export interface LiteralType<T extends number | string | boolean | null = null> extends Type {
   kind: 'literal'
   value: T
-  opts?: { description?: string; name?: string }
+  opts?: {
+    name?: string
+    description?: string
+  }
 }
 export interface ObjectType<TS extends Types = Types> extends Type {
   kind: 'object'
   type: TS
-  opts?: { description?: string; name?: string }
+  opts?: {
+    name?: string
+    description?: string
+  }
 }
 export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   kind: 'array-decorator'
   type: T
-  opts?: { maxItems?: number; description?: string; name?: string }
+  opts?: {
+    name?: string
+    description?: string
+    maxItems?: number
+  }
 }
 export interface OptionalDecorator<T extends LazyType = Type> extends Type {
   kind: 'optional-decorator'
   type: T
-  opts?: { description?: string; name?: string }
+  opts?: {
+    name?: string
+    description?: string
+  }
 }
 export interface NullableDecorator<T extends LazyType = Type> extends Type {
   kind: 'nullable-decorator'
   type: T
-  opts?: { description?: string; name?: string }
+  opts?: {
+    name?: string
+    description?: string
+  }
 }
 export interface DefaultDecorator<T extends LazyType = Type> extends Type {
   kind: 'default-decorator'
   type: T
-  opts: { default?: Infer<T> | (() => Infer<T>); description?: string; name?: string }
+  opts: {
+    name?: string
+    description?: string
+    default?: Infer<T> | (() => Infer<T>)
+  }
 }
 export interface RelationDecorator<T extends LazyType = Type> extends Type {
   kind: 'relation-decorator'
   type: T
-  opts?: { description?: string; name?: string }
+  opts?: {
+    name?: string
+    description?: string
+  }
 }
 export interface UnionOperator<
   TS extends Types = Types,
@@ -237,12 +261,12 @@ export interface UnionOperator<
   kind: 'union-operator'
   types: TS
   opts?: {
+    name?: string
+    description?: string
+    requiredProjection?: P
     is?: {
       [K in keyof TS]: (value: Project<P, { kind: 'union-operator'; types: TS }>) => boolean
     }
-    requiredProjection?: P
-    description?: string
-    name?: string
   }
 }
 
@@ -261,7 +285,10 @@ export type AnyType =
   | RelationDecorator
   | UnionOperator
 
-export type CustomTypeOpts = { description?: string; name?: string }
+export type CustomTypeOpts = {
+  name?: string
+  description?: string
+}
 
 export type CustomType<
   T = any,

@@ -292,7 +292,7 @@ export interface ObjectType<TS extends Types = Types> extends Type {
  * - `description`: a description for the role of the array
  * - `maxItems`: the maximum number of items the array can hold
  *
- * ## Example
+ * ## Examples
  *
  * Any model can be turned into the corresponding array model using the
  * `.array()` method:
@@ -306,6 +306,7 @@ export interface ObjectType<TS extends Types = Types> extends Type {
  *
  * const strings: StringArray = ["hello", " ", "world!"]
  * ```
+ *
  */
 export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   kind: 'array-decorator'
@@ -317,6 +318,30 @@ export interface ArrayDecorator<T extends LazyType = Type> extends Type {
   }
 }
 
+/**
+ * The model of an element that could be missing in the Mondrian framework.
+ *
+ * This decorator can be used to turn a `Type` in the model of an optional type
+ * of that element.
+ *
+ * It can also hold additional information in its optional `opts` field:
+ * - `name`: a name for the optional type
+ * - `description`: a description for the role of the optional type
+ *
+ * ## Examples
+ *
+ * A non-optional `Type` can be turned into the corresponding optional type
+ * using the `.optional()` method:
+ *
+ * ```ts
+ * type OptionalNumber = Infer<typeof stringArray>
+ * const optionalNumber = number().optional()
+ *
+ * const exampleMissing: OptionalNumber = undefined
+ * const examplePresent: OptionalNumber = 42
+ * ```
+ *
+ */
 export interface OptionalDecorator<T extends LazyType = Type> extends Type {
   kind: 'optional-decorator'
   type: T

@@ -122,4 +122,20 @@ describe('enumeration', () => {
       expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
     })
   })
+
+  describe('optional', () => {
+    test('the optional decorator can turn a type into an optional version', () => {
+      type OptionalString = m.Infer<typeof optionalString>
+      const optionalString = m.string().optional()
+      expectTypeOf<OptionalString>().toEqualTypeOf<undefined | string>()
+    })
+
+    test('the optional decorator is idempotent with regard to type inference', () => {
+      type One = m.Infer<typeof one>
+      type Other = m.Infer<typeof other>
+      const one = m.optional(m.optional(m.string()))
+      const other = m.optional(m.string())
+      expectTypeOf<One>().toEqualTypeOf<Other>()
+    })
+  })
 })

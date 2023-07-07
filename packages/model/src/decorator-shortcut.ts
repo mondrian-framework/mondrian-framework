@@ -17,13 +17,17 @@ export type DecoratorShorcuts<
   O extends 'optional' | 'nullable' | 'array' | 'named' | 'default' = never,
 > = Omit<
   {
-    optional(): OptionalDecorator<T> &
-      DecoratorShorcuts<OptionalDecorator<T>, Exclude<O, 'named'> | 'default' | 'optional'>
     named(name: string): T & DecoratorShorcuts<T, O | 'named'>
+    optional(
+      opts?: OptionalDecorator['opts'],
+    ): OptionalDecorator<T> & DecoratorShorcuts<OptionalDecorator<T>, Exclude<O, 'named'> | 'default' | 'optional'>
     default(
       value: Infer<T> | (() => Infer<T>),
+      opts?: DefaultDecorator['opts'],
     ): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, O | 'default'>
-    nullable(): NullableDecorator<T> & DecoratorShorcuts<NullableDecorator<T>, Exclude<O, 'named'> | 'nullable'>
+    nullable(
+      opts?: NullableDecorator['opts'],
+    ): NullableDecorator<T> & DecoratorShorcuts<NullableDecorator<T>, Exclude<O, 'named'> | 'nullable'>
     array(
       opts?: ArrayDecorator['opts'],
     ): ArrayDecorator<T> & DecoratorShorcuts<ArrayDecorator<T>, Exclude<O, 'optional' | 'nullable' | 'named'>>
@@ -34,9 +38,9 @@ export type DecoratorShorcuts<
 export function decoratorShorcuts<T extends LazyType>(t: T): DecoratorShorcuts<T> {
   return {
     array: (opts) => array(t, opts),
-    optional: () => optional(t),
-    nullable: () => nullable(t),
-    default: (value) => defaultType(t, value),
+    optional: (opts) => optional(t, opts),
+    nullable: (opts) => nullable(t, opts),
+    default: (value, opts) => defaultType(t, value, opts),
     named: (name) => named(t, name),
   }
 }

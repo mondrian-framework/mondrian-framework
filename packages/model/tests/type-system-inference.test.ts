@@ -1,5 +1,5 @@
 import m from '../src'
-import { nonEmptyArray } from './generator-utils'
+import { baseOptions, nonEmptyArray, stringOptions } from './generator-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expect, expectTypeOf, describe } from 'vitest'
 
@@ -138,6 +138,16 @@ describe('OptionalDecorator', () => {
     const other = m.optional(m.string())
     expectTypeOf<One>().toEqualTypeOf<Other>()
   })
+
+  test.prop([baseOptions()])('the optional function and optional decorator are equivalent', (opts) => {
+    type One = m.Infer<typeof one>
+    type Other = m.Infer<typeof other>
+    const one = m.string().optional(opts)
+    const other = m.optional(m.string(), opts)
+    expectTypeOf<One>().toEqualTypeOf<Other>()
+    expect(one.opts).toEqual(opts)
+    expect(other.opts).toEqual(opts)
+  })
 })
 
 describe('NullableDecorator', () => {
@@ -154,6 +164,16 @@ describe('NullableDecorator', () => {
     const other = m.nullable(m.string())
     expectTypeOf<One>().toEqualTypeOf<Other>()
   })
+
+  test.prop([baseOptions()])('the nullable function and decorator are equivalent', (opts) => {
+    type One = m.Infer<typeof one>
+    type Other = m.Infer<typeof other>
+    const one = m.nullable(m.string(), opts)
+    const other = m.string().nullable(opts)
+    expectTypeOf<One>().toEqualTypeOf<Other>()
+    expect(one.opts).toEqual(opts)
+    expect(other.opts).toEqual(opts)
+  })
 })
 
 describe('DefaultDecorator', () => {
@@ -164,4 +184,26 @@ describe('DefaultDecorator', () => {
     const other = m.string().default('Hello, Mondrian!')
     expectTypeOf<One>().toEqualTypeOf<Other>()
   })
+
+  test.prop([gen.integer(), baseOptions()])(
+    'the default function adds the provided default to a type',
+    (defaultValue, opts) => {
+      const defaultNumber = m.default(m.integer(), defaultValue, opts)
+      expect(defaultNumber.defaultValue).toEqual(defaultValue)
+    },
+  )
+
+  test.prop([gen.integer(), baseOptions()])(
+    'the default function and the default method are equivalent',
+    (defaultValue, opts) => {
+      type One = m.Infer<typeof one>
+      type Other = m.Infer<typeof other>
+      const one = m.default(m.number(), defaultValue, opts)
+      const other = m.number().default(defaultValue, opts)
+      expectTypeOf<One>().toEqualTypeOf<Other>()
+      expect(one.defaultValue).toEqual(other.defaultValue)
+      expect(one.opts).toEqual(opts)
+      expect(other.opts).toEqual(opts)
+    },
+  )
 })

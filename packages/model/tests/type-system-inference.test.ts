@@ -114,6 +114,13 @@ describe('ObjectType', () => {
     })
     expectTypeOf<Nested>().toEqualTypeOf<{ field: { name: string } }>()
   })
+
+  test.prop([baseOptions()])('the object function generates an object with the given fields and methods', (opts) => {
+    const fields = { name: m.string(), age: m.integer() }
+    const o = m.object(fields, opts)
+    expect(o.opts).toBe(opts)
+    expect(o.type).toBe(fields)
+  })
 })
 
 describe('EnumerationType', () => {

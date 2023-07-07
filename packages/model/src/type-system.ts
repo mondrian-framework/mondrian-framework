@@ -550,11 +550,16 @@ export function enumeration<const V extends readonly [string, ...string[]]>(
   return { ...t, ...decoratorShorcuts(t) }
 }
 
-export function object<T extends Types>(
-  type: T,
+/**
+ * @param types an object where each value is itself a type, used to determine the structure of the resulting `ObjectType`
+ * @param opts the options used to define the `ObjectType`
+ * @returns an `ObjectType` with the provided fields and options
+ */
+export function object<Ts extends Types>(
+  types: Ts,
   opts?: ObjectType['opts'],
-): ObjectType<T> & DecoratorShorcuts<ObjectType<T>> {
-  const t: ObjectType<T> = { kind: 'object', type, opts }
+): ObjectType<Ts> & DecoratorShorcuts<ObjectType<Ts>> {
+  const t: ObjectType<Ts> = { kind: 'object', type: types, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
 

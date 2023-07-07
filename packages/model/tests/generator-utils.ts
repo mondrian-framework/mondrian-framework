@@ -23,6 +23,16 @@ type OptionsToGenerator<Options> = {
 /**
  * Turns any `Type` that has an `opts?` field into the type for a generator
  * for those options.
+ *
+ * ## Examples
+ *
+ * ```ts
+ * type Gs = TypeToOptionsGenerator<{ opts?: { name: string, age?: number } }>
+ * // -> Gs = {
+ *   name: gen.Arbitrary<string>;
+ *   age?: gen.Arbitrary<number | undefined>;
+ * }
+ * ```
  */
 type TypeToOptionsGenerator<Type extends { opts?: any }> = OptionsToGenerator<Exclude<Type['opts'], undefined>>
 

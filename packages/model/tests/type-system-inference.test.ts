@@ -122,6 +122,16 @@ describe('ArrayDecorator', () => {
     const grid = m.number().array().array()
     expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
   })
+
+  test.prop([baseOptions()])('the array function and array decorator are equivalent', (opts) => {
+    type One = m.Infer<typeof one>
+    type Other = m.Infer<typeof other>
+    const one = m.array(m.string(), opts)
+    const other = m.string().array(opts)
+    expectTypeOf<One>().toEqualTypeOf<Other>()
+    expect(one.opts).toEqual(opts)
+    expect(other.opts).toEqual(opts)
+  })
 })
 
 describe('OptionalDecorator', () => {

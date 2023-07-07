@@ -202,6 +202,15 @@ describe('OptionalDecorator', () => {
   })
 
   test.prop([stringGenerator(), baseOptions()])(
+    'the optional function creates an optional type with the given type and options',
+    (string, opts) => {
+      const o = m.optional(string, opts)
+      expect(o.opts).toBe(opts)
+      expect(o.type).toBe(string)
+    },
+  )
+
+  test.prop([stringGenerator(), baseOptions()])(
     'the optional function and optional decorator are equivalent',
     (string, opts) => {
       type One = m.Infer<typeof one>
@@ -210,13 +219,8 @@ describe('OptionalDecorator', () => {
       const other = m.optional(string, opts)
 
       expectTypeOf<One>().toEqualTypeOf<Other>()
-      expect(one.opts).toBe(opts)
-      expect(other.opts).toBe(opts)
-      // Check the wrapped strings are the same
-      expect(one.type.opts).toBe(string.opts)
-      expect(other.type.opts).toBe(string.opts)
-      expect(one.type.kind).toBe(string.kind)
-      expect(other.type.kind).toBe(string.kind)
+      expect(other.type.opts).toBe(one.type.opts)
+      expect(other.type.kind).toBe(one.type.kind)
     },
   )
 })

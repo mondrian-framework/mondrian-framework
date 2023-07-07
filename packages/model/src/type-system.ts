@@ -576,6 +576,11 @@ export function array<const T extends LazyType>(
   return { ...t, ...decoratorShorcuts(t) }
 }
 
+/**
+ * @param type the type of the item held by the resulting `OptionalType`
+ * @param opts the options used to define the `OptionalType`
+ * @returns an `OptionalType` holding an item of the given type, with the given options
+ */
 export function optional<const T extends LazyType>(
   type: T,
   opts?: OptionalDecorator['opts'],

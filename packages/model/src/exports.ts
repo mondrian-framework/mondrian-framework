@@ -2,7 +2,6 @@ export {
   string,
   number,
   boolean,
-  nullType as null,
   custom,
   enumeration as enum,
   integer,

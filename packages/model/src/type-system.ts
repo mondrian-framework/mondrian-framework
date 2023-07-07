@@ -511,10 +511,6 @@ export function boolean(opts?: BooleanType['opts']): BooleanType & DecoratorShor
   return { ...t, ...decoratorShorcuts(t) }
 }
 
-export function nullType(): LiteralType<null> & DecoratorShorcuts<LiteralType<null>> {
-  const t = literal(null)
-  return { ...t, ...decoratorShorcuts(t) }
-}
 export function literal<const T extends number | string | boolean | null>(
   value: T,
   opts?: LiteralType['opts'],

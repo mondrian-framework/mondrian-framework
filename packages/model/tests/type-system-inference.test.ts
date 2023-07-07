@@ -296,3 +296,23 @@ describe('DefaultDecorator', () => {
     },
   )
 })
+
+describe('named', () => {
+  test("the named function doesn't change the inferred type", () => {
+    type Age = m.Infer<typeof age>
+    const age = m.number().named('age')
+    expectTypeOf<Age>().toEqualTypeOf<number>()
+  })
+
+  test.prop([numberGenerator(), gen.string()])('the named function changes the name of the type', (number, name) => {
+    const newNumber = number.named(name)
+    expect(newNumber.opts?.name).toBe(name)
+    expect(newNumber.opts).toEqual({ ...number.opts, name })
+  })
+
+  test('the named function and method are equivalent', () => {
+    type Age = m.Infer<typeof age>
+    const age = m.number().named('age')
+    expectTypeOf<Age>().toEqualTypeOf<number>()
+  })
+})

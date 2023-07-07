@@ -622,6 +622,11 @@ export function relation<const T extends LazyType>(type: T): RelationDecorator<T
   return t
 }
 
+/**
+ * @param type the type whose name will be changed
+ * @param name the new name for the type
+ * @returns a new type equal to `type` but with the given `name`
+ */
 export function named<const T extends LazyType>(type: T, name: string): T & DecoratorShorcuts<T, 'named'> {
   return new LazyTypeWrapper(type, { name }) as unknown as T & DecoratorShorcuts<T, 'named'>
 }

@@ -511,6 +511,11 @@ export function boolean(opts?: BooleanType['opts']): BooleanType & DecoratorShor
   return { ...t, ...decoratorShorcuts(t) }
 }
 
+/**
+ * @param value the value whose literal type will be represented by the returned `LiteralType`
+ * @param opts the options used to define the `LiteralType`
+ * @returns a `LiteralType` representing the literal type of `value`
+ */
 export function literal<const T extends number | string | boolean | null>(
   value: T,
   opts?: LiteralType['opts'],
@@ -518,6 +523,7 @@ export function literal<const T extends number | string | boolean | null>(
   const t: LiteralType<T> = { kind: 'literal', value, opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
+
 export function union<
   const T extends Types,
   const P extends InferProjection<{ kind: 'union-operator'; types: T }> | boolean = false,

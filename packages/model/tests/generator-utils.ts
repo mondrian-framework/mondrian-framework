@@ -28,6 +28,23 @@ type TypeToOptionsGenerator<Type extends { opts?: any }> = OptionsToGenerator<Ex
 
 /**
  * @param opts options to override the default generators
+ * @returns an `Arbitrary` that can generate basic options for Mondrian types
+ */
+export function baseOptions(
+  opts?: OptionsToGenerator<{ name?: string; description?: string }>,
+): gen.Arbitrary<{ name?: string; description?: string }> {
+  const generators =
+    opts != undefined
+      ? opts
+      : {
+          name: gen.string(),
+          description: gen.string(),
+        }
+  return gen.record(generators, { requiredKeys: [] })
+}
+
+/**
+ * @param opts options to override the default generators
  * @returns an `Arbitrary` that can generate options for a `StringType`
  */
 export function stringOptions(opts?: TypeToOptionsGenerator<m.StringType>): gen.Arbitrary<m.StringType['opts']> {
@@ -42,18 +59,5 @@ export function stringOptions(opts?: TypeToOptionsGenerator<m.StringType>): gen.
           regex: gen.constant(/.*/),
         }
 
-  return gen.record(generators, { requiredKeys: [] })
-}
-
-export function baseOptions(
-  opts?: OptionsToGenerator<{ name?: string; description?: string }>,
-): gen.Arbitrary<{ name?: string; description?: string }> {
-  const generators =
-    opts != undefined
-      ? opts
-      : {
-          name: gen.string(),
-          description: gen.string(),
-        }
   return gen.record(generators, { requiredKeys: [] })
 }

@@ -1,5 +1,12 @@
 import m from '../src'
-import { arrayOptions, baseOptions, nonEmptyArray, stringOptions } from './generator-utils'
+import {
+  arrayOptions,
+  baseOptions,
+  nonEmptyArray,
+  numberGenerator,
+  stringGenerator,
+  stringOptions,
+} from './generator-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expect, expectTypeOf, describe } from 'vitest'
 
@@ -114,6 +121,7 @@ describe('ArrayDecorator', () => {
       name: 'a list of at most 3 strings',
       maxItems: 3,
     })
+
     expectTypeOf<StringArray>().toEqualTypeOf<string[]>()
   })
 
@@ -123,15 +131,24 @@ describe('ArrayDecorator', () => {
     expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
   })
 
-  test.prop([arrayOptions()])('the array function and array decorator are equivalent', (opts) => {
-    type One = m.Infer<typeof one>
-    type Other = m.Infer<typeof other>
-    const one = m.array(m.string(), opts)
-    const other = m.string().array(opts)
-    expectTypeOf<One>().toEqualTypeOf<Other>()
-    expect(one.opts).toEqual(opts)
-    expect(other.opts).toEqual(opts)
-  })
+  test.prop([stringGenerator(), arrayOptions()])(
+    'the array function and array decorator are equivalent',
+    (string, opts) => {
+      type One = m.Infer<typeof one>
+      type Other = m.Infer<typeof other>
+      const one = m.array(string, opts)
+      const other = string.array(opts)
+
+      expectTypeOf<One>().toEqualTypeOf<Other>()
+      expect(one.opts).toBe(opts)
+      expect(other.opts).toBe(opts)
+      // Check the wrapped strings are the same
+      expect(one.type.kind).toBe(string.kind)
+      expect(other.type.kind).toBe(string.kind)
+      expect(one.type.opts).toBe(string.opts)
+      expect(other.type.opts).toBe(string.opts)
+    },
+  )
 })
 
 describe('OptionalDecorator', () => {
@@ -149,15 +166,24 @@ describe('OptionalDecorator', () => {
     expectTypeOf<One>().toEqualTypeOf<Other>()
   })
 
-  test.prop([baseOptions()])('the optional function and optional decorator are equivalent', (opts) => {
-    type One = m.Infer<typeof one>
-    type Other = m.Infer<typeof other>
-    const one = m.string().optional(opts)
-    const other = m.optional(m.string(), opts)
-    expectTypeOf<One>().toEqualTypeOf<Other>()
-    expect(one.opts).toEqual(opts)
-    expect(other.opts).toEqual(opts)
-  })
+  test.prop([stringGenerator(), baseOptions()])(
+    'the optional function and optional decorator are equivalent',
+    (string, opts) => {
+      type One = m.Infer<typeof one>
+      type Other = m.Infer<typeof other>
+      const one = string.optional(opts)
+      const other = m.optional(string, opts)
+
+      expectTypeOf<One>().toEqualTypeOf<Other>()
+      expect(one.opts).toBe(opts)
+      expect(other.opts).toBe(opts)
+      // Check the wrapped strings are the same
+      expect(one.type.opts).toBe(string.opts)
+      expect(other.type.opts).toBe(string.opts)
+      expect(one.type.kind).toBe(string.kind)
+      expect(other.type.kind).toBe(string.kind)
+    },
+  )
 })
 
 describe('NullableDecorator', () => {
@@ -175,15 +201,24 @@ describe('NullableDecorator', () => {
     expectTypeOf<One>().toEqualTypeOf<Other>()
   })
 
-  test.prop([baseOptions()])('the nullable function and decorator are equivalent', (opts) => {
-    type One = m.Infer<typeof one>
-    type Other = m.Infer<typeof other>
-    const one = m.nullable(m.string(), opts)
-    const other = m.string().nullable(opts)
-    expectTypeOf<One>().toEqualTypeOf<Other>()
-    expect(one.opts).toEqual(opts)
-    expect(other.opts).toEqual(opts)
-  })
+  test.prop([stringGenerator(), baseOptions()])(
+    'the nullable function and decorator are equivalent',
+    (string, opts) => {
+      type One = m.Infer<typeof one>
+      type Other = m.Infer<typeof other>
+      const one = m.nullable(string, opts)
+      const other = string.nullable(opts)
+
+      expectTypeOf<One>().toEqualTypeOf<Other>()
+      expect(one.opts).toBe(opts)
+      expect(other.opts).toBe(opts)
+      // Check the wrapped strings are the same
+      expect(one.type.opts).toBe(string.opts)
+      expect(other.type.opts).toBe(string.opts)
+      expect(one.type.kind).toBe(string.kind)
+      expect(other.type.kind).toBe(string.kind)
+    },
+  )
 })
 
 describe('DefaultDecorator', () => {
@@ -195,25 +230,31 @@ describe('DefaultDecorator', () => {
     expectTypeOf<One>().toEqualTypeOf<Other>()
   })
 
-  test.prop([gen.integer(), baseOptions()])(
+  test.prop([numberGenerator(), gen.integer(), baseOptions()])(
     'the default function adds the provided default to a type',
-    (defaultValue, opts) => {
-      const defaultNumber = m.default(m.integer(), defaultValue, opts)
+    (number, defaultValue, opts) => {
+      const defaultNumber = m.default(number, defaultValue, opts)
       expect(defaultNumber.defaultValue).toEqual(defaultValue)
     },
   )
 
-  test.prop([gen.integer(), baseOptions()])(
+  test.prop([numberGenerator(), gen.integer(), baseOptions()])(
     'the default function and the default method are equivalent',
-    (defaultValue, opts) => {
+    (number, defaultValue, opts) => {
       type One = m.Infer<typeof one>
       type Other = m.Infer<typeof other>
-      const one = m.default(m.number(), defaultValue, opts)
-      const other = m.number().default(defaultValue, opts)
+      const one = m.default(number, defaultValue, opts)
+      const other = number.default(defaultValue, opts)
+
       expectTypeOf<One>().toEqualTypeOf<Other>()
-      expect(one.defaultValue).toEqual(other.defaultValue)
-      expect(one.opts).toEqual(opts)
-      expect(other.opts).toEqual(opts)
+      expect(one.defaultValue).toBe(other.defaultValue)
+      expect(one.opts).toBe(opts)
+      expect(other.opts).toBe(opts)
+      // Check the wrapped numbers are the same
+      expect(one.type.opts).toBe(number.opts)
+      expect(other.type.opts).toBe(number.opts)
+      expect(one.type.kind).toBe(number.kind)
+      expect(other.type.kind).toBe(number.kind)
     },
   )
 })

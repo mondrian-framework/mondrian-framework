@@ -21,6 +21,7 @@ export {
   InferProjection,
   InferReturn,
   Project,
+  Type,
   NumberType,
   StringType,
   EnumType,
@@ -35,6 +36,8 @@ export {
   RelationDecorator,
   UnionOperator,
 } from './type-system'
+
+export { DecoratorShorcuts } from './decorator-shortcut'
 
 export { datetime } from './custom/datetime'
 export { timestamp } from './custom/timestamp'

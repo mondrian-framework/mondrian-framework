@@ -536,6 +536,12 @@ export function union<
   } as UnionOperator<T, P>
   return { ...t, ...decoratorShorcuts(t) } as UnionOperator<T, P> & DecoratorShorcuts<UnionOperator<T>>
 }
+
+/**
+ * @param values a non empty array of string values used to define the `EnumType`'s variants
+ * @param opts the options used to define the `EnumType`
+ * @returns an `EnumType` with the given variants and options
+ */
 export function enumeration<const V extends readonly [string, ...string[]]>(
   values: V,
   opts?: EnumType<V>['opts'],

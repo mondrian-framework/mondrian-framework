@@ -129,11 +129,12 @@ describe('EnumerationType', () => {
     expectTypeOf<TestEnum>().toEqualTypeOf<'type'>()
   })
 
-  test.prop([nonEmptyArray(gen.string())])(
+  test.prop([nonEmptyArray(gen.string()), baseOptions()])(
     'the enum function generates an EnumerationType with the given fields',
-    (strings) => {
-      const testEnum = m.enum(strings)
-      expect(testEnum.values).toEqual(strings)
+    (strings, opts) => {
+      const testEnum = m.enum(strings, opts)
+      expect(testEnum.values).toBe(strings)
+      expect(testEnum.opts).toBe(opts)
     },
   )
 })

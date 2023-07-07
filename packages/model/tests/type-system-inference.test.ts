@@ -153,7 +153,6 @@ describe('ArrayDecorator', () => {
       name: 'a list of at most 3 strings',
       maxItems: 3,
     })
-
     expectTypeOf<StringArray>().toEqualTypeOf<string[]>()
   })
 
@@ -162,6 +161,15 @@ describe('ArrayDecorator', () => {
     const grid = m.number().array().array()
     expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
   })
+
+  test.prop([baseOptions(), stringGenerator()])(
+    'the array function creates an array with the provided type and options',
+    (opts, string) => {
+      const a = m.array(string, opts)
+      expect(a.opts).toBe(opts)
+      expect(a.type).toBe(string)
+    },
+  )
 
   test.prop([stringGenerator(), arrayOptions()])(
     'the array function and array decorator are equivalent',
@@ -172,13 +180,8 @@ describe('ArrayDecorator', () => {
       const other = string.array(opts)
 
       expectTypeOf<One>().toEqualTypeOf<Other>()
-      expect(one.opts).toBe(opts)
-      expect(other.opts).toBe(opts)
-      // Check the wrapped strings are the same
-      expect(one.type.kind).toBe(string.kind)
-      expect(other.type.kind).toBe(string.kind)
-      expect(one.type.opts).toBe(string.opts)
-      expect(other.type.opts).toBe(string.opts)
+      expect(other.type.kind).toBe(one.type.kind)
+      expect(one.type.opts).toBe(other.type.opts)
     },
   )
 })

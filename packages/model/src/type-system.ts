@@ -563,6 +563,11 @@ export function object<Ts extends Types>(
   return { ...t, ...decoratorShorcuts(t) }
 }
 
+/**
+ * @param type the type of the items held by the resulting `ArrayType`
+ * @param opts the options used to define the `ArrayType`
+ * @returns an `ArrayType` holding items of the given type, with the given options
+ */
 export function array<const T extends LazyType>(
   type: T,
   opts?: ArrayDecorator['opts'],

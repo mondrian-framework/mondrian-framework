@@ -21,6 +21,19 @@ export {
   InferProjection,
   InferReturn,
   Project,
+  NumberType,
+  StringType,
+  EnumType,
+  BooleanType,
+  RootCustomType,
+  LiteralType,
+  ObjectType,
+  ArrayDecorator,
+  OptionalDecorator,
+  NullableDecorator,
+  DefaultDecorator,
+  RelationDecorator,
+  UnionOperator,
 } from './type-system'
 
 export { datetime } from './custom/datetime'

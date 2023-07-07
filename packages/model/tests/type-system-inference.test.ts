@@ -241,21 +241,25 @@ describe('NullableDecorator', () => {
   })
 
   test.prop([stringGenerator(), baseOptions()])(
-    'the nullable function and decorator are equivalent',
+    'the nullable function creates a nullable type with the given type and options',
+    (string, opts) => {
+      const o = m.nullable(string, opts)
+      expect(o.opts).toBe(opts)
+      expect(o.type).toBe(string)
+    },
+  )
+
+  test.prop([stringGenerator(), baseOptions()])(
+    'the nullable function and nullable decorator are equivalent',
     (string, opts) => {
       type One = m.Infer<typeof one>
       type Other = m.Infer<typeof other>
-      const one = m.nullable(string, opts)
-      const other = string.nullable(opts)
+      const one = string.nullable(opts)
+      const other = m.nullable(string, opts)
 
       expectTypeOf<One>().toEqualTypeOf<Other>()
-      expect(one.opts).toBe(opts)
-      expect(other.opts).toBe(opts)
-      // Check the wrapped strings are the same
-      expect(one.type.opts).toBe(string.opts)
-      expect(other.type.opts).toBe(string.opts)
-      expect(one.type.kind).toBe(string.kind)
-      expect(other.type.kind).toBe(string.kind)
+      expect(other.type.opts).toBe(one.type.opts)
+      expect(other.type.kind).toBe(one.type.kind)
     },
   )
 })

@@ -589,6 +589,11 @@ export function optional<const T extends LazyType>(
   return { ...t, ...decoratorShorcuts(t) }
 }
 
+/**
+ * @param type the type of the item held by the resulting `NullableType`
+ * @param opts the options used to define the `NullableType`
+ * @returns a `NullableType` holding an item of the given type, with the given options
+ */
 export function nullable<const T extends LazyType>(
   type: T,
   opts?: NullableDecorator['opts'],

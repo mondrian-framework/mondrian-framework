@@ -468,6 +468,11 @@ export interface RootCustomType<T = any, E extends LazyType = Type, O = any> ext
   opts?: O & CustomTypeOpts
 }
 
+/**
+ * @param opts the options used to define the `NumberType`
+ * @throws if the `multipleOf` field of `opts` is less than or equal to 0
+ * @returns a `NumberType` with the given options
+ */
 export function number(opts?: NumberType['opts']): NumberType & DecoratorShorcuts<NumberType> {
   if (opts?.multipleOf && opts.multipleOf <= 0) {
     throw new Error('Invalid multipleOf for integer (must be > 0)')
@@ -475,6 +480,12 @@ export function number(opts?: NumberType['opts']): NumberType & DecoratorShorcut
   const t: NumberType = { kind: 'number', opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
+
+/**
+ * @param opts the options used to define the `NumberType`
+ * @throws if the `multipleOf` field of `opts` is not an integer number
+ * @returns a `NumberType` where the `multipleOf` is an integer and defaults to 1 if it not defined in `opts`
+ */
 export function integer(opts?: NumberType['opts']): NumberType & DecoratorShorcuts<NumberType> {
   if (opts?.multipleOf && opts.multipleOf % 1 !== 0) {
     throw new Error('Invalid multipleOf for integer (must be integer)')
@@ -482,14 +493,24 @@ export function integer(opts?: NumberType['opts']): NumberType & DecoratorShorcu
   return number({ multipleOf: 1, ...opts })
 }
 
+/**
+ * @param opts the options used to define the `StringType`
+ * @returns a `StringType` with the given options
+ */
 export function string(opts?: StringType['opts']): StringType & DecoratorShorcuts<StringType> {
   const t: StringType = { kind: 'string', opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
+
+/**
+ * @param opts the options used to define the `OptionType`
+ * @returns a `BooleanType` with the given options
+ */
 export function boolean(opts?: BooleanType['opts']): BooleanType & DecoratorShorcuts<BooleanType> {
   const t: BooleanType = { kind: 'boolean', opts }
   return { ...t, ...decoratorShorcuts(t) }
 }
+
 export function nullType(): LiteralType<null> & DecoratorShorcuts<LiteralType<null>> {
   const t = literal(null)
   return { ...t, ...decoratorShorcuts(t) }

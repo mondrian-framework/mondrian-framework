@@ -6,6 +6,7 @@ import {
   numberGenerator,
   stringGenerator,
   stringOptions,
+  numberOptions,
 } from './generator-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expect, expectTypeOf, describe } from 'vitest'
@@ -16,6 +17,19 @@ describe('NumberType', () => {
     const age = m.number()
     expectTypeOf<Age>().toEqualTypeOf<number>()
   })
+
+  test.prop([numberOptions()])('the number function generates a NumberType with the provided options', (opts) => {
+    const n = m.number(opts)
+    expect(n.opts).toBe(opts)
+  })
+
+  test.prop([numberOptions()])(
+    'the integer function generates a NumberType with multipleOf set to an integer',
+    (opts) => {
+      const n = m.integer(opts)
+      opts?.multipleOf ? expect(n.opts).toEqual(opts) : expect(n.opts).toEqual({ ...opts, multipleOf: 1 })
+    },
+  )
 })
 
 describe('StringType', () => {
@@ -24,6 +38,11 @@ describe('StringType', () => {
     const username = m.string()
     expectTypeOf<Username>().toEqualTypeOf<string>()
   })
+
+  test.prop([stringOptions()])('the string function generates a StringType with the given options', (opts) => {
+    const s = m.string(opts)
+    expect(s.opts).toBe(opts)
+  })
 })
 
 describe('BooleanType', () => {
@@ -31,6 +50,11 @@ describe('BooleanType', () => {
     type AdminFlag = m.Infer<typeof adminFlag>
     const adminFlag = m.boolean()
     expectTypeOf<AdminFlag>().toEqualTypeOf<boolean>()
+  })
+
+  test.prop([baseOptions()])('the boolean function generates a BooleanType with the given options', (opts) => {
+    const b = m.boolean(opts)
+    expect(b.opts).toBe(opts)
   })
 })
 

@@ -1,5 +1,5 @@
 import m from '../src'
-import { baseOptions, nonEmptyArray, stringOptions } from './generator-utils'
+import { arrayOptions, baseOptions, nonEmptyArray, stringOptions } from './generator-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expect, expectTypeOf, describe } from 'vitest'
 
@@ -123,7 +123,7 @@ describe('ArrayDecorator', () => {
     expectTypeOf<Grid>().toEqualTypeOf<number[][]>()
   })
 
-  test.prop([baseOptions()])('the array function and array decorator are equivalent', (opts) => {
+  test.prop([arrayOptions()])('the array function and array decorator are equivalent', (opts) => {
     type One = m.Infer<typeof one>
     type Other = m.Infer<typeof other>
     const one = m.array(m.string(), opts)

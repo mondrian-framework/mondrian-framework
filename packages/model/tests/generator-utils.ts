@@ -61,3 +61,20 @@ export function stringOptions(opts?: TypeToOptionsGenerator<m.StringType>): gen.
 
   return gen.record(generators, { requiredKeys: [] })
 }
+
+/**
+ * @param opts options to override the default generators
+ * @returns an `Arbitrary` that can generate options for an `ArrayDecorator`
+ */
+export function arrayOptions(opts?: TypeToOptionsGenerator<m.ArrayDecorator>): gen.Arbitrary<m.ArrayDecorator['opts']> {
+  const generators =
+    opts != undefined
+      ? opts
+      : {
+          name: gen.string(),
+          description: gen.string(),
+          maxItems: gen.integer(),
+        }
+
+  return gen.record(generators, { requiredKeys: [] })
+}

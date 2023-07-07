@@ -7,6 +7,8 @@
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "strict": true,
+    "alwaysStrict": true,
+    "strictFunctionTypes": true,
     "noErrorTruncation": false,
     "sourceMap": true,
     "declaration": true,

@@ -602,6 +602,12 @@ export function nullable<const T extends LazyType>(
   return { ...t, ...decoratorShorcuts(t) }
 }
 
+/**
+ * @param type the `LazyType` to add a default value to
+ * @param defaultValue the default value to add to `type`
+ * @param opts the options used to describe the default value
+ * @returns a type with the added default value and options
+ */
 export function defaultType<const T extends LazyType>(
   type: T,
   defaultValue: Infer<T> | (() => Infer<T>),

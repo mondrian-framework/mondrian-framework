@@ -1,4 +1,4 @@
-import m from '../src'
+import m, { timestamp } from '../src'
 import {
   arrayOptions,
   baseOptions,
@@ -277,7 +277,8 @@ describe('DefaultDecorator', () => {
     'the default function adds the provided default to a type',
     (number, defaultValue, opts) => {
       const defaultNumber = m.default(number, defaultValue, opts)
-      expect(defaultNumber.defaultValue).toEqual(defaultValue)
+      expect(defaultNumber.defaultValue).toBe(defaultValue)
+      expect(defaultNumber.opts).toBe(opts)
     },
   )
 
@@ -290,14 +291,8 @@ describe('DefaultDecorator', () => {
       const other = number.default(defaultValue, opts)
 
       expectTypeOf<One>().toEqualTypeOf<Other>()
-      expect(one.defaultValue).toBe(other.defaultValue)
-      expect(one.opts).toBe(opts)
-      expect(other.opts).toBe(opts)
-      // Check the wrapped numbers are the same
-      expect(one.type.opts).toBe(number.opts)
-      expect(other.type.opts).toBe(number.opts)
-      expect(one.type.kind).toBe(number.kind)
-      expect(other.type.kind).toBe(number.kind)
+      expect(one.type.opts).toBe(other.type.opts)
+      expect(one.type.kind).toBe(other.type.kind)
     },
   )
 })

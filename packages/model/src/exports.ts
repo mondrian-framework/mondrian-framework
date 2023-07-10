@@ -2,7 +2,6 @@ export {
   string,
   number,
   boolean,
-  nullType as null,
   custom,
   enumeration as enum,
   integer,
@@ -21,7 +20,23 @@ export {
   InferProjection,
   InferReturn,
   Project,
+  Type,
+  NumberType,
+  StringType,
+  EnumType,
+  BooleanType,
+  RootCustomType,
+  LiteralType,
+  ObjectType,
+  ArrayDecorator,
+  OptionalDecorator,
+  NullableDecorator,
+  DefaultDecorator,
+  RelationDecorator,
+  UnionOperator,
 } from './type-system'
+
+export { DecoratorShorcuts } from './decorator-shortcut'
 
 export { datetime } from './custom/datetime'
 export { timestamp } from './custom/timestamp'

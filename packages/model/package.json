@@ -14,5 +14,8 @@
   "keywords": [],
   "peerDependencies": {
     "@mondrian-framework/utils": "^1.0.6"
+  },
+  "devDependencies": {
+    "@fast-check/vitest": "^0.0.6"
   }
 }

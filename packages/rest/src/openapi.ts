@@ -480,7 +480,7 @@ function typeToSchemaObjectInternal(
       name: subname ?? name,
       schema: {
         anyOf: [
-          { ...schema, example: type.opts.default },
+          { ...schema, example: type.defaultValue },
           { type: 'null', description: 'optional' },
         ],
       },

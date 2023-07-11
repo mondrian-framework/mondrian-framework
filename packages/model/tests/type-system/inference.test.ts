@@ -125,9 +125,9 @@ describe('Infer', () => {
 
   test('UnionType inferred as union of types', () => {
     const model = m.union({
-      variant1: [m.string(), (_) => true],
-      variant2: [m.object({ field1: m.string(), field2: m.boolean() }), (a) => true],
-      variant3: [m.boolean(), (_) => true],
+      variant1: m.string(),
+      variant2: m.object({ field1: m.string(), field2: m.boolean() }),
+      variant3: m.boolean(),
     })
     type Inferred = m.Infer<typeof model>
 

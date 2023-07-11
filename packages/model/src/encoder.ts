@@ -71,7 +71,10 @@ function unsafeEncodeNullable<T extends Type>(type: NullableType<T>, value: any 
  * matches with it.
  */
 function unsafeEncodeUnion<Ts extends Types>(type: UnionType<Ts>, union: any): JSONType | undefined {
-  for (const [_variantName, [variantType, isVariant]] of Object.entries(type.variants)) {
+  for (const [variantName, variantType] of Object.entries(type.variants)) {
+    // If the object is well typed this check should never fail since the checks always
+    // have a field for each of the variant's names
+    const isVariant = type.variantsChecks?.[variantName]!
     if (isVariant(union)) {
       return unsafeEncode(variantType, union)
     }

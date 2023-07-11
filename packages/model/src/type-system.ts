@@ -238,7 +238,8 @@ export type LiteralTypeOptions = BaseOptions
  */
 export type UnionType<Ts extends Types> = {
   readonly kind: 'union'
-  readonly variants: PairFieldsWith<Ts, (a: Infer<UnionType<Ts>>) => boolean>
+  readonly variants: Ts
+  readonly variantsChecks?: { [Key in keyof Ts]: (_: Infer<UnionType<Ts>>) => boolean }
   readonly options?: UnionTypeOptions
 
   optional(): OptionalType<UnionType<Ts>>
@@ -248,13 +249,6 @@ export type UnionType<Ts extends Types> = {
   setOptions(options: UnionTypeOptions): UnionType<Ts>
   updateOptions(options: UnionTypeOptions): UnionType<Ts>
   setName(name: string): UnionType<Ts>
-}
-
-/**
- * Creates a new object type where each field is now a tuple with `T` as the second element.
- */
-export type PairFieldsWith<R extends Record<string, Type>, T> = {
-  [Key in keyof R]: [R[Key], T]
 }
 
 /**
@@ -684,12 +678,14 @@ export function literal<const L extends number | string | boolean | null>(
  * @example Imagine you are modelling TODO
  */
 export function union<Ts extends Types>(
-  variants: PairFieldsWith<Ts, (_: Infer<UnionType<Ts>>) => boolean>,
+  variants: Ts,
+  variantsChecks?: { [Key in keyof Ts]: (_: Infer<UnionType<Ts>>) => boolean },
   options?: OptionsOf<UnionType<Ts>>,
 ): UnionType<Ts> {
   return {
     kind: 'union',
     variants,
+    variantsChecks,
     options,
     optional() {
       return optional(this)

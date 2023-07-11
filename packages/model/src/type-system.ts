@@ -1,454 +1,387 @@
 import { DecodeOptions } from './decoder'
-import { DecoratorShorcuts, decoratorShorcuts } from './decorator-shortcut'
 import { GenericProjection } from './projection'
 import { Result } from './result'
-import { LazyTypeWrapper } from './unsafe'
 import { Expand } from '@mondrian-framework/utils'
 
 /**
  * A type that can be defined with the Mondrian framework.
  *
  * To learn more you can read about [the Mondrian model.](https://twinlogix.github.io/mondrian-framework/docs/docs/model)
- *
  */
-export interface Type {}
+export type Type =
+  | NumberType
+  | StringType
+  | BooleanType
+  | EnumType<any>
+  | LiteralType<any>
+  | UnionType<any>
+  | ObjectType<any, any>
+  | ArrayType<any, any>
+  | OptionalType<any>
+  | NullableType<any>
+  | ReferenceType<any>
+  | (() => Type)
 
 /**
- * A type defined lazily as a function returning a `Type`. This can be used
- * to define recursive or mutually-recursive types.
- *
- * To learn more you can read about [recursive types.](https://twinlogix.github.io/mondrian-framework/docs/docs/model/definition#recursion)
- *
- * ## Examples
- *
- * One can define the model of a list of integers recursively:
- *
- * ```ts
- * type IntegerList = Infer<typeof integerList>
- * const integerList = () => object({
- *   head: integer(),
- *   tail: union({ empty: literal("empty"), list: integerList })
- * })
- * ```
- *
- * Here, `integerList` is defined in terms of itself: its tail can either be
- * an the `"empty"` literal or another list. A value of that type would look
- * like this:
- *
- * ```ts
- * const list : IntegerList = {
- *   head: 1,
- *   tail: {
- *     head: 2,
- *     tail: "empty"
- *   }
- * }
- * ```
- *
+ * A record of {@link Type `Type`s}.
  */
-export type LazyType = Type | (() => Type)
+export type Types = Record<string, Type>
 
 /**
- * `Types` represents a map of `LazyType`s each one with a unique name.
+ * The same as type but doesn't include the lazy type definition: `() => Type`.
+ * This can be useful to use in pair with {@link concretise conretise} to make
+ * sure you are dealing with a type that is not lazy.
  */
-export type Types = Record<string, LazyType>
+export type ConcreteType = Exclude<Type, () => any>
 
 /**
- * The model of a `string` in the mondrian framework.
- *
- * It can hold additional information in its optional `opts` field:
- * - `maxLength?`: the maximum length of the string
- * - `regex?`: a regex used to determine if the string is valid or not
- * - `minLength?`: the minimum length of the string
- * - `description?`: a description to explain the role of the string
- * - `name?`: a name for the string
- *
- * ## Example
- *
- * Imagine you have to deal with string usernames that can never be empty. A
- * model for such username could be defined as a `StringType` using the `string`
- * utility function and passing it the needed options:
- *
- * ```ts
- * type Username = Infer<typeof username>
- * const username: StringType = string({
- *   name: "username",
- *   description: "a username that is never empty",
- *   minLength: 1,
- * })
- *
- * const exampleUsername: Username = "my_cool_username"
- * ```
- *
+ * Infers the Typescript type equivalent of a given Mondrian {@link Type `Type`}.
+ * @example ```ts
+ *          const model = string()
+ *          type Type = Infer<typeof model>
+ *          // -> Type = string
+ *          ```
+ * @example ```ts
+ *          const model = nullable(number())
+ *          type Type = Infer<typeof model>
+ *          // -> Type = number | null
+ *          ```
+ * @example ```ts
+ *          const model = object({
+ *            field1: number(),
+ *            field2: string(),
+ *          })
+ *          type Type = Infer<typeof model>
+ *          // -> Type = { field1: number, field2: string }
+ *          ```
  */
-export interface StringType extends Type {
-  kind: 'string'
-  opts?: {
-    name?: string
-    description?: string
-    maxLength?: number
-    regex?: RegExp
-    minLength?: number
-  }
+// prettier-ignore
+export type Infer<T extends Type>
+  = [T] extends [NumberType] ? number
+  : [T] extends [StringType] ? string
+  : [T] extends [BooleanType] ? boolean
+  : [T] extends [EnumType<infer Vs>] ? Vs[number]
+  : [T] extends [LiteralType<infer L>] ? L
+  : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
+  : [T] extends [ObjectType<"immutable", infer Ts>] ? { readonly [Key in keyof Ts]: Infer<Ts[Key]> }
+  : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }
+  : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
+  : [T] extends [ArrayType<"mutable", infer T1>] ? Infer<T1>[]
+  : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
+  : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
+  : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
+  : never
+
+/**
+ * Given a type `T`, returns the type of the options it can accept when it is defined.
+ *
+ * @example ```ts
+ *          type Options = OptionsOf<NumberType>
+ *          // -> Options = NumberTypeOptions
+ *          ```
+ */
+// prettier-ignore
+export type OptionsOf<T extends Type>
+  = [T] extends [NumberType] ? NonNullable<NumberType['options']>
+  : [T] extends [StringType] ? NonNullable<StringType['options']>
+  : [T] extends [BooleanType] ? NonNullable<BooleanType['options']>
+  : [T] extends [EnumType<infer T1>] ? NonNullable<EnumType<T1>['options']>
+  : [T] extends [LiteralType<infer L>] ? NonNullable<LiteralType<L>['options']>
+  : [T] extends [UnionType<infer Ts>] ? NonNullable<UnionType<Ts>['options']>
+  : [T] extends [ObjectType<infer Ts, infer Mutable>] ? NonNullable<ObjectType<Ts, Mutable>['options']>
+  : [T] extends [ArrayType<infer M, infer T1>] ? NonNullable<ArrayType<M, T1>['options']>
+  : [T] extends [OptionalType<infer T1>] ? NonNullable<OptionalType<T1>['options']>
+  : [T] extends [NullableType<infer T1>] ? NonNullable<NullableType<T1>['options']>
+  : [T] extends [ReferenceType<infer T1>] ? NonNullable<ReferenceType<T1>['options']>
+  : [T] extends [(() => infer T1 extends Type)] ? OptionsOf<T1>
+  : never
+
+/**
+ * The possible mutability of objects and arrays.
+ */
+export type Mutability = 'mutable' | 'immutable'
+
+/**
+ * @param type the possibly lazy {@link Type type} to turn into a concrete type
+ * @returns a new {@link ConcreteType type} that is guaranteed to not be a lazily defined function
+ */
+export function concretise<T extends Type>(type: T): ConcreteType {
+  return typeof type === 'function' ? concretise(type()) : type
 }
 
 /**
- * The model of a `number` in the mondrian framework.
- *
- * It can hold additional information in its optional `opts` field:
- * - `exclusiveMaximum?`: the upper limit (exclusive) of the number
- * - `exclusiveMinimum?`: the lower limit (exclusive) of the number
- * - `minimum?`: the lower limit of the number
- * - `maximum?`: the upper limit of the number
- * - `multipleOf?`: defines a number that it must be the multiple of
- * - `description?`: a description for the role of the number
- * - `name?`: a name for the number
- *
- * ## Examples
- *
- * Imagine you have to deal with the age of a users: it can be thought of as a
- * number that can never be lower than zero. A model for such a data type could
- * look like this:
- *
- * ```ts
- * type Age = Infer<typeof age>
- * const age: NumberType = number({
- *   name: "age",
- *   description: "an age that is never negative",
- *   minimum: 0,
- * })
- *
- * const exampleAge: Age = 24
- * ```
- *
+ * The basic options that are common to all types of the Mondrian framework.
  */
-export interface NumberType extends Type {
-  kind: 'number'
-  opts?: {
-    name?: string
-    description?: string
-    maximum?: number
-    minimum?: number
-    exclusiveMaximum?: number
-    exclusiveMinimum?: number
-    multipleOf?: number
-  }
+export type BaseOptions = {
+  readonly name?: string
+  readonly description?: string
 }
 
 /**
- * The model of a `boolean` in the mondrian framework.
- *
- * It can hold additional information in its optional `opts` field:
- * - `description?`: a description for the role of the boolean
- * - `name?`: a name for the boolean
- *
- * ## Examples
- *
- * Imagine you have to keep track of a flag that is used to check wether a user
- * is an admin or not. The corresponding model could look like this:
- *
- * ```ts
- * type AdminFlag = Infer<typeof adminFlag>
- * const adminFlag: BooleanType = boolean({
- *   name: "isAdmin",
- *   description: "a flag that is True if the user is also an admin",
- * })
- *
- * const exampleAdminFlag: AdminFlag = true
- * ```
- *
+ * The model of a `string` in the Mondrian framework.
  */
-export interface BooleanType extends Type {
-  kind: 'boolean'
-  opts?: {
-    name?: string
-    description?: string
-  }
+export type StringType = {
+  readonly kind: 'string'
+  readonly options?: StringTypeOptions
+
+  optional(): OptionalType<StringType>
+  nullable(): NullableType<StringType>
+  array(): ArrayType<'immutable', StringType>
+  reference(): ReferenceType<StringType>
+  setOptions(options: StringTypeOptions): StringType
+  updateOptions(options: StringTypeOptions): StringType
+  setName(name: string): StringType
 }
+
+/**
+ * The options that can be used to define a `StringType`.
+ */
+export type StringTypeOptions = BaseOptions & {
+  readonly regex?: RegExp
+  readonly maxLength?: number
+  readonly minLength?: number
+}
+
+/**
+ * The model of a `number` in the Mondrian framework.
+ */
+export type NumberType = {
+  readonly kind: 'number'
+  readonly options?: NumberTypeOptions
+
+  optional(): OptionalType<NumberType>
+  nullable(): NullableType<NumberType>
+  array(): ArrayType<'immutable', NumberType>
+  reference(): ReferenceType<NumberType>
+  setOptions(options: NumberTypeOptions): NumberType
+  updateOptions(options: NumberTypeOptions): NumberType
+  setName(name: string): NumberType
+}
+
+/**
+ * The options that can be used to define a {@link NumberType `NumberType`}.
+ */
+export type NumberTypeOptions = BaseOptions & {
+  readonly maximum?: [number, 'inclusive' | 'exclusive']
+  readonly minimum?: [number, 'inclusive' | 'exclusive']
+  readonly multipleOf?: number
+}
+
+/**
+ * The model of a `boolean` in the Mondrian framework.
+ */
+export type BooleanType = {
+  readonly kind: 'boolean'
+  readonly options?: BooleanTypeOptions
+
+  optional(): OptionalType<BooleanType>
+  nullable(): NullableType<BooleanType>
+  array(): ArrayType<'immutable', BooleanType>
+  reference(): ReferenceType<BooleanType>
+  setOptions(options: BooleanTypeOptions): BooleanType
+  updateOptions(options: BooleanTypeOptions): BooleanType
+  setName(name: string): BooleanType
+}
+
+/**
+ * The options that can be used to define a {@link BooleanType `BooleanType`}.
+ */
+export type BooleanTypeOptions = BaseOptions
 
 /**
  * The model of an enumeration in the Mondrian framework.
- *
- * It is used to describe a set of string-based named constants.
- * It can hold additional information in its optional `opts` field:
- * - `name?`: a name for the enum
- * - `description?`: a description for the role of the enum
- *
- * ## Examples
- *
- * Imagine you have to deal with two kind of users: admins and normal users,
- * their type can be modelled with an enum like this:
- *
- * ```ts
- * type UserKind = Infer<typeof userKind>
- * const userKind = enumeration(["ADMIN", "NORMAL"], {
- *   name: "user_kind",
- *   description: "the kind of a user",
- * })
- *
- * const exampleUserKind : UserKind = "ADMIN"
- * ```
- *
  */
-export interface EnumType<V extends readonly [string, ...string[]] = readonly [string, ...string[]]> extends Type {
-  kind: 'enum'
-  values: V
-  opts?: {
-    name?: string
-    description?: string
-  }
+export type EnumType<Vs extends readonly [string, ...string[]]> = {
+  readonly kind: 'enum'
+  readonly variants: Vs
+  readonly options?: EnumTypeOptions
+
+  optional(): OptionalType<EnumType<Vs>>
+  nullable(): NullableType<EnumType<Vs>>
+  array(): ArrayType<'immutable', EnumType<Vs>>
+  reference(): ReferenceType<EnumType<Vs>>
+  setOptions(options: EnumTypeOptions): EnumType<Vs>
+  updateOptions(options: EnumTypeOptions): EnumType<Vs>
+  setName(name: string): EnumType<Vs>
 }
+
+/**
+ * The options that can be used to define an {@link EnumType `EnumType`}.
+ */
+export type EnumTypeOptions = BaseOptions
 
 /**
  * The model of a literal type in the Mondrian framework.
- *
- * It can hold additional information in its optional `opts` field:
- * - `name?`: a name for the literal
- * - `description?`: a description for the role of the literal
- *
- * ## Examples
- *
- * Imagine you have to deal with HTTP requests whose HTTP version must be `"2.0"`.
- * The version field could be modelled with a literal type to can guarantee that
- * a request can only be built if its version is the string `"2.0"`:
- *
- * ```ts
- * type RequiredVersion = Infer<typeof requiredVersion>
- * const requiredVersion = literal("2.0", {
- *   name: "requiredVersion",
- *   description: "the required version for the HTTPS requests",
- * })
- *
- * const version: RequiredVersion = "2.0"
- * ```
- *
  */
-export interface LiteralType<T extends number | string | boolean | null = null> extends Type {
-  kind: 'literal'
-  value: T
-  opts?: {
-    name?: string
-    description?: string
-  }
+export type LiteralType<L extends number | string | boolean | null> = {
+  readonly kind: 'literal'
+  readonly literalValue: L
+  readonly options?: LiteralTypeOptions
+
+  optional(): OptionalType<LiteralType<L>>
+  nullable(): NullableType<LiteralType<L>>
+  array(): ArrayType<'immutable', LiteralType<L>>
+  reference(): ReferenceType<LiteralType<L>>
+  setOptions(options: LiteralTypeOptions): LiteralType<L>
+  updateOptions(options: LiteralTypeOptions): LiteralType<L>
+  setName(name: string): LiteralType<L>
 }
+
+/**
+ * The options that can be used to define a {@link LiteralType `LiteralType`}.
+ */
+export type LiteralTypeOptions = BaseOptions
+
+/**
+ * The model of a tagged union of types in the Mondrian framework.
+ */
+export type UnionType<Ts extends Types> = {
+  readonly kind: 'union'
+  readonly variants: PairFieldsWith<Ts, (a: Infer<UnionType<Ts>>) => boolean>
+  readonly options?: UnionTypeOptions
+
+  optional(): OptionalType<UnionType<Ts>>
+  nullable(): NullableType<UnionType<Ts>>
+  array(): ArrayType<'immutable', UnionType<Ts>>
+  reference(): ReferenceType<UnionType<Ts>>
+  setOptions(options: UnionTypeOptions): UnionType<Ts>
+  updateOptions(options: UnionTypeOptions): UnionType<Ts>
+  setName(name: string): UnionType<Ts>
+}
+
+/**
+ * Creates a new object type where each field is now a tuple with `T` as the second element.
+ */
+export type PairFieldsWith<R extends Record<string, Type>, T> = {
+  [Key in keyof R]: [R[Key], T]
+}
+
+/**
+ * The options that can be used to define a {@link UnionType `UnionType`}.
+ */
+export type UnionTypeOptions = BaseOptions
 
 /**
  * The model of an object in the Mondrian framework.
- *
- * It can contain many fields each one with an associated `Type`;
- * it can also hold additional information in its optional `opts` field:
- * - `name?`: a name for the object
- * - `description?`: a description for the role of the object
- *
- * ## Examples
- *
- * Objects act as the basic building blocks to describe complex structures
- * with Mondrian.
- *
- * Imagine you are modelling a `User` that has a username, an age
- * and a boolean flag to tell if it is an admin or not.
- * Its definition could look like this:
- *
- * ```ts
- * type User = Infer<typeof user>
- * const user = object(
- *   {
- *     username: string(),
- *     age: number(),
- *     isAdmin: boolean(),
- *   },
- *   {
- *     name: 'user',
- *     description: 'a description of a user',
- *   },
- * )
- *
- * const exampleUser: User = {
- *   username: 'Giacomo',
- *   age: 24,
- *   isAdmin: false,
- * }
- * ```
- *
  */
-export interface ObjectType<TS extends Types = Types> extends Type {
-  kind: 'object'
-  type: TS
-  opts?: {
-    name?: string
-    description?: string
-  }
+export type ObjectType<M extends Mutability, Ts extends Types> = {
+  readonly kind: 'object'
+  readonly mutability: M
+  readonly types: Ts
+  readonly options?: ObjectTypeOptions
+
+  immutable(): ObjectType<'immutable', Ts>
+  mutable(): ObjectType<'mutable', Ts>
+  optional(): OptionalType<ObjectType<M, Ts>>
+  nullable(): NullableType<ObjectType<M, Ts>>
+  array(): ArrayType<'immutable', ObjectType<M, Ts>>
+  reference(): ReferenceType<ObjectType<M, Ts>>
+  setOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
+  updateOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
+  setName(name: string): ObjectType<M, Ts>
 }
+
+/**
+ * The options that can be used to define an {@link ObjectType `ObjectType`}.
+ */
+export type ObjectTypeOptions = BaseOptions
 
 /**
  * The model of a sequence of elements in the Mondrian framework.
- *
- * This decorator can be used to turn a `Type` in the model of an array
- * of elements of that type.
- *
- * It can also hold additional information in its optional `opts` field:
- * - `name`: a name for the array
- * - `description`: a description for the role of the array
- * - `maxItems`: the maximum number of items the array can hold
- *
- * ## Examples
- *
- * Any model can be turned into the corresponding array model using the
- * `.array()` method:
- *
- * ```ts
- * type StringArray = Infer<typeof stringArray>
- * const stringArray = string().array({
- *   name: "a list of at most 3 strings",
- *   maxItems: 3,
- * })
- *
- * const strings: StringArray = ["hello", " ", "world!"]
- * ```
- *
  */
-export interface ArrayDecorator<T extends LazyType = Type> extends Type {
-  kind: 'array-decorator'
-  type: T
-  opts?: {
-    name?: string
-    description?: string
-    maxItems?: number
-  }
+export type ArrayType<M extends Mutability, T extends Type> = {
+  readonly kind: 'array'
+  readonly mutability: M
+  readonly wrappedType: T
+  readonly options?: ArrayTypeOptions
+
+  immutable(): ArrayType<'immutable', T>
+  mutable(): ArrayType<'mutable', T>
+  optional(): OptionalType<ArrayType<M, T>>
+  nullable(): NullableType<ArrayType<M, T>>
+  array(): ArrayType<'immutable', ArrayType<M, T>>
+  reference(): ReferenceType<ArrayType<M, T>>
+  setOptions(options: ArrayTypeOptions): ArrayType<M, T>
+  updateOptions(options: ArrayTypeOptions): ArrayType<M, T>
+  setName(name: string): ArrayType<M, T>
 }
 
 /**
- * The model of an element that could be missing in the Mondrian framework.
- *
- * This decorator can be used to turn a `Type` in the model of an optional type
- * of that element.
- *
- * It can also hold additional information in its optional `opts` field:
- * - `name`: a name for the optional type
- * - `description`: a description for the role of the optional type
- *
- * ## Examples
- *
- * A non-optional `Type` can be turned into the corresponding optional type
- * using the `.optional()` method:
- *
- * ```ts
- * type OptionalNumber = Infer<typeof stringArray>
- * const optionalNumber = number().optional()
- *
- * const exampleMissing: OptionalNumber = undefined
- * const examplePresent: OptionalNumber = 42
- * ```
- *
+ * The options that can be used to define an {@link ArrayType `ArrayType`}.
  */
-export interface OptionalDecorator<T extends LazyType = Type> extends Type {
-  kind: 'optional-decorator'
-  type: T
-  opts?: {
-    name?: string
-    description?: string
-  }
+export type ArrayTypeOptions = BaseOptions & {
+  readonly maxItems?: number
+  readonly minItems?: number
 }
 
 /**
- * The model of an element that could be null in the Mondrian framework.
- *
- * This decorator can be used to turn a `Type` in the model of a nullable
- * version of that element.
- *
- * It can also hold additional information in its optional `opts` field:
- * - `name`: a name for the nullable type
- * - `description`: a description for the role of the nullable type
- *
- * ## Examples
- *
- * A non-nullable `Type` can be turned into the corresponding nullable type
- * using the `.nullable()` method:
- *
- * ```ts
- * type NullableString = Infer<typeof nullableString>
- * const nullableString = string().nullable()
- *
- * const exampleNull: NullableString = null
- * const examplePresent: NullableString = "Hello, Mondrian!"
- * ```
- *
+ * The model of a possibly-missing element in the Mondrian framework.
  */
-export interface NullableDecorator<T extends LazyType = Type> extends Type {
-  kind: 'nullable-decorator'
-  type: T
-  opts?: {
-    name?: string
-    description?: string
-  }
+export type OptionalType<T extends Type> = {
+  readonly kind: 'optional'
+  readonly wrappedType: T
+  readonly defaultValue?: Infer<T> | (() => Infer<T>)
+  readonly options?: OptionalTypeOptions
+
+  nullable(): NullableType<OptionalType<T>>
+  array(): ArrayType<'immutable', OptionalType<T>>
+  reference(): ReferenceType<OptionalType<T>>
+  setOptions(options: OptionalTypeOptions): OptionalType<T>
+  updateOptions(options: OptionalTypeOptions): OptionalType<T>
+  setName(name: string): OptionalType<T>
+  withDefault(value: Infer<T> | (() => Infer<T>)): OptionalType<T>
 }
 
 /**
- * The model of an element with a default value in the Mondrian framework.
- *
- * This decorator can be used to add a default value to any `Type`.
- *
- * It can also hold additional information in its optional `opts` field:
- * - `name`: a name for the nullable type
- * - `description`: a description for the role of the nullable type
- *
- * ## Examples
- *
+ * The options that can be used to define an {@link OptionalType `OptionalType`}.
  */
-export interface DefaultDecorator<T extends LazyType = Type> extends Type {
-  kind: 'default-decorator'
-  type: T
-  defaultValue: Infer<T> | (() => Infer<T>)
-  opts?: {
-    name?: string
-    description?: string
-  }
+export type OptionalTypeOptions = BaseOptions
+
+/**
+ * The model of a possibly-null element in the Mondrian framework.
+ */
+export type NullableType<T extends Type> = {
+  readonly kind: 'nullable'
+  readonly wrappedType: T
+  readonly options?: NullableTypeOptions
+
+  optional(): OptionalType<NullableType<T>>
+  array(): ArrayType<'immutable', NullableType<T>>
+  reference(): ReferenceType<NullableType<T>>
+  setOptions(options: NullableTypeOptions): NullableType<T>
+  updateOptions(options: NullableTypeOptions): NullableType<T>
+  setName(name: string): NullableType<T>
 }
 
-export interface RelationDecorator<T extends LazyType = Type> extends Type {
-  kind: 'relation-decorator'
-  type: T
-  opts?: {
-    name?: string
-    description?: string
-  }
+/**
+ * The options that can be used to define a {@link NullableType `NullableType`}.
+ */
+export type NullableTypeOptions = BaseOptions
+
+/**
+ * The model for a {@link Type `Type`} that is a reference to another type.
+ */
+export type ReferenceType<T extends Type> = {
+  readonly kind: 'reference'
+  readonly wrappedType: T
+  readonly options?: ReferenceTypeOptions
+
+  optional(): OptionalType<ReferenceType<T>>
+  nullable(): NullableType<ReferenceType<T>>
+  array(): ArrayType<'immutable', ReferenceType<T>>
+  setOptions(options: ReferenceTypeOptions): ReferenceType<T>
+  updateOptions(options: ReferenceTypeOptions): ReferenceType<T>
+  setName(name: string): ReferenceType<T>
 }
 
-export interface UnionOperator<
-  TS extends Types = Types,
-  P extends InferProjection<{ kind: 'union-operator'; types: TS }> | boolean = false,
-> extends Type {
-  kind: 'union-operator'
-  types: TS
-  opts?: {
-    name?: string
-    description?: string
-    requiredProjection?: P
-    is?: {
-      [K in keyof TS]: (value: Project<P, { kind: 'union-operator'; types: TS }>) => boolean
-    }
-  }
-}
+/**
+ * The options used to define a {@link ReferenceType `ReferenceType`}.
+ */
+export type ReferenceTypeOptions = BaseOptions
 
-export type AnyType =
-  | NumberType
-  | StringType
-  | EnumType
-  | BooleanType
-  | RootCustomType
-  | LiteralType
-  | ObjectType
-  | ArrayDecorator
-  | OptionalDecorator
-  | NullableDecorator
-  | DefaultDecorator
-  | RelationDecorator
-  | UnionOperator
-
-export type CustomTypeOpts = {
-  name?: string
-  description?: string
-}
+/*
+// TODO: Add custom type back
 
 export type CustomType<
   T = any,
@@ -468,169 +401,6 @@ export interface RootCustomType<T = any, E extends LazyType = Type, O = any> ext
   opts?: O & CustomTypeOpts
 }
 
-/**
- * @param opts the options used to define the `NumberType`
- * @throws if the `multipleOf` field of `opts` is less than or equal to 0
- * @returns a `NumberType` with the given options
- */
-export function number(opts?: NumberType['opts']): NumberType & DecoratorShorcuts<NumberType> {
-  if (opts?.multipleOf && opts.multipleOf <= 0) {
-    throw new Error('Invalid multipleOf for integer (must be > 0)')
-  }
-  const t: NumberType = { kind: 'number', opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param opts the options used to define the `NumberType`
- * @throws if the `multipleOf` field of `opts` is not an integer number
- * @returns a `NumberType` where the `multipleOf` is an integer and defaults to 1 if it not defined in `opts`
- */
-export function integer(opts?: NumberType['opts']): NumberType & DecoratorShorcuts<NumberType> {
-  if (opts?.multipleOf && opts.multipleOf % 1 !== 0) {
-    throw new Error('Invalid multipleOf for integer (must be integer)')
-  }
-  return number({ multipleOf: 1, ...opts })
-}
-
-/**
- * @param opts the options used to define the `StringType`
- * @returns a `StringType` with the given options
- */
-export function string(opts?: StringType['opts']): StringType & DecoratorShorcuts<StringType> {
-  const t: StringType = { kind: 'string', opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param opts the options used to define the `OptionType`
- * @returns a `BooleanType` with the given options
- */
-export function boolean(opts?: BooleanType['opts']): BooleanType & DecoratorShorcuts<BooleanType> {
-  const t: BooleanType = { kind: 'boolean', opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param value the value whose literal type will be represented by the returned `LiteralType`
- * @param opts the options used to define the `LiteralType`
- * @returns a `LiteralType` representing the literal type of `value`
- */
-export function literal<const T extends number | string | boolean | null>(
-  value: T,
-  opts?: LiteralType['opts'],
-): LiteralType<T> & DecoratorShorcuts<LiteralType<T>> {
-  const t: LiteralType<T> = { kind: 'literal', value, opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-export function union<
-  const T extends Types,
-  const P extends InferProjection<{ kind: 'union-operator'; types: T }> | boolean = false,
->(types: T, opts?: UnionOperator<T, P>['opts']): UnionOperator<T, P> & DecoratorShorcuts<UnionOperator<T>> {
-  const t = {
-    kind: 'union-operator',
-    types,
-    opts: { ...opts, requiredProjection: opts?.requiredProjection ?? true },
-    static: null as any,
-  } as UnionOperator<T, P>
-  return { ...t, ...decoratorShorcuts(t) } as UnionOperator<T, P> & DecoratorShorcuts<UnionOperator<T>>
-}
-
-/**
- * @param values a non empty array of string values used to define the `EnumType`'s variants
- * @param opts the options used to define the `EnumType`
- * @returns an `EnumType` with the given variants and options
- */
-export function enumeration<const V extends readonly [string, ...string[]]>(
-  values: V,
-  opts?: EnumType<V>['opts'],
-): EnumType<V> & DecoratorShorcuts<EnumType<V>> {
-  const t: EnumType<V> = { kind: 'enum', values, opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param types an object where each value is itself a type, used to determine the structure of the resulting `ObjectType`
- * @param opts the options used to define the `ObjectType`
- * @returns an `ObjectType` with the provided fields and options
- */
-export function object<Ts extends Types>(
-  types: Ts,
-  opts?: ObjectType['opts'],
-): ObjectType<Ts> & DecoratorShorcuts<ObjectType<Ts>> {
-  const t: ObjectType<Ts> = { kind: 'object', type: types, opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param type the type of the items held by the resulting `ArrayType`
- * @param opts the options used to define the `ArrayType`
- * @returns an `ArrayType` holding items of the given type, with the given options
- */
-export function array<const T extends LazyType>(
-  type: T,
-  opts?: ArrayDecorator['opts'],
-): ArrayDecorator<T> & DecoratorShorcuts<ArrayDecorator<T>> {
-  const t: ArrayDecorator<T> = { kind: 'array-decorator', type, opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param type the type of the item held by the resulting `OptionalType`
- * @param opts the options used to define the `OptionalType`
- * @returns an `OptionalType` holding an item of the given type, with the given options
- */
-export function optional<const T extends LazyType>(
-  type: T,
-  opts?: OptionalDecorator['opts'],
-): OptionalDecorator<T> & DecoratorShorcuts<OptionalDecorator<T>, 'optional'> {
-  const t: OptionalDecorator<T> = { kind: 'optional-decorator', type, opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param type the type of the item held by the resulting `NullableType`
- * @param opts the options used to define the `NullableType`
- * @returns a `NullableType` holding an item of the given type, with the given options
- */
-export function nullable<const T extends LazyType>(
-  type: T,
-  opts?: NullableDecorator['opts'],
-): NullableDecorator<T> & DecoratorShorcuts<NullableDecorator<T>, 'nullable'> {
-  const t: NullableDecorator<T> = { kind: 'nullable-decorator', type, opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-/**
- * @param type the `LazyType` to add a default value to
- * @param defaultValue the default value to add to `type`
- * @param opts the options used to describe the default value
- * @returns a type with the added default value and options
- */
-export function defaultType<const T extends LazyType>(
-  type: T,
-  defaultValue: Infer<T> | (() => Infer<T>),
-  opts?: Omit<DefaultDecorator['opts'], 'default'>,
-): DefaultDecorator<T> & DecoratorShorcuts<DefaultDecorator<T>, 'default'> {
-  const t: DefaultDecorator<T> = { kind: 'default-decorator', type, defaultValue, opts }
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-export function relation<const T extends LazyType>(type: T): RelationDecorator<T> {
-  const t: RelationDecorator<T> = { kind: 'relation-decorator', type }
-  return t
-}
-
-/**
- * @param type the type whose name will be changed
- * @param name the new name for the type
- * @returns a new type equal to `type` but with the given `name`
- */
-export function named<const T extends LazyType>(type: T, name: string): T & DecoratorShorcuts<T, 'named'> {
-  return new LazyTypeWrapper(type, { name }) as unknown as T & DecoratorShorcuts<T, 'named'>
-}
-
 export function custom<
   const T,
   const E extends LazyType,
@@ -642,9 +412,735 @@ export function custom<
   const t = { ...custom, kind: 'custom', opts } as RootCustomType<T, E, O>
   return { ...t, ...decoratorShorcuts(t) }
 }
+*/
 
-type LazyToType<T extends LazyType> = [T] extends [() => infer R] ? R : T
+/**
+ * @param options the {@link NumberTypeOptions options} used to define the new `NumberType`
+ * @throws if the `multipleOf` field of `options` is less than or equal to 0
+ * @returns a {@link NumberType `NumberType`} with the given `options`
+ * @example Imagine you have to deal with the measurements coming from a thermometer: those values can be thought of as
+ *          floating point numbers. A model for such a data type could be defined like this:
+ *
+ *          ```ts
+ *          type Measurement = Infer<typeof measurement>
+ *          const measurement = number({
+ *            name: "measurement",
+ *            description: "a measurement coming from a thermometer",
+ *          })
+ *
+ *          const exampleMeasurement: Measurement = 28.2
+ *          ```
+ */
+export function number(options?: OptionsOf<NumberType>): NumberType {
+  if (options?.multipleOf && options.multipleOf <= 0) {
+    throw new Error('Invalid multipleOf for integer (must be > 0)')
+  }
+  return {
+    kind: 'number',
+    options,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
 
+/**
+ * @param options the {@link NumberTypeOptions options} used to define the new `NumberType`
+ * @throws if the `multipleOf` field of `options` is not an integer number
+ * @returns a {@link NumberType `NumberType`} where the `multipleOf` is an integer and defaults to 1 if it not defined
+ *          in `options`
+ * @example Imagine you have to deal with the age of a users: it can be thought of as an integer number that can never
+ *          be lower than zero. A model for such a data type could be defined like this:
+ *
+ *          ```ts
+ *          type Age = Infer<typeof age>
+ *          const age = integer({
+ *            name: "age",
+ *            description: "an age that is never negative",
+ *            minimum: [0, "inclusive"],
+ *          })
+ *
+ *          const exampleAge: Age = 24
+ *           ```
+ */
+export function integer(options?: OptionsOf<NumberType>): NumberType {
+  if (options?.multipleOf && options.multipleOf % 1 !== 0) {
+    throw new Error('Invalid multipleOf for integer (must be integer)')
+  }
+  return number({ multipleOf: 1, ...options })
+}
+
+/**
+ * @param options the {@link StringTypeOptions options} used to define the new `StringType`
+ * @returns a {@link StringType `StringType`} with the given `options`
+ * @example Imagine you have to deal with string usernames that can never be empty.
+ *          A model for such username could be defined like this:
+ *
+ *          ```ts
+ *          type Username = Infer<typeof username>
+ *          const username = string({
+ *            name: "username",
+ *            description: "a username that is never empty",
+ *            minLength: 1,
+ *          })
+ *
+ *          const exampleUsername: Username = "my_cool_username"
+ *          ```
+ */
+export function string(options?: OptionsOf<StringType>): StringType {
+  return {
+    kind: 'string',
+    options,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param options the {@link BooleanTypeOptions options} used to define the new `BooleanType`
+ * @returns a {@link BooleanType `BooleanType`} with the given `options`
+ * @example Imagine you have to keep track of a flag that is used to check wether a user is an admin or not.
+ *          The corresponding model could be defined like this:
+ *
+ *          ```ts
+ *          type AdminFlag = Infer<typeof adminFlag>
+ *          const adminFlag: BooleanType = boolean({
+ *            name: "isAdmin",
+ *            description: "a flag that is True if the user is also an admin",
+ *          })
+ *
+ *          const exampleAdminFlag: AdminFlag = true
+ *          ```
+ */
+export function boolean(options?: OptionsOf<BooleanType>): BooleanType {
+  return {
+    kind: 'boolean',
+    options,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param variants a non empty array of string values used to define the new `EnumType`'s variants
+ * @param options the {@link EnumTypeOptions options} used to define the new `EnumType`
+ * @returns an {@link EnumType `EnumType`} with the given `variants` and `options`
+ * @example Imagine you have to deal with two kind of users - admins and normal users - their type can be modelled with
+ *          an enum like this:
+ *
+ *          ```ts
+ *          type UserKind = Infer<typeof userKind>
+ *          const userKind = enumeration(["ADMIN", "NORMAL"], {
+ *            name: "user_kind",
+ *            description: "the kind of a user",
+ *          })
+ *
+ *          const exampleUserKind : UserKind = "ADMIN"
+ *          ```
+ */
+export function enumeration<const Vs extends readonly [string, ...string[]]>(
+  variants: Vs,
+  options?: OptionsOf<EnumType<Vs>>,
+): EnumType<Vs> {
+  return {
+    kind: 'enum',
+    variants,
+    options,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param value the literal value held by the new `LiteralType`
+ * @param opts the {@link LiteralTypeOptions options} used to define the new `LiteralType`
+ * @returns a {@link LiteralType `LiteralType`} representing the literal type of `value`
+ * @example Imagine you have to deal with HTTP requests whose HTTP version must be `"2.0"`.
+ *          The version field could be modelled with a literal type to can guarantee that a request can only be built
+ *          if its version is the string `"2.0"`:
+ *
+ *          ```ts
+ *          type RequiredVersion = Infer<typeof requiredVersion>
+ *          const requiredVersion = literal("2.0", {
+ *            name: "requiredVersion",
+ *            description: "the required version for the HTTPS requests",
+ *          })
+ *
+ *          const version: RequiredVersion = "2.0"
+ *          ```
+ */
+export function literal<const L extends number | string | boolean | null>(
+  literalValue: L,
+  options?: OptionsOf<LiteralType<L>>,
+): LiteralType<L> {
+  return {
+    kind: 'literal',
+    literalValue,
+    options,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param variants a record with the different variants, each one paired with a function that can be used to determine
+ *                 wether a value belongs to that variant or not
+ * @param options the {@link UnionTypeOptions options} used to define the new `UnionType`
+ * @returns a new {@link UnionType `UnionType`} with the provided `variants` and `options`
+ * @example Imagine you are modelling TODO
+ */
+export function union<Ts extends Types>(
+  variants: PairFieldsWith<Ts, (_: Infer<UnionType<Ts>>) => boolean>,
+  options?: OptionsOf<UnionType<Ts>>,
+): UnionType<Ts> {
+  return {
+    kind: 'union',
+    variants,
+    options,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param types an object where each field is itself a {@link Type `Type`}, used to determine the structure of the
+ *              new `ObjectType`
+ * @param options the {@link ObjectTypeOptions options} used to define the new `ObjectType`
+ * @returns an {@link ObjectType `ObjectType`} with the provided `values` and `options`
+ * @example Imagine you are modelling a `User` that has a username, an age and a boolean flag to tell if it is an admin
+ *          or not. Its definition could look like this:
+ *
+ *          ```ts
+ *          type User = Infer<typeof user>
+ *          const user = object(
+ *            {
+ *              username: string(),
+ *              age: number(),
+ *              isAdmin: boolean(),
+ *            },
+ *            {
+ *              name: 'user',
+ *              description: 'a user with an age and a username',
+ *            },
+ *          )
+ *
+ *          const exampleUser: User = {
+ *            username: 'Giacomo',
+ *            age: 24,
+ *            isAdmin: false,
+ *          }
+ *          ```
+ */
+export function object<Ts extends Types>(
+  types: Ts,
+  options?: OptionsOf<ObjectType<'immutable', Ts>>,
+): ObjectType<'immutable', Ts> {
+  return {
+    kind: 'object',
+    mutability: 'immutable',
+    types,
+    options,
+    immutable() {
+      return this
+    },
+    mutable() {
+      return mutableObject(types, options)
+    },
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * The same as the {@link object `object`} function, but the inferred object fields are mutable instead of `readonly`.
+ *
+ * @param types an object where each field is itself a {@link Type `Type`}, used to determine the structure of the
+ *              new `ObjectType`
+ * @param options the {@link ObjectTypeOptions options} used to define the new `ObjectType`
+ * @returns an {@link ObjectType `ObjectType`} with the provided `values` and `options`
+ */
+export function mutableObject<Ts extends Types>(
+  types: Ts,
+  options?: OptionsOf<ObjectType<'mutable', Ts>>,
+): ObjectType<'mutable', Ts> {
+  return {
+    kind: 'object',
+    mutability: 'mutable',
+    types,
+    options,
+    immutable() {
+      return object(types, options)
+    },
+    mutable() {
+      return this
+    },
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * TODO: test that it works with a lazy object and doesn't crash
+ *
+ * @param one the first `ObjectType` to merge
+ * @param other the second `ObjectType` to merge
+ * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
+ *                The options of the merged objects are always ignored, even if this property is set to `undefined`
+ * @returns a new {@link ObjectType `ObjectType`} obtained by merging `one` with `other`.
+ *          If both objects define a field with the same name, the type of the resulting field is the one defined by
+ *          `other`.
+ * @example ```ts
+ *          const book = object({ name: string(), publishedIn: integer() })
+ *          const description = object({ shortDescription: string(), fullDescription: string() })
+ *          const bookWithDescription = merge(book, description)
+ *          type BookWithDescription = Infer<typeof bookWithDescription>
+ *
+ *          const exampleBook = {
+ *            name: "Example book",
+ *            publishedIn: 2023,
+ *            shortDescription: "...",
+ *            fullDescription: "...",
+ *          }
+ *          ```
+ */
+export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability>(
+  mutable: M,
+  one: ObjectType<any, Ts1> | (() => ObjectType<any, Ts1>),
+  other: ObjectType<any, Ts2> | (() => ObjectType<any, Ts2>),
+  options?: OptionsOf<ObjectType<M, Ts1 & Ts2>>,
+): ObjectType<M, Ts1 & Ts2> {
+  const object1 = typeof one === 'function' ? one() : one
+  const object2 = typeof other === 'function' ? other() : other
+  if (mutable == 'immutable') {
+    return object({ ...object1.types, ...object2.types }, options) as ObjectType<M, Ts1 & Ts2>
+  } else {
+    return mutableObject({ ...object1.types, ...object2.types }, options) as ObjectType<M, Ts1 & Ts2>
+  }
+}
+
+/**
+ * @param wrappedType the {@link Type `Type`} describing the items held by the new `ArrayType`
+ * @param options the {@link ArrayTypeOptions options} used to define the new `ArrayType`
+ * @returns an {@link ArrayType `ArrayType`} holding items of the given type, with the given `options`
+ * @example ```ts
+ *          type StringArray = Infer<typeof stringArray>
+ *          const stringArray = array(string(), {
+ *            name: "a list of at most 3 strings",
+ *            maxItems: 3,
+ *          })
+ *
+ *          const strings: StringArray = ["hello", " ", "world!"]
+ *          ```
+ */
+export function array<T extends Type>(
+  wrappedType: T,
+  options?: OptionsOf<ArrayType<'immutable', T>>,
+): ArrayType<'immutable', T> {
+  return {
+    kind: 'array',
+    mutability: 'immutable',
+    wrappedType,
+    options,
+    immutable() {
+      return this
+    },
+    mutable() {
+      return mutableArray(wrappedType, options)
+    },
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * The same as the {@link object `array`} function, but the inferred array is `readonly`.
+ *
+ * @param wrappedType the {@link Type `Type`} describing the items held by the new `ArrayType`
+ * @param options the {@link ArrayTypeOptions options} used to define the new `ArrayType`
+ * @returns an {@link ArrayType `ArrayType`} holding items of the given type, with the given `options`
+ */
+export function mutableArray<T extends Type>(
+  wrappedType: T,
+  options?: OptionsOf<ArrayType<'mutable', T>>,
+): ArrayType<'mutable', T> {
+  return {
+    kind: 'array',
+    mutability: 'mutable',
+    wrappedType,
+    options,
+    immutable() {
+      return array(wrappedType, options)
+    },
+    mutable() {
+      return this
+    },
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param wrappedType the {@link Type `Type`} describing the item held by the new `OptionalType`
+ * @param options the {@link OptionalTypeOptions options} used to define the new `OptionalType`
+ * @returns an {@link OptionalType `OptionalType`} holding an item of the given type, with the given `options`
+ * @example ```ts
+ *          type OptionalNumber = Infer<typeof stringArray>
+ *          const optionalNumber = optional(number())
+ *
+ *          const exampleMissing: OptionalNumber = undefined
+ *          const examplePresent: OptionalNumber = 42
+ *          ```
+ */
+export function optional<const T extends Type>(
+  wrappedType: T,
+  defaultValue?: Infer<T> | (() => Infer<T>),
+  options?: OptionsOf<OptionalType<T>>,
+): OptionalType<T> {
+  return {
+    kind: 'optional',
+    wrappedType,
+    defaultValue,
+    options,
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+    withDefault(defaultValue) {
+      return optional(wrappedType, defaultValue, options)
+    },
+  }
+}
+
+/**
+ * @param wrappedType the {@link Type `Type`} describing the item held by the new `NullableType`
+ * @param options the {@link NullableTypeOptions options} used to define the new `NullableType`
+ * @returns a {@link NullableType `NullableType`} holding an item of the given type, with the given `options`
+ * @example ```ts
+ *          type NullableString = Infer<typeof nullableString>
+ *          const nullableString = nullable(string())
+ *
+ *          const exampleNull: NullableString = null
+ *          const examplePresent: NullableString = "Hello, Mondrian!"
+ *          ```
+ */
+export function nullable<T extends Type>(wrappedType: T, options?: OptionsOf<NullableType<T>>): NullableType<T> {
+  return {
+    kind: 'nullable',
+    wrappedType,
+    options,
+    optional() {
+      return optional(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param wrappedType the {@link Type `Type`} referenced by the resulting `ReferenceType`
+ * @param options the {@link ReferenceTypeOptions options} used to define the new `ReferenceType`
+ * @returns a {@link ReferenceType `ReferenceType`} wrapping the given type, with the given `options`
+ */
+export function reference<T extends Type>(wrappedType: T, options?: OptionsOf<ReferenceType<T>>): ReferenceType<T> {
+  return {
+    kind: 'reference',
+    wrappedType,
+    options,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * @param type the {@link Type type} whose options will be updated
+ * @param options the options used to create the new updated type
+ * @returns a new type whose options are the same as those of the given `type` where any option defined in `options`
+ *          replaces the old ones
+ * @example ```ts
+ *          const n1 = number({ name: "n", description: "a number" })
+ *          const n2 = updateOptions(n1, { description: "an even better number" })
+ *          // -> n1.options = { name: "n", description: "a number" }
+ *          // -> n2.options = { name: "n", description: "an even better number" }
+ *          ```
+ */
+export function updateOptions<T extends Type>(type: T, options: OptionsOf<T>): T {
+  if (typeof type === 'function') {
+    // TODO: test that this cast is safe
+    return (() => updateOptions(type(), options as never)) as T
+  } else {
+    return { ...type, options: { ...type.options, ...options } }
+  }
+}
+
+/**
+ * @param type the {@link Type type} whose options will be changed
+ * @param options the options used to create the new updated type
+ * @returns a new type with the same structure of the given `type` but whose options are replaced by the given `options`
+ * @example ```ts
+ *          const n1 = number({ name: "n1", description: "a number"})
+ *          const n2 = setOptions(number, { name: "n2" })
+ *          // -> n1.options = { name: "n1", description: "a number" }
+ *          // -> n2.options = { name: "n2" }
+ *          ```
+ */
+export function setOptions<T extends Type>(type: T, options: OptionsOf<T>): T {
+  if (typeof type === 'function') {
+    // TODO: test that this cast is safe
+    return (() => setOptions(type(), options as never)) as T
+  } else {
+    return { ...type, options }
+  }
+}
+
+/**
+ * @param type the {@link Type type} whose name option will be updated
+ * @param name the name of the updated type
+ * @returns a new type whose options are the same as those of the given `type` where name has been replaced with the
+ *          provided name
+ * @example ```ts
+ *          const n1 = number({ name: "n1", description: "a number" })
+ *          const n2 = setName(n1, "n2")
+ *          // -> n1.options.name = "n1"
+ *          // -> n2.options.name = "n2"
+ *          ```
+ */
+export function setName<T extends Type>(type: T, name: string): T {
+  return updateOptions(type, { name } as OptionsOf<T>)
+}
+
+/*
 type Selection<T extends LazyType, P extends InferProjection<T>> = SelectionInternal<T, P> &
   DecoratorShorcuts<SelectionInternal<T, P>>
 type SelectionInternal<LT extends LazyType, P extends GenericProjection> = LazyToType<LT> extends infer T
@@ -757,56 +1253,10 @@ export function select<const T extends LazyType, const P extends InferProjection
   return { ...t, ...decoratorShorcuts(t) } as Selection<T, P>
 }
 
-type Merge<T1 extends ObjectType | (() => ObjectType), T2 extends ObjectType | (() => ObjectType)> = [T1] extends [
-  ObjectType,
-]
-  ? [T2] extends [ObjectType]
-    ? MergeInternal<T1, T2> & DecoratorShorcuts<MergeInternal<T1, T2>>
-    : LazyToType<T2> extends ObjectType
-    ? MergeInternal<T1, LazyToType<T2>> & DecoratorShorcuts<MergeInternal<T1, LazyToType<T2>>>
-    : never
-  : [T2] extends [ObjectType]
-  ? LazyToType<T1> extends ObjectType
-    ? MergeInternal<LazyToType<T1>, T2> & DecoratorShorcuts<MergeInternal<LazyToType<T1>, T2>>
-    : never
-  : LazyToType<T1> extends ObjectType
-  ? LazyToType<T2> extends ObjectType
-    ? MergeInternal<LazyToType<T1>, LazyToType<T2>> & DecoratorShorcuts<MergeInternal<LazyToType<T1>, LazyToType<T2>>>
-    : never
-  : never
 
-type MergeInternal<T1 extends ObjectType, T2 extends ObjectType> = {
-  kind: 'object'
-  type: { [K in Exclude<keyof T1['type'], keyof T2['type']>]: T1['type'][K] } & {
-    [K in keyof T2['type']]: T2['type'][K]
-  }
-  opts: ObjectType['opts']
-}
+*/
 
-export function merge<
-  const T1 extends ObjectType | (() => ObjectType),
-  const T2 extends ObjectType | (() => ObjectType),
->(t1: T1, t2: T2, opts?: ObjectType['opts']): Merge<T1, T2> {
-  function internal(t1: ObjectType, t2: ObjectType) {
-    const t1e = Object.entries(t1.type)
-    const t2e = Object.entries(t2.type)
-    const result = {
-      kind: 'object',
-      type: Object.fromEntries([...t1e.filter((v1) => !t2e.some((v2) => v1[0] === v2[0])), ...t2e]),
-      opts,
-    } as Merge<T1, T2>
-    return result
-  }
-  if (typeof t1 === 'function' || typeof t2 === 'function') {
-    return new LazyTypeWrapper(() => {
-      return internal(typeof t1 === 'function' ? t1() : t1, typeof t2 === 'function' ? t2() : t2)
-    }) as unknown as Merge<T1, T2>
-  }
-  const t = internal(t1, t2)
-  return { ...t, ...decoratorShorcuts(t) }
-}
-
-export type Infer<T extends LazyType> = InferType<T, false, false>
+/*
 export type InferReturn<T extends LazyType> = InferType<T, true, false>
 type InferType<T extends LazyType, Partial extends boolean, Shader extends boolean> = [T] extends [() => infer LT]
   ? InferTypeInternal<LT, Partial, Shader>
@@ -866,7 +1316,9 @@ type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T]
         >
     : never
   : unknown
+*/
 
+/*
 type OptionalKeys<T extends ObjectType['type']> = {
   [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never
 }[keyof T]
@@ -987,3 +1439,4 @@ type InferProjectionInternal<T> = [T] extends [{ kind: 'array-decorator'; type: 
     ? { [K in keyof TS]?: InferProjection<TS[K]> } | true
     : never
   : true
+*/

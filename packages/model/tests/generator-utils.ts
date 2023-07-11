@@ -1,4 +1,3 @@
-import m, { UnionType } from '../src'
 import { fc as gen } from '@fast-check/vitest'
 
 export function nonEmptyArray<T>(generator: gen.Arbitrary<T>): gen.Arbitrary<[T, ...T[]]> {

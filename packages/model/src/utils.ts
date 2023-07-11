@@ -1,92 +1,37 @@
-import { GenericProjection } from './projection'
-import {
-  AnyType,
-  ArrayDecorator,
-  BooleanType,
-  EnumType,
-  LiteralType,
-  NullableDecorator,
-  NumberType,
-  ObjectType,
-  RootCustomType,
-  StringType,
-  UnionOperator,
-} from './type-system'
-import { DefaultDecorator, LazyType, OptionalDecorator, RelationDecorator } from './type-system'
-
-export function lazyToType(t: LazyType): AnyType {
-  if (typeof t === 'function') {
-    return t() as AnyType
+/**
+ * @param values the array to map over
+ * @param mapper a mapping function that may return `undefined`
+ * @returns a new array where each element has been mapped with `mapper` and all values mapped to `undefined` are
+ *          discarted
+ */
+export function filterMap<A, B>(values: A[], mapper: (_: A) => B | undefined): B[] {
+  const mappedValues = []
+  for (const value of values) {
+    const mappedValue = mapper(value)
+    if (mappedValue !== undefined) {
+      mappedValues.push(mappedValue)
+    }
   }
-  return t as AnyType
+  return mappedValues
 }
 
-export function encodedTypeIsScalar(type: LazyType): boolean {
-  const t = lazyToType(type)
-  if (t.kind === 'boolean' || t.kind === 'enum' || t.kind === 'number' || t.kind === 'literal' || t.kind === 'string') {
-    return true
+/**
+ * @param object the object to map over
+ * @param mapper a mapping function that takes as input the name of a field and the corresponding value and maps it to
+ *               a value of type `B` or `undefined`
+ * @returns a new object with the same fields where each value is mapped using the mapping function, any value mapped to
+ *          `undefined` is discarded and the corresponding field is dropped from the new object
+ */
+export function filterMapObject<A, B>(
+  object: Record<string, A>,
+  mapper: (fieldName: string, fieldValue: A) => B | undefined,
+): Record<string, B> {
+  const mappedObject: { [key: string]: B } = {}
+  for (const [fieldName, fieldValue] of Object.entries(object)) {
+    const mappedValue = mapper(fieldName, fieldValue)
+    if (mappedValue !== undefined) {
+      mappedObject[fieldName] = mappedValue
+    }
   }
-  if (
-    t.kind === 'default-decorator' ||
-    t.kind === 'nullable-decorator' ||
-    t.kind === 'optional-decorator' ||
-    t.kind === 'relation-decorator'
-  ) {
-    return encodedTypeIsScalar(t.type)
-  }
-  if (t.kind === 'custom') {
-    return encodedTypeIsScalar(t.encodedType)
-  }
-  if (t.kind === 'union-operator') {
-    return Object.values(t.types).every((t) => encodedTypeIsScalar(t))
-  }
-  return false
-}
-export function getFirstConcreteType(
-  type: LazyType,
-): NumberType | StringType | EnumType | BooleanType | RootCustomType | LiteralType | ObjectType | UnionOperator {
-  const t = lazyToType(type)
-  if (
-    t.kind === 'default-decorator' ||
-    t.kind === 'array-decorator' ||
-    t.kind === 'nullable-decorator' ||
-    t.kind === 'optional-decorator' ||
-    t.kind === 'relation-decorator'
-  ) {
-    return getFirstConcreteType(t.type)
-  }
-  return t
-}
-
-export function isVoidType(type: LazyType): boolean {
-  const t = getFirstConcreteType(type)
-  return t.kind === 'custom' && t.name === 'void'
-}
-
-export function isNullable(type: LazyType): boolean {
-  return hasDecorator(type, 'nullable-decorator')
-}
-
-export function hasDecorator(
-  type: LazyType,
-  decorator:
-    | OptionalDecorator['kind']
-    | RelationDecorator['kind']
-    | DefaultDecorator['kind']
-    | ArrayDecorator['kind']
-    | NullableDecorator['kind'],
-): boolean {
-  const t = lazyToType(type)
-  if (t.kind === decorator) {
-    return true
-  }
-  if (
-    t.kind === 'default-decorator' ||
-    t.kind === 'optional-decorator' ||
-    t.kind === 'relation-decorator' ||
-    t.kind === 'nullable-decorator'
-  ) {
-    return hasDecorator(t.type, decorator)
-  }
-  return false
+  return mappedObject
 }

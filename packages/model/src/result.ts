@@ -1,9 +1,12 @@
 export type Error = { path?: string; error: string; value: unknown; unionElement?: string }
+
 export type Success<T> = { success: true; value: T }
+
 export type Failure = {
   success: false
   errors: Error[]
 }
+
 export type Result<T> = Success<T> | Failure
 
 export function success<T>(value: T): { success: true; value: T } {
@@ -40,6 +43,7 @@ export function enrichErrors<T>(result: Result<T>, prefixes?: (string | number)[
   }
   return result
 }
+
 function buildPath(root: (string | number)[]): string {
   let s = ''
   for (const v of root) {

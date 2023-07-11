@@ -1,86 +1,104 @@
-import { Infer, LazyType } from './type-system'
-import { hasDecorator, lazyToType } from './utils'
-import { JSONType, assertNever } from '@mondrian-framework/utils'
+import {
+  Infer,
+  Type,
+  concretise,
+  OptionalType,
+  NullableType,
+  Types,
+  ArrayType,
+  Mutability,
+  UnionType,
+  ReferenceType,
+  ObjectType,
+} from './type-system'
+import { filterMap, filterMapObject } from './utils'
+import { JSONType } from '@mondrian-framework/utils'
+import { match } from 'ts-pattern'
 
-export function encode<const T extends LazyType>(type: T, value: Infer<T>): JSONType {
-  const result = encodeInternal(type, value)
-  if (result === undefined) {
-    return null
-  }
-  return result as JSONType
+/**
+ * @param type the {@link Type type} of the value to encode
+ * @param value the value to encode to a `JSONType`
+ * @returns a {@link JSONType `JSONType`} encoding of the given `value`
+ */
+export function encode<const T extends Type>(type: T, value: Infer<T>): JSONType {
+  const encoded = unsafeEncode(type, value)
+  // If we get an `undefined` here it means that we where asked to encode an `OptionalType` with the
+  // `undefined` value. Since `undefined` is not a valid JSONType we decide to encode it as `null`.
+  // It is important that the matching decoder treats a `null` as an `undefined` optional type when
+  // decoding optionals!
+  return encoded === undefined ? null : encoded
 }
 
-function encodeInternal(type: LazyType, value: unknown): unknown {
-  const t = lazyToType(type)
-  if (t.kind === 'boolean' || t.kind === 'enum' || t.kind === 'number' || t.kind === 'string') {
-    return value
-  }
-  if (t.kind === 'custom') {
-    return t.encode(value, t.opts)
-  }
-  if (t.kind === 'literal') {
-    return t.value
-  }
-  if (t.kind === 'optional-decorator') {
-    if (value === undefined) {
-      return undefined
+/**
+ * Encodes a value of the type described by `type`. This function is unsafe since no check is performed that the given
+ * `value` actually has the type that can be inferred from `type`.
+ */
+function unsafeEncode(type: Type, value: any): JSONType | undefined {
+  return match(concretise(type))
+    .with({ kind: 'boolean' }, () => value)
+    .with({ kind: 'number' }, () => value)
+    .with({ kind: 'string' }, () => value)
+    .with({ kind: 'enum' }, () => value)
+    .with({ kind: 'literal' }, (type) => type.literalValue)
+    .with({ kind: 'optional' }, (type) => unsafeEncodeOptional(type, value))
+    .with({ kind: 'nullable' }, (type) => unsafeEncodeNullable(type, value))
+    .with({ kind: 'union' }, (type) => unsafeEncodeUnion(type, value))
+    .with({ kind: 'object' }, (type) => unsafeEncodeObject(type, value))
+    .with({ kind: 'array' }, (type) => unsafeEncodeArray(type, value))
+    .with({ kind: 'reference' }, (type) => unsafeEncodeReference(type, value))
+    .exhaustive()
+}
+
+/**
+ * Encodes an optional type: if the value is undefined and it doesn't have a default value it returns `undefined`,
+ * otherwise it encodes `value` (or the default value if `value` is `undefined`).
+ */
+function unsafeEncodeOptional<T extends Type>(type: OptionalType<T>, value: any | undefined): JSONType | undefined {
+  const valueToEncode = value ?? type.defaultValue
+  return valueToEncode === undefined ? undefined : unsafeEncode(type.wrappedType, valueToEncode)
+}
+
+/**
+ * Encodes a nullable type: if the value is null it returns null, otherwise encodes it recursively
+ * using the encoding strategy defined by the wrapped type.
+ */
+function unsafeEncodeNullable<T extends Type>(type: NullableType<T>, value: any | null): JSONType | undefined {
+  return value === null ? null : unsafeEncode(type.wrappedType, value)
+}
+
+/**
+ * Encodes a union type: `union` is encoded with the strategy described by the type of the first variant whose checker
+ * matches with it.
+ */
+function unsafeEncodeUnion<Ts extends Types>(type: UnionType<Ts>, union: any): JSONType | undefined {
+  for (const [_variantName, [variantType, isVariant]] of Object.entries(type.variants)) {
+    if (isVariant(union)) {
+      return unsafeEncode(variantType, union)
     }
-    return encodeInternal(t.type, value)
   }
-  if (t.kind === 'nullable-decorator') {
-    if (value === null) {
-      return null
-    }
-    return encodeInternal(t.type, value)
-  }
-  if (t.kind === 'default-decorator') {
-    if (value === undefined && !hasDecorator(t.type, 'optional-decorator')) {
-      return t.defaultValue as JSONType
-    }
-    return encodeInternal(t.type, value)
-  }
-  if (t.kind === 'relation-decorator') {
-    return encodeInternal(t.type, value)
-  }
-  if (t.kind === 'array-decorator') {
-    const results: unknown[] = []
-    for (const v of value as Array<JSONType>) {
-      const r = encodeInternal(t.type, v)
-      results.push(r === undefined ? null : r)
-    }
-    return results
-  }
-  if (t.kind === 'object') {
-    const ret: { [K in string]: unknown } = {}
-    for (const [key, v] of Object.entries(value as object)) {
-      const subtype = t.type[key]
-      if (subtype) {
-        const r = encode(subtype, v)
-        if (r !== undefined) {
-          ret[key] = r
-        }
-      }
-    }
-    for (const [key, subtype] of Object.entries(t.type)) {
-      if (hasDecorator(subtype, 'default-decorator') && ret[key] === undefined) {
-        const r = encodeInternal(subtype, undefined)
-        if (r !== undefined) {
-          ret[key] = r
-        }
-      }
-    }
-    return ret
-  }
-  if (t.kind === 'union-operator') {
-    for (const [key, subtype] of Object.entries(t.types)) {
-      if (!t.opts?.is) {
-        throw new Error(`Need to implement is for this union: ${Object.keys(t.types).join(' | ')}`)
-      }
-      if (t.opts.is[key](value)) {
-        return encodeInternal(subtype, value)
-      }
-    }
-    throw new Error(`Invalid value for this union: ${Object.keys(t.types).join(' | ')}`)
-  }
-  assertNever(t)
+  throw Error(`I could not encode a variant of a union type since none of the checking functions matched with it
+variant: ${union}
+type: ${type}`)
+}
+
+/**
+ * Encodes an object type: each of its fields is encoded with the encoding strategy defined by its type.
+ * If the result of the encoding of a field is `undefined` it is not added to the final object.
+ */
+function unsafeEncodeObject<Ts extends Types, M extends Mutability>(type: ObjectType<M, Ts>, object: any): JSONType {
+  return filterMapObject(type.types, (fieldName, fieldType) => unsafeEncode(fieldType, object[fieldName]))
+}
+
+/**
+ * Encodes an array type: each item in `values` is encoded using the strategy defined by the wrapped type.
+ */
+function unsafeEncodeArray<T extends Type, M extends Mutability>(type: ArrayType<M, T>, values: any): JSONType[] {
+  return filterMap(values, (value) => unsafeEncode(type.wrappedType, value))
+}
+
+/**
+ * Encodes a reference type: it encodes the value with the encoding strategy defined by the wrapped type.
+ */
+function unsafeEncodeReference<T extends Type>(type: ReferenceType<T>, reference: any): JSONType | undefined {
+  return unsafeEncode(type.wrappedType, reference)
 }

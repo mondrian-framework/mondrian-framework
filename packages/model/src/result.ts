@@ -1,6 +1,9 @@
 export type Error = { path?: string; error: string; value: unknown; unionElement?: string }
 
-export type Success<T> = { success: true; value: T }
+export type Success<T> = {
+  success: true
+  value: T
+}
 
 export type Failure = {
   success: false

@@ -1,4 +1,3 @@
-import { DecodeOptions } from './decoder'
 import { GenericProjection } from './projection'
 import { Result } from './result'
 import { Expand } from '@mondrian-framework/utils'

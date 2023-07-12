@@ -35,3 +35,12 @@ export function filterMapObject<A, B>(
   }
   return mappedObject
 }
+
+/**
+ * @param keyValuePairs a list of key-value pairs
+ * @param lookup the key to lookup
+ * @returns true if the `keyValuePairs` list contains the `lookup` key
+ */
+export function containsKey<A, B>(keyValuePairs: [A, B][], lookup: A): boolean {
+  return keyValuePairs.some(([key, _]) => key === lookup)
+}

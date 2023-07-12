@@ -1,115 +1,141 @@
-import { Error, Result, concat2, enrichErrors, error, errors, richError, success } from './result'
-import { ArrayDecorator, Infer, LazyType, NumberType, StringType } from './type-system'
-import { lazyToType } from './utils'
-import { assertNever } from '@mondrian-framework/utils'
+import { Error, Result, enrichErrors, error, errors, success } from './result'
+import {
+  Type,
+  Infer,
+  NumberType,
+  StringType,
+  concretise,
+  OptionalType,
+  NullableType,
+  ObjectType,
+  Types,
+  ReferenceType,
+  ArrayType,
+  UnionType,
+} from './type-system'
+import { OptionalFields } from './utils'
+import { match } from 'ts-pattern'
 
-export function isType<T extends LazyType>(
+/* TODO: figure out how to deal with object strictness */
+export type ValidationOptions = {
+  errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
+}
+
+export const defaultValidationOptions: ValidationOptions = {
+  errorReportingStrategy: 'stopAtFirstError',
+}
+
+/**
+ * @param type the {@link Type type} to define the validation logic
+ * @param value the value of the type to validate
+ * @param options the {@link ValidationOptions `ValidationOptions`} used to perform the validation
+ * @returns a successful result with the validated value if it respects the type validation logic
+ */
+export function validate<T extends Type>(
   type: T,
-  value: unknown,
-  opts?: Omit<ValidateOptions, 'errors'>,
-): value is Infer<T> {
-  return validate(type, value, opts).success
+  value: Infer<T>,
+  options?: OptionalFields<ValidationOptions>,
+): Result<Infer<T>> {
+  const actualOptions = { ...defaultValidationOptions, ...options }
+  const result = internalValidate(type, value, actualOptions)
+  return enrichErrors(result)
 }
 
-export function assertType<T extends LazyType>(
-  type: T,
-  value: unknown,
-  opts?: Omit<ValidateOptions, 'errors'>,
-): asserts value is Infer<T> {
-  const result = validate(type, value, opts)
-  if (!result.success) {
-    throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
-  }
+function internalValidate<T extends Type>(type: T, value: Infer<T>, options: ValidationOptions): Result<Infer<T>> {
+  return match(concretise(type))
+    .with({ kind: 'boolean' }, (_) => success(value))
+    .with({ kind: 'enum' }, (_) => success(value))
+    .with({ kind: 'literal' }, (_) => success(value))
+    .with({ kind: 'number' }, (type) => validateNumber(type, value as any) as Result<Infer<T>>)
+    .with({ kind: 'string' }, (type) => validateString(type, value as any) as Result<Infer<T>>)
+    .with({ kind: 'optional' }, (type) => validateOptional(type, value as any, options) as Result<Infer<T>>)
+    .with({ kind: 'nullable' }, (type) => validateNullable(type, value as any, options) as Result<Infer<T>>)
+    .with({ kind: 'object' }, (type) => validateObject(type, value as any, options) as Result<Infer<T>>)
+    .with({ kind: 'union' }, (type) => validateUnion(type, value as any, options) as Result<Infer<T>>)
+    .with({ kind: 'array' }, (type) => validateArray(type, value as any, options) as Result<Infer<T>>)
+    .with({ kind: 'reference' }, (type) => validateReference(type, value as any, options) as Result<Infer<T>>)
+    .exhaustive()
 }
 
-export type ValidateOptions = { errors?: 'exhaustive' | 'minimum'; strict?: boolean }
-export function validate<T extends LazyType>(type: T, value: unknown, opts?: ValidateOptions): Result<Infer<T>> {
-  const result = validateInternal(type, value, opts)
-  return enrichErrors(result) as Result<Infer<T>>
-}
-
-function validateInternal(type: LazyType, value: unknown, opts: ValidateOptions | undefined): Result<unknown> {
-  const t = lazyToType(type)
-  if (t.kind === 'string') {
-    if (typeof value !== 'string') {
-      return error(`String expected`, value)
-    }
-    return checkStringOptions(value, t.opts)
-  }
-  if (t.kind === 'number') {
-    if (typeof value !== 'number') {
-      return error(`Number expected`, value)
-    }
-    return checkNumberOptions(value, t.opts)
-  }
-  if (t.kind === 'boolean') {
-    if (typeof value !== 'boolean') {
-      return error(`Boolean expected`, value)
-    }
+function validateNumber(type: NumberType, value: number): Result<number> {
+  if (type.options === undefined) {
     return success(value)
   }
-  if (t.kind === 'literal') {
-    if (value === t.value) {
-      return success(value)
+  const { maximum, minimum, multipleOf } = type.options
+  if (maximum) {
+    const [bound, inclusivity] = maximum
+    if (inclusivity === 'inclusive' && value > bound) {
+      return error(`Number must be less than or equal to ${bound}`, value)
+    } else if (inclusivity === 'exclusive' && value >= bound) {
+      return error(`Number must be less than ${bound}`, value)
     }
-    return error(`Literal ${t.value} expected`, value)
   }
-  if (t.kind === 'relation-decorator' || t.kind === 'default-decorator') {
-    return validateInternal(t.type, value, opts)
+  if (minimum) {
+    const [bound, inclusivity] = minimum
+    if (inclusivity === 'inclusive' && value < bound) {
+      return error(`Number must be greater than or equal to ${bound}`, value)
+    } else if (inclusivity === 'exclusive' && value <= bound) {
+      return error(`Number must be greater than ${bound}`, value)
+    }
   }
-  if (t.kind === 'optional-decorator') {
-    if (value === undefined) {
-      return success(value)
-    }
-    const result = validateInternal(t.type, value, opts)
-    if (!result.success) {
-      return result.errors.length > 0 ? result : error(`Undefined expected`, value)
-    }
-    return result
+  if (multipleOf && value % multipleOf !== 0) {
+    return error(`Number must be mutiple of ${multipleOf}`, value)
   }
-  if (t.kind === 'nullable-decorator') {
-    if (value === null) {
-      return success(value)
-    }
-    const result = validateInternal(t.type, value, opts)
-    if (!result.success) {
-      return result.errors.length > 0 ? result : error(`Null expected`, value)
-    }
-    return result
-  }
-  if (t.kind === 'array-decorator') {
-    if (!Array.isArray(value)) {
-      return error(`Array expected`, value)
-    }
-    return concat2(checkArrayOptions(value, t.opts), () => validateArrayElements(value, t, opts))
-  }
-  if (t.kind === 'enum') {
-    if (typeof value !== 'string' || !t.values.includes(value)) {
-      return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
-    }
+  return success(value)
+}
+
+function validateString(type: StringType, value: string): Result<string> {
+  if (type.options === undefined) {
     return success(value)
   }
-  if (t.kind === 'object') {
-    if (typeof value !== 'object' || !value) {
-      return error(`Object expected`, value)
-    }
-    const strict = opts?.strict ?? true
-    const errorLevel = opts?.errors ?? 'minimum'
-    const errs: Error[] = []
-    for (const [key, subtype] of Object.entries(t.type)) {
-      const result = validateInternal(subtype as LazyType, (value as Record<string, unknown>)[key], opts)
-      const enrichedResult = enrichErrors(result, [key])
-      if (!enrichedResult.success) {
-        errs.push(...enrichedResult.errors)
-        if (errorLevel === 'minimum') {
-          break
-        }
+  const { regex, maxLength, minLength } = type.options
+  if (maxLength && value.length > maxLength) {
+    return error(`String longer than max length (${maxLength})`, value)
+  }
+  if (minLength && value.length < minLength) {
+    return error(`String shorter than min length (${minLength})`, value)
+  }
+  if (regex && !regex.test(value)) {
+    return error(`String regex mismatch (${regex.source})`, value)
+  }
+  return success(value)
+}
+
+function validateOptional<T extends Type>(
+  type: OptionalType<T>,
+  value: Infer<OptionalType<T>>,
+  options: ValidationOptions,
+): Result<Infer<OptionalType<T>>> {
+  return value === undefined ? success(undefined) : internalValidate(type.wrappedType, value, options)
+}
+
+function validateNullable<T extends Type>(
+  type: NullableType<T>,
+  value: Infer<NullableType<T>>,
+  options: ValidationOptions,
+): Result<Infer<NullableType<T>>> {
+  return value === null ? success(null) : internalValidate(type.wrappedType, value, options)
+}
+
+function validateObject<Ts extends Types>(
+  type: ObjectType<any, Ts>,
+  value: Infer<ObjectType<any, Ts>>,
+  options: ValidationOptions,
+): Result<Infer<ObjectType<any, Ts>>> {
+  const validationErrors: Error[] = []
+  for (const [fieldName, fieldValue] of Object.entries(value)) {
+    const result = internalValidate(type.types[fieldName], fieldValue as never, options)
+    const enrichedResult = enrichErrors(result, [fieldName])
+    if (!enrichedResult.success) {
+      validationErrors.push(...enrichedResult.errors)
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
+        break
       }
     }
-    if (errorLevel === 'minimum' && errs.length > 0) {
-      return errors(errs)
-    }
-    if (strict) {
+  }
+  return validationErrors.length > 0 ? errors(validationErrors) : success(value)
+  /* TODO see what to do with object strictness
+  if (strict) {
       for (const [key, subvalue] of Object.entries(value)) {
         if (!(key in t.type) && subvalue !== undefined) {
           errs.push(richError(`Value not expected`, subvalue, key))
@@ -119,12 +145,72 @@ function validateInternal(type: LazyType, value: unknown, opts: ValidateOptions 
         }
       }
     }
-    if (errs.length > 0) {
-      return errors(errs)
-    }
+   */
+}
+
+function validateArray<T extends Type>(
+  type: ArrayType<any, T>,
+  value: Infer<ArrayType<any, T>>,
+  options: ValidationOptions,
+): Result<Infer<ArrayType<any, T>>> {
+  if (type.options === undefined) {
     return success(value)
   }
-  if (t.kind === 'union-operator') {
+  const { maxItems, minItems } = type.options
+  if (maxItems && value.length > maxItems) {
+    return error(`Array must have at most ${maxItems} items`, value)
+  }
+  if (minItems && value.length < minItems) {
+    return error(`Array must have at least ${minItems} items`, value)
+  }
+  return validateArrayElements(type, value, options)
+}
+
+function validateArrayElements<T extends Type>(
+  type: ArrayType<any, T>,
+  value: Infer<ArrayType<any, T>>,
+  options: ValidationOptions,
+): Result<Infer<ArrayType<any, T>>> {
+  const validationErrors: Error[] = []
+  for (let i = 0; i < value.length; i++) {
+    const result = internalValidate(type.wrappedType, value[i], options)
+    if (!result.success) {
+      validationErrors.push(...result.errors)
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
+    }
+  }
+  return validationErrors.length > 0 ? errors(validationErrors) : success(value)
+}
+
+function validateReference<T extends Type>(
+  type: ReferenceType<T>,
+  value: Infer<ReferenceType<T>>,
+  options: ValidationOptions,
+): Result<Infer<ReferenceType<T>>> {
+  return internalValidate(type.wrappedType, value, options)
+}
+
+function validateUnion<Ts extends Types>(
+  type: UnionType<Ts>,
+  value: Infer<UnionType<Ts>>,
+  options: ValidationOptions,
+): Result<Infer<UnionType<Ts>>> {
+  return error('TODO', null)
+  /*
+
+  Problema
+
+  n : number | string | object = "ciao"
+  validate(n)
+    -> validate(NumberType, n) // Exception!
+    -> validate(StringType, n)
+    -> validate(ObjectType, n)
+
+
+  // TODO: there is a bug here! It doesn't check that it is one of the union variants
+
     const errs: { path?: string; error: string; value: unknown }[] = []
     for (const [key, u] of Object.entries(t.types)) {
       const result = validateInternal(u, value, opts)
@@ -138,67 +224,13 @@ function validateInternal(type: LazyType, value: unknown, opts: ValidateOptions 
   if (t.kind === 'custom') {
     return t.validate(value, t.opts)
   }
-  assertNever(t)
-}
+  */
 
-function checkStringOptions(value: string, opts: StringType['opts']): Result<string> {
-  if (opts?.maxLength != null && value.length > opts.maxLength) {
-    return error(`String longer than max length (${opts.maxLength})`, value)
-  }
-  if (opts?.minLength != null && value.length < opts.minLength) {
-    return error(`String shorter than min length (${opts.minLength})`, value)
-  }
-  if (opts?.regex != null && !opts.regex.test(value)) {
-    return error(`String regex misInternalmatch (${opts.regex.source})`, value)
-  }
-  return success(value)
-}
+  /*
+  number
+  string
 
-function checkNumberOptions(value: number, opts: NumberType['opts']): Result<number> {
-  if (opts?.minimum != null && value < opts.minimum) {
-    return error(`Number must be greater than or equal to ${opts.minimum}`, value)
-  }
-  if (opts?.maximum != null && value > opts.maximum) {
-    return error(`Number must be less than or equal to ${opts.maximum}`, value)
-  }
-  if (opts?.exclusiveMinimum != null && value <= opts.exclusiveMinimum) {
-    return error(`Number must be greater than ${opts.exclusiveMinimum}`, value)
-  }
-  if (opts?.exclusiveMaximum != null && value >= opts.exclusiveMaximum) {
-    return error(`Number must be less than ${opts.exclusiveMaximum}`, value)
-  }
-  if (opts?.multipleOf != null && value % opts.multipleOf !== 0) {
-    return error(`Number must be mutiple of ${opts.multipleOf}`, value)
-  }
-  return success(value)
-}
 
-function checkArrayOptions(value: unknown[], opts: ArrayDecorator['opts']): Result<unknown[]> {
-  if (opts?.maxItems != null && value.length > opts.maxItems) {
-    return error(`Array must have maximum ${opts.maxItems} items`, value)
-  }
-  return success(value)
-}
 
-function validateArrayElements(
-  value: unknown[],
-  type: ArrayDecorator,
-  opts: ValidateOptions | undefined,
-): Result<unknown[]> {
-  const errs: Error[] = []
-  const errorLevel = opts?.errors ?? 'minimum'
-  for (let i = 0; i < value.length; i++) {
-    const result = validateInternal(type.type, value[i], opts)
-    const enrichedResult = enrichErrors(result, [i])
-    if (!enrichedResult.success) {
-      errs.push(...enrichedResult.errors)
-      if (errorLevel === 'minimum') {
-        break
-      }
-    }
-  }
-  if (errs.length > 0) {
-    return errors(errs)
-  }
-  return success(value)
+  */
 }

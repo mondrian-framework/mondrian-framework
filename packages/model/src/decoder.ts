@@ -1,4 +1,4 @@
-import { Error, Result, Success, concat2, enrichErrors, error, errors, richError, success } from './result'
+import { Error, Result, concat2, enrichErrors, error, errors, success } from './result'
 import {
   Infer,
   Type,
@@ -12,38 +12,53 @@ import {
   EnumType,
   UnionType,
 } from './type-system'
-import { containsKey } from './utils'
+import { OptionalFields, containsKey } from './utils'
+import { ValidationOptions, validate } from './validate'
 import { match, Pattern as P } from 'ts-pattern'
+
+/**
+ * @param type the type to check against
+ * @param value the value whose type needs to be checked
+ * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
+ * @param validationOptions the {@link ValidationOptions options} used for the validation process
+ * @returns true if `value` is actually a valid member of the type `T`
+ */
+export function isType<T extends Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: DecodingOptions,
+  validationOptions?: ValidationOptions,
+): value is Infer<T> {
+  return decode(type, value, decodingOptions, validationOptions).success
+}
+
+/**
+ * @param type the type to check against
+ * @param value the value whose type needs to be checked
+ * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
+ * @param validationOptions the {@link ValidationOptions options} used for the validation process
+ */
+export function assertType<T extends Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: DecodingOptions,
+  validationOptions?: ValidationOptions,
+): asserts value is Infer<T> {
+  const result = decode(type, value, decodingOptions, validationOptions)
+  if (!result.success) {
+    throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
+  }
+}
 
 /**
  * The options that can be used when decoding a type.
  * TODO: SEE IF I NEED TO VALIDATE WHEN DECODING!!!!
  */
 export type DecodingOptions = {
-  typeCastingStrategy: TypeCastingStrategy
-  errorReportingStrategy: ErrorReportingStrategy
-  unionDecodingStrategy: UnionDecodingStrategy
+  typeCastingStrategy: 'tryCasting' | 'expectExactTypes'
+  errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
+  unionDecodingStrategy: 'taggedUnions' | 'untaggedUnions'
 }
-
-/**
- * Determines how the decoding process behaves when decoding a type:
- * - `"expectExactTypes"`: means that the decoder will not try to perform any casting. It will always expect to find the
- *   exact specified value
- * - `"tryCasting"`: means that the decoder will try to perform some casts before giving up in the decoding process.
- *   For example, if the decoder incurs in a number and was trying to decode a boolean, it will turn the number into a
- *   `boolean`
- */
-export type TypeCastingStrategy = 'tryCasting' | 'expectExactTypes'
-
-/**
- * TODO: ADD DOC
- */
-export type ErrorReportingStrategy = 'allErrors' | 'stopAtFirstError'
-
-/**
- * TODO: ADD DOC
- */
-export type UnionDecodingStrategy = 'taggedUnions' | 'untaggedUnions'
 
 /**
  * The default recommended options to be used in the decoding process.
@@ -54,9 +69,16 @@ const defaultDecodingOptions: DecodingOptions = {
   unionDecodingStrategy: 'untaggedUnions',
 }
 
-export function decode<T extends Type>(type: T, value: unknown, options?: DecodingOptions): Result<Infer<T>> {
-  const actualOptions = options ?? defaultDecodingOptions
-  const result = unsafeDecode(type, value, actualOptions) as Result<Infer<T>>
+export function decode<T extends Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: OptionalFields<DecodingOptions>,
+  validationOptions?: OptionalFields<ValidationOptions>,
+): Result<Infer<T>> {
+  const actualDecodingOptions = { ...defaultDecodingOptions, ...decodingOptions }
+  const result = concat2(unsafeDecode(type, value, actualDecodingOptions) as Result<Infer<T>>, (value) =>
+    validate(type, value, validationOptions),
+  )
   return enrichErrors(result)
 }
 

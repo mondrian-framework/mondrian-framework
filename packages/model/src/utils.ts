@@ -44,3 +44,8 @@ export function filterMapObject<A, B>(
 export function containsKey<A, B>(keyValuePairs: [A, B][], lookup: A): boolean {
   return keyValuePairs.some(([key, _]) => key === lookup)
 }
+
+/**
+ * Given an object type returns an object with the same structure but where each field is optional.
+ */
+export type OptionalFields<R extends Record<string, any>> = { [Key in keyof R]?: R[Key] }

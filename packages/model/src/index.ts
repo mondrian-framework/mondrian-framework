@@ -8,11 +8,10 @@ export default m
 export { Result }
 
 export * from './type-system'
-export { decode, DecodeOptions } from './decoder'
+export { decode, DecodingOptions, isType, assertType } from './decoder'
 export { encode } from './encoder'
-export { decodeAndValidate, validateAndEncode } from './converter'
-export { validate, isType, assertType } from './validate'
-export { lazyToType, isNullable, isVoidType, hasDecorator, getFirstConcreteType, encodedTypeIsScalar } from './utils'
+export { validateAndEncode } from './converter'
+export { validate } from './validate'
 export {
   getProjectionType,
   GenericProjection,

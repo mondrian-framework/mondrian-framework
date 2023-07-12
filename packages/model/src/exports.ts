@@ -39,7 +39,6 @@ export {
   Infer,
   Type,
   OptionsOf,
-  PairFieldsWith,
 } from './type-system'
 
 export { datetime } from './custom/datetime'

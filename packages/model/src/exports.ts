@@ -44,6 +44,5 @@ export {
   OptionsOf,
 } from './type-system'
 
-export { datetime } from './custom/datetime'
-export { timestamp } from './custom/timestamp'
-export { voidType as void } from './custom/void'
+export { DateTimeType, DateTimeOptions, dateTime } from './custom/datetime'
+export { TimestampType, TimestampOptions, timestamp } from './custom/timestamp'

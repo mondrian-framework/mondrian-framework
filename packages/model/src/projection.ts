@@ -1,8 +1,139 @@
-import { LazyType, array, boolean, nullable, object, optional, union } from './type-system'
-import { lazyToType } from './utils'
+import {
+  ArrayType,
+  BooleanType,
+  EnumType,
+  LiteralType,
+  NullableType,
+  NumberType,
+  ObjectType,
+  OptionalType,
+  ReferenceType,
+  StringType,
+  Type,
+  Types,
+  UnionType,
+  array,
+  concretise,
+  nullable,
+  object,
+  optional,
+  union,
+} from './type-system'
 import { assertNever } from '@mondrian-framework/utils'
 
-export type GenericProjection = true | { [K in string]?: true | GenericProjection }
+/**
+ * Gets the type of a valid projection for a given type of the Mondrian framework.
+ * A projection can define... TODO
+ */
+// prettier-ignore
+export type Projection<T extends Type>
+  = [T] extends [NumberType] ? true
+  : [T] extends [StringType] ? true
+  : [T] extends [BooleanType] ? true
+  : [T] extends [EnumType<infer _Vs>] ? true
+  : [T] extends [LiteralType<infer _L>] ? true
+  : [T] extends [UnionType<infer Ts>] ? { readonly [Key in keyof Ts]?: Projection<Ts[Key]> } | true
+  : [T] extends [ArrayType<infer _M, infer T1>] ? Projection<T1>
+  : [T] extends [OptionalType<infer T1>] ? Projection<T1>
+  : [T] extends [NullableType<infer T1>] ? Projection<T1>
+  : [T] extends [ReferenceType<infer T1>] ? Projection<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? Projection<T1>
+  : [T] extends [ObjectType<infer _M, infer Ts>] ? { readonly [Key in keyof Ts]?: Projection<Ts[Key]> } | true
+  : never
+
+/**
+ * @param projection the projection to check
+ * @param type the {@link Type type} that `projection` has to conform to
+ * @returns true if the given `projection` is actually a valid projection for the given `type`
+ */
+export function isProjection<T extends Type>(projection: unknown, type: T): projection is Projection<T> {
+  // The literal true is always a valid projection for any given type
+  if (projection === true) {
+    return true
+  }
+  // A null projection is never valid
+  if (projection === null) {
+    return false
+  }
+  // Here we made sure that projection is not `true`, so now we check for other options
+  const concreteType = concretise(type)
+  const kind = concreteType.kind
+  if (kind === 'number' || kind === 'string' || kind === 'boolean' || kind === 'enum' || kind === 'literal') {
+    // For the base type the only allowed projection is the literal true, since here we're sure that `projection` is not
+    // `true` we're sure that it cannot be a valid projection for those types
+    return false
+  } else if (kind === 'array' || kind === 'optional' || kind === 'nullable' || kind === 'reference') {
+    // In case of types that wrap an inner type we check if the projection is valid for the wrapped type
+    return isProjection(projection, concreteType.wrappedType)
+  } else if (kind === 'object') {
+    // If type is an object the only possible valid projection is itself an object and a valid projection
+    return typeof projection !== 'object' ? false : checkIsObjectProjection(concreteType, projection)
+  } else if (kind === 'union') {
+    return typeof projection !== 'object' ? false : checkIsUnionProjection(concreteType, projection)
+  } else {
+    // Here type is never since we've already checked all options!
+    // This branch is unreachable so we return `false` as a default
+    return false
+  }
+}
+
+/**
+ * Checks if an object is a valid projection for a given object type: `projection` must contain only the fields defined
+ * by `type` (but could also contain less fields than type), and each field must itself be a valid projection for the
+ * corresponding type.
+ */
+function checkIsObjectProjection<Ts extends Types>(type: ObjectType<any, Ts>, projection: object): boolean {
+  for (const [fieldName, subProjection] of Object.entries(projection)) {
+    const subType = type.types[fieldName]
+    // If there is no field with a name of the fields of `projection`
+    if (subType === undefined || !isProjection(subProjection, subType)) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * Checks if an object is a valid projection for a given union type: `projection` must contain only fields with the same
+ * name as the type variants (but could also contain less fields), and each field must itself be a valid projection for
+ * the corresponding variant.
+ */
+function checkIsUnionProjection<Ts extends Types>(type: UnionType<Ts>, projection: object): boolean {
+  for (const [fieldName, subProjection] of Object.entries(projection)) {
+    const variantType = type.variants[fieldName]
+    // If there is no variant with a name of the fields of `projection`
+    if (variantType === undefined || !isProjection(subProjection, variantType)) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * Gets the keys of a given projection
+ */
+// prettier-ignore
+export type ProjectionKeys<T extends Type>
+  = [Projection<T>] extends [true | infer R extends Record<string, any>] ? keyof R : never
+
+// prettier-ignore
+export type SubProjection<T extends Type, Ks extends ProjectionKeys<T>>
+  = [Projection<T>] extends [true] ? true
+  : [Projection<T>] extends [true | infer R extends Record<string, any>] ? Exclude<R[Ks], undefined>
+  : never
+
+export function subProjection<const T extends Type, K extends ProjectionKeys<T>>(
+  projection: Projection<T>,
+  key: K,
+): SubProjection<T, K> {
+  if (projection === true) {
+    throw new Error(
+      "called sub projection on a projection that doesn't have a subprojection, this code path should be unreachable",
+    )
+  } else {
+    return (projection as any)[key]
+  }
+}
 
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {
   if (projection === undefined || projection === true) {
@@ -104,76 +235,6 @@ function ignoreRelations(type: LazyType): LazyType {
   assertNever(t)
 }
 
-export function getProjectionType(type: LazyType): LazyType {
-  if (typeof type === 'function') {
-    return () => lazyToType(getProjectionType(lazyToType(type)))
-  }
-  const t = lazyToType(type)
-  if (
-    t.kind === 'boolean' ||
-    t.kind === 'string' ||
-    t.kind === 'number' ||
-    t.kind === 'enum' ||
-    t.kind === 'custom' ||
-    t.kind === 'literal'
-  ) {
-    return boolean()
-  }
-  if (t.kind === 'object') {
-    return union({
-      first: boolean(),
-      second: object(
-        Object.fromEntries(
-          Object.entries(t.type).map(([k, v]) => {
-            const t = getProjectionType(v)
-            return [k, optional(t)]
-          }),
-        ),
-      ),
-    })
-  }
-  if (
-    t.kind === 'array-decorator' ||
-    t.kind === 'optional-decorator' ||
-    t.kind === 'nullable-decorator' ||
-    t.kind === 'default-decorator' ||
-    t.kind === 'relation-decorator'
-  ) {
-    return getProjectionType(t.type)
-  }
-  if (t.kind === 'union-operator') {
-    const subProjection = Object.entries(t.types).flatMap(([k, t]) => {
-      if (lazyToType(t).kind !== 'object') {
-        return []
-      }
-      return [[k, optional(getProjectionType(t))]] as const
-    })
-    return union({ all: boolean(), object: object(Object.fromEntries(subProjection)) })
-  }
-  assertNever(t)
-}
-
-type ProjectionKeys<T extends GenericProjection | undefined> = T extends Record<string, GenericProjection>
-  ? keyof T
-  : never
-type SubProjection<T extends GenericProjection | undefined, K extends ProjectionKeys<T>> = T extends undefined
-  ? undefined
-  : T extends true
-  ? true
-  : T extends Record<string, GenericProjection>
-  ? T[K]
-  : never
-
-export function subProjection<const T extends GenericProjection | undefined, const K extends ProjectionKeys<T>>(
-  projection: T,
-  v: K,
-): SubProjection<T, K> {
-  if (projection === undefined || projection === true) {
-    return projection as any
-  }
-  return (projection as any)[v]
-}
-
 export function projectionDepth(p: GenericProjection, start = 0): number {
   if (typeof p === 'object') {
     const max = Object.values(p).reduce((depth, sb) => {
@@ -198,6 +259,7 @@ export type MergeGenericProjection<T1 extends GenericProjection, T2 extends Gene
         ? T2[K]
         : never
     }
+
 export function mergeProjections<const P1 extends GenericProjection, const P2 extends GenericProjection>(
   p1: P1,
   p2: P2,
@@ -214,6 +276,10 @@ export function mergeProjections<const P1 extends GenericProjection, const P2 ex
   }
   return res as MergeGenericProjection<P1, P2>
 }
+
+const a = true
+const b = { field1: { sub1: true }, field3: true } as const
+const c = mergeProjections(a, b)
 
 export function getRequiredProjection(type: LazyType, projection: GenericProjection): GenericProjection | null {
   if (projection === true) {

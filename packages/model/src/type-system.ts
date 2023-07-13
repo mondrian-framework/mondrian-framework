@@ -20,7 +20,7 @@ export type Type =
   | OptionalType<any>
   | NullableType<any>
   | ReferenceType<any>
-  | CustomType<any, any>
+  | CustomType<any, any, any>
   | (() => Type)
 
 /**
@@ -71,7 +71,7 @@ export type Infer<T extends Type>
   : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
   : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
   : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
-  : [T] extends [CustomType<infer _, infer T>] ? T
+  : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
@@ -96,7 +96,7 @@ export type OptionsOf<T extends Type>
   : [T] extends [OptionalType<infer T1>] ? NonNullable<OptionalType<T1>['options']>
   : [T] extends [NullableType<infer T1>] ? NonNullable<NullableType<T1>['options']>
   : [T] extends [ReferenceType<infer T1>] ? NonNullable<ReferenceType<T1>['options']>
-  : [T] extends [CustomType<infer Os, infer T>] ? NonNullable<CustomType<Os, T>['options']>
+  : [T] extends [CustomType<infer N, infer Os, infer T>] ? NonNullable<CustomType<N, Os, T>['options']>
   : [T] extends [(() => infer T1 extends Type)] ? OptionsOf<T1>
   : never
 
@@ -380,25 +380,26 @@ export type ReferenceTypeOptions = BaseOptions
 /**
  * The model for a custom-defined type.
  */
-export type CustomType<Options extends Record<string, any>, InferredAs> = {
+export type CustomType<Name extends string, Options extends Record<string, any>, InferredAs> = {
   kind: 'custom'
+  typeName: Name
   options?: CustomTypeOptions<Options>
 
   encode(value: InferredAs, options?: CustomTypeOptions<Options>): JSONType
-  decode(value: unknown, options?: CustomTypeOptions<Options>, decodingOptions?: DecodingOptions): Result<InferredAs>
+  decode(value: unknown, decodingOptions: DecodingOptions, options?: CustomTypeOptions<Options>): Result<InferredAs>
   validate(
     value: InferredAs,
+    validationOptions: ValidationOptions,
     options?: CustomTypeOptions<Options>,
-    validationOptions?: ValidationOptions,
   ): Result<InferredAs>
 
-  optional(): OptionalType<CustomType<Options, InferredAs>>
-  nullable(): NullableType<CustomType<Options, InferredAs>>
-  array(): ArrayType<'immutable', CustomType<Options, InferredAs>>
-  reference(): ReferenceType<CustomType<Options, InferredAs>>
-  setOptions(options: CustomTypeOptions<Options>): CustomType<Options, InferredAs>
-  updateOptions(options: CustomTypeOptions<Options>): CustomType<Options, InferredAs>
-  setName(name: string): CustomType<Options, InferredAs>
+  optional(): OptionalType<CustomType<Name, Options, InferredAs>>
+  nullable(): NullableType<CustomType<Name, Options, InferredAs>>
+  array(): ArrayType<'immutable', CustomType<Name, Options, InferredAs>>
+  reference(): ReferenceType<CustomType<Name, Options, InferredAs>>
+  setOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
+  updateOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
+  setName(name: string): CustomType<Name, Options, InferredAs>
 }
 
 /**
@@ -1080,22 +1081,24 @@ export function reference<T extends Type>(wrappedType: T, options?: OptionsOf<Re
 /**
  * TODO
  */
-export function custom<Options extends Record<string, any>, InferredAs>(
+export function custom<Name extends string, Options extends Record<string, any>, InferredAs>(
+  typeName: Name,
   encode: (value: InferredAs, options?: CustomTypeOptions<Options>) => JSONType,
   decode: (
     value: unknown,
+    decodingOptions: DecodingOptions,
     options?: CustomTypeOptions<Options>,
-    decodingOptions?: DecodingOptions,
   ) => Result<InferredAs>,
   validate: (
     value: InferredAs,
+    validationOptions: ValidationOptions,
     options?: CustomTypeOptions<Options>,
-    validationOptions?: ValidationOptions,
   ) => Result<InferredAs>,
-  options?: OptionsOf<CustomType<Options, InferredAs>>,
-): CustomType<Options, InferredAs> {
+  options?: OptionsOf<CustomType<Name, Options, InferredAs>>,
+): CustomType<Name, Options, InferredAs> {
   return {
     kind: 'custom',
+    typeName,
     options,
     encode,
     decode,

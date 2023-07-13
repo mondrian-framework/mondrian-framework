@@ -1,4 +1,4 @@
-import { decodeAndValidate } from '@mondrian-framework/model'
+import { decode } from '@mondrian-framework/model'
 import { Functions, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
@@ -70,7 +70,8 @@ export function handler<const F extends Functions, CI>({
           }
           batchItemFailures.push({ itemIdentifier: m.messageId })
         }
-        const decoded = decodeAndValidate(functionBody.input, body, { inputUnion: true })
+
+        const decoded = decode(functionBody.input, body, { unionDecodingStrategy: 'taggedUnions' })
         if (!decoded.success) {
           log(`Bad message: ${JSON.stringify(decoded.errors)}`)
           if (specification.malformedMessagePolicy === 'delete') {

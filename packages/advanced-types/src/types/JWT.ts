@@ -1,7 +1,8 @@
-import { RegExpOpts, regexp } from './regexp'
+import { fromRegexes } from './builder'
+import { m } from '@mondrian-framework/model'
 
 const JWT_REGEX = /^[a-zA-Z0-9\-_]+?\.[a-zA-Z0-9\-_]+?\.([a-zA-Z0-9\-_]+)?$/
 
-export function JWT(opts?: RegExpOpts) {
-  return regexp('JWT', JWT_REGEX, 'Invalid JWT', opts)
+export function JWT(options?: m.BaseOptions): m.CustomType<'JWT', {}, string> {
+  return fromRegexes('JWT', 'Invalid JWT', options, JWT_REGEX)
 }

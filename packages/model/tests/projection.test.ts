@@ -1,17 +1,12 @@
 import { Projection, ProjectionKeys, isProjection, subProjection } from '../src/projection'
 import {
-  ArrayType,
   BooleanType,
   EnumType,
   LiteralType,
-  NullableType,
   NumberType,
-  OptionalType,
-  ReferenceType,
   StringType,
   number,
   object,
-  reference,
   string,
   union,
 } from '../src/type-system'

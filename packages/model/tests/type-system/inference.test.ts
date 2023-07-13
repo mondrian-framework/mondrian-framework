@@ -1,4 +1,5 @@
 import m from '../../src'
+import { error } from '../../src/result'
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe } from 'vitest'
 
@@ -132,5 +133,15 @@ describe('Infer', () => {
     type Inferred = m.Infer<typeof model>
 
     expectTypeOf<Inferred>().toEqualTypeOf<string | { readonly field1: string; readonly field2: boolean } | boolean>()
+  })
+
+  test('CustomType inferred as the specified type', () => {
+    const model = m.custom<{}, number>(
+      (_) => null,
+      (_) => error('', null),
+      (_) => true,
+    )
+    type Inferred = m.Infer<typeof model>
+    expectTypeOf<Inferred>().toEqualTypeOf<number>()
   })
 })

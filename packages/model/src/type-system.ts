@@ -1,6 +1,5 @@
-import { GenericProjection } from './projection'
 import { Result } from './result'
-import { Expand } from '@mondrian-framework/utils'
+import { Expand, JSONType } from '@mondrian-framework/utils'
 
 /**
  * A type that can be defined with the Mondrian framework.
@@ -19,6 +18,7 @@ export type Type =
   | OptionalType<any>
   | NullableType<any>
   | ReferenceType<any>
+  | CustomType<any, any>
   | (() => Type)
 
 /**
@@ -69,6 +69,7 @@ export type Infer<T extends Type>
   : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
   : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
   : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
+  : [T] extends [CustomType<infer _, infer T>] ? T
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
@@ -93,6 +94,7 @@ export type OptionsOf<T extends Type>
   : [T] extends [OptionalType<infer T1>] ? NonNullable<OptionalType<T1>['options']>
   : [T] extends [NullableType<infer T1>] ? NonNullable<NullableType<T1>['options']>
   : [T] extends [ReferenceType<infer T1>] ? NonNullable<ReferenceType<T1>['options']>
+  : [T] extends [CustomType<infer Os, infer T>] ? NonNullable<CustomType<Os, T>['options']>
   : [T] extends [(() => infer T1 extends Type)] ? OptionsOf<T1>
   : never
 
@@ -373,39 +375,30 @@ export type ReferenceType<T extends Type> = {
  */
 export type ReferenceTypeOptions = BaseOptions
 
-/*
-// TODO: Add custom type back
-
-export type CustomType<
-  T = any,
-  E extends LazyType = Type,
-  O extends Record<string, unknown> = Record<never, unknown>,
-> = RootCustomType<T, E, O> & DecoratorShorcuts<RootCustomType<T, E, O>>
-
-export interface RootCustomType<T = any, E extends LazyType = Type, O = any> extends Type {
+/**
+ * The model for a custom-defined type.
+ */
+export type CustomType<Options extends Record<string, any>, InferredAs> = {
   kind: 'custom'
-  type: T
-  name: string
-  format?: string
-  encodedType: E
-  decode: (input: Infer<E>, options: O | undefined, decodeOptions: DecodeOptions | undefined) => Result<T>
-  encode: (input: T, options: O | undefined) => Infer<E>
-  validate: (input: unknown, options: O | undefined) => Result<T>
-  opts?: O & CustomTypeOpts
+  options?: CustomTypeOptions<Options>
+
+  encode(_: InferredAs): JSONType
+  decode(_: unknown): Result<InferredAs>
+  validate(_: InferredAs): boolean
+
+  optional(): OptionalType<CustomType<Options, InferredAs>>
+  nullable(): NullableType<CustomType<Options, InferredAs>>
+  array(): ArrayType<'immutable', CustomType<Options, InferredAs>>
+  reference(): ReferenceType<CustomType<Options, InferredAs>>
+  setOptions(options: CustomTypeOptions<Options>): CustomType<Options, InferredAs>
+  updateOptions(options: CustomTypeOptions<Options>): CustomType<Options, InferredAs>
+  setName(name: string): CustomType<Options, InferredAs>
 }
 
-export function custom<
-  const T,
-  const E extends LazyType,
-  const O extends Record<string, unknown> = Record<string, unknown>,
->(
-  custom: Omit<RootCustomType<T, E, O>, 'kind' | 'type' | 'opts'>,
-  opts?: O & { description?: string },
-): CustomType<T, E, O> {
-  const t = { ...custom, kind: 'custom', opts } as RootCustomType<T, E, O>
-  return { ...t, ...decoratorShorcuts(t) }
-}
-*/
+/**
+ * The options used to define a {@link CustomTypeOptions `CustomTypeOptions`}.
+ */
+export type CustomTypeOptions<AdditionalOptions> = BaseOptions & AdditionalOptions
 
 /**
  * @param options the {@link NumberTypeOptions options} used to define the new `NumberType`
@@ -1065,6 +1058,45 @@ export function reference<T extends Type>(wrappedType: T, options?: OptionsOf<Re
     },
     array() {
       return array(this)
+    },
+    setOptions(options) {
+      return setOptions(this, options)
+    },
+    updateOptions(options) {
+      return updateOptions(this, options)
+    },
+    setName(name) {
+      return setName(this, name)
+    },
+  }
+}
+
+/**
+ * TODO
+ */
+export function custom<Options extends Record<string, any>, InferredAs>(
+  encode: (_: InferredAs) => JSONType,
+  decode: (_: unknown) => Result<InferredAs>,
+  validate: (_: InferredAs) => boolean,
+  options?: OptionsOf<CustomType<Options, InferredAs>>,
+): CustomType<Options, InferredAs> {
+  return {
+    kind: 'custom',
+    options,
+    encode,
+    decode,
+    validate,
+    optional() {
+      return optional(this)
+    },
+    nullable() {
+      return nullable(this)
+    },
+    array() {
+      return array(this)
+    },
+    reference() {
+      return reference(this)
     },
     setOptions(options) {
       return setOptions(this, options)

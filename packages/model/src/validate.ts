@@ -12,6 +12,7 @@ import {
   ReferenceType,
   ArrayType,
   UnionType,
+  CustomType,
 } from './type-system'
 import { OptionalFields } from './utils'
 import { match } from 'ts-pattern'
@@ -54,6 +55,7 @@ function internalValidate<T extends Type>(type: T, value: Infer<T>, options: Val
     .with({ kind: 'union' }, (type) => validateUnion(type, value as any, options) as Result<Infer<T>>)
     .with({ kind: 'array' }, (type) => validateArray(type, value as any, options) as Result<Infer<T>>)
     .with({ kind: 'reference' }, (type) => validateReference(type, value as any, options) as Result<Infer<T>>)
+    .with({ kind: 'custom' }, (type) => validateCustomType(type, value as any) as Result<Infer<T>>)
     .exhaustive()
 }
 
@@ -225,12 +227,11 @@ function validateUnion<Ts extends Types>(
     return t.validate(value, t.opts)
   }
   */
+}
 
-  /*
-  number
-  string
-
-
-
-  */
+function validateCustomType<Options extends Record<string, any>, InferredAs>(
+  type: CustomType<Options, InferredAs>,
+  value: Infer<CustomType<Options, InferredAs>>,
+): Result<Infer<CustomType<Options, InferredAs>>> {
+  return type.validate(value) ? success(value) : error('Not a valid custom type', value)
 }

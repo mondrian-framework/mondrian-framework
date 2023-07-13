@@ -13,8 +13,8 @@ export { encode } from './encoder'
 export { validateAndEncode } from './converter'
 export { validate } from './validate'
 export {
-  getProjectionType,
-  GenericProjection,
+  //getProjectionType,
+  //GenericProjection,
   subProjection,
   getProjectedType,
   getRequiredProjection,

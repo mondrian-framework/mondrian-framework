@@ -111,26 +111,64 @@ function checkIsUnionProjection<Ts extends Types>(type: UnionType<Ts>, projectio
 
 /**
  * Gets the keys of a given projection
+ *
+ * @example ```ts
+ *          type Ks = ProjectionKeys<NumberType>
+ *          // -> Ks = never
+ *          // a projection for a number can only be `true` and doesn't have any keys
+ *          ```
+ * @example ```ts
+ *          type Ks = ProjectionKeys<ObjectType<"mutable", { field1: NumberType, field2: NumberType }>>
+ *          // -> Ks = "field1" | "field2"
+ *          // an object has a projection that has a key for each of its fields
+ *          ```
+ * @example ```ts
+ *          type Ks = ProjectionKeys<UnionType<{ variant1: NumberType, variant2: StringType }>>
+ *          // -> Ks = "variant1" | "variant2"
+ *          // a union has a projection that has a key for each of its variants
+ *          ```
  */
 // prettier-ignore
 export type ProjectionKeys<T extends Type>
-  = [Projection<T>] extends [true | infer R extends Record<string, any>] ? keyof R : never
+  = [Projection<T>] extends [true] ? never
+  : [Projection<T>] extends [true | infer R extends Record<string, any>] ? keyof R
+  : never
 
+/**
+ * Given a {@link Type type} `T` and one of the possible keys of its projection, returns the subprojection corresponding
+ * to that key.
+ *
+ * @example ```ts
+ *          type Object = ObjectType<{ field1: NumberType, field2: NumberType }>
+ *          type Sub = SubProjection<ObjectType, "field1">
+ *          // -> Sub = true
+ *          // Sub it the projection of "field1"
+ *          ```
+ */
 // prettier-ignore
 export type SubProjection<T extends Type, Ks extends ProjectionKeys<T>>
   = [Projection<T>] extends [true] ? true
   : [Projection<T>] extends [true | infer R extends Record<string, any>] ? Exclude<R[Ks], undefined>
   : never
 
+/**
+ * @param projection the {@link Projection projection} to select a subprojection from
+ * @param key the key used to select a subprojection from the projection
+ * @returns the selected subprojection
+ */
 export function subProjection<const T extends Type, K extends ProjectionKeys<T>>(
   projection: Projection<T>,
   key: K,
 ): SubProjection<T, K> {
   if (projection === true) {
+    // This path can never happen: if the projection is `true` then its `ProjectionKeys` are `never` meaning that key
+    // would have to be `never`, but that is impossible
     throw new Error(
       "called sub projection on a projection that doesn't have a subprojection, this code path should be unreachable",
     )
   } else {
+    // Otherwise we are guaranteed that `key` is one of the keys of the projection by the types,
+    // that is why we can safely access it here
     return (projection as any)[key]
   }
 }

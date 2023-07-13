@@ -42,6 +42,7 @@ export {
   Infer,
   Type,
   OptionsOf,
+  BaseOptions,
 } from './type-system'
 
 export { DateTimeType, DateTimeOptions, dateTime } from './custom/datetime'

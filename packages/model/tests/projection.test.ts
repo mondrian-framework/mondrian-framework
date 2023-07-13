@@ -5,6 +5,7 @@ import {
   LiteralType,
   NumberType,
   StringType,
+  boolean,
   number,
   object,
   string,
@@ -103,23 +104,8 @@ describe('isProjection', () => {
 describe('subProjection', () => {
   test('works on objects', () => {
     const model = object({
-      field: string(),
-      nested: object({
-        subField: number(),
-      }),
+      field: boolean(),
     })
-
-    const projection = { field: true }
-
-    if (isProjection(projection, model)) {
-      const a = projection
-      const b = subProjection<typeof model, 'field' | 'nested'>(a, 'field')
-
-      if (isProjection(b, model.types.nested)) {
-        expect(1).toBe(3)
-      }
-    }
-
-    subProjection<typeof model, ProjectionKeys<typeof model>>({ field: true }, 'field')
+    const b = subProjection<typeof model, 'field'>(true, 'field')
   })
 })

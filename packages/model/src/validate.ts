@@ -12,7 +12,6 @@ import {
   ReferenceType,
   ArrayType,
   UnionType,
-  CustomType,
 } from './type-system'
 import { OptionalFields } from './utils'
 import { match } from 'ts-pattern'

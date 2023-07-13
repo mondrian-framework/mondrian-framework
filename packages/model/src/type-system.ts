@@ -1185,8 +1185,7 @@ export function setName<T extends Type>(type: T, name: string): T {
 }
 
 /*
-type Selection<T extends LazyType, P extends InferProjection<T>> = SelectionInternal<T, P> &
-  DecoratorShorcuts<SelectionInternal<T, P>>
+type Selection<T extends LazyType, P extends InferProjection<T>> = SelectionInternal<T, P>
 type SelectionInternal<LT extends LazyType, P extends GenericProjection> = LazyToType<LT> extends infer T
   ? T extends Type
     ? P extends true

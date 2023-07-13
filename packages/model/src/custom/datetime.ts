@@ -1,5 +1,5 @@
 import { Result, error, success } from '../result'
-import { BaseOptions, CustomType, OptionsOf, custom } from '../type-system'
+import { CustomType, OptionsOf, custom } from '../type-system'
 import { DecodingOptions } from 'src/decoder'
 import { ValidationOptions } from 'src/validate'
 

@@ -1,35 +1,26 @@
-import { CustomTypeOpts, Result, m, validate } from '@mondrian-framework/model'
+import { m } from '@mondrian-framework/model'
+import { error, success, Result } from '@mondrian-framework/model/src/result'
 
 const MIN_LAT = -90.0
 const MAX_LAT = 90.0
 const MAX_PRECISION = 8
 
-export function latitude(opts?: CustomTypeOpts) {
+export function latitude(options?: m.BaseOptions): m.CustomType<'latitude', {}, number> {
   return m.custom(
-    {
-      name: 'latitude',
-      encodedType: m.number(),
-      decode: (input, opts, decodeOpts) => {
-        return { success: true, value: input }
-      },
-      encode: (input, opts) => {
-        return input
-      },
-      validate(input) {
-        const isNumber = validate(m.number(), input)
-        if (!isNumber.success) {
-          return isNumber
-        }
-        const inputNumber = isNumber.value
-        if (inputNumber < MIN_LAT || inputNumber > MAX_LAT) {
-          return Result.error(`Invalid latitude number (must be between ${MIN_LAT} and ${MAX_LAT})`, input)
-        }
-        if (inputNumber !== Number.parseFloat(inputNumber.toFixed(MAX_PRECISION))) {
-          return Result.error(`Invalid latitude number (max precision must be ${MAX_PRECISION})`, input)
-        }
-        return Result.success(inputNumber)
-      },
-    },
-    opts,
+    'latitude',
+    (number) => number,
+    (value) => (typeof value === 'number' ? success(value) : error('Expected a latitude number', value)),
+    validateLatitude,
+    options,
   )
+}
+
+function validateLatitude(value: number): Result<number> {
+  if (value < MIN_LAT || value > MAX_LAT) {
+    return error(`Invalid latitude number (must be between ${MIN_LAT} and ${MAX_LAT})`, value)
+  } else if (value !== Number.parseFloat(value.toFixed(MAX_PRECISION))) {
+    return error(`Invalid latitude number (max precision must be ${MAX_PRECISION})`, value)
+  } else {
+    return success(value)
+  }
 }

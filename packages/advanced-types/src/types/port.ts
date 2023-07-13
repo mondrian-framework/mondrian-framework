@@ -1,36 +1,21 @@
-import { CustomTypeOpts, Result, m, validate } from '@mondrian-framework/model'
+import { m } from '@mondrian-framework/model'
+import { error, success, Result } from '@mondrian-framework/model/src/result'
 
-const MIN_PORT_NUMBER = 0
+const MIN_PORT_NUMBER = 1
 const MAX_PORT_NUMBER = 65535
 
-export function port(opts?: CustomTypeOpts) {
+export function port(options?: m.BaseOptions): m.CustomType<'port', {}, number> {
   return m.custom(
-    {
-      name: 'port',
-      encodedType: m.number(),
-      decode: (input, opts, decodeOpts) => {
-        return { success: true, value: input }
-      },
-      encode: (input, opts) => {
-        return input
-      },
-      validate(input) {
-        const isNumber = validate(m.integer(), input)
-        if (!isNumber.success) {
-          return isNumber
-        }
-        const inputNumber = isNumber.value
-        if (inputNumber <= MIN_PORT_NUMBER || inputNumber > MAX_PORT_NUMBER) {
-          return Result.error(
-            `Invalid TCP port number (must be between ${MIN_PORT_NUMBER + 1} and ${MAX_PORT_NUMBER})`,
-            input,
-          )
-        }
-        return Result.success(inputNumber)
-      },
-    },
-    opts,
+    'port',
+    (number) => number,
+    (value) => (typeof value === 'number' ? success(value) : error('Expected a TCP port number', value)),
+    validatePort,
+    options,
   )
 }
 
-const StringOrNumber = m.union({ string: m.string(), number: m.number() })
+function validatePort(value: number): Result<number> {
+  return value < MIN_PORT_NUMBER || value > MAX_PORT_NUMBER
+    ? error(`Invalid TCP port number (must be between ${MIN_PORT_NUMBER + 1} and ${MAX_PORT_NUMBER})`, value)
+    : success(value)
+}

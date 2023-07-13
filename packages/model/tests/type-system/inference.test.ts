@@ -139,7 +139,7 @@ describe('Infer', () => {
     const model = m.custom<{}, number>(
       (_) => null,
       (_) => error('', null),
-      (_) => true,
+      (_) => error('', null),
     )
     type Inferred = m.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

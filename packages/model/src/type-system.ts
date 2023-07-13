@@ -1,4 +1,6 @@
+import { DecodingOptions } from './decoder'
 import { Result } from './result'
+import { ValidationOptions } from './validate'
 import { Expand, JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -382,9 +384,13 @@ export type CustomType<Options extends Record<string, any>, InferredAs> = {
   kind: 'custom'
   options?: CustomTypeOptions<Options>
 
-  encode(_: InferredAs): JSONType
-  decode(_: unknown): Result<InferredAs>
-  validate(_: InferredAs): boolean
+  encode(value: InferredAs, options?: CustomTypeOptions<Options>): JSONType
+  decode(value: unknown, options?: CustomTypeOptions<Options>, decodingOptions?: DecodingOptions): Result<InferredAs>
+  validate(
+    value: InferredAs,
+    options?: CustomTypeOptions<Options>,
+    validationOptions?: ValidationOptions,
+  ): Result<InferredAs>
 
   optional(): OptionalType<CustomType<Options, InferredAs>>
   nullable(): NullableType<CustomType<Options, InferredAs>>
@@ -1075,9 +1081,17 @@ export function reference<T extends Type>(wrappedType: T, options?: OptionsOf<Re
  * TODO
  */
 export function custom<Options extends Record<string, any>, InferredAs>(
-  encode: (_: InferredAs) => JSONType,
-  decode: (_: unknown) => Result<InferredAs>,
-  validate: (_: InferredAs) => boolean,
+  encode: (value: InferredAs, options?: CustomTypeOptions<Options>) => JSONType,
+  decode: (
+    value: unknown,
+    options?: CustomTypeOptions<Options>,
+    decodingOptions?: DecodingOptions,
+  ) => Result<InferredAs>,
+  validate: (
+    value: InferredAs,
+    options?: CustomTypeOptions<Options>,
+    validationOptions?: ValidationOptions,
+  ) => Result<InferredAs>,
   options?: OptionsOf<CustomType<Options, InferredAs>>,
 ): CustomType<Options, InferredAs> {
   return {

@@ -46,7 +46,7 @@ function unsafeEncode(type: Type, value: any): JSONType | undefined {
     .with({ kind: 'object' }, (type) => unsafeEncodeObject(type, value))
     .with({ kind: 'array' }, (type) => unsafeEncodeArray(type, value))
     .with({ kind: 'reference' }, (type) => unsafeEncodeReference(type, value))
-    .with({ kind: 'custom' }, (type) => type.encode(value))
+    .with({ kind: 'custom' }, (type) => type.encode(value, type.options))
     .exhaustive()
 }
 

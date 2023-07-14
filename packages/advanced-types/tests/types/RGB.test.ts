@@ -1,27 +1,25 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
-import { test, expect } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { describe } from 'vitest'
 
-const rgb = m.RGB()
+const knownValidValues = ['rgb(255,255,255)', 'rgb(0,0,0)', 'rgb(127,12,33)', 'rgb(127 , 12, 33)']
+const knownInvalidValues = [
+  '',
+  ' rgb(255,255,255)',
+  'rgb(00,0)',
+  '255,255,255',
+  '(0,0,0)',
+  'rgba(127,12,33)',
+  null,
+  undefined,
+  10,
+  10.1,
+]
 
-test('RGB - encode', async () => {
-  expect(encode(rgb, 'any-string')).toBe('any-string')
-})
-
-test('RGB - decode', async () => {
-  expect(decode(rgb, 'any-string')).toEqual({ success: true, value: 'any-string' })
-  expect(decode(rgb, 10).success).toBe(false)
-  expect(decode(rgb, true).success).toBe(false)
-  expect(decode(rgb, null).success).toBe(false)
-  expect(decode(rgb, undefined).success).toBe(false)
-})
-
-test('RGB - valid', async () => {
-  const values = ['rgb(255,255,255)', 'rgb(0,0,0)', 'rgb(127,12,33)', 'rgb(127 , 12, 33)']
-  values.forEach((value) => expect(validate(rgb, value)).toStrictEqual({ success: true, value }))
-})
-
-test('RGB - invalid', async () => {
-  const values = ['', ' rgb(255,255,255)', 'rgb(00,0)', '255,255,255', '(0,0,0)', 'rgba(127,12,33)']
-  values.forEach((value) => expect(validate(rgb, value).success).toBe(false))
-})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(m.rgb, {
+    knownValidValues,
+    knownInvalidValues,
+  }),
+)

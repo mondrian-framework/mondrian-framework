@@ -1,27 +1,21 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
-import { test, expect } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { fc as gen } from '@fast-check/vitest'
+import { describe } from 'vitest'
 
-const longitude = m.longitude()
+const min = -180
+const max = 180
+const constraints = { min, max }
+const isLongitude = (n: number) => min <= n && n <= max && n === Number.parseFloat(n.toFixed(8))
+const validValues = gen.oneof(gen.integer(constraints), gen.float(constraints)).filter(isLongitude)
+const invalidValues = gen.oneof(gen.integer(), gen.float()).filter((n) => !isLongitude(n))
+const knownInvalidValues = [-200, 200, 10.00000000001, null, undefined, { field: 42 }, NaN]
 
-test('Longitude - encode', async () => {
-  expect(encode(longitude, 38.8951)).toBe(38.8951)
-})
-
-test('Longitude - decode', async () => {
-  expect(decode(longitude, 38.8951)).toEqual({ success: true, value: 38.8951 })
-  expect(decode(longitude, 'any-string').success).toBe(false)
-  expect(decode(longitude, true).success).toBe(false)
-  expect(decode(longitude, null).success).toBe(false)
-  expect(decode(longitude, undefined).success).toBe(false)
-})
-
-test('Longitude - valid', async () => {
-  const values = [-10, 10, 0, 38.8951, 140.09287998]
-  values.forEach((value) => expect(validate(longitude, value)).toStrictEqual({ success: true, value }))
-})
-
-test('Longitude - invalid', async () => {
-  const values = [-200, 200, 10.00000000001]
-  values.forEach((value) => expect(validate(longitude, value).success).toBe(false))
-})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(m.longitude, {
+    validValues,
+    invalidValues,
+    knownInvalidValues,
+  }),
+)

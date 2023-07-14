@@ -1,27 +1,30 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
-import { test, expect } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { fc as gen } from '@fast-check/vitest'
+import { describe } from 'vitest'
 
-const countryCode = m.countryCode()
+// prettier-ignore
+const validCountryCodes =
+  ['AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AQ', 'AR', 'AS', 'AT', 'AU', 'AW', 'AX', 'AZ', 'BA', 'BB', 'BD',
+   'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BL', 'BM', 'BN', 'BO', 'BQ', 'BR', 'BS', 'BT', 'BV', 'BW', 'BY', 'BZ', 'CA',
+   'CC', 'CD', 'CF', 'CG', 'CH', 'CI', 'CK', 'CL', 'CM', 'CN', 'CO', 'CR', 'CU', 'CV', 'CW', 'CX', 'CY', 'CZ', 'DE',
+   'DJ', 'DK', 'DM', 'DO', 'DZ', 'EC', 'EE', 'EG', 'EH', 'ER', 'ES', 'ET', 'FI', 'FJ', 'FK', 'FM', 'FO', 'FR', 'GA',
+   'GB', 'GD', 'GE', 'GF', 'GG', 'GH', 'GI', 'GL', 'GM', 'GN', 'GP', 'GQ', 'GR', 'GS', 'GT', 'GU', 'GW', 'GY', 'HK',
+   'HM', 'HN', 'HR', 'HT', 'HU', 'ID', 'IE', 'IL', 'IM', 'IN', 'IO', 'IQ', 'IR', 'IS', 'IT', 'JE', 'JM', 'JO', 'JP',
+   'KE', 'KG', 'KH', 'KI', 'KM', 'KN', 'KP', 'KR', 'KW', 'KY', 'KZ', 'LA', 'LB', 'LC', 'LI', 'LK', 'LR', 'LS', 'LT',
+   'LU', 'LV', 'LY', 'MA', 'MC', 'MD', 'ME', 'MF', 'MG', 'MH', 'MK', 'ML', 'MM', 'MN', 'MO', 'MP', 'MQ', 'MR', 'MS',
+   'MT', 'MU', 'MV', 'MW', 'MX', 'MY', 'MZ', 'NA', 'NC', 'NE', 'NF', 'NG', 'NI', 'NL', 'NO', 'NP', 'NR', 'NU', 'NZ',
+   'OM', 'PA', 'PE', 'PF', 'PG', 'PH', 'PK', 'PL', 'PM', 'PN', 'PR', 'PS', 'PT', 'PW', 'PY', 'QA', 'RE', 'RO', 'RS',
+   'RU', 'RW', 'SA', 'SB', 'SC', 'SD', 'SE', 'SG', 'SH', 'SI', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SO', 'SR', 'SS', 'ST',
+   'SV', 'SX', 'SY', 'SZ', 'TC', 'TD', 'TF', 'TG', 'TH', 'TJ', 'TK', 'TL', 'TM', 'TN', 'TO', 'TR', 'TT', 'TV', 'TW',
+   'TZ', 'UA', 'UG', 'UM', 'US', 'UY', 'UZ', 'VA', 'VC', 'VE', 'VG', 'VI', 'VN', 'VU', 'WF', 'WS', 'YE', 'YT', 'ZA',
+   'ZM', 'ZW']
 
-test('Country Code - encode', async () => {
-  expect(encode(countryCode, 'any-string')).toBe('any-string')
-})
-
-test('Country Code - decode', async () => {
-  expect(decode(countryCode, 'any-string')).toEqual({ success: true, value: 'any-string' })
-  expect(decode(countryCode, 10).success).toBe(false)
-  expect(decode(countryCode, true).success).toBe(false)
-  expect(decode(countryCode, null).success).toBe(false)
-  expect(decode(countryCode, undefined).success).toBe(false)
-})
-
-test('Country Code - valid', async () => {
-  const values = ['IT', 'US']
-  values.forEach((value) => expect(validate(countryCode, value)).toStrictEqual({ success: true, value }))
-})
-
-test('Country Code - invalid', async () => {
-  const values = ['', 'IT ', 'It', 'iT', 'it', 'Italy', 'USA']
-  values.forEach((value) => expect(validate(countryCode, value).success).toBe(false))
-})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(m.countryCode, {
+    invalidValues: gen.string().filter((value) => !validCountryCodes.includes(value)),
+    knownValidValues: validCountryCodes,
+    knownInvalidValues: [null, undefined, 11, 11.2],
+  }),
+)

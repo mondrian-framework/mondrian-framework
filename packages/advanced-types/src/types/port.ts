@@ -8,7 +8,10 @@ export function port(options?: m.BaseOptions): m.CustomType<'port', {}, number> 
   return m.custom(
     'port',
     (number) => number,
-    (value) => (typeof value === 'number' ? success(value) : error('Expected a TCP port number', value)),
+    (value) =>
+      typeof value === 'number' && Number.isInteger(value)
+        ? success(value)
+        : error('Expected a TCP port number', value),
     validatePort,
     options,
   )
@@ -16,6 +19,6 @@ export function port(options?: m.BaseOptions): m.CustomType<'port', {}, number> 
 
 function validatePort(value: number): Result<number> {
   return value < MIN_PORT_NUMBER || value > MAX_PORT_NUMBER
-    ? error(`Invalid TCP port number (must be between ${MIN_PORT_NUMBER + 1} and ${MAX_PORT_NUMBER})`, value)
+    ? error(`Invalid TCP port number (must be between ${MIN_PORT_NUMBER} and ${MAX_PORT_NUMBER})`, value)
     : success(value)
 }

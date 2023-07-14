@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from '@mondrian-framework/model/src/test-helpers'
+import { testTypeEncodingAndDecoding } from './property-helper'
 import { describe } from 'vitest'
 
 const knownValidValues = [

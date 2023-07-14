@@ -1,6 +1,6 @@
 import { m } from '../../src/index'
+import { testTypeEncodingAndDecoding } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
-import { testTypeEncodingAndDecoding } from '@mondrian-framework/model/src/test-helpers'
 import { describe } from 'vitest'
 
 const validValues = gen.webUrl()

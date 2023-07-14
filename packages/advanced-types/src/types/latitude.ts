@@ -15,12 +15,12 @@ export function latitude(options?: m.BaseOptions): m.CustomType<'latitude', {}, 
   )
 }
 
-function validateLatitude(value: number): Result<number> {
+function validateLatitude(value: number): Result<true> {
   if (value < MIN_LAT || value > MAX_LAT) {
     return error(`Invalid latitude number (must be between ${MIN_LAT} and ${MAX_LAT})`, value)
   } else if (value !== Number.parseFloat(value.toFixed(MAX_PRECISION))) {
     return error(`Invalid latitude number (max precision must be ${MAX_PRECISION})`, value)
   } else {
-    return success(value)
+    return success(true)
   }
 }

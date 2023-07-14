@@ -35,32 +35,32 @@ export function validate<T extends Type>(
   type: T,
   value: Infer<T>,
   options?: OptionalFields<ValidationOptions>,
-): Result<Infer<T>> {
+): Result<true> {
   const actualOptions = { ...defaultValidationOptions, ...options }
   const result = internalValidate(type, value, actualOptions)
   return enrichErrors(result)
 }
 
-function internalValidate<T extends Type>(type: T, value: Infer<T>, options: ValidationOptions): Result<Infer<T>> {
+function internalValidate<T extends Type>(type: T, value: Infer<T>, options: ValidationOptions): Result<true> {
   return match(concretise(type))
-    .with({ kind: 'boolean' }, (_) => success(value))
-    .with({ kind: 'enum' }, (_) => success(value))
-    .with({ kind: 'literal' }, (_) => success(value))
-    .with({ kind: 'number' }, (type) => validateNumber(type, value as any) as Result<Infer<T>>)
-    .with({ kind: 'string' }, (type) => validateString(type, value as any) as Result<Infer<T>>)
-    .with({ kind: 'optional' }, (type) => validateOptional(type, value as any, options) as Result<Infer<T>>)
-    .with({ kind: 'nullable' }, (type) => validateNullable(type, value as any, options) as Result<Infer<T>>)
-    .with({ kind: 'object' }, (type) => validateObject(type, value as any, options) as Result<Infer<T>>)
-    .with({ kind: 'union' }, (type) => validateUnion(type, value as any, options) as Result<Infer<T>>)
-    .with({ kind: 'array' }, (type) => validateArray(type, value as any, options) as Result<Infer<T>>)
-    .with({ kind: 'reference' }, (type) => validateReference(type, value as any, options) as Result<Infer<T>>)
-    .with({ kind: 'custom' }, (type) => type.validate(value, type.options, options) as Result<Infer<T>>)
+    .with({ kind: 'boolean' }, (_) => success(true) as Result<true>)
+    .with({ kind: 'enum' }, (_) => success(true) as Result<true>)
+    .with({ kind: 'literal' }, (_) => success(true) as Result<true>)
+    .with({ kind: 'number' }, (type) => validateNumber(type, value as any))
+    .with({ kind: 'string' }, (type) => validateString(type, value as any))
+    .with({ kind: 'optional' }, (type) => validateOptional(type, value as any, options))
+    .with({ kind: 'nullable' }, (type) => validateNullable(type, value as any, options))
+    .with({ kind: 'object' }, (type) => validateObject(type, value as any, options))
+    .with({ kind: 'union' }, (type) => validateUnion(type, value as any, options))
+    .with({ kind: 'array' }, (type) => validateArray(type, value as any, options))
+    .with({ kind: 'reference' }, (type) => validateReference(type, value as any, options))
+    .with({ kind: 'custom' }, (type) => type.validate(value, type.options, options))
     .exhaustive()
 }
 
-function validateNumber(type: NumberType, value: number): Result<number> {
+function validateNumber(type: NumberType, value: number): Result<true> {
   if (type.options === undefined) {
-    return success(value)
+    return success(true)
   }
   const { maximum, minimum, multipleOf } = type.options
   if (maximum) {
@@ -82,12 +82,12 @@ function validateNumber(type: NumberType, value: number): Result<number> {
   if (multipleOf && value % multipleOf !== 0) {
     return error(`Number must be mutiple of ${multipleOf}`, value)
   }
-  return success(value)
+  return success(true)
 }
 
-function validateString(type: StringType, value: string): Result<string> {
+function validateString(type: StringType, value: string): Result<true> {
   if (type.options === undefined) {
-    return success(value)
+    return success(true)
   }
   const { regex, maxLength, minLength } = type.options
   if (maxLength && value.length > maxLength) {
@@ -99,30 +99,30 @@ function validateString(type: StringType, value: string): Result<string> {
   if (regex && !regex.test(value)) {
     return error(`String regex mismatch (${regex.source})`, value)
   }
-  return success(value)
+  return success(true)
 }
 
 function validateOptional<T extends Type>(
   type: OptionalType<T>,
   value: Infer<OptionalType<T>>,
   options: ValidationOptions,
-): Result<Infer<OptionalType<T>>> {
-  return value === undefined ? success(undefined) : internalValidate(type.wrappedType, value, options)
+): Result<true> {
+  return value === undefined ? success(true) : internalValidate(type.wrappedType, value, options)
 }
 
 function validateNullable<T extends Type>(
   type: NullableType<T>,
   value: Infer<NullableType<T>>,
   options: ValidationOptions,
-): Result<Infer<NullableType<T>>> {
-  return value === null ? success(null) : internalValidate(type.wrappedType, value, options)
+): Result<true> {
+  return value === null ? success(true) : internalValidate(type.wrappedType, value, options)
 }
 
 function validateObject<Ts extends Types>(
   type: ObjectType<any, Ts>,
   value: Infer<ObjectType<any, Ts>>,
   options: ValidationOptions,
-): Result<Infer<ObjectType<any, Ts>>> {
+): Result<true> {
   const validationErrors: Error[] = []
   for (const [fieldName, fieldValue] of Object.entries(value)) {
     const result = internalValidate(type.types[fieldName], fieldValue as never, options)
@@ -134,7 +134,7 @@ function validateObject<Ts extends Types>(
       }
     }
   }
-  return validationErrors.length > 0 ? errors(validationErrors) : success(value)
+  return validationErrors.length > 0 ? errors(validationErrors) : success(true)
   /* TODO see what to do with object strictness
   if (strict) {
       for (const [key, subvalue] of Object.entries(value)) {
@@ -153,9 +153,9 @@ function validateArray<T extends Type>(
   type: ArrayType<any, T>,
   value: Infer<ArrayType<any, T>>,
   options: ValidationOptions,
-): Result<Infer<ArrayType<any, T>>> {
+): Result<true> {
   if (type.options === undefined) {
-    return success(value)
+    return success(true)
   }
   const { maxItems, minItems } = type.options
   if (maxItems && value.length > maxItems) {
@@ -171,7 +171,7 @@ function validateArrayElements<T extends Type>(
   type: ArrayType<any, T>,
   value: Infer<ArrayType<any, T>>,
   options: ValidationOptions,
-): Result<Infer<ArrayType<any, T>>> {
+): Result<true> {
   const validationErrors: Error[] = []
   for (let i = 0; i < value.length; i++) {
     const result = internalValidate(type.wrappedType, value[i], options)
@@ -182,14 +182,14 @@ function validateArrayElements<T extends Type>(
       }
     }
   }
-  return validationErrors.length > 0 ? errors(validationErrors) : success(value)
+  return validationErrors.length > 0 ? errors(validationErrors) : success(true)
 }
 
 function validateReference<T extends Type>(
   type: ReferenceType<T>,
   value: Infer<ReferenceType<T>>,
   options: ValidationOptions,
-): Result<Infer<ReferenceType<T>>> {
+): Result<true> {
   return internalValidate(type.wrappedType, value, options)
 }
 
@@ -197,7 +197,7 @@ function validateUnion<Ts extends Types>(
   type: UnionType<Ts>,
   value: Infer<UnionType<Ts>>,
   options: ValidationOptions,
-): Result<Infer<UnionType<Ts>>> {
+): Result<true> {
   return error('TODO', null)
   /*
 

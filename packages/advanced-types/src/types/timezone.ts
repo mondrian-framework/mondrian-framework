@@ -1,4 +1,4 @@
-import { m, validate } from '@mondrian-framework/model'
+import { m } from '@mondrian-framework/model'
 import { Result, error, success } from '@mondrian-framework/model/src/result'
 
 export function timezone(options?: m.BaseOptions): m.CustomType<'timezone', {}, string> {
@@ -11,19 +11,13 @@ export function timezone(options?: m.BaseOptions): m.CustomType<'timezone', {}, 
   )
 }
 
-function validateTimezone(value: string): Result<string> {
+function validateTimezone(value: string): Result<true> {
   if (!Intl?.DateTimeFormat().resolvedOptions().timeZone) {
     error('Time zones are not available in this environment', value)
   }
-
-  const isString = validate(m.string(), value)
-  if (!isString.success) {
-    return isString
-  }
-  const inputString = isString.value
   try {
-    Intl.DateTimeFormat(undefined, { timeZone: inputString })
-    return success(inputString)
+    Intl.DateTimeFormat(undefined, { timeZone: value })
+    return success(true)
   } catch (ex) {
     if (ex instanceof RangeError) {
       return error('Invalid IANA time zone', value)

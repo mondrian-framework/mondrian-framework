@@ -11,5 +11,5 @@ export function validateAndEncode<const T extends Type>(
   validationOptions?: OptionalFields<ValidationOptions>,
 ): Result<JSONType> {
   const validationResult = validate(type, value, validationOptions)
-  return validationResult.success ? success(encode(type, validationResult.value)) : validationResult
+  return validationResult.success ? success(encode(type, value)) : validationResult
 }

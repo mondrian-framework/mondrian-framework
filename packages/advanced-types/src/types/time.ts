@@ -23,6 +23,6 @@ function decodeTime(value: unknown): Result<Date> {
   return success(new Date(currentDateAtGivenTime))
 }
 
-function validateTime(value: Date, validationOptions: ValidationOptions, options?: m.BaseOptions): Result<Date> {
+function validateTime(value: Date, validationOptions: ValidationOptions, options?: m.BaseOptions): Result<true> {
   return validate(m.dateTime(options), value, validationOptions)
 }

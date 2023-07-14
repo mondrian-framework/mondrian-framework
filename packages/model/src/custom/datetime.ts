@@ -47,9 +47,9 @@ function validateDateTime(
   date: Date,
   _validationOptions: ValidationOptions,
   options?: OptionsOf<DateTimeType>,
-): Result<Date> {
+): Result<true> {
   if (options === undefined) {
-    return success(date)
+    return success(true)
   }
   const { maximum, minimum } = options
   if (maximum && date.getTime() > maximum.getTime()) {
@@ -58,5 +58,5 @@ function validateDateTime(
   if (minimum && date.getTime() < minimum.getTime()) {
     return error(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
-  return success(date)
+  return success(true)
 }

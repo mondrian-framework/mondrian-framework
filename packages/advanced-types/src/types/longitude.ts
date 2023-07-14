@@ -15,12 +15,12 @@ export function longitude(options?: m.BaseOptions): m.CustomType<'longitude', {}
   )
 }
 
-function validateLongitude(value: number): Result<number> {
+function validateLongitude(value: number): Result<true> {
   if (value < MIN_LON || value > MAX_LON) {
     return error(`Invalid longitude number (must be between ${MIN_LON} and ${MIN_LON})`, value)
   } else if (value !== Number.parseFloat(value.toFixed(MAX_PRECISION))) {
     return error(`Invalid longitude number (max precision must be ${MAX_PRECISION})`, value)
   } else {
-    return success(value)
+    return success(true)
   }
 }

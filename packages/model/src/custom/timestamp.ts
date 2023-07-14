@@ -40,9 +40,9 @@ function validateTimestamp(
   input: Date,
   _validationOptions: ValidationOptions,
   options?: OptionsOf<TimestampType>,
-): Result<Date> {
+): Result<true> {
   if (options === undefined) {
-    return success(input)
+    return success(true)
   }
   const { minimum, maximum } = options
   if (maximum && input.getTime() > maximum.getTime()) {
@@ -51,5 +51,5 @@ function validateTimestamp(
   if (minimum && input.getTime() < minimum.getTime()) {
     return error(`Timestamp must be minimum ${minimum.toISOString()}`, input)
   }
-  return success(input)
+  return success(true)
 }

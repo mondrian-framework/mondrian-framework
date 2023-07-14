@@ -50,6 +50,6 @@ function validateDate(
   value: Date,
   validationOptions: ValidationOptions,
   options?: m.OptionsOf<DateType>,
-): Result<Date> {
+): Result<true> {
   return validate(m.dateTime(options), value, validationOptions)
 }

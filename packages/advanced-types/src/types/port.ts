@@ -17,8 +17,8 @@ export function port(options?: m.BaseOptions): m.CustomType<'port', {}, number> 
   )
 }
 
-function validatePort(value: number): Result<number> {
+function validatePort(value: number): Result<true> {
   return value < MIN_PORT_NUMBER || value > MAX_PORT_NUMBER
     ? error(`Invalid TCP port number (must be between ${MIN_PORT_NUMBER} and ${MAX_PORT_NUMBER})`, value)
-    : success(value)
+    : success(true)
 }

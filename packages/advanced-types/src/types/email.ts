@@ -14,7 +14,7 @@ export function email(options?: m.BaseOptions): m.CustomType<'email', {}, string
 const EMAIL_REGEX =
   /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
 
-function validateEmail(value: string): Result<string> {
+function validateEmail(value: string): Result<true> {
   //thanks to https://github.com/manishsaraan/email-validator
   const emailParts = value.split('@')
   if (emailParts.length !== 2) {
@@ -31,5 +31,5 @@ function validateEmail(value: string): Result<string> {
   if (domainParts.some((part) => part.length > 63) || !EMAIL_REGEX.test(value)) {
     return error('Invalid email', value)
   }
-  return success(value)
+  return success(true)
 }

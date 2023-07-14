@@ -1,7 +1,7 @@
 import { DecodingOptions } from './decoder'
 import { Result } from './result'
 import { ValidationOptions } from './validate'
-import { Expand, JSONType } from '@mondrian-framework/utils'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * A type that can be defined with the Mondrian framework.
@@ -387,11 +387,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
 
   encode(value: InferredAs, options?: CustomTypeOptions<Options>): JSONType
   decode(value: unknown, decodingOptions: DecodingOptions, options?: CustomTypeOptions<Options>): Result<InferredAs>
-  validate(
-    value: InferredAs,
-    validationOptions: ValidationOptions,
-    options?: CustomTypeOptions<Options>,
-  ): Result<InferredAs>
+  validate(value: InferredAs, validationOptions: ValidationOptions, options?: CustomTypeOptions<Options>): Result<true>
 
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
   nullable(): NullableType<CustomType<Name, Options, InferredAs>>
@@ -1093,7 +1089,7 @@ export function custom<Name extends string, Options extends Record<string, any>,
     value: InferredAs,
     validationOptions: ValidationOptions,
     options?: CustomTypeOptions<Options>,
-  ) => Result<InferredAs>,
+  ) => Result<true>,
   options?: OptionsOf<CustomType<Name, Options, InferredAs>>,
 ): CustomType<Name, Options, InferredAs> {
   return {

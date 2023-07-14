@@ -23,6 +23,6 @@ function decode<Name extends string, Options extends Record<string, any>>(
   return typeof value === 'string' ? success(value) : error('Expected a string value', value)
 }
 
-function validate(input: string, errorMessage: string, regexes: RegExp[]): Result<string> {
-  return regexes.some((regex) => regex.test(input)) ? success(input) : error(errorMessage, input)
+function validate(input: string, errorMessage: string, regexes: RegExp[]): Result<true> {
+  return regexes.some((regex) => regex.test(input)) ? success(true) : error(errorMessage, input)
 }

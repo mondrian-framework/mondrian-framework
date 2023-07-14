@@ -6,7 +6,7 @@ export function url(options?: m.BaseOptions): m.CustomType<'URL', {}, URL> {
     'URL',
     (value) => value.toString(),
     decodeUrl,
-    (url) => success(url),
+    (_url) => success(true),
     options,
   )
 }

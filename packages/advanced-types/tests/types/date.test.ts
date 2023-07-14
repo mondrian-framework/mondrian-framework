@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
+import { decode, encode } from '@mondrian-framework/model'
 import { test, expect } from 'vitest'
 
 const date = m.date()

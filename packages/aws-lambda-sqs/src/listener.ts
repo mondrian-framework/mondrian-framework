@@ -55,8 +55,6 @@ export function handler<const F extends Functions, CI>({
       const operationId = randomOperationId()
       const log = buildLogger(module.name, operationId, url, functionName, 'LAMBDA-SQS', new Date())
       try {
-        const contextInput = await context({ context: fContext, event, recordIndex: i })
-        const ctx = await module.context(contextInput)
         let body: unknown
         try {
           body = m.body === undefined ? undefined : JSON.parse(m.body)
@@ -82,6 +80,13 @@ export function handler<const F extends Functions, CI>({
           batchItemFailures.push({ itemIdentifier: m.messageId })
           continue
         }
+        const contextInput = await context({ context: fContext, event, recordIndex: i })
+        const ctx = await module.context(contextInput, {
+          input: decoded.value,
+          projection: undefined,
+          operationId,
+          log,
+        })
         await functionBody.apply({
           input: decoded.value,
           projection: undefined,

@@ -1,5 +1,15 @@
 # @mondrian-framework/rest-fastify
 
+## 1.0.12
+
+### Patch Changes
+
+- Update context creation
+- Updated dependencies
+  - @mondrian-framework/module@1.0.7
+  - @mondrian-framework/model@1.0.7
+  - @mondrian-framework/rest@1.0.12
+
 ## 1.0.11
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @mondrian-framework/advanced-types
 
+## 1.0.7
+
+### Patch Changes
+
+- Update context creation
+- Updated dependencies
+  - @mondrian-framework/model@1.0.7
+
 ## 1.0.6
 
 ### Patch Changes

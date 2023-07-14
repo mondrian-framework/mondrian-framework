@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/advanced-types",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -12,6 +12,6 @@
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/model": "^1.0.6"
+    "@mondrian-framework/model": "^1.0.7"
   }
 }

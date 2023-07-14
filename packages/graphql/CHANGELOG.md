@@ -1,5 +1,14 @@
 # @mondrian-framework/graphql
 
+## 1.0.13
+
+### Patch Changes
+
+- Update context creation
+- Updated dependencies
+  - @mondrian-framework/module@1.0.7
+  - @mondrian-framework/model@1.0.7
+
 ## 1.0.12
 
 ### Patch Changes

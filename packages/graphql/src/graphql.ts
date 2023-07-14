@@ -354,8 +354,14 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
             log('Bad request. (projection)')
             throw createGraphQLError(`Invalid input.`, { extensions: projection.errors })
           }
+
           const contextInput = await context(serverContext, info)
-          const moduleCtx = await module.context(contextInput)
+          const moduleCtx = await module.context(contextInput, {
+            projection: projection.value as GenericProjection,
+            input: decoded.value,
+            operationId,
+            log,
+          })
           try {
             const result = await functionBody.apply({
               context: moduleCtx,

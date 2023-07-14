@@ -87,7 +87,12 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
         ? projection.value
         : undefined
     const contextInput = await context(serverContext)
-    const moduleCtx = await module.context(contextInput)
+    const moduleCtx = await module.context(contextInput, {
+      projection: finalProjection as GenericProjection,
+      input: decoded.value,
+      operationId,
+      log,
+    })
     try {
       const result = await functionBody.apply({
         projection: finalProjection,

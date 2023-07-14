@@ -86,7 +86,15 @@ export type GenericModule = {
     options?: Partial<Record<string, { authentication?: AuthenticationMethod | 'NONE' }>>
   }
   authentication?: AuthenticationMethod
-  context: (input: any) => Promise<unknown>
+  context: (
+    input: any,
+    args: {
+      input: unknown
+      projection: GenericProjection | undefined
+      operationId: string
+      log: Logger
+    },
+  ) => Promise<unknown>
   options?: ModuleOptions
 }
 
@@ -98,7 +106,15 @@ export type Module<F extends Functions, CI> = {
     options?: { [K in keyof F]?: { authentication?: AuthenticationMethod | 'NONE' } }
   }
   authentication?: AuthenticationMethod
-  context: (input: CI) => Promise<ContextType<F>>
+  context: (
+    input: CI,
+    args: {
+      input: unknown
+      projection: GenericProjection | undefined
+      operationId: string
+      log: Logger
+    },
+  ) => Promise<ContextType<F>>
   options?: ModuleOptions
 }
 

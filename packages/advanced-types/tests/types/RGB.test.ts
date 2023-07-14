@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from '@mondrian-framework/model/src/test-helpers'
+import { testTypeEncodingAndDecoding } from '@mondrian-framework/model'
 import { describe } from 'vitest'
 
 const knownValidValues = ['rgb(255,255,255)', 'rgb(0,0,0)', 'rgb(127,12,33)', 'rgb(127 , 12, 33)']

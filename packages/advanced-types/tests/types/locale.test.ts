@@ -1,6 +1,6 @@
 import { m } from '../../src/index'
 import { fc as gen } from '@fast-check/vitest'
-import { testTypeEncodingAndDecoding } from '@mondrian-framework/model'
+import { testTypeEncodingAndDecoding } from '@mondrian-framework/model/src/test-helpers'
 import { describe } from 'vitest'
 
 const knownInvalidValues = [10, true, null, undefined, '', 'It ', 'IT', 'iT', 'it ', 'Italian', 'en-us', 'en-US']

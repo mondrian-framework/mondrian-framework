@@ -173,8 +173,6 @@ export function subProjection<const T extends Type, K extends ProjectionKeys<T>>
   }
 }
 
-/*
-
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {
   if (projection === undefined || projection === true) {
     return ignoreRelations(type)
@@ -384,4 +382,3 @@ export function getRequiredProjection(type: LazyType, projection: GenericProject
   }
   assertNever(t)
 }
-*/

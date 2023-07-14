@@ -8,7 +8,6 @@ export default m
 export { Result }
 
 export * from './type-system'
-//export { testTypeEncodingAndDecoding } from './test-helpers'
 export { decode, DecodingOptions, isType, assertType } from './decoder'
 export { encode } from './encoder'
 export { validateAndEncode } from './converter'
@@ -17,8 +16,8 @@ export {
   //getProjectionType,
   //GenericProjection,
   subProjection,
-  //getProjectedType,
-  //getRequiredProjection,
-  //mergeProjections,
-  //projectionDepth,
+  getProjectedType,
+  getRequiredProjection,
+  mergeProjections,
+  projectionDepth,
 } from './projection'

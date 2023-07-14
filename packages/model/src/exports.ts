@@ -45,5 +45,6 @@ export {
   BaseOptions,
 } from './type-system'
 
+export * from './test-helpers'
 export { DateTimeType, DateTimeOptions, dateTime } from './custom/datetime'
 export { TimestampType, TimestampOptions, timestamp } from './custom/timestamp'

@@ -95,7 +95,7 @@ function unsafeDecode(type: Type, value: unknown, options: DecodingOptions): Res
     .with({ kind: 'object' }, (type) => decodeObject(type, value, options))
     .with({ kind: 'array' }, (type) => decodeArray(type, value, options))
     .with({ kind: 'reference' }, (type) => decodeReference(type, value, options))
-    .with({ kind: 'custom' }, (type) => type.decode(value, type.options, options)) // TODO: decoding of a custom type could take the options as input
+    .with({ kind: 'custom' }, (type) => type.decode(value, type.options, options))
     .exhaustive()
 }
 
@@ -352,19 +352,3 @@ function decodeObjectProperties(
   }
   return errors.length > 0 ? errors(decodingErrors) : success(decodedObject)
 }
-
-/* TODO: Add custom type back
-  else if (t.kind === 'custom') {
-    const preDecoded = decodeAndValidate(t.encodedType, value, opts)
-    if (!preDecoded.success) {
-      return preDecoded
-    }
-    const result = t.decode(preDecoded.value, t.opts, opts)
-    if (!result.success) {
-      return result
-    }
-    return result
-  }
-  assertNever(t)
-}
-*/

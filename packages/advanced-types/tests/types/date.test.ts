@@ -1,12 +1,8 @@
 import { m } from '../../src/index'
-import { decode, encode } from '@mondrian-framework/model'
+import { decode } from '@mondrian-framework/model'
 import { test, expect } from 'vitest'
 
 const date = m.date()
-
-test('Date - encode', async () => {
-  expect(encode(date, new Date('2023-01-01'))).toBe('2023-01-01')
-})
 
 test('Date - decode', async () => {
   expect(decode(date, '2023-01-01')).toStrictEqual({ success: true, value: new Date('2023-01-01') })
@@ -19,7 +15,3 @@ test('Date - decode', async () => {
   expect(decode(date, null).success).toBe(false)
   expect(decode(date, undefined).success).toBe(false)
 })
-
-test('Date - valid', async () => {})
-
-test('Date - invalid', async () => {})

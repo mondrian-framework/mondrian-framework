@@ -9,7 +9,7 @@ test('Timezone - encode', async () => {
 })
 
 test('Timezone - decode', async () => {
-  expect(decode(timezone, 'any-string')).toEqual({ success: true, value: 'any-string' })
+  expect(decode(timezone, 'any-string').success).toBe(false)
   expect(decode(timezone, 10).success).toBe(false)
   expect(decode(timezone, true).success).toBe(false)
   expect(decode(timezone, null).success).toBe(false)

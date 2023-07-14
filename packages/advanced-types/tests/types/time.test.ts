@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
+import { decode, encode } from '@mondrian-framework/model'
 import { test, expect } from 'vitest'
 
 const time = m.time()
@@ -38,7 +38,3 @@ test('Time - decode', async () => {
   validTimes.forEach((t) => expect(decode(time, t[0])).toStrictEqual({ success: true, value: t[1] }))
   invalidTimes.forEach((t) => expect(decode(time, t[0]).success).toBe(false))
 })
-
-test('Time - valid', async () => {})
-
-test('Time - invalid', async () => {})

@@ -16,8 +16,8 @@ export {
   //getProjectionType,
   //GenericProjection,
   subProjection,
-  getProjectedType,
-  getRequiredProjection,
-  mergeProjections,
-  projectionDepth,
+  //getProjectedType,
+  //getRequiredProjection,
+  //mergeProjections,
+  //projectionDepth,
 } from './projection'

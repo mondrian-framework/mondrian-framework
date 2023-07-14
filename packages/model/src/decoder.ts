@@ -52,7 +52,6 @@ export function assertType<T extends Type>(
 
 /**
  * The options that can be used when decoding a type.
- * TODO: SEE IF I NEED TO VALIDATE WHEN DECODING!!!!
  */
 export type DecodingOptions = {
   typeCastingStrategy: 'tryCasting' | 'expectExactTypes'
@@ -69,6 +68,14 @@ const defaultDecodingOptions: DecodingOptions = {
   unionDecodingStrategy: 'untaggedUnions',
 }
 
+/**
+ * TODO: add doc
+ * @param type
+ * @param value
+ * @param decodingOptions
+ * @param validationOptions
+ * @returns
+ */
 export function decode<T extends Type>(
   type: T,
   value: unknown,

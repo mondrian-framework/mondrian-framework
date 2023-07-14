@@ -1,5 +1,5 @@
 import * as AWS from '@aws-sdk/client-sqs'
-import { decodeAndValidate } from '@mondrian-framework/model'
+import { decode } from '@mondrian-framework/model'
 import { Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
@@ -91,7 +91,7 @@ async function listenForMessage({
         log(`Bad message: not a valid json ${m.Body}`)
         continue
       }
-      const decoded = decodeAndValidate(functionBody.input, body, { inputUnion: true })
+      const decoded = decode(functionBody.input, body, { unionDecodingStrategy: 'taggedUnions' })
       if (!decoded.success) {
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })

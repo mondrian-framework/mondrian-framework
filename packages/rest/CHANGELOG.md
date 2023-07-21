@@ -1,5 +1,13 @@
 # @mondrian-framework/rest
 
+## 1.0.14
+
+### Patch Changes
+
+- fix local sdk
+- Updated dependencies
+  - @mondrian-framework/module@1.0.9
+
 ## 1.0.13
 
 ### Patch Changes

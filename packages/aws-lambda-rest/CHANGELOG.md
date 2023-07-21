@@ -1,5 +1,14 @@
 # @mondrian-framework/aws-lambda-rest
 
+## 1.0.12
+
+### Patch Changes
+
+- fix local sdk
+- Updated dependencies
+  - @mondrian-framework/module@1.0.9
+  - @mondrian-framework/rest@1.0.14
+
 ## 1.0.11
 
 ### Patch Changes

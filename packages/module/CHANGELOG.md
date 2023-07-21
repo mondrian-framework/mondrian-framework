@@ -1,5 +1,11 @@
 # @mondrian-framework/module
 
+## 1.0.9
+
+### Patch Changes
+
+- fix local sdk
+
 ## 1.0.8
 
 ### Patch Changes

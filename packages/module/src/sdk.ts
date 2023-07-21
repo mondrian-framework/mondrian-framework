@@ -1,33 +1,35 @@
-import { ContextType, Functions, Module } from './module'
+import { Functions, Module } from './module'
 import { buildLogger, randomOperationId } from './utils'
 import { Infer, InferProjection, LazyType, Project } from '@mondrian-framework/model'
 
-type SDK<F extends Functions> = {
+type SDK<F extends Functions, Info> = {
   [K in keyof F]: Infer<F[K]['input']> extends infer Input
     ? InferProjection<F[K]['output']> extends infer Projection
-      ? SdkResolver<Input, Projection, F[K]['output']>
+      ? SdkResolver<Input, Projection, F[K]['output'], Info>
       : never
     : never
 }
 
-type SdkResolver<Input, Projection, OutputType extends LazyType> = <const P extends Projection>(args: {
+type SdkResolver<Input, Projection, OutputType extends LazyType, Info> = <const P extends Projection>(args: {
   input: Input
   projection?: P
+  info?: Info
 }) => Promise<Project<P, OutputType>>
 
-export function createLocalSdk<const F extends Functions, CI>({
+export function createLocalSdk<const F extends Functions, CI, Info>({
   module,
   context,
 }: {
   module: Module<F, CI>
-  context: () => Promise<ContextType<F>>
-}): SDK<F> {
+  context: (args: { info: Info }) => Promise<CI>
+}): SDK<F, Info> {
   const functions = Object.fromEntries(
     Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
-      const wrapper = async ({ input, projection }: { input: any; projection: any }) => {
+      const wrapper = async ({ input, projection, info }: { input: any; projection: any; info: Info }) => {
         const operationId = randomOperationId()
         const log = buildLogger(module.name, operationId, null, functionName, 'LOCAL', new Date())
-        const ctx = await context()
+        const contextInput = await context({ info })
+        const ctx = await module.context(contextInput, { input, projection, operationId, log })
         try {
           const result = functionBody.apply({ input, projection, context: ctx, operationId, log })
           log('Done.')
@@ -39,6 +41,5 @@ export function createLocalSdk<const F extends Functions, CI>({
       return [functionName, wrapper]
     }),
   )
-
-  return functions as SDK<F>
+  return functions as SDK<F, Info>
 }

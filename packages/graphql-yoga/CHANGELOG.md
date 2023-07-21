@@ -1,5 +1,14 @@
 # @mondrian-framework/graphql-yoga
 
+## 1.0.14
+
+### Patch Changes
+
+- improve local sdk
+- Updated dependencies
+  - @mondrian-framework/graphql@1.0.14
+  - @mondrian-framework/module@1.0.8
+
 ## 1.0.13
 
 ### Patch Changes

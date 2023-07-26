@@ -1,5 +1,11 @@
 # @mondrian-framework/rest
 
+## 1.0.15
+
+### Patch Changes
+
+- update swagger ui
+
 ## 1.0.14
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/rest-fastify",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -14,7 +14,7 @@
   "dependencies": {
     "fastify": "4.17.0",
     "@fastify/static": "6.10.1",
-    "swagger-ui-dist": "5.0.0-alpha.15"
+    "swagger-ui-dist": "^5.2.0"
   },
   "devDependencies": {
     "@types/swagger-ui-dist": "3.30.1"
@@ -23,6 +23,6 @@
     "@mondrian-framework/model": "^1.0.7",
     "@mondrian-framework/module": "^1.0.9",
     "@mondrian-framework/utils": "^1.0.6",
-    "@mondrian-framework/rest": "^1.0.14"
+    "@mondrian-framework/rest": "^1.0.15"
   }
 }

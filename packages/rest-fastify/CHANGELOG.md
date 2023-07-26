@@ -1,5 +1,13 @@
 # @mondrian-framework/rest-fastify
 
+## 1.0.15
+
+### Patch Changes
+
+- update swagger ui
+- Updated dependencies
+  - @mondrian-framework/rest@1.0.15
+
 ## 1.0.14
 
 ### Patch Changes

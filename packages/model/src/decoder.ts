@@ -83,7 +83,6 @@ export function decode<T extends Type>(
   validationOptions?: OptionalFields<ValidationOptions>,
 ): Result<Infer<T>> {
   const actualDecodingOptions = { ...defaultDecodingOptions, ...decodingOptions }
-
   // TODO: if we ever rework the current Error interface (maybe we should and factor out the short circuiting logic in
   // a generic error like other languages like Scala/Haskell/Elm/Gleam/Rust) this should be rewritten as a series
   // of `.then().then()`
@@ -95,8 +94,9 @@ export function decode<T extends Type>(
     } else {
       return enrichErrors({ success: false, errors: validationResult.errors } as Result<Infer<T>>)
     }
+  } else {
+    return enrichErrors(decodingResult)
   }
-  return enrichErrors(decodingResult)
 }
 
 function unsafeDecode(type: Type, value: unknown, options: DecodingOptions): Result<unknown> {

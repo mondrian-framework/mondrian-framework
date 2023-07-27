@@ -1,10 +1,12 @@
 import { m } from '../../src/index'
 import { testTypeEncodingAndDecoding } from './property-helper'
-import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
-const validValues = gen.webUrl()
-const knownValidValues = ['http://www.google.com', 'https://www.google.com']
+const knownValidValues = [
+  { raw: 'http://www.google.com', expected: new URL('http://www.google.com') },
+  { raw: 'https://www.google.com', expected: new URL('https://www.google.com') },
+]
+
 const knownInvalidValues = [
   'www.google.com',
   'google.com',
@@ -22,7 +24,6 @@ const knownInvalidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(m.url, {
-    validValues,
     knownValidValues,
     knownInvalidValues,
   }),

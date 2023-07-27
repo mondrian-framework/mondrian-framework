@@ -26,26 +26,42 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
   return () => {
     const { invalidValues, validValues, knownInvalidValues, knownValidValues } = generators
 
-    const checkIsDecoded = (rawValue: unknown) => {
-      expect(decode(type, rawValue)).toEqual({ success: true, value: rawValue })
+    const rawValueAndExpectedValueFromUnknown = (unknown: unknown) => {
+      return typeof unknown === 'object' && unknown && 'raw' in unknown && 'expected' in unknown
+        ? { raw: unknown.raw, expected: unknown.expected }
+        : { raw: unknown, expected: unknown }
     }
+
+    const checkIsDecoded = (rawValue: unknown) => {
+      // If the decoded value is not the same as the raw value (e.g. in Time where the raw can be a string
+      // and the decoded is a Date)
+      const { raw, expected } = rawValueAndExpectedValueFromUnknown(rawValue)
+      expect(decode(type, raw)).toEqual({ success: true, value: expected })
+    }
+
     const checkIsNotDecoded = (rawValue: unknown) =>
       decode(type, rawValue).success ? expect.fail(`${rawValue} was decoded but I expected the decoding to fail`) : true
 
     // informally, we check that `decode(encode(x)) = x`
     const checkEncodeInverseOfDecode = (rawValue: unknown) => {
       const decoded = decode(type, rawValue)
-      // If the decoding fails I skip the test, it doesn't make sense to check for inverse in that case
-      return decoded.success ? expect(encode(type, decoded.value)).toEqual(rawValue) : true
+      if (decoded.success) {
+        expect(encode(type, decoded.value)).toEqual(rawValue)
+      } else {
+        // If the decoding fails I skip the test, it doesn't make sense to check for inverse in that case
+        return true
+      }
     }
 
     // informally, we check that `encode(decode(x)) = x`
     const checkDecodeInverseOfEncode = (rawValidValue: unknown) => {
       // We expect to receive as input only raw valid values. First we decode them expecting the result to be valid
-      const decodingResult = decode(type, rawValidValue)
+      const { raw } = rawValueAndExpectedValueFromUnknown(rawValidValue)
+
+      const decodingResult = decode(type, raw)
       if (!decodingResult.success) {
         expect.fail(`I was expecting to get only valid raw values as input but got ${rawValidValue}.
-        Most likely there is a bug in the \`validValues\` generators passed as input`)
+        Most likely there is a bug in the \`validValues\` passed as input`)
       } else {
         // If we got a valid value `Infer<T>` we check that by encoding and decoding we get back the same result
         const validValue = decodingResult.value
@@ -55,16 +71,16 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
     }
 
     if (validValues) {
-      test.prop([validValues])('decoding pass for a generated valid value', checkIsDecoded)
-      test.prop([validValues])('encode inverse of decode for generated values', checkEncodeInverseOfDecode)
-      test.prop([validValues])('decode inverse of encode for generated values', checkDecodeInverseOfEncode)
+      test.prop([validValues])('decoding works for a generated valid value', checkIsDecoded)
+      test.prop([validValues])('encode is inverse of decode for generated values', checkEncodeInverseOfDecode)
+      test.prop([validValues])('decode is inverse of encode for generated values', checkDecodeInverseOfEncode)
     }
 
     if (knownValidValues) {
-      test('decoding pass for known valid values', () => knownValidValues.forEach(checkIsDecoded))
-      test('encode inverse of decode for known valid values', () =>
+      test('decoding works for known valid values', () => knownValidValues.forEach(checkIsDecoded))
+      test('encode is inverse of decode for known valid values', () =>
         knownValidValues.forEach(checkEncodeInverseOfDecode))
-      test('decode inverse of encode for known valid values', () =>
+      test('decode is inverse of encode for known valid values', () =>
         knownValidValues.forEach(checkDecodeInverseOfEncode))
     }
 

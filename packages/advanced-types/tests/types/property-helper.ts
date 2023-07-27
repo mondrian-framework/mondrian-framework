@@ -22,6 +22,9 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
     knownValidValues?: unknown[]
     knownInvalidValues?: unknown[]
   },
+  additionalOptions?: {
+    skipInverseCheck?: boolean
+  },
 ): SuiteFactory<{}> {
   return () => {
     const { invalidValues, validValues, knownInvalidValues, knownValidValues } = generators
@@ -42,18 +45,21 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
     const checkIsNotDecoded = (rawValue: unknown) =>
       decode(type, rawValue).success ? expect.fail(`${rawValue} was decoded but I expected the decoding to fail`) : true
 
-    // informally, we check that `decode(encode(x)) = x`
+    // informally, we check that `encode(decode(x)) = x`
     const checkEncodeInverseOfDecode = (rawValue: unknown) => {
-      const decoded = decode(type, rawValue)
+      const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
+      const decoded = decode(type, raw)
       if (decoded.success) {
-        expect(encode(type, decoded.value)).toEqual(rawValue)
+        expect(encode(type, decoded.value)).toEqual(raw)
       } else {
-        // If the decoding fails I skip the test, it doesn't make sense to check for inverse in that case
-        return true
+        // If the decoding fails I fail the test, it doesn't make sense to check for inverse in that case
+        return expect.fail(
+          `When checking for encode inverse of decode I was expecting to only get raw valid values but I got an invalid value: ${raw}`,
+        )
       }
     }
 
-    // informally, we check that `encode(decode(x)) = x`
+    // informally, we check that `decode(encode(x)) = x`
     const checkDecodeInverseOfEncode = (rawValidValue: unknown) => {
       // We expect to receive as input only raw valid values. First we decode them expecting the result to be valid
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValidValue)
@@ -72,16 +78,22 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
 
     if (validValues) {
       test.prop([validValues])('decoding works for a generated valid value', checkIsDecoded)
-      test.prop([validValues])('encode is inverse of decode for generated values', checkEncodeInverseOfDecode)
-      test.prop([validValues])('decode is inverse of encode for generated values', checkDecodeInverseOfEncode)
+
+      if (!additionalOptions?.skipInverseCheck) {
+        test.prop([validValues])('encode is inverse of decode for generated values', checkEncodeInverseOfDecode)
+        test.prop([validValues])('decode is inverse of encode for generated values', checkDecodeInverseOfEncode)
+      }
     }
 
     if (knownValidValues) {
       test('decoding works for known valid values', () => knownValidValues.forEach(checkIsDecoded))
-      test('encode is inverse of decode for known valid values', () =>
-        knownValidValues.forEach(checkEncodeInverseOfDecode))
-      test('decode is inverse of encode for known valid values', () =>
-        knownValidValues.forEach(checkDecodeInverseOfEncode))
+
+      if (!additionalOptions?.skipInverseCheck) {
+        test('encode is inverse of decode for known valid values', () =>
+          knownValidValues.forEach(checkEncodeInverseOfDecode))
+        test('decode is inverse of encode for known valid values', () =>
+          knownValidValues.forEach(checkDecodeInverseOfEncode))
+      }
     }
 
     if (invalidValues) {

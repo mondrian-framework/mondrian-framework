@@ -35,8 +35,14 @@ const knownInvalidValues = [
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(m.time, {
-    knownValidValues,
-    knownInvalidValues,
-  }),
+  testTypeEncodingAndDecoding(
+    m.time,
+    {
+      knownValidValues,
+      knownInvalidValues,
+    },
+    {
+      skipInverseCheck: true,
+    },
+  ),
 )

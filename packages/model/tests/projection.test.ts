@@ -236,15 +236,16 @@ describe('subProjection', () => {
 
 describe('projectionDepth', () => {
   test('is zero for true projections', () => {
-    expect(projectionDepth<typeof number>(true)).toBe(0)
-    expect(projectionDepth<typeof string>(true)).toBe(0)
-    expect(projectionDepth<typeof boolean>(true)).toBe(0)
-    expect(projectionDepth<EnumType<['one', 'two']>>(true)).toBe(0)
-    expect(projectionDepth<LiteralType<1>>(true)).toBe(0)
-    expect(projectionDepth<LiteralType<'mondrian'>>(true)).toBe(0)
-    expect(projectionDepth<LiteralType<null>>(true)).toBe(0)
-    expect(projectionDepth<LiteralType<true>>(true)).toBe(0)
-    expect(projectionDepth<LiteralType<false>>(true)).toBe(0)
+    expect(projectionDepth(projectionFromType(number))).toBe(0)
+    expect(projectionDepth(projectionFromType(boolean))).toBe(0)
+    expect(projectionDepth(projectionFromType(string))).toBe(0)
+    expect(projectionDepth(projectionFromType(enumeration(['a', 'b'])))).toBe(0)
+    expect(projectionDepth(projectionFromType(literal(1)))).toBe(0)
+    expect(projectionDepth(projectionFromType(literal('a')))).toBe(0)
+    expect(projectionDepth(projectionFromType(literal(true)))).toBe(0)
+    expect(projectionDepth(projectionFromType(literal(false)))).toBe(0)
+    expect(projectionDepth(projectionFromType(literal(null)))).toBe(0)
+    expect(projectionDepth(projectionFromType(exampleCustom))).toBe(0)
   })
 
   test('is the maximum depth for objects', () => {
@@ -256,11 +257,18 @@ describe('projectionDepth', () => {
       field2: string().optional(),
     })
 
-    expect(projectionDepth<typeof model>(true)).toBe(0)
-    expect(projectionDepth<typeof model>({ field1: true })).toBe(1)
-    expect(projectionDepth<typeof model>({ field1: {} })).toBe(1)
-    expect(projectionDepth<typeof model>({ field1: { inner1: true } })).toBe(2)
-    expect(projectionDepth<typeof model>({ field1: { inner1: true, inner2: true } })).toBe(2)
-    expect(projectionDepth<typeof model>({ field1: { inner1: true, inner2: true }, field2: true })).toBe(2)
+    expect(projectionDepth(projectionFromType(model))).toBe(2)
+  })
+
+  test('is the maximum depth for unions', () => {
+    const model = union({
+      variant1: string,
+      variant2: object({
+        inner1: number,
+        inner2: union({ inner1: boolean }),
+      }),
+    })
+
+    expect(projectionDepth(projectionFromType(model))).toBe(3)
   })
 })

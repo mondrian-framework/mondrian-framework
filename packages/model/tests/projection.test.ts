@@ -1,4 +1,11 @@
-import { ProjectionKeys, InferProjection, projectionDepth, subProjection, projectionFromType } from '../src/projection'
+import {
+  ProjectionKeys,
+  InferProjection,
+  projectionDepth,
+  subProjection,
+  projectionFromType,
+  SubProjection,
+} from '../src/projection'
 import { error } from '../src/result'
 import {
   BooleanType,
@@ -7,6 +14,7 @@ import {
   LiteralType,
   NumberType,
   ObjectType,
+  OptionalType,
   StringType,
   areSameType,
   array,
@@ -176,6 +184,36 @@ describe('projectionFromType', () => {
     })
 
     expect(areSameType(projectionFromType(model), expectedProjectionModel)).toEqual(true)
+  })
+})
+
+describe('ProjectionKeys', () => {
+  test('returns never for literal projections', () => {
+    expectTypeOf<ProjectionKeys<LiteralType<true>>>().toEqualTypeOf<never>()
+  })
+
+  test('returns a union of strings for an object projection', () => {
+    const model = object({ field1: number, field2: object({ inner1: boolean }) })
+    type Projection = InferProjection<typeof model>
+    expectTypeOf<ProjectionKeys<Projection>>().toEqualTypeOf<'field1' | 'field2'>()
+  })
+})
+
+describe('SubProjection', () => {
+  test('returns never for literal projections', () => {
+    expectTypeOf<SubProjection<LiteralType<true>, never>>().toEqualTypeOf<never>()
+  })
+
+  test('returns subprojection for union projection', () => {
+    const model = object({ field1: number, field2: object({ inner: boolean }) })
+    type Projection = InferProjection<typeof model>
+    expectTypeOf<SubProjection<Projection, 'field1'>>().toEqualTypeOf<OptionalType<LiteralType<true>>>()
+
+    const expectedProjection = union({
+      all: literal(true),
+      partial: object({ inner: literal(true).optional() }),
+    }).optional()
+    expectTypeOf<SubProjection<Projection, 'field2'>>().toEqualTypeOf(expectedProjection)
   })
 })
 

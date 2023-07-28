@@ -138,29 +138,23 @@ function projectTypesOrLiteralTrue(types: Types): ProjectionType {
  *          ```
  */
 // prettier-ignore
-export type ProjectionKeys<P extends Type>
-  = [P] extends [UnionType<{ all: LiteralType<true>, partial: infer T extends Type }>] ? ProjectionKeys<T>
-  : [P] extends [ObjectType<"immutable", infer Ts extends ProjectionTypes>] ? keyof Ts
+export type ProjectionKeys<P extends ProjectionType>
+  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends ProjectionTypes> }>] ? keyof Ps
   : never
 
 /**
- * Given a {@link Type type} `T` and one of the possible keys of its projection, returns the subprojection corresponding
- * to that key.
+ * Given a {@link Type type} `T` and one of the possible {@link ProjectionKeys keys of its projection},
+ * returns the subprojection corresponding to that key.
  *
  * @example ```ts
  *          type Object = ObjectType<{ field1: NumberType, field2: NumberType }>
- *          type Sub = SubProjection<ObjectType, "field1">
- *          // -> Sub = true
- *          // Sub it the projection of "field1"
+ *          SubProjection<ObjectType, "field1">
+ *          // -> true
  *          ```
  */
 // prettier-ignore
-export type SubProjection<T extends Type, K extends ProjectionKeys<T>>
-  = [InferProjection<T>] extends [true] ? true
-  : [K] extends [true] ? true
-  : [K] extends [string] ?
-    [InferProjection<T>] extends [true | infer R extends Record<string, any>] ? R[K]
-    : never
+export type SubProjection<P extends ProjectionType, K extends ProjectionKeys<P>>
+  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends ProjectionTypes> }>] ? Ps[K]
   : never
 
 /**

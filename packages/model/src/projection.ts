@@ -2,6 +2,7 @@ import {
   ArrayType,
   BooleanType,
   EnumType,
+  Infer,
   LiteralType,
   NullableType,
   NumberType,
@@ -22,116 +23,74 @@ import {
 import { assertNever } from '@mondrian-framework/utils'
 
 /**
- * Gets the type of a valid projection for a given type of the Mondrian framework.
- * A projection can define... TODO
+ * This is the Mondrian type describing the structure of a projection: it is either the literal value
+ * `true` or a union composed of two variants: an `all` variant (which is again the literal `true`) and
+ * a `partial` variant which describes a subprojection with possibly many fields; this is why it is described
+ * by an `ObjectType` whose fields can themselves only be valid projections.
+ */
+type ProjectionType =
+  | LiteralType<true>
+  | UnionType<{ all: LiteralType<true>; partial: ObjectType<'immutable', ProjectionTypes> }>
+
+/**
+ * A record of {@link ProjectionType `ProjectionType`s}.
+ */
+type ProjectionTypes = Record<string, OptionalType<ProjectionType>>
+
+/**
+ * Given a Mondrian {@link Type type}, returns the Mondrian type describing its {@link Projection projection}.
+ * You can read {@link here TODO:} to learn more about what projections are and how they can be used.
+ *
+ * @example ```ts
+ *          const model = object({ field1: number, field2: string })
+ *          type Projection = InferProjection<typeof model>
+ *          Infer<Projection>
+ *          // -> true | { field1?: true, field2?: true }
+ *          ```
  */
 // prettier-ignore
-export type Projection<T extends Type>
-  = [T] extends [NumberType] ? true
-  : [T] extends [StringType] ? true
-  : [T] extends [BooleanType] ? true
-  : [T] extends [EnumType<infer _Vs>] ? true
-  : [T] extends [LiteralType<infer _L>] ? true
-  : [T] extends [UnionType<infer Ts>] ? { readonly [Key in keyof Ts]?: Projection<Ts[Key]> } | true
-  : [T] extends [ArrayType<infer _M, infer T1>] ? Projection<T1>
-  : [T] extends [OptionalType<infer T1>] ? Projection<T1>
-  : [T] extends [NullableType<infer T1>] ? Projection<T1>
-  : [T] extends [ReferenceType<infer T1>] ? Projection<T1>
-  : [T] extends [(() => infer T1 extends Type)] ? Projection<T1>
-  : [T] extends [ObjectType<infer _M, infer Ts>] ? { readonly [Key in keyof Ts]?: Projection<Ts[Key]> } | true
+export type InferProjection<T extends Type>
+  = [T] extends [NumberType] ? LiteralType<true>
+  : [T] extends [StringType] ? LiteralType<true>
+  : [T] extends [BooleanType] ? LiteralType<true>
+  : [T] extends [EnumType<infer _Vs>] ? LiteralType<true>
+  : [T] extends [LiteralType<infer _L>] ? LiteralType<true>
+  : [T] extends [ArrayType<infer _M, infer T1>] ? InferProjection<T1>
+  : [T] extends [OptionalType<infer T1>] ? InferProjection<T1>
+  : [T] extends [NullableType<infer T1>] ? InferProjection<T1>
+  : [T] extends [ReferenceType<infer T1>] ? InferProjection<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? InferProjection<T1>
+  : [T] extends [UnionType<infer Ts>] ? UnionType<{ 
+      all: LiteralType<true>,
+      partial: ObjectType<"immutable", { [Key in keyof Ts]: OptionalType<InferProjection<Ts[Key]>> }>
+    }>
+  : [T] extends [ObjectType<infer _M, infer Ts>] ? UnionType<{
+      all: LiteralType<true>,
+      partial: ObjectType<"immutable", { [Key in keyof Ts]: OptionalType<InferProjection<Ts[Key]>> }>
+    }>
   : never
 
 /**
- * @param projection the projection to check
- * @param type the {@link Type type} that `projection` has to conform to
- * @returns true if the given `projection` is actually a valid projection for the given `type`
- */
-export function isProjection<T extends Type>(projection: unknown, type: T): projection is Projection<T> {
-  // The literal true is always a valid projection for any given type
-  if (projection === true) {
-    return true
-  }
-  // A null projection is never valid
-  if (projection === null) {
-    return false
-  }
-  // Here we made sure that projection is not `true`, so now we check for other options
-  const concreteType = concretise(type)
-  const kind = concreteType.kind
-  if (kind === 'number' || kind === 'string' || kind === 'boolean' || kind === 'enum' || kind === 'literal') {
-    // For the base type the only allowed projection is the literal true, since here we're sure that `projection` is not
-    // `true` we're sure that it cannot be a valid projection for those types
-    return false
-  } else if (kind === 'array' || kind === 'optional' || kind === 'nullable' || kind === 'reference') {
-    // In case of types that wrap an inner type we check if the projection is valid for the wrapped type
-    return isProjection(projection, concreteType.wrappedType)
-  } else if (kind === 'object') {
-    // If type is an object the only possible valid projection is itself an object and a valid projection
-    return typeof projection !== 'object' ? false : checkIsObjectProjection(concreteType, projection)
-  } else if (kind === 'union') {
-    return typeof projection !== 'object' ? false : checkIsUnionProjection(concreteType, projection)
-  } else {
-    // Here type is never since we've already checked all options!
-    // This branch is unreachable so we return `false` as a default
-    return false
-  }
-}
-
-/**
- * Checks if an object is a valid projection for a given object type: `projection` must contain only the fields defined
- * by `type` (but could also contain less fields than type), and each field must itself be a valid projection for the
- * corresponding type.
- */
-function checkIsObjectProjection<Ts extends Types>(type: ObjectType<any, Ts>, projection: object): boolean {
-  for (const [fieldName, subProjection] of Object.entries(projection)) {
-    const subType = type.types[fieldName]
-    // If there is no field with a name of the fields of `projection`
-    if (subType === undefined || !isProjection(subProjection, subType)) {
-      return false
-    }
-  }
-  return true
-}
-
-/**
- * Checks if an object is a valid projection for a given union type: `projection` must contain only fields with the same
- * name as the type variants (but could also contain less fields), and each field must itself be a valid projection for
- * the corresponding variant.
- */
-function checkIsUnionProjection<Ts extends Types>(type: UnionType<Ts>, projection: object): boolean {
-  for (const [fieldName, subProjection] of Object.entries(projection)) {
-    const variantType = type.variants[fieldName]
-    // If there is no variant with a name of the fields of `projection`
-    if (variantType === undefined || !isProjection(subProjection, variantType)) {
-      return false
-    }
-  }
-  return true
-}
-
-/**
- * Gets the keys of a given projection
+ * Returns the union type containing the top-level keys of a projection. This doesn't inspect the tree structure
+ * of the projection but only stops at the top level. If the projection is not an object it doesn't have any
+ * keys and thus this returns the `never` type.
  *
  * @example ```ts
- *          type Ks = ProjectionKeys<NumberType>
- *          // -> Ks = never
- *          // a projection for a number can only be `true` and doesn't have any keys
+ *          type Projection = InferProjection<typeof number>
+ *          ProjectionKeys<Projection>
+ *          // -> never
  *          ```
  * @example ```ts
- *          type Ks = ProjectionKeys<ObjectType<"mutable", { field1: NumberType, field2: NumberType }>>
- *          // -> Ks = "field1" | "field2"
- *          // an object has a projection that has a key for each of its fields
- *          ```
- * @example ```ts
- *          type Ks = ProjectionKeys<UnionType<{ variant1: NumberType, variant2: StringType }>>
- *          // -> Ks = "variant1" | "variant2"
- *          // a union has a projection that has a key for each of its variants
+ *          const model = object({ field1: number, field2: object({ inner1: string }) })
+ *          type Projection = InferProjection<typeof model>
+ *          ProjectionKeys<Projection>
+ *          // -> "field1" | "field2"
  *          ```
  */
 // prettier-ignore
-export type ProjectionKeys<T extends Type>
-  = [Projection<T>] extends [true] ? never
-  : [Projection<T>] extends [true | infer R extends Record<string, any>] ? keyof R
+export type ProjectionKeys<P extends Type>
+  = [P] extends [UnionType<{ all: LiteralType<true>, partial: infer T extends Type }>] ? ProjectionKeys<T>
+  : [P] extends [ObjectType<"immutable", infer Ts extends ProjectionTypes>] ? keyof Ts
   : never
 
 /**
@@ -146,30 +105,68 @@ export type ProjectionKeys<T extends Type>
  *          ```
  */
 // prettier-ignore
-export type SubProjection<T extends Type, Ks extends ProjectionKeys<T>>
-  = [Projection<T>] extends [true] ? true
-  : [Projection<T>] extends [true | infer R extends Record<string, any>] ? Exclude<R[Ks], undefined>
+export type SubProjection<T extends Type, K extends ProjectionKeys<T>>
+  = [InferProjection<T>] extends [true] ? true
+  : [K] extends [true] ? true
+  : [K] extends [string] ?
+    [InferProjection<T>] extends [true | infer R extends Record<string, any>] ? R[K]
+    : never
   : never
 
 /**
  * @param projection the {@link Projection projection} to select a subprojection from
  * @param key the key used to select a subprojection from the projection
- * @returns the selected subprojection
+ * @returns the selected subprojection, if the provided key is `true` the result is always `true`
+ * @example ```ts
+ *          const model = object({ field: number })
+ *          subProjection(model, { field: true }, "field")
+ *          // -> true
+ *          ```
+ * @example ```ts
+ *          const model = object({ field: number })
+ *          subProjection(model, {}, "field")
+ *          // -> undefined
+ *          ```
+ * @example ```ts
+ *          const model = object({ field: number })
+ *          subProjection(model, {}, true)
+ *          // -> true
+ *          ```
  */
 export function subProjection<const T extends Type, K extends ProjectionKeys<T>>(
-  projection: Projection<T>,
+  _type: T,
+  projection: Infer<InferProjection<T>>,
   key: K,
 ): SubProjection<T, K> {
-  if (projection === true) {
-    // This path can never happen: if the projection is `true` then its `ProjectionKeys` are `never` meaning that key
-    // would have to be `never`, but that is impossible
-    throw new Error(
-      "called sub projection on a projection that doesn't have a subprojection, this code path should be unreachable",
-    )
+  if (projection === true || key === true) {
+    return true as SubProjection<T, K>
   } else {
     // Otherwise we are guaranteed that `key` is one of the keys of the projection by the types,
     // that is why we can safely access it here
     return (projection as any)[key]
+  }
+}
+
+/**
+ * @param projection the projection whose depth is returned
+ * @returns the depth of the projection, that is the maximum nesting of the projection
+ * @example ```ts
+ *          projectionDepth<typeof number>(true)
+ *          // -> 0
+ *          ```
+ * @example ```ts
+ *          const model = object({ field1: object({ inner1: number }), field2: number })
+ *          projectionDepth<typeof model>({ field1: { inner1: true } })
+ *          // -> 2
+ *          ```
+ */
+export function projectionDepth<T extends Type>(projection: InferProjection<T>): number {
+  if (typeof projection === 'object') {
+    const innerProjections = Object.values(projection) as unknown as InferProjection<T>[]
+    const depths = innerProjections.map(projectionDepth)
+    return Math.max(-1, ...depths) + 1
+  } else {
+    return 0
   }
 }
 
@@ -272,17 +269,6 @@ function ignoreRelations(type: LazyType): LazyType {
     )
   }
   assertNever(t)
-}
-
-export function projectionDepth(p: GenericProjection, start = 0): number {
-  if (typeof p === 'object') {
-    const max = Object.values(p).reduce((depth, sb) => {
-      const d = sb ? projectionDepth(sb, start + 1) : start
-      return d > depth ? d : depth
-    }, start)
-    return max
-  }
-  return start
 }
 
 export type MergeGenericProjection<T1 extends GenericProjection, T2 extends GenericProjection> = [T1] extends [true]

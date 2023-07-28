@@ -136,10 +136,11 @@ describe('Infer', () => {
   })
 
   test('CustomType inferred as the specified type', () => {
-    const model = m.custom<{}, number>(
-      (_) => null,
-      (_) => error('', null),
-      (_) => error('', null),
+    const model = m.custom<'myCustomType', {}, number>(
+      'myCustomType',
+      () => null,
+      () => error('test', 'test'),
+      () => error('test', 'test'),
     )
     type Inferred = m.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

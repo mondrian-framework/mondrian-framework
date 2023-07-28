@@ -74,6 +74,21 @@ export type InferProjection<T extends Type>
     }>
   : never
 
+/**
+ * @param type the type whose projection model is returned
+ * @returns the Mondrian model describing the type of valid projections for the given type
+ * @example ```ts
+ *          const model = object({ field1: number, field2: string })
+ *          projectionFromType(model)
+ *          // -> union({
+ *          //   all: literal(true)
+ *          //   partial: object({
+ *          //     field1: literal(true).optional()
+ *          //     field2: literal(true).optional()
+ *          //   })
+ *          // })
+ *          ```
+ */
 export function projectionFromType<T extends Type>(type: T): InferProjection<T> {
   const actualType = concretise(type)
   switch (actualType.kind) {
@@ -90,20 +105,19 @@ export function projectionFromType<T extends Type>(type: T): InferProjection<T> 
     case 'reference':
       return projectionFromType(actualType.wrappedType) as InferProjection<T>
     case 'object':
-      return union({
-        all: literal(true),
-        partial: object(
-          filterMapObject(actualType.types, (_, fieldType: T) => projectionFromType(fieldType).optional()),
-        ),
-      }) as InferProjection<T>
+      return projectTypesOrLiteralTrue(actualType.types) as InferProjection<T>
     case 'union':
-      return union({
-        all: literal(true),
-        partial: object(
-          filterMapObject(actualType.variants, (_, fieldType: T) => projectionFromType(fieldType).optional()),
-        ),
-      }) as InferProjection<T>
+      return projectTypesOrLiteralTrue(actualType.variants) as InferProjection<T>
   }
+}
+
+/**
+ * Given a record of types, returns a projection type that is either the literal `true` or an object
+ * with the projections of the given `types`.
+ */
+function projectTypesOrLiteralTrue(types: Types): ProjectionType {
+  const projectedTypes = filterMapObject(types, (_, fieldType: any) => projectionFromType(fieldType).optional())
+  return union({ all: literal(true), partial: object(projectedTypes) })
 }
 
 /**

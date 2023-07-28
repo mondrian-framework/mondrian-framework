@@ -177,17 +177,17 @@ export type SubProjection<P extends ProjectionType, K extends ProjectionKeys<P>>
  *          // -> true
  *          ```
  */
-export function subProjection<const T extends Type, K extends ProjectionKeys<T>>(
-  _type: T,
-  projection: Infer<InferProjection<T>>,
+export function subProjection<const P extends ProjectionType, K extends ProjectionKeys<P>>(
+  projection: P,
   key: K,
-): SubProjection<T, K> {
-  if (projection === true || key === true) {
-    return true as SubProjection<T, K>
+): SubProjection<P, K> {
+  console.log(projection)
+  if (projection.kind === 'union') {
+    return projection.variants.partial.types[key] as SubProjection<P, K>
   } else {
-    // Otherwise we are guaranteed that `key` is one of the keys of the projection by the types,
-    // that is why we can safely access it here
-    return (projection as any)[key]
+    throw new Error(
+      'INTERNAL ERROR: it appears that subProjection was called with a type whose keys should have been `never` (and thus this call should have been impossible to make)',
+    )
   }
 }
 

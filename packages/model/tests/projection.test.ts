@@ -218,38 +218,19 @@ describe('SubProjection', () => {
 })
 
 describe('subProjection', () => {
-  test('is always true on primitive types', () => {
-    expect(subProjection(number, true, true)).toBe(true)
-    expect(subProjection(string, true, true)).toBe(true)
-    expect(subProjection(boolean, true, true)).toBe(true)
-    expect(subProjection(enumeration(['one', 'two']), true, true)).toBe(true)
-    expect(subProjection(literal(1), true, true)).toBe(true)
-    expect(subProjection(literal('mondrian'), true, true)).toBe(true)
-    expect(subProjection(literal(null), true, true)).toBe(true)
-    expect(subProjection(literal(true), true, true)).toBe(true)
-    expect(subProjection(literal(false), true, true)).toBe(true)
-  })
+  test('returns the sub object when provided the corresponding key', () => {
+    const model = object({ field1: number, field2: object({ inner1: string }) })
+    const projection = projectionFromType(model)
 
-  test('works on objects', () => {
-    const model = object({
-      field1: object({
-        inner1: number,
-        inner2: number,
-      }),
-      field2: number,
-    })
+    const subProjectionOnField1 = subProjection(projection, 'field1')
+    expect(areSameType(subProjectionOnField1, literal(true).optional())).toBe(true)
 
-    expect(subProjection(model, true, true)).toEqual(true)
-    expect(subProjection(model, true, 'field1')).toEqual(true)
-    expect(subProjection(model, true, 'field2')).toEqual(true)
-
-    expect(subProjection(model, { field2: true }, true)).toEqual(true)
-    expect(subProjection(model, { field2: true }, 'field1')).toEqual(undefined)
-    expect(subProjection(model, { field2: true }, 'field2')).toEqual(true)
-
-    expect(subProjection(model, { field1: { inner1: true } }, true)).toEqual(true)
-    expect(subProjection(model, { field1: { inner1: true } }, 'field1')).toEqual({ inner1: true })
-    expect(subProjection(model, { field1: { inner1: true } }, 'field2')).toEqual(undefined)
+    const subProjectionOnField2 = subProjection(projection, 'field2')
+    const expectedSubProjection = union({
+      all: literal(true),
+      partial: object({ inner1: literal(true).optional() }),
+    }).optional()
+    expect(areSameType(subProjectionOnField2, expectedSubProjection)).toBe(true)
   })
 })
 

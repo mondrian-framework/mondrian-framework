@@ -1,6 +1,7 @@
 import {
   ArrayType,
   BooleanType,
+  CustomType,
   EnumType,
   Infer,
   LiteralType,
@@ -15,11 +16,13 @@ import {
   UnionType,
   array,
   concretise,
+  literal,
   nullable,
   object,
   optional,
   union,
 } from './type-system'
+import { filterMapObject } from './utils'
 import { assertNever } from '@mondrian-framework/utils'
 
 /**
@@ -53,9 +56,10 @@ export type InferProjection<T extends Type>
   = [T] extends [NumberType] ? LiteralType<true>
   : [T] extends [StringType] ? LiteralType<true>
   : [T] extends [BooleanType] ? LiteralType<true>
-  : [T] extends [EnumType<infer _Vs>] ? LiteralType<true>
-  : [T] extends [LiteralType<infer _L>] ? LiteralType<true>
-  : [T] extends [ArrayType<infer _M, infer T1>] ? InferProjection<T1>
+  : [T] extends [EnumType<infer _>] ? LiteralType<true>
+  : [T] extends [LiteralType<infer _>] ? LiteralType<true>
+  : [T] extends [CustomType<infer _Name, infer _Options, infer _InferredAs>] ? LiteralType<true>
+  : [T] extends [ArrayType<infer _, infer T1>] ? InferProjection<T1>
   : [T] extends [OptionalType<infer T1>] ? InferProjection<T1>
   : [T] extends [NullableType<infer T1>] ? InferProjection<T1>
   : [T] extends [ReferenceType<infer T1>] ? InferProjection<T1>
@@ -64,11 +68,43 @@ export type InferProjection<T extends Type>
       all: LiteralType<true>,
       partial: ObjectType<"immutable", { [Key in keyof Ts]: OptionalType<InferProjection<Ts[Key]>> }>
     }>
-  : [T] extends [ObjectType<infer _M, infer Ts>] ? UnionType<{
+  : [T] extends [ObjectType<infer _, infer Ts>] ? UnionType<{
       all: LiteralType<true>,
       partial: ObjectType<"immutable", { [Key in keyof Ts]: OptionalType<InferProjection<Ts[Key]>> }>
     }>
   : never
+
+export function projectionFromType<T extends Type>(type: T): InferProjection<T> {
+  const actualType = concretise(type)
+  switch (actualType.kind) {
+    case 'boolean':
+    case 'custom':
+    case 'literal':
+    case 'string':
+    case 'enum':
+    case 'number':
+      return literal(true) as InferProjection<T>
+    case 'array':
+    case 'nullable':
+    case 'optional':
+    case 'reference':
+      return projectionFromType(actualType.wrappedType) as InferProjection<T>
+    case 'object':
+      return union({
+        all: literal(true),
+        partial: object(
+          filterMapObject(actualType.types, (_, fieldType: T) => projectionFromType(fieldType).optional()),
+        ),
+      }) as InferProjection<T>
+    case 'union':
+      return union({
+        all: literal(true),
+        partial: object(
+          filterMapObject(actualType.variants, (_, fieldType: T) => projectionFromType(fieldType).optional()),
+        ),
+      }) as InferProjection<T>
+  }
+}
 
 /**
  * Returns the union type containing the top-level keys of a projection. This doesn't inspect the tree structure

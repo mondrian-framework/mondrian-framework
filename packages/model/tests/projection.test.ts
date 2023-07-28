@@ -1,4 +1,5 @@
-import { ProjectionKeys, InferProjection, projectionDepth, subProjection } from '../src/projection'
+import { ProjectionKeys, InferProjection, projectionDepth, subProjection, projectionFromType } from '../src/projection'
+import { error } from '../src/result'
 import {
   BooleanType,
   EnumType,
@@ -7,8 +8,10 @@ import {
   NumberType,
   ObjectType,
   StringType,
+  areSameType,
   array,
   boolean,
+  custom,
   enumeration,
   literal,
   number,
@@ -19,12 +22,21 @@ import {
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe, expect } from 'vitest'
 
+// This is used for the tests on custom types to avoid repeating the long definition
+const exampleCustom = custom(
+  'customType',
+  () => null,
+  () => error('test', 'test'),
+  () => error('test', 'test'),
+)
+
 describe('Projection inference', () => {
   test('is true for base types', () => {
     expectTypeOf<InferProjection<NumberType>>().toEqualTypeOf<LiteralType<true>>()
     expectTypeOf<InferProjection<StringType>>().toEqualTypeOf<LiteralType<true>>()
     expectTypeOf<InferProjection<BooleanType>>().toEqualTypeOf<LiteralType<true>>()
     expectTypeOf<InferProjection<EnumType<['one', 'two']>>>().toEqualTypeOf<LiteralType<true>>()
+    expectTypeOf<InferProjection<typeof exampleCustom>>().toEqualTypeOf<LiteralType<true>>()
 
     expectTypeOf<InferProjection<LiteralType<null>>>().toEqualTypeOf<LiteralType<true>>()
     expectTypeOf<InferProjection<LiteralType<'string'>>>().toEqualTypeOf<LiteralType<true>>()
@@ -101,6 +113,69 @@ describe('Projection inference', () => {
 
     type NumberProjection = InferProjection<typeof number>
     expectTypeOf<ProjectionKeys<NumberProjection>>().toEqualTypeOf<never>()
+  })
+})
+
+describe('projectionFromType', () => {
+  test('returns the literal true for base types', () => {
+    expect(areSameType(projectionFromType(number), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(boolean), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(string), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(enumeration(['a', 'b'])), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(literal(1)), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(literal('a')), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(literal(true)), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(literal(false)), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(literal(null)), literal(true))).toEqual(true)
+    expect(areSameType(projectionFromType(exampleCustom), literal(true))).toEqual(true)
+  })
+
+  test('returns an object model for objects', () => {
+    const model = object({
+      field1: number,
+      field2: object({
+        inner1: string,
+      }),
+    })
+
+    const expectedProjectionModel = union({
+      all: literal(true),
+      partial: object({
+        field1: literal(true).optional(),
+        field2: union({
+          all: literal(true),
+          partial: object({
+            inner1: literal(true).optional(),
+          }),
+        }).optional(),
+      }),
+    })
+
+    expect(areSameType(projectionFromType(model), expectedProjectionModel)).toEqual(true)
+  })
+
+  test('returns an object model for unions', () => {
+    const model = union({
+      variant1: number,
+      variant2: object({
+        inner1: string,
+      }),
+    })
+
+    const expectedProjectionModel = union({
+      all: literal(true),
+      partial: object({
+        variant1: literal(true).optional(),
+        variant2: union({
+          all: literal(true),
+          partial: object({
+            inner1: literal(true).optional(),
+          }),
+        }).optional(),
+      }),
+    })
+
+    expect(areSameType(projectionFromType(model), expectedProjectionModel)).toEqual(true)
   })
 })
 

@@ -1180,6 +1180,50 @@ export function setName<T extends Type>(type: T, name: string): T {
   return updateOptions(type, { name } as OptionsOf<T>)
 }
 
+/**
+ * @param one the first type to compare
+ * @param other the second type to compare
+ * @returns true if the two types model the same type
+ * TODO: add documentation and tests
+ */
+export function areSameType<T extends Type>(one: T, other: T): boolean {
+  const type1 = concretise(one)
+  const type2 = concretise(other)
+
+  function sameKindAndOptions(one: ConcreteType, other: ConcreteType): boolean {
+    return one.kind === other.kind && one.options === other.options
+  }
+
+  function arraysHaveSameElements(array1: any[], array2: any[]): boolean {
+    return array1.length === array2.length && array1.every((element) => array2.includes(element))
+  }
+
+  function sameFieldsAreSameTypes(one: Types, other: Types): boolean {
+    const oneKeys = Object.keys(one)
+    const otherKeys = Object.keys(other)
+    return (
+      arraysHaveSameElements(oneKeys, otherKeys) &&
+      Object.entries(one).every(([fieldName, fieldType]) => areSameType(other[fieldName], fieldType))
+    )
+  }
+
+  // prettier-ignore
+  return (
+       type1.kind === 'number' && sameKindAndOptions(type1, type2)
+    || type1.kind === 'boolean' && sameKindAndOptions(type1, type2)
+    || type1.kind === 'string' && sameKindAndOptions(type1, type2)
+    || (type1.kind === 'literal' && type1.kind === type2.kind && type1.options === type2.options && type1.literalValue === type2.literalValue)
+    || (type1.kind === 'enum' && type1.kind === type2.kind && type1.options === type2.options && type1.variants === type2.variants)
+    || (type1.kind === 'custom' && type1.kind === type2.kind && type1.options === type2.options && type1.typeName === type2.typeName)
+    || (type1.kind === 'array' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'nullable' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'optional' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'reference' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'object' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.types, type2.types))
+    || (type1.kind === 'union' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
+  )
+}
+
 /*
 type Selection<T extends LazyType, P extends InferProjection<T>> = SelectionInternal<T, P>
 type SelectionInternal<LT extends LazyType, P extends GenericProjection> = LazyToType<LT> extends infer T

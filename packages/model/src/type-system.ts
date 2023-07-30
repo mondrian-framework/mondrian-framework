@@ -109,7 +109,7 @@ export type Mutability = 'mutable' | 'immutable'
  * @param type the possibly lazy {@link Type type} to turn into a concrete type
  * @returns a new {@link ConcreteType type} that is guaranteed to not be a lazily defined function
  */
-export function concretise<T extends Type>(type: T): ConcreteType {
+export function concretise(type: Type): ConcreteType {
   return typeof type === 'function' ? concretise(type()) : type
 }
 

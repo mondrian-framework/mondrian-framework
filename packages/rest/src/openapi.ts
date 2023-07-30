@@ -387,6 +387,9 @@ function typeToSchemaObject(
   if (type.kind === 'custom' && type.name === 'void') {
     return { name: type.opts?.name ?? 'void', schema: { type: 'null', const: 'null', description: 'void' } }
   }
+  if (type.kind === 'custom' && type.name === 'unknown') {
+    return { name: type.opts?.name ?? 'unknown', schema: {}, description: 'unknown' }
+  }
   if (typeof t === 'function') {
     const n = typeRef.get(t)
     if (n) {

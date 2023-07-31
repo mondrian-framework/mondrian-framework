@@ -1,5 +1,6 @@
+import { fc as gen } from '@fast-check/vitest'
 import { m } from '@mondrian-framework/model'
-import { Result, error, success } from '@mondrian-framework/model/src/result'
+import { Result, error, success } from '@mondrian-framework/model'
 
 export function url(options?: m.BaseOptions): m.CustomType<'URL', {}, URL> {
   return m.custom(
@@ -7,6 +8,7 @@ export function url(options?: m.BaseOptions): m.CustomType<'URL', {}, URL> {
     (value) => value.toString(),
     decodeUrl,
     (_url) => success(true),
+    gen.webUrl().map((url) => new URL(url)),
     options,
   )
 }

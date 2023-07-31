@@ -1,5 +1,6 @@
+import { fc as gen } from '@fast-check/vitest'
 import { DecodingOptions, m } from '@mondrian-framework/model'
-import { Result, error, success } from '@mondrian-framework/model/src/result'
+import { Result, error, success } from '@mondrian-framework/model'
 
 export function fromRegexes<Name extends string, Options extends Record<string, any>>(
   typeName: Name,
@@ -8,7 +9,14 @@ export function fromRegexes<Name extends string, Options extends Record<string, 
   regex: RegExp,
   ...regexes: RegExp[]
 ): m.CustomType<Name, Options, string> {
-  return m.custom(typeName, encode, decode, (input) => validate(input, errorMessage, [regex, ...regexes]), options)
+  return m.custom(
+    typeName,
+    encode,
+    decode,
+    (input) => validate(input, errorMessage, [regex, ...regexes]),
+    gen.constant('TODO'),
+    options,
+  )
 }
 
 function encode(string: string): string {

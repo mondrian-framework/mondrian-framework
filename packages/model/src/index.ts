@@ -1,17 +1,14 @@
 import * as m from './exports'
-import * as Result from './result'
 
 export * from './exports'
 export { m }
 export default m
 
-export { Result }
-
 export * from './type-system'
 export { decode, DecodingOptions, isType, assertType } from './decoder'
 export { encode } from './encoder'
 export { validateAndEncode } from './converter'
-export { validate } from './validate'
+export { validate, ValidationOptions } from './validate'
 export {
   //getProjectionType,
   //GenericProjection,
@@ -21,3 +18,5 @@ export {
   //mergeProjections,
   //projectionDepth,
 } from './projection'
+
+export { Error, Failure, Result, Success, error, success } from './result'

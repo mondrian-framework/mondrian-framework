@@ -1,5 +1,6 @@
+import { fc as gen } from '@fast-check/vitest'
 import { m } from '@mondrian-framework/model'
-import { error, success, Result } from '@mondrian-framework/model/src/result'
+import { error, success, Result } from '@mondrian-framework/model'
 
 const MIN_PORT_NUMBER = 1
 const MAX_PORT_NUMBER = 65535
@@ -13,6 +14,7 @@ export function port(options?: m.BaseOptions): m.CustomType<'port', {}, number> 
         ? success(value)
         : error('Expected a TCP port number', value),
     validatePort,
+    gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER }),
     options,
   )
 }

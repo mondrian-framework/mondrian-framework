@@ -10,18 +10,21 @@ export function getArbitrary<T extends Type>(type: T): gen.Arbitrary<Infer<T>> {
   const value = match(concretise(type))
     .with({ kind: 'boolean' }, (_type) => gen.boolean())
     .with({ kind: 'number' }, (type) => {
-      if (type.options?.multipleOf) {
-        const m = type.options.multipleOf
-        const min = type.options.minimum?.[0] //TODO: check inclusive / exclusive
-        const max = type.options.maximum?.[0]
-        return gen
-          .integer({
-            min: min != null ? Math.round(min / m + (0.5 - Number.EPSILON)) : undefined,
-            max: max != null ? Math.round(max / m - (0.5 - Number.EPSILON)) : undefined,
-          })
-          .map((v) => v * m)
+      const multipleOf = type.options?.multipleOf
+      if (multipleOf) {
+        const [min, minInclusive] = type.options.minimum ?? [undefined, 'inclusive']
+        const [max, maxInclusive] = type.options.maximum ?? [undefined, 'inclusive']
+        let minIndex = min != null ? Math.round(min / multipleOf + (0.5 - Number.EPSILON)) : undefined
+        let maxIndex = max != null ? Math.round(max / multipleOf - (0.5 - Number.EPSILON)) : undefined
+        if (maxIndex != null && maxInclusive === 'exclusive' && maxIndex * multipleOf === max) {
+          maxIndex--
+        }
+        if (minIndex != null && minInclusive === 'exclusive' && minIndex * multipleOf === min) {
+          minIndex++
+        }
+        return gen.integer({ min: minIndex, max: maxIndex }).map((v) => v * multipleOf)
       }
-      return gen.double({ min: type.options?.minimum?.[0], max: type.options?.maximum?.[0] }).filter
+      return gen.double({ min: type.options?.minimum?.[0], max: type.options?.maximum?.[0] })
     })
     .with(
       { kind: 'string' },

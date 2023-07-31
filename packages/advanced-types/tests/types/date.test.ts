@@ -1,18 +1,11 @@
 import { m } from '../../src/index'
 import { testTypeEncodingAndDecoding } from './property-helper'
-import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
-const validValues = gen
-  .date()
-  .filter((date) => 0 <= date.getFullYear() && date.getFullYear() <= 9999)
-  .map((date) => {
-    date.setUTCHours(0, 0, 0, 0)
-    return {
-      raw: date.toISOString().split('T')[0],
-      expected: date,
-    }
-  })
+const validValues = m.date().arbitrary.map((date) => ({
+  raw: date.toISOString().split('T')[0],
+  expected: date,
+}))
 
 const knownInvalidValues = [
   '2000-02-31',

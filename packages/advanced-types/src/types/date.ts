@@ -39,7 +39,6 @@ function dateGenerator(options: m.OptionsOf<DateType> | undefined): gen.Arbitrar
 }
 
 function decodeDate(value: unknown): Result<Date> {
-  console.log(value)
   if (typeof value !== 'string' || !DATE_REGEX.test(value)) {
     return error('Invalid date format (expected: yyyy-mm-dd)', value)
   }

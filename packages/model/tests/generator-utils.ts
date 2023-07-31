@@ -6,10 +6,7 @@ export function nonEmptyArray<T>(generator: gen.Arbitrary<T>): gen.Arbitrary<[T,
   return generator.chain((head) => gen.array(generator).map((tail) => [head, ...tail]))
 }
 
-export function getArbitrary<T extends Type>(type: T, maxDepth: number = 2): gen.Arbitrary<Infer<T>> {
-  if (maxDepth < 0) {
-    throw new Error('Max depth reached!')
-  }
+export function getArbitrary<T extends Type>(type: T): gen.Arbitrary<Infer<T>> {
   const value = match(concretise(type))
     .with({ kind: 'boolean' }, (_type) => gen.boolean())
     .with({ kind: 'number' }, (type) => {
@@ -35,29 +32,19 @@ export function getArbitrary<T extends Type>(type: T, maxDepth: number = 2): gen
     )
     .with({ kind: 'literal' }, (type) => gen.constant(type.literalValue))
     .with({ kind: 'enum' }, (type) => gen.oneof(type.variants.map(gen.constant)))
-    .with({ kind: 'optional' }, (type) =>
-      maxDepth <= 1
-        ? gen.constant(undefined)
-        : gen.oneof(gen.constant(undefined), getArbitrary(type.wrappedType, maxDepth - 1)),
-    )
-    .with({ kind: 'nullable' }, (type) =>
-      maxDepth <= 1 ? gen.constant(null) : gen.oneof(gen.constant(null), getArbitrary(type.wrappedType, maxDepth - 1)),
-    )
-    .with({ kind: 'union' }, (type) =>
-      gen.oneof(...Object.values(type.variants).map((v) => getArbitrary(v as Type, maxDepth - 1))),
-    )
+    .with({ kind: 'optional' }, (type) => gen.oneof(gen.constant(undefined), getArbitrary(type.wrappedType)))
+    .with({ kind: 'nullable' }, (type) => gen.oneof(gen.constant(null), getArbitrary(type.wrappedType)))
+    .with({ kind: 'union' }, (type) => gen.oneof(...Object.values(type.variants).map((v) => getArbitrary(v as Type))))
     .with({ kind: 'object' }, (type) =>
-      gen.record(
-        Object.fromEntries(Object.entries(type.types).map(([k, st]) => [k, getArbitrary(st as Type, maxDepth - 1)])),
-      ),
+      gen.record(Object.fromEntries(Object.entries(type.types).map(([k, st]) => [k, getArbitrary(st as Type)]))),
     )
     .with({ kind: 'array' }, (type) =>
-      gen.array(getArbitrary(type.wrappedType, maxDepth - 1), {
+      gen.array(getArbitrary(type.wrappedType), {
         maxLength: type.options?.maxItems,
         minLength: type.options?.minItems,
       }),
     )
-    .with({ kind: 'reference' }, (type) => getArbitrary(type.wrappedType, maxDepth - 1))
+    .with({ kind: 'reference' }, (type) => getArbitrary(type.wrappedType))
     .with({ kind: 'custom' }, (type) => type.arbitrary)
     .exhaustive()
 

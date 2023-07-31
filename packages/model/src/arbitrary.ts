@@ -25,8 +25,12 @@ import {
   ReferenceTypeOptions,
   ReferenceType,
   BaseOptions,
+  concretise,
+  Type,
+  Infer,
 } from './type-system'
 import { fc as gen } from '@fast-check/vitest'
+import { match } from 'ts-pattern'
 
 /**
  * Turns an object type into another type where each field is a generator for values of the type of that field.
@@ -163,3 +167,69 @@ export function defaultType(): gen.Arbitrary<DefaultType<T>> {}
 export function referenceTypeOptions(): gen.Arbitrary<ReferenceTypeOptions> {}
 export function referenceType(): gen.Arbitrary<ReferenceType<T>> {}
 */
+
+export function getArbitrary<T extends Type>(type: T, maxDepth: number = 5): gen.Arbitrary<Infer<T>> {
+  const value = match(concretise(type))
+    .with({ kind: 'boolean' }, (_type) => gen.boolean())
+    .with({ kind: 'number' }, (type) => {
+      const multipleOf = type.options?.multipleOf
+      if (multipleOf) {
+        const [min, minInclusive] = type.options.minimum ?? [undefined, 'inclusive']
+        const [max, maxInclusive] = type.options.maximum ?? [undefined, 'inclusive']
+        let minIndex = min != null ? Math.round(min / multipleOf + (0.5 - Number.EPSILON)) : undefined
+        let maxIndex = max != null ? Math.round(max / multipleOf - (0.5 - Number.EPSILON)) : undefined
+        if (maxIndex != null && maxInclusive === 'exclusive' && maxIndex * multipleOf === max) {
+          maxIndex--
+        }
+        if (minIndex != null && minInclusive === 'exclusive' && minIndex * multipleOf === min) {
+          minIndex++
+        }
+        return gen.integer({ min: minIndex, max: maxIndex }).map((v) => v * multipleOf)
+      }
+      return gen.double({ min: type.options?.minimum?.[0], max: type.options?.maximum?.[0] })
+    })
+    .with({ kind: 'string' }, (type) =>
+      type.options?.regex
+        ? gen.stringMatching(type.options.regex).filter((s) => {
+            if (type.options?.maxLength && s.length > type.options.maxLength) {
+              return false
+            }
+            if (type.options?.minLength && s.length < type.options.minLength) {
+              return false
+            }
+            return true
+          })
+        : gen.string({ maxLength: type.options?.maxLength, minLength: type.options?.minLength }),
+    )
+    .with({ kind: 'literal' }, (type) => gen.stringMatching(type.literalValue))
+    .with({ kind: 'enum' }, (type) => gen.oneof(type.variants.map(gen.constant)))
+    .with({ kind: 'optional' }, (type) =>
+      maxDepth <= 1
+        ? gen.constant(undefined)
+        : gen.oneof(gen.constant(undefined), getArbitrary(type.wrappedType, maxDepth - 1)),
+    )
+    .with({ kind: 'nullable' }, (type) =>
+      maxDepth <= 1 ? gen.constant(null) : gen.oneof(gen.constant(null), getArbitrary(type.wrappedType, maxDepth - 1)),
+    )
+    .with({ kind: 'union' }, (type) =>
+      gen.oneof(...Object.values(type.variants).map((v) => getArbitrary(v as Type, maxDepth - 1))),
+    )
+    .with({ kind: 'object' }, (type) =>
+      gen.record(
+        Object.fromEntries(Object.entries(type.types).map(([k, st]) => [k, getArbitrary(st as Type, maxDepth - 1)])),
+      ),
+    )
+    .with({ kind: 'array' }, (type) =>
+      maxDepth <= 1 && (type.options?.minItems ?? 0) <= 0
+        ? gen.constant([])
+        : gen.array(getArbitrary(type.wrappedType, maxDepth - 1), {
+            maxLength: type.options?.maxItems,
+            minLength: type.options?.minItems,
+          }),
+    )
+    .with({ kind: 'reference' }, (type) => getArbitrary(type.wrappedType, maxDepth - 1))
+    .with({ kind: 'custom' }, (type) => type.arbitrary)
+    .exhaustive()
+
+  return value as gen.Arbitrary<Infer<T>>
+}

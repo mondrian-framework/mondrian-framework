@@ -1,5 +1,6 @@
 import { m } from '../../src/index'
 import { testTypeEncodingAndDecoding } from './property-helper'
+import t from '@mondrian-framework/model'
 import { describe } from 'vitest'
 
 const knownValidValues = [
@@ -24,4 +25,17 @@ describe(
     knownValidValues,
     knownInvalidValues,
   }),
+)
+
+describe(
+  'hs standard property based tests',
+  testTypeEncodingAndDecoding(
+    m.hsJwt(t.object({ sub: t.string(), name: t.string(), iat: t.integer() }), 'your-256-bit-secret', {
+      algorithm: 'HS256',
+    }),
+    {
+      knownValidValues,
+      knownInvalidValues,
+    },
+  ),
 )

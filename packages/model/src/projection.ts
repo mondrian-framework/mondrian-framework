@@ -18,8 +18,10 @@ import {
   concretise,
   literal,
   nullable,
+  number,
   object,
   optional,
+  string,
   union,
 } from './type-system'
 import { filterMapObject } from './utils'
@@ -212,6 +214,30 @@ export function projectionDepth<P extends Projection>(projection: P): number {
     return Math.max(-1, ...depths) + 1
   }
 }
+
+// prettier-ignore
+export type ProjectedType<P, T extends Type>
+  = [P] extends [Infer<InferProjection<T>>]
+    ? [T] extends [NumberType] ? T
+    : [T] extends [StringType] ? T
+    : [T] extends [BooleanType] ? T
+    : [T] extends [LiteralType<infer _>] ? T
+    : [T] extends [EnumType<infer _>] ? T
+    : [T] extends [CustomType<infer _Name, infer _Options, infer _InferredAd>] ? T
+    : [T] extends [OptionalType<infer T1>] ? ProjectedType<P , T1>
+    : [T] extends [NullableType<infer T1>] ? ProjectedType<P, T1>
+    : [T] extends [ReferenceType<infer T1>] ? ProjectedType<P, T1>
+    : [T] extends [ArrayType<infer _, infer T1>] ? ProjectedType<P, T1>
+    : [T] extends [() => infer T1 extends Type] ? ProjectedType<P, T1>
+    : [T] extends [ObjectType<infer _, infer Ts>] ? number
+    : [P] extends [true] ? T
+    : [P] extends [undefined] ? undefined 
+    : never // AllOptional<T>
+  : never // P is not of the correct type (what do we do here?)
+
+const model = object({ field1: number(), field2: object({ inner1: string() }) })
+//type P = { "": }
+type A = ProjectedType<'field2', typeof model>
 
 /*
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {

@@ -63,7 +63,5 @@ function validateDateTime(
 }
 
 function dateTimeArbitrary(options?: OptionsOf<DateTimeType>): gen.Arbitrary<Date> {
-  return gen
-    .integer({ min: options?.minimum?.getTime() ?? 0, max: options?.maximum?.getTime() ?? 864000000000000 })
-    .map((t) => new Date(t))
+  return gen.date({ min: options?.minimum, max: options?.maximum })
 }

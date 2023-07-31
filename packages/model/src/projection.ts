@@ -18,8 +18,10 @@ import {
   concretise,
   literal,
   nullable,
+  number,
   object,
   optional,
+  string,
   union,
 } from './type-system'
 import { filterMapObject } from './utils'
@@ -31,14 +33,14 @@ import { assertNever } from '@mondrian-framework/utils'
  * a `partial` variant which describes a subprojection with possibly many fields; this is why it is described
  * by an `ObjectType` whose fields can themselves only be valid projections.
  */
-type ProjectionType =
+type Projection =
   | LiteralType<true>
-  | UnionType<{ all: LiteralType<true>; partial: ObjectType<'immutable', ProjectionTypes> }>
+  | UnionType<{ all: LiteralType<true>; partial: ObjectType<'immutable', Projections> }>
 
 /**
- * A record of {@link ProjectionType `ProjectionType`s}.
+ * A record of {@link Projection `Projection`s}.
  */
-type ProjectionTypes = Record<string, OptionalType<ProjectionType>>
+type Projections = Record<string, OptionalType<Projection>>
 
 /**
  * Given a Mondrian {@link Type type}, returns the Mondrian type describing its {@link Projection projection}.
@@ -115,7 +117,7 @@ export function projectionFromType<T extends Type>(type: T): InferProjection<T> 
  * Given a record of types, returns a projection type that is either the literal `true` or an object
  * with the projections of the given `types`.
  */
-function projectTypesOrLiteralTrue(types: Types): ProjectionType {
+function projectTypesOrLiteralTrue(types: Types): Projection {
   const projectedTypes = filterMapObject(types, (_, fieldType: any) => projectionFromType(fieldType).optional())
   return union({ all: literal(true), partial: object(projectedTypes) })
 }
@@ -138,8 +140,8 @@ function projectTypesOrLiteralTrue(types: Types): ProjectionType {
  *          ```
  */
 // prettier-ignore
-export type ProjectionKeys<P extends ProjectionType>
-  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends ProjectionTypes> }>] ? keyof Ps
+export type ProjectionKeys<P extends Projection>
+  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends Projections> }>] ? keyof Ps
   : never
 
 /**
@@ -153,8 +155,8 @@ export type ProjectionKeys<P extends ProjectionType>
  *          ```
  */
 // prettier-ignore
-export type SubProjection<P extends ProjectionType, K extends ProjectionKeys<P>>
-  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends ProjectionTypes> }>] ? Ps[K]
+export type SubProjection<P extends Projection, K extends ProjectionKeys<P>>
+  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends Projections> }>] ? Ps[K]
   : never
 
 /**
@@ -177,11 +179,10 @@ export type SubProjection<P extends ProjectionType, K extends ProjectionKeys<P>>
  *          // -> true
  *          ```
  */
-export function subProjection<const P extends ProjectionType, K extends ProjectionKeys<P>>(
+export function subProjection<const P extends Projection, K extends ProjectionKeys<P>>(
   projection: P,
   key: K,
 ): SubProjection<P, K> {
-  console.log(projection)
   if (projection.kind === 'union') {
     return projection.variants.partial.types[key] as SubProjection<P, K>
   } else {
@@ -204,15 +205,39 @@ export function subProjection<const P extends ProjectionType, K extends Projecti
  *          // -> 2
  *          ```
  */
-export function projectionDepth<T extends Type>(projection: InferProjection<T>): number {
-  if (typeof projection === 'object') {
-    const innerProjections = Object.values(projection) as unknown as InferProjection<T>[]
-    const depths = innerProjections.map(projectionDepth)
-    return Math.max(-1, ...depths) + 1
-  } else {
+export function projectionDepth<P extends Projection>(projection: P): number {
+  if (projection.kind === 'literal') {
     return 0
+  } else {
+    const innerProjections = Object.values(projection.variants.partial.types)
+    const depths = innerProjections.map((inner) => projectionDepth(inner.wrappedType))
+    return Math.max(-1, ...depths) + 1
   }
 }
+
+// prettier-ignore
+export type ProjectedType<P, T extends Type>
+  = [P] extends [Infer<InferProjection<T>>]
+    ? [T] extends [NumberType] ? T
+    : [T] extends [StringType] ? T
+    : [T] extends [BooleanType] ? T
+    : [T] extends [LiteralType<infer _>] ? T
+    : [T] extends [EnumType<infer _>] ? T
+    : [T] extends [CustomType<infer _Name, infer _Options, infer _InferredAd>] ? T
+    : [T] extends [OptionalType<infer T1>] ? ProjectedType<P , T1>
+    : [T] extends [NullableType<infer T1>] ? ProjectedType<P, T1>
+    : [T] extends [ReferenceType<infer T1>] ? ProjectedType<P, T1>
+    : [T] extends [ArrayType<infer _, infer T1>] ? ProjectedType<P, T1>
+    : [T] extends [() => infer T1 extends Type] ? ProjectedType<P, T1>
+    : [T] extends [ObjectType<infer _, infer Ts>] ? number
+    : [P] extends [true] ? T
+    : [P] extends [undefined] ? undefined 
+    : never // AllOptional<T>
+  : never // P is not of the correct type (what do we do here?)
+
+const model = object({ field1: number(), field2: object({ inner1: string() }) })
+//type P = { "": }
+type A = ProjectedType<'field2', typeof model>
 
 /*
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {

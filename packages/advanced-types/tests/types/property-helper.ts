@@ -19,8 +19,8 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
   generators: {
     validValues?: gen.Arbitrary<unknown>
     invalidValues?: gen.Arbitrary<unknown>
-    knownValidValues?: unknown[]
-    knownInvalidValues?: unknown[]
+    knownValidValues?: readonly unknown[]
+    knownInvalidValues?: readonly unknown[]
   },
   additionalOptions?: {
     skipInverseCheck?: boolean

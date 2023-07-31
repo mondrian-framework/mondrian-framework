@@ -26,6 +26,7 @@ const knownInvalidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(m.rgba, {
+    validValues: m.rgba().arbitrary,
     knownValidValues,
     knownInvalidValues,
   }),

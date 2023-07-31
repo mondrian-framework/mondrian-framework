@@ -14,7 +14,7 @@ export function fromRegexes<Name extends string, Options extends Record<string, 
     encode,
     decode,
     (input) => validate(input, errorMessage, [regex, ...regexes]),
-    gen.constant('TODO'),
+    gen.oneof(gen.stringMatching(regex), ...regexes.map((regex) => gen.stringMatching(regex))),
     options,
   )
 }

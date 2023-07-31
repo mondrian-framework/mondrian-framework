@@ -30,6 +30,7 @@ const knownInvalidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(m.mac, {
+    validValues: m.mac().arbitrary,
     knownInvalidValues,
     knownValidValues,
   }),

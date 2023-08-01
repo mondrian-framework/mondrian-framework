@@ -9,14 +9,6 @@ export { decode, DecodingOptions, isType, assertType } from './decoder'
 export { encode } from './encoder'
 export { validateAndEncode } from './converter'
 export { validate, ValidationOptions } from './validate'
-export {
-  //getProjectionType,
-  //GenericProjection,
-  subProjection,
-  //getProjectedType,
-  //getRequiredProjection,
-  //mergeProjections,
-  //projectionDepth,
-} from './projection'
 
-export * as Result from './result'
+export * as projection from './projection'
+export * as result from './result'

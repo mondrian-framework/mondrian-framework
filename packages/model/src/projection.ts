@@ -91,7 +91,7 @@ export type InferProjection<T extends Type>
  *          // })
  *          ```
  */
-export function projectionFromType<T extends Type>(type: T): InferProjection<T> {
+export function fromType<T extends Type>(type: T): InferProjection<T> {
   const actualType = concretise(type)
   switch (actualType.kind) {
     case 'boolean':
@@ -105,7 +105,7 @@ export function projectionFromType<T extends Type>(type: T): InferProjection<T> 
     case 'nullable':
     case 'optional':
     case 'reference':
-      return projectionFromType(actualType.wrappedType) as InferProjection<T>
+      return fromType(actualType.wrappedType) as InferProjection<T>
     case 'object':
       return projectTypesOrLiteralTrue(actualType.types) as InferProjection<T>
     case 'union':
@@ -118,7 +118,7 @@ export function projectionFromType<T extends Type>(type: T): InferProjection<T> 
  * with the projections of the given `types`.
  */
 function projectTypesOrLiteralTrue(types: Types): Projection {
-  const projectedTypes = filterMapObject(types, (_, fieldType: any) => projectionFromType(fieldType).optional())
+  const projectedTypes = filterMapObject(types, (_, fieldType: any) => fromType(fieldType).optional())
   return union({ all: literal(true), partial: object(projectedTypes) })
 }
 
@@ -205,12 +205,12 @@ export function subProjection<const P extends Projection, K extends ProjectionKe
  *          // -> 2
  *          ```
  */
-export function projectionDepth<P extends Projection>(projection: P): number {
+export function depth<P extends Projection>(projection: P): number {
   if (projection.kind === 'literal') {
     return 0
   } else {
     const innerProjections = Object.values(projection.variants.partial.types)
-    const depths = innerProjections.map((inner) => projectionDepth(inner.wrappedType))
+    const depths = innerProjections.map((inner) => depth(inner.wrappedType))
     return Math.max(-1, ...depths) + 1
   }
 }

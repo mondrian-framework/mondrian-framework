@@ -1,12 +1,9 @@
-import { Result, error, success } from '../result'
-import { CustomType, OptionsOf, custom } from '../type-system'
-import { DecodingOptions } from 'src/decoder'
-import { ValidationOptions } from 'src/validator'
+import { result, types, decoder, validator } from '../index'
 
 /**
  * The type of a datetime, defined as a custom type.
  */
-export type DateTimeType = CustomType<'datetime', DateTimeOptions, Date>
+export type DateTimeType = types.CustomType<'datetime', DateTimeOptions, Date>
 
 /**
  * Additional options for the DateTime CustomType
@@ -17,8 +14,8 @@ export type DateTimeOptions = { minimum?: Date; maximum?: Date }
  * @param options the options used to create the new datetime custom type
  * @returns a {@link CustomType `CustomType`} representing a datetime
  */
-export function dateTime(options?: OptionsOf<DateTimeType>): DateTimeType {
-  return custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, options)
+export function dateTime(options?: types.OptionsOf<DateTimeType>): DateTimeType {
+  return types.custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, options)
 }
 
 function encodeDateTime(date: Date): string {
@@ -27,36 +24,36 @@ function encodeDateTime(date: Date): string {
 
 function decodeDateTime(
   value: unknown,
-  decodingOptions: DecodingOptions,
-  _options?: OptionsOf<DateTimeType>,
-): Result<Date> {
+  decodingOptions: decoder.DecodingOptions,
+  _options?: types.OptionsOf<DateTimeType>,
+): result.Result<Date> {
   if (typeof value === 'string' && decodingOptions.typeCastingStrategy === 'expectExactTypes') {
     return tryMakeDate(value)
   } else if (typeof value === 'number' && decodingOptions.typeCastingStrategy === 'tryCasting') {
     return tryMakeDate(value)
   }
-  return error('ISO date expected', value)
+  return result.error('ISO date expected', value)
 }
 
-function tryMakeDate(value: number | string): Result<Date> {
+function tryMakeDate(value: number | string): result.Result<Date> {
   const date = new Date(value)
-  return Number.isNaN(date.valueOf()) ? error('ISO date expected', value) : success(date)
+  return Number.isNaN(date.valueOf()) ? result.error('ISO date expected', value) : result.success(date)
 }
 
 function validateDateTime(
   date: Date,
-  _validationOptions: ValidationOptions,
-  options?: OptionsOf<DateTimeType>,
-): Result<true> {
+  _validationOptions: validator.ValidationOptions,
+  options?: types.OptionsOf<DateTimeType>,
+): result.Result<true> {
   if (options === undefined) {
-    return success(true)
+    return result.success(true)
   }
   const { maximum, minimum } = options
   if (maximum && date.getTime() > maximum.getTime()) {
-    return error(`Datetime must be maximum ${maximum.toISOString()}`, date)
+    return result.error(`Datetime must be maximum ${maximum.toISOString()}`, date)
   }
   if (minimum && date.getTime() < minimum.getTime()) {
-    return error(`Datetime must be minimum ${minimum.toISOString()}`, date)
+    return result.error(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
-  return success(true)
+  return result.success(true)
 }

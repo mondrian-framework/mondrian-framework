@@ -1,6 +1,5 @@
-import { m, validate } from '@mondrian-framework/model'
+import { m, validator } from '@mondrian-framework/model'
 import { result } from '@mondrian-framework/model'
-import { ValidationOptions } from '@mondrian-framework/model'
 
 const DATE_REGEX = /^[+-]?(\d\d*-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01]))$/
 
@@ -25,8 +24,8 @@ function decodeDate(value: unknown): result.Result<Date> {
 
 function validateDate(
   value: Date,
-  validationOptions: ValidationOptions,
+  validationOptions: validator.ValidationOptions,
   options?: m.OptionsOf<DateType>,
 ): result.Result<true> {
-  return validate(m.dateTime(options), value, validationOptions)
+  return validator.validate(m.dateTime(options), value, validationOptions)
 }

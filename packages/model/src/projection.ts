@@ -1,31 +1,6 @@
-import {
-  ArrayType,
-  BooleanType,
-  CustomType,
-  EnumType,
-  Infer,
-  LiteralType,
-  NullableType,
-  NumberType,
-  ObjectType,
-  OptionalType,
-  ReferenceType,
-  StringType,
-  Type,
-  Types,
-  UnionType,
-  array,
-  concretise,
-  literal,
-  nullable,
-  number,
-  object,
-  optional,
-  string,
-  union,
-} from './type-system'
+import { types } from './index'
+import { ObjectType } from './type-system'
 import { filterMapObject } from './utils'
-import { assertNever } from '@mondrian-framework/utils'
 
 /**
  * This is the Mondrian type describing the structure of a projection: it is either the literal value
@@ -34,13 +9,13 @@ import { assertNever } from '@mondrian-framework/utils'
  * by an `ObjectType` whose fields can themselves only be valid projections.
  */
 type Projection =
-  | LiteralType<true>
-  | UnionType<{ all: LiteralType<true>; partial: ObjectType<'immutable', Projections> }>
+  | types.LiteralType<true>
+  | types.UnionType<{ all: types.LiteralType<true>; partial: types.ObjectType<'immutable', Projections> }>
 
 /**
  * A record of {@link Projection `Projection`s}.
  */
-type Projections = Record<string, OptionalType<Projection>>
+type Projections = Record<string, types.OptionalType<Projection>>
 
 /**
  * Given a Mondrian {@link Type type}, returns the Mondrian type describing its {@link Projection projection}.
@@ -54,25 +29,25 @@ type Projections = Record<string, OptionalType<Projection>>
  *          ```
  */
 // prettier-ignore
-export type InferProjection<T extends Type>
-  = [T] extends [NumberType] ? LiteralType<true>
-  : [T] extends [StringType] ? LiteralType<true>
-  : [T] extends [BooleanType] ? LiteralType<true>
-  : [T] extends [EnumType<infer _>] ? LiteralType<true>
-  : [T] extends [LiteralType<infer _>] ? LiteralType<true>
-  : [T] extends [CustomType<infer _Name, infer _Options, infer _InferredAs>] ? LiteralType<true>
-  : [T] extends [ArrayType<infer _, infer T1>] ? InferProjection<T1>
-  : [T] extends [OptionalType<infer T1>] ? InferProjection<T1>
-  : [T] extends [NullableType<infer T1>] ? InferProjection<T1>
-  : [T] extends [ReferenceType<infer T1>] ? InferProjection<T1>
-  : [T] extends [(() => infer T1 extends Type)] ? InferProjection<T1>
-  : [T] extends [UnionType<infer Ts>] ? UnionType<{ 
-      all: LiteralType<true>,
-      partial: ObjectType<"immutable", { [Key in keyof Ts]: OptionalType<InferProjection<Ts[Key]>> }>
+export type InferProjection<T extends types.Type>
+  = [T] extends [types.NumberType] ? types.LiteralType<true>
+  : [T] extends [types.StringType] ? types.LiteralType<true>
+  : [T] extends [types.BooleanType] ? types.LiteralType<true>
+  : [T] extends [types.EnumType<infer _>] ? types.LiteralType<true>
+  : [T] extends [types.LiteralType<infer _>] ? types.LiteralType<true>
+  : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? types.LiteralType<true>
+  : [T] extends [types.ArrayType<infer _, infer T1>] ? InferProjection<T1>
+  : [T] extends [types.OptionalType<infer T1>] ? InferProjection<T1>
+  : [T] extends [types.NullableType<infer T1>] ? InferProjection<T1>
+  : [T] extends [types.ReferenceType<infer T1>] ? InferProjection<T1>
+  : [T] extends [(() => infer T1 extends types.Type)] ? InferProjection<T1>
+  : [T] extends [types.UnionType<infer Ts>] ? types.UnionType<{ 
+      all: types.LiteralType<true>,
+      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<InferProjection<Ts[Key]>> }>
     }>
-  : [T] extends [ObjectType<infer _, infer Ts>] ? UnionType<{
-      all: LiteralType<true>,
-      partial: ObjectType<"immutable", { [Key in keyof Ts]: OptionalType<InferProjection<Ts[Key]>> }>
+  : [T] extends [types.ObjectType<infer _, infer Ts>] ? types.UnionType<{
+      all: types.LiteralType<true>,
+      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<InferProjection<Ts[Key]>> }>
     }>
   : never
 
@@ -91,8 +66,8 @@ export type InferProjection<T extends Type>
  *          // })
  *          ```
  */
-export function fromType<T extends Type>(type: T): InferProjection<T> {
-  const actualType = concretise(type)
+export function fromType<T extends types.Type>(type: T): InferProjection<T> {
+  const actualType = types.concretise(type)
   switch (actualType.kind) {
     case 'boolean':
     case 'custom':
@@ -100,7 +75,7 @@ export function fromType<T extends Type>(type: T): InferProjection<T> {
     case 'string':
     case 'enum':
     case 'number':
-      return literal(true) as InferProjection<T>
+      return types.literal(true) as InferProjection<T>
     case 'array':
     case 'nullable':
     case 'optional':
@@ -117,9 +92,9 @@ export function fromType<T extends Type>(type: T): InferProjection<T> {
  * Given a record of types, returns a projection type that is either the literal `true` or an object
  * with the projections of the given `types`.
  */
-function projectTypesOrLiteralTrue(types: Types): Projection {
-  const projectedTypes = filterMapObject(types, (_, fieldType: any) => fromType(fieldType).optional())
-  return union({ all: literal(true), partial: object(projectedTypes) })
+function projectTypesOrLiteralTrue(ts: types.Types): Projection {
+  const projectedTypes = filterMapObject(ts, (_, fieldType: any) => fromType(fieldType).optional())
+  return types.union({ all: types.literal(true), partial: types.object(projectedTypes) })
 }
 
 /**
@@ -141,7 +116,7 @@ function projectTypesOrLiteralTrue(types: Types): Projection {
  */
 // prettier-ignore
 export type ProjectionKeys<P extends Projection>
-  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends Projections> }>] ? keyof Ps
+  = [P] extends [types.UnionType<{ all: types.LiteralType<true>, partial: types.ObjectType<'immutable', infer Ps extends Projections> }>] ? keyof Ps
   : never
 
 /**
@@ -156,7 +131,7 @@ export type ProjectionKeys<P extends Projection>
  */
 // prettier-ignore
 export type SubProjection<P extends Projection, K extends ProjectionKeys<P>>
-  = [P] extends [UnionType<{ all: LiteralType<true>, partial: ObjectType<'immutable', infer Ps extends Projections> }>] ? Ps[K]
+  = [P] extends [types.UnionType<{ all: types.LiteralType<true>, partial: types.ObjectType<'immutable', infer Ps extends Projections> }>] ? Ps[K]
   : never
 
 /**
@@ -187,7 +162,7 @@ export function subProjection<const P extends Projection, K extends ProjectionKe
     return projection.variants.partial.types[key] as SubProjection<P, K>
   } else {
     throw new Error(
-      'INTERNAL ERROR: it appears that subProjection was called with a type whose keys should have been `never` (and thus this call should have been impossible to make)',
+      'INTERNAL ERROR: it appears that projection.subProjection was called with a type whose keys should have been `never` (and thus this call should have been impossible to make)',
     )
   }
 }
@@ -216,27 +191,32 @@ export function depth<P extends Projection>(projection: P): number {
 }
 
 // prettier-ignore
-export type ProjectedType<P extends Record<string, any>, T extends Type>
+export type ProjectedType<P extends Record<string, any> | true, T extends types.Type>
   = [P] extends [true] ? T
-  : [P] extends [undefined] ? undefined
-  : [T] extends [NumberType] ? T
-  : [T] extends [StringType] ? T
-  : [T] extends [BooleanType] ? T
-  : [T] extends [LiteralType<infer _>] ? T
-  : [T] extends [EnumType<infer _>] ? T
-  : [T] extends [CustomType<infer _Name, infer _Options, infer _InferredAd>] ? T
-  : [T] extends [OptionalType<infer T1>] ? ProjectedType<P , T1>
-  : [T] extends [NullableType<infer T1>] ? ProjectedType<P, T1>
-  : [T] extends [ReferenceType<infer T1>] ? ProjectedType<P, T1>
-  : [T] extends [ArrayType<infer _, infer T1>] ? ProjectedType<P, T1>
-  : [T] extends [() => infer T1 extends Type] ? ProjectedType<P, T1>
-  : [T] extends [ObjectType<infer _, infer Ts>] ?
-    [keyof P] extends [keyof Ts] ? { [K in keyof P]: ProjectedType<P[K], Ts[K]> } : never
-  : "never" // AllOptional<T>
-
-//const model = object({ field1: number(), field2: object({ inner1: string() }) })
-//type projection = { field2: { inner1: true } }
-//type D = ProjectedType<projection, typeof model>
+  : [P] extends [Record<string, any>]
+    // If P is an object but we have primitive types we cannot perform the projection
+    ? [T] extends [types.NumberType] ? never
+    : [T] extends [types.StringType] ? never
+    : [T] extends [types.BooleanType] ? never
+    : [T] extends [types.LiteralType<infer _L>] ? never
+    : [T] extends [types.EnumType<infer _Vs>] ? never
+    : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? never
+    // If P is an object and we have a wrapper type we perform the projection on the inner type
+    : [T] extends [types.ArrayType<infer M, infer T1>] ? types.ArrayType<M, ProjectedType<P, T1>>
+    : [T] extends [types.OptionalType<infer T1>] ? types.OptionalType<ProjectedType<P, T1>>
+    : [T] extends [types.NullableType<infer T1>] ? types.NullableType<ProjectedType<P, T1>>
+    : [T] extends [(() => infer T1 extends types.Type)] ? ProjectedType<P, T1>
+    : [T] extends [types.ReferenceType<infer T1>] ? ProjectedType<P, T1>
+    // If P is an object and we have an object-like type we perform the projection picking the selected fields
+    : [T] extends [types.UnionType<infer Ts>]
+      ? [keyof P] extends [keyof Ts] ? types.ObjectType<"immutable", { [K in keyof P]: ProjectedType<P[K], Ts[K]> }>
+      : never
+    : [T] extends [types.ObjectType<infer _, infer Ts>]
+      ? [keyof P] extends [keyof Ts] ? types.ObjectType<"immutable", { [K in keyof P]: ProjectedType<P[K], Ts[K]> }>
+      : never
+    // If we cannot tell the static type of type we just return a generic Type
+    : types.Type
+  : never
 
 /*
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {

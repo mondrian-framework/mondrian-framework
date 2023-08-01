@@ -11,7 +11,7 @@ const exampleCustom = types.custom(
   () => error('test', 'test'),
 )
 
-describe('Projection inference', () => {
+describe('projection.InferProjection', () => {
   test('is true for base types', () => {
     expectTypeOf<projection.InferProjection<types.NumberType>>().toEqualTypeOf(types.literal(true))
     expectTypeOf<projection.InferProjection<types.StringType>>().toEqualTypeOf(types.literal(true))
@@ -97,7 +97,7 @@ describe('Projection inference', () => {
   })
 })
 
-describe('projectionFromType', () => {
+describe('projection.FromType', () => {
   test('returns the types.literal true for base types', () => {
     expect(types.areEqual(projection.fromType(types.number), types.literal(true))).toEqual(true)
     expect(types.areEqual(projection.fromType(types.boolean), types.literal(true))).toEqual(true)
@@ -196,7 +196,7 @@ describe('projection.SubProjection', () => {
   })
 })
 
-describe('subProjection', () => {
+describe('projection.subProjection', () => {
   test('returns the sub object when provided the corresponding key', () => {
     const model = types.object({ field1: types.number, field2: types.object({ inner1: types.string }) })
     const subProjectionOnField1 = projection.subProjection(projection.fromType(model), 'field1')
@@ -249,5 +249,50 @@ describe('projection.depth', () => {
     })
 
     expect(projection.depth(projection.fromType(model))).toBe(3)
+  })
+})
+
+describe('projection.ProjectedType', () => {
+  test('when the type is not statically known it just returns Type', () => {
+    type Projected = projection.ProjectedType<{ field: true }, types.Type>
+    expectTypeOf<Projected>().toEqualTypeOf<types.Type>()
+  })
+
+  test('when the projection is true is returns the given type', () => {
+    type Projected = projection.ProjectedType<true, types.NumberType>
+    expectTypeOf<Projected>().toEqualTypeOf(types.number())
+
+    const model = types.object({ field: types.boolean })
+    type Projected1 = projection.ProjectedType<true, typeof model>
+    expectTypeOf<Projected1>().toEqualTypeOf(model)
+  })
+
+  test('when the projection is an object it projects the keys', () => {
+    const model = types.object({
+      field1: types.number(),
+      field2: types.boolean().optional(),
+      field3: types.object({ inner1: types.string, inner2: types.boolean }),
+    })
+
+    type Projection = { field1: true; field3: { inner2: true } }
+    const expected = types.object({
+      field1: types.number(),
+      field3: types.object({ inner2: types.boolean() }),
+    })
+    type Projected = projection.ProjectedType<Projection, typeof model>
+    expectTypeOf<Projected>().toEqualTypeOf(expected)
+  })
+
+  test("when the projection is an object but the type isn't, returns never", () => {
+    const projection = { field1: true }
+    expectTypeOf<projection.ProjectedType<typeof projection, types.NumberType>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, types.BooleanType>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, types.LiteralType<true>>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, types.LiteralType<false>>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, types.LiteralType<'foo'>>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, types.LiteralType<1>>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, types.StringType>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, typeof exampleCustom>>().toEqualTypeOf<never>()
+    expectTypeOf<projection.ProjectedType<typeof projection, types.EnumType<['foo', 'bar']>>>().toEqualTypeOf<never>()
   })
 })

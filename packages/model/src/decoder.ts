@@ -1,19 +1,5 @@
-import { Error, Result, concat2, enrichErrors, error, errors, success } from './result'
-import {
-  Infer,
-  Type,
-  ObjectType,
-  concretise,
-  OptionalType,
-  LiteralType,
-  NullableType,
-  ReferenceType,
-  ArrayType,
-  EnumType,
-  UnionType,
-} from './type-system'
+import { types, result, ValidationOptions, validate } from './index'
 import { OptionalFields, containsKey } from './utils'
-import { ValidationOptions, validate } from './validate'
 import { match, Pattern as P } from 'ts-pattern'
 
 /**
@@ -42,31 +28,31 @@ export const defaultOptions: DecodingOptions = {
  * @param validationOptions
  * @returns
  */
-export function decode<T extends Type>(
+export function decode<T extends types.Type>(
   type: T,
   value: unknown,
   decodingOptions?: OptionalFields<DecodingOptions>,
   validationOptions?: OptionalFields<ValidationOptions>,
-): Result<Infer<T>> {
+): result.Result<types.Infer<T>> {
   const actualDecodingOptions = { ...defaultOptions, ...decodingOptions }
   // TODO: if we ever rework the current Error interface (maybe we should and factor out the short circuiting logic in
   // a generic error like other languages like Scala/Haskell/Elm/Gleam/Rust) this should be rewritten as a series
   // of `.then().then()`
-  const decodingResult = unsafeDecode(type, value, actualDecodingOptions) as Result<Infer<T>>
+  const decodingResult = unsafeDecode(type, value, actualDecodingOptions) as result.Result<types.Infer<T>>
   if (decodingResult.success) {
     const validationResult = validate(type, decodingResult.value, validationOptions)
     if (validationResult.success) {
       return decodingResult
     } else {
-      return enrichErrors({ success: false, errors: validationResult.errors } as Result<Infer<T>>)
+      return result.enrichErrors({ success: false, errors: validationResult.errors } as result.Result<types.Infer<T>>)
     }
   } else {
-    return enrichErrors(decodingResult)
+    return result.enrichErrors(decodingResult)
   }
 }
 
-function unsafeDecode(type: Type, value: unknown, options: DecodingOptions): Result<unknown> {
-  return match(concretise(type))
+function unsafeDecode(type: types.Type, value: unknown, options: DecodingOptions): result.Result<unknown> {
+  return match(types.concretise(type))
     .with({ kind: 'boolean' }, (_type) => decodeBoolean(value, options))
     .with({ kind: 'number' }, (_type) => decodeNumber(value, options))
     .with({ kind: 'string' }, (_type) => decodeString(value, options))
@@ -85,57 +71,59 @@ function unsafeDecode(type: Type, value: unknown, options: DecodingOptions): Res
 /**
  * Tries to decode a boolean value.
  */
-function decodeBoolean(value: unknown, options: DecodingOptions): Result<boolean> {
+function decodeBoolean(value: unknown, options: DecodingOptions): result.Result<boolean> {
   return match([options.typeCastingStrategy, value])
-    .with([P._, true], () => success(true))
-    .with([P._, false], () => success(false))
-    .with(['tryCasting', 'true'], () => success(true))
-    .with(['tryCasting', 'false'], () => success(false))
-    .with(['tryCasting', P.number], ([_, n]) => success(n !== 0))
-    .otherwise((_) => error('Expected a boolean', value))
+    .with([P._, true], () => result.success(true))
+    .with([P._, false], () => result.success(false))
+    .with(['tryCasting', 'true'], () => result.success(true))
+    .with(['tryCasting', 'false'], () => result.success(false))
+    .with(['tryCasting', P.number], ([_, n]) => result.success(n !== 0))
+    .otherwise((_) => result.error('Expected a boolean', value))
 }
 
 /**
  * Tries to decode a number value.
  */
-function decodeNumber(value: unknown, options: DecodingOptions): Result<number> {
+function decodeNumber(value: unknown, options: DecodingOptions): result.Result<number> {
   return match([options.typeCastingStrategy, value])
-    .with([P._, P.number], ([_, n]) => success(n))
+    .with([P._, P.number], ([_, n]) => result.success(n))
     .with(['tryCasting', P.string], ([_, s]) => numberFromString(s))
-    .otherwise((_) => error('Expected a number', value))
+    .otherwise((_) => result.error('Expected a number', value))
 }
 
-function numberFromString(string: string): Result<number> {
+function numberFromString(string: string): result.Result<number> {
   return match(Number(string))
-    .with(NaN, (_) => error('Expected a number', string))
-    .with(P.number, (n) => success(n))
+    .with(NaN, (_) => result.error('Expected a number', string))
+    .with(P.number, (n) => result.success(n))
     .exhaustive()
 }
 
 /**
  * Tries to decode a string value.
  */
-function decodeString(value: unknown, options: DecodingOptions): Result<string> {
+function decodeString(value: unknown, options: DecodingOptions): result.Result<string> {
   return match([options.typeCastingStrategy, value])
-    .with([P._, P.string], ([_, s]) => success(s))
-    .with(['tryCasting', P.number], ([_, n]) => success(n.toString()))
-    .with(['tryCasting', P.boolean], ([_, b]) => success(b.toString()))
-    .otherwise((_) => error('Expected a string', value))
+    .with([P._, P.string], ([_, s]) => result.success(s))
+    .with(['tryCasting', P.number], ([_, n]) => result.success(n.toString()))
+    .with(['tryCasting', P.boolean], ([_, b]) => result.success(b.toString()))
+    .otherwise((_) => result.error('Expected a string', value))
 }
 
 /**
  * Tries to decode a literal value.
  */
-function decodeLiteral(type: LiteralType<any>, value: unknown, options: DecodingOptions): Result<any> {
+function decodeLiteral(type: types.LiteralType<any>, value: unknown, options: DecodingOptions): result.Result<any> {
   return match([options.typeCastingStrategy, type.literalValue, value])
-    .with([P._, P._, P.when((value) => value === type.literalValue)], ([_opts, literal, _value]) => success(literal))
-    .with(['tryCasting', null, 'null'], ([_opts, literal, _value]) => success(literal))
-    .otherwise((_) => error(`Expected the literal ${type.literalValue}`, value))
+    .with([P._, P._, P.when((value) => value === type.literalValue)], ([_opts, literal, _value]) =>
+      result.success(literal),
+    )
+    .with(['tryCasting', null, 'null'], ([_opts, literal, _value]) => result.success(literal))
+    .otherwise((_) => result.error(`Expected the literal ${type.literalValue}`, value))
   /*
     const castedValue = decodeInternal(union({ n: number(), b: boolean(), s: string() }), value, opts)
     if (castedValue.success) {
       if (t.value === castedValue.value) {
-        return success(t.value)
+        return result.success(t.value)
       }
     }
   */
@@ -145,84 +133,92 @@ function decodeLiteral(type: LiteralType<any>, value: unknown, options: Decoding
  * Tries to decode a value as a memeber of an enum: the decoding is successfull if the value is one of the variants of
  * the enum.
  */
-function decodeEnum(type: EnumType<any>, value: unknown): Result<any> {
+function decodeEnum(type: types.EnumType<any>, value: unknown): result.Result<any> {
   return type.variants.includes(value)
-    ? success(value)
-    : error(`Expected an enum (${type.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
+    ? result.success(value)
+    : result.error(`Expected an enum (${type.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
 }
 
 /**
  * Tries to decode an optional value: if it gets an `undefined` it succeeds, otherwise it tries to decode `value` as a
  * value of the wrapped type.
  */
-function decodeOptional(type: OptionalType<any>, value: unknown, options: DecodingOptions): Result<any> {
+function decodeOptional(type: types.OptionalType<any>, value: unknown, options: DecodingOptions): result.Result<any> {
   return match(value)
-    .with(undefined, (_) => success(undefined))
-    .with(null, (_) => success(undefined))
+    .with(undefined, (_) => result.success(undefined))
+    .with(null, (_) => result.success(undefined))
     .with(P._, (value) => unsafeDecode(type.wrappedType, value, options))
-    .otherwise((_) => error('Expected optional value', value))
+    .otherwise((_) => result.error('Expected optional value', value))
 }
 
 /**
  * Tries to decode a nullable value: if it gets a `null` it succeeds, otherwise it tries to decode `value` as a value
  * of the wrapped type.
  */
-function decodeNullable<T extends Type>(
-  type: NullableType<T>,
+function decodeNullable<T extends types.Type>(
+  type: types.NullableType<T>,
   value: unknown,
   options: DecodingOptions,
-): Result<T | null> {
+): result.Result<T | null> {
   return match([options.typeCastingStrategy, value])
-    .with([P._, null], (_) => success(null))
-    .with(['tryCasting', undefined], (_) => success(null))
-    .with([P._, P._], ([_, value]) => unsafeDecode(type.wrappedType, value, options) as Result<T | null>)
-    .otherwise((_) => error('Expected nullable value', value))
+    .with([P._, null], (_) => result.success(null))
+    .with(['tryCasting', undefined], (_) => result.success(null))
+    .with([P._, P._], ([_, value]) => unsafeDecode(type.wrappedType, value, options) as result.Result<T | null>)
+    .otherwise((_) => result.error('Expected nullable value', value))
 }
 
 /**
  * Tries to decode a reference value by decoding `value` as a value of the wrapped type.
  */
-function decodeReference(type: ReferenceType<any>, value: unknown, options: DecodingOptions): Result<any> {
+function decodeReference(type: types.ReferenceType<any>, value: unknown, options: DecodingOptions): result.Result<any> {
   return unsafeDecode(type.wrappedType, value, options)
 }
 
 /**
  * Tries to decode an array by decoding each of its values as a value of the wrapped type.
  */
-function decodeArray(type: ArrayType<any, any>, value: unknown, options: DecodingOptions): Result<any> {
+function decodeArray(type: types.ArrayType<any, any>, value: unknown, options: DecodingOptions): result.Result<any> {
   return match([options.typeCastingStrategy, value])
     .with([P._, P.array(P._)], ([_, array]) => decodeArrayValues(type, array, options))
     .with(['tryCasting', P.instanceOf(Object)], ([_, object]) => decodeObjectAsArray(type, object, options))
-    .otherwise((_) => error('Expected array', value))
+    .otherwise((_) => result.error('Expected array', value))
 }
 
 /**
  * Decodes the values of an array returning an array of decoded values if successful.
  */
-function decodeArrayValues(type: ArrayType<any, any>, array: unknown[], options: DecodingOptions): Result<any> {
-  const decodingErrors = []
+function decodeArrayValues(
+  type: types.ArrayType<any, any>,
+  array: unknown[],
+  options: DecodingOptions,
+): result.Result<any> {
+  const decodingErrors: result.Error[] = []
   const decodedValues = []
 
   for (const value of array) {
-    const result = unsafeDecode(type.wrappedType, value, options)
-    if (result.success) {
-      decodedValues.push(result.value)
+    const res = unsafeDecode(type.wrappedType, value, options)
+    if (res.success) {
+      decodedValues.push(res.value)
     } else {
-      // const enrichedResult = enrichErrors(result, [i]) TODO: what does this do?
-      decodingErrors.push(...result.errors)
+      // const enrichedResult = result.enrichErrors(result, [i]) TODO: what does this do?
+      decodingErrors.push(...res.errors)
       if (options.errorReportingStrategy === 'stopAtFirstError') {
         break
       }
     }
   }
-  return errors.length === 0 ? success(decodedValues) : errors(decodingErrors)
+  return decodingErrors.length === 0 ? result.success(decodedValues) : result.errors(decodingErrors)
 }
 
 /**
  * Tries to decode an object as an array.
  */
-function decodeObjectAsArray(type: ArrayType<any, any>, object: Object, options: DecodingOptions): Result<any> {
-  return concat2(objectToArray(object), (object) => decodeArrayValues(type, Object.values(object), options))
+function decodeObjectAsArray(
+  type: types.ArrayType<any, any>,
+  object: Object,
+  options: DecodingOptions,
+): result.Result<any> {
+  return result.concat2(objectToArray(object), (object) => decodeArrayValues(type, Object.values(object), options))
 }
 
 /**
@@ -230,11 +226,11 @@ function decodeObjectAsArray(type: ArrayType<any, any>, object: Object, options:
  * @returns the values of the object sorted by their key, if the given object is castable as an array: that is, if all
  *          its keys are consecutive numbers from `0` up to a given `n`
  */
-function objectToArray(object: Object): Result<any[]> {
+function objectToArray(object: Object): result.Result<any[]> {
   const keys = keysAsConsecutiveNumbers(object)
   return keys === undefined
-    ? error('Expected array like object', object)
-    : success(keys.map((i) => object[i as keyof object]))
+    ? result.error('Expected array like object', object)
+    : result.success(keys.map((i) => object[i as keyof object]))
 }
 
 /**
@@ -267,26 +263,26 @@ function allConsecutive(numbers: number[]): boolean {
 /**
  * Tries to decode a value belonging to a union as described by `type`.
  */
-function decodeUnion(type: UnionType<any>, value: unknown, options: DecodingOptions): Result<any> {
+function decodeUnion(type: types.UnionType<any>, value: unknown, options: DecodingOptions): result.Result<any> {
   return options.unionDecodingStrategy === 'untaggedUnions'
     ? decodeUntaggedUnion(type, value, options)
     : decodeTaggedUnion(type, value, options)
 }
 
-function decodeUntaggedUnion(type: UnionType<any>, value: unknown, options: DecodingOptions): Result<any> {
-  const decodingErrors: Error[] = []
+function decodeUntaggedUnion(type: types.UnionType<any>, value: unknown, options: DecodingOptions): result.Result<any> {
+  const decodingErrors: result.Error[] = []
   for (const [variantName, variantType] of Object.entries(type.variants)) {
-    const result = unsafeDecode(variantType as Type, value, options)
-    if (result.success) {
-      return result
+    const decodingResult = unsafeDecode(variantType as types.Type, value, options)
+    if (decodingResult.success) {
+      return decodingResult
     } else {
-      decodingErrors.push(...result.errors.map((error) => ({ ...error, unionElement: variantName })))
+      decodingErrors.push(...decodingResult.errors.map((e) => ({ ...e, unionElement: variantName })))
     }
   }
-  return errors(decodingErrors)
+  return result.errors(decodingErrors)
 }
 
-function decodeTaggedUnion(type: UnionType<any>, value: unknown, options: DecodingOptions): Result<any> {
+function decodeTaggedUnion(type: types.UnionType<any>, value: unknown, options: DecodingOptions): result.Result<any> {
   const entries = Object.entries(type.variants)
   if (typeof value === 'object' && value) {
     const objectKey = singleKeyFromObject(value)
@@ -294,7 +290,7 @@ function decodeTaggedUnion(type: UnionType<any>, value: unknown, options: Decodi
       return unsafeDecode(type.variants[objectKey], (value as Record<string, any>)[objectKey], options)
     }
   }
-  return error(`Expect exactly one of this property ${entries.map((v) => `'${v[0]}'`).join(', ')}`, value)
+  return result.error(`Expect exactly one of this property ${entries.map((v) => `'${v[0]}'`).join(', ')}`, value)
 }
 
 /**
@@ -306,32 +302,34 @@ function singleKeyFromObject(object: object): string | undefined {
   return keys.length === 1 ? keys[0] : undefined
 }
 
-function decodeObject(type: ObjectType<any, any>, value: unknown, options: DecodingOptions): Result<any> {
-  return concat2(castToObject(value), (object) => decodeObjectProperties(type, object, options))
+function decodeObject(type: types.ObjectType<any, any>, value: unknown, options: DecodingOptions): result.Result<any> {
+  return result.concat2(castToObject(value), (object) => decodeObjectProperties(type, object, options))
 }
 
-function castToObject(value: unknown): Result<Record<string, unknown>> {
-  return typeof value === 'object' ? success(value as Record<string, unknown>) : error('Expected an object', value)
+function castToObject(value: unknown): result.Result<Record<string, unknown>> {
+  return typeof value === 'object'
+    ? result.success(value as Record<string, unknown>)
+    : result.error('Expected an object', value)
 }
 
 function decodeObjectProperties(
-  type: ObjectType<any, any>,
+  type: types.ObjectType<any, any>,
   object: Record<string, unknown>,
   options: DecodingOptions,
-): Result<any> {
-  const decodingErrors: Error[] = []
+): result.Result<any> {
+  const decodingErrors: result.Error[] = []
   const decodedObject: { [key: string]: unknown } = {} // strict ? {} : { ...value }
   for (const [fieldName, fieldType] of Object.entries(type.types)) {
-    const result = unsafeDecode(fieldType as Type, object[fieldName], options)
-    // const enrichedResult = enrichErrors(result, [key]) TODO: what does this do?
-    if (result.success && result !== undefined) {
-      decodedObject[fieldName] = result.value
-    } else if (!result.success) {
-      decodingErrors.push(...result.errors)
+    const decodingResult = unsafeDecode(fieldType as types.Type, object[fieldName], options)
+    // const enrichedResult = result.enrichErrors(result, [key]) TODO: what does this do?
+    if (decodingResult.success && decodingResult !== undefined) {
+      decodedObject[fieldName] = decodingResult.value
+    } else if (!decodingResult.success) {
+      decodingErrors.push(...decodingResult.errors)
       if (options.errorReportingStrategy === 'stopAtFirstError') {
-        return errors(decodingErrors)
+        return result.errors(decodingErrors)
       }
     }
   }
-  return errors.length > 0 ? errors(decodingErrors) : success(decodedObject)
+  return decodingErrors.length > 0 ? result.errors(decodingErrors) : result.success(decodedObject)
 }

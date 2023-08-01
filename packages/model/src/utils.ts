@@ -50,21 +50,6 @@ export function containsKey<A, B>(keyValuePairs: [A, B][], lookup: A): boolean {
  */
 export type OptionalFields<R extends Record<string, any>> = { [Key in keyof R]?: R[Key] }
 
-/**
- * Turns the nullable keys of an object in optional fields leaving other fields untouched.
- * @example ```ts
- *          UndefinedToOptionalFields<{ field1: number | undefined, field2: boolean }>
- *          // -> { field2: boolean } & { field1?: number | undefined }
- *          ```
- */
-// prettier-ignore
-export type UndefinedToOptionalFields<R extends Record<string, any>> =
-  { [Key in NonNullableKeys<R>]: R[Key] } &
-  { [Key in NullableKeys<R>]?: R[Key] }
-
-type NullableKeys<T> = { [Key in keyof T]: undefined extends T[Key] ? Key : never }[keyof T]
-type NonNullableKeys<T> = { [Key in keyof T]: undefined extends T[Key] ? never : Key }[keyof T]
-
 export function internalError(message: string): Error {
   const header = '[INTERNAL ERROR]'
   const mondrianIssueUrl = 'https://github.com/twinlogix/mondrian-framework/issues'

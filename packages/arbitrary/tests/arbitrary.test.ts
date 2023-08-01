@@ -1,7 +1,7 @@
 import { arbitrary } from '../src'
 import { fc } from '@fast-check/vitest'
 import t from '@mondrian-framework/advanced-types'
-import m, { decoder, encoder, validate } from '@mondrian-framework/model'
+import m, { decoder, encoder, types } from '@mondrian-framework/model'
 import { expect, test } from 'vitest'
 
 test('fromType', async () => {

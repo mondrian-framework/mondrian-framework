@@ -22,7 +22,6 @@ type CustomMapInternal<T extends types.Type, Visited extends types.Type[]>
   : [T] extends [(() => infer T1 extends types.Type)] ? WasAlredyVisited<Visited, T> extends false ? CustomMapInternal<T1, [...Visited, T]> : {}
   : {}
 
-type A = {}[keyof {}]
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 
 type WasAlredyVisited<Ts extends types.Type[], T extends types.Type> = Ts extends []

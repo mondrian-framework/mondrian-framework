@@ -1,5 +1,4 @@
 import { decoder, result, validator } from './index'
-import { UndefinedToOptionalFields } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -63,8 +62,8 @@ export type Infer<T extends Type>
   : [T] extends [EnumType<infer Vs>] ? Vs[number]
   : [T] extends [LiteralType<infer L>] ? L
   : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
-  : [T] extends [ObjectType<"immutable", infer Ts>] ? Readonly<UndefinedToOptionalFields<{ [Key in keyof Ts]: Infer<Ts[Key]> }>>
-  : [T] extends [ObjectType<"mutable", infer Ts>] ? UndefinedToOptionalFields<{ [Key in keyof Ts]: Infer<Ts[Key]> }>
+  : [T] extends [ObjectType<"immutable", infer Ts>] ? Readonly<{ [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }>
+  : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
   : [T] extends [ArrayType<"mutable", infer T1>] ? Infer<T1>[]
   : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
@@ -73,6 +72,23 @@ export type Infer<T extends Type>
   : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
+
+type OptionalKeys<T extends Record<string, Type>> = {
+  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never
+}[keyof T]
+type NonOptionalKeys<T extends Record<string, Type>> = {
+  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? never : K
+}[keyof T]
+
+type HasOptionalDecorator<T extends Type> = [T] extends [OptionalType<any>]
+  ? true
+  : [T] extends [NullableType<infer ST>]
+  ? HasOptionalDecorator<ST>
+  : [T] extends [ReferenceType<infer ST>]
+  ? HasOptionalDecorator<ST>
+  : [T] extends [() => infer LT extends Type]
+  ? HasOptionalDecorator<LT>
+  : false
 
 /**
  * Given a type `T`, returns the type of the options it can accept when it is defined.

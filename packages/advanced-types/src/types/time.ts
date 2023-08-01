@@ -24,6 +24,10 @@ function decodeTime(value: unknown): result.Result<Date> {
   return result.success(new Date(currentDateAtGivenTime))
 }
 
-function validateTime(value: Date, validationOptions: validator.ValidationOptions, options?: m.BaseOptions): result.Result<true> {
+function validateTime(
+  value: Date,
+  validationOptions: validator.ValidationOptions,
+  options?: m.BaseOptions,
+): result.Result<true> {
   return validator.validate(m.dateTime(options), value, validationOptions)
 }

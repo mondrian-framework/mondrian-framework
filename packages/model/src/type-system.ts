@@ -73,14 +73,16 @@ export type Infer<T extends Type>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
-type OptionalKeys<T extends Record<string, Type>> = {
+type OptionalKeys<T extends Types> = {
   [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never
 }[keyof T]
-type NonOptionalKeys<T extends Record<string, Type>> = {
+type NonOptionalKeys<T extends Types> = {
   [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? never : K
 }[keyof T]
 
-type HasOptionalDecorator<T extends Type> = [T] extends [OptionalType<any>]
+type HasOptionalDecorator<T extends Type> = [T] extends [never] //why?
+  ? false
+  : [T] extends [OptionalType<any>]
   ? true
   : [T] extends [NullableType<infer ST>]
   ? HasOptionalDecorator<ST>

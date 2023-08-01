@@ -1,5 +1,5 @@
 import { types, result, validator } from './index'
-import { OptionalFields, containsKey } from './utils'
+import { containsKey } from './utils'
 import { match, Pattern as P } from 'ts-pattern'
 
 /**
@@ -31,8 +31,8 @@ export const defaultOptions: DecodingOptions = {
 export function decode<T extends types.Type>(
   type: T,
   value: unknown,
-  decodingOptions?: OptionalFields<DecodingOptions>,
-  validationOptions?: OptionalFields<validator.ValidationOptions>,
+  decodingOptions?: Partial<DecodingOptions>,
+  validationOptions?: Partial<validator.ValidationOptions>,
 ): result.Result<types.Infer<T>> {
   const actualDecodingOptions = { ...defaultOptions, ...decodingOptions }
   // TODO: if we ever rework the current Error interface (maybe we should and factor out the short circuiting logic in

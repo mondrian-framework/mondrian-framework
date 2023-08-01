@@ -1,5 +1,4 @@
 import { types, result } from './index'
-import { OptionalFields } from './utils'
 import { match } from 'ts-pattern'
 
 /* TODO: figure out how to deal with object strictness */
@@ -20,7 +19,7 @@ export const defaultValidationOptions: ValidationOptions = {
 export function validate<T extends types.Type>(
   type: T,
   value: types.Infer<T>,
-  options?: OptionalFields<ValidationOptions>,
+  options?: Partial<ValidationOptions>,
 ): result.Result<true> {
   const actualOptions = { ...defaultValidationOptions, ...options }
   const validationResult = internalValidate(type, value, actualOptions)

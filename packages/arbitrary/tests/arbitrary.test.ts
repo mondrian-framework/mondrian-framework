@@ -40,6 +40,7 @@ test('fromType', async () => {
       date: t.date(),
       port: t.port(),
       loginJwt: t.jwt('login', jwtLoginType, 'secret'),
+      nullJwt: t.jwt('null', m.object({ a: m.literal(null) }), 'secret'),
 
       self: m.reference(m.nullable(myType)),
     })
@@ -59,6 +60,7 @@ test('fromType', async () => {
       timestamp: (options) => fc.date({ min: options?.minimum, max: options?.maximum }),
       UUID: () => fc.uuid(),
       'login-jwt': () => arbitrary.fromType({ type: jwtLoginType }),
+      'null-jwt': () => fc.constant({ a: null }),
     },
     maxDepth: 3,
   })

@@ -8,9 +8,13 @@ type JwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
 
 const DEFAULT_HS_JWT_ALGORITHM = 'HS256'
 
-export type JWTType<T extends types.Type, Name extends string> = m.CustomType<`${Name}-jwt`, JwtOptions, types.Infer<T>>
+export type JWTType<T extends types.ObjectType<any, any>, Name extends string> = m.CustomType<
+  `${Name}-jwt`,
+  JwtOptions,
+  types.Infer<T>
+>
 
-export function jwt<T extends types.Type, Name extends string>(
+export function jwt<T extends types.ObjectType<any, any>, Name extends string>(
   name: Name,
   payloadType: T,
   secret: string,
@@ -20,7 +24,10 @@ export function jwt<T extends types.Type, Name extends string>(
     `${name}-jwt`,
     (payload) => {
       const encoded = encoder.encode(payloadType, payload)
-      return jsonwebtoken.sign(encoded as object, secret, { algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM })
+      const result = jsonwebtoken.sign(encoded as object, secret, {
+        algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM,
+      })
+      return result
     },
     (value) => decodeJwt(value, payloadType, secret, options),
     (payload) => validate(payloadType, payload),

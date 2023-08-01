@@ -17,40 +17,6 @@ import { ValidationOptions, validate } from './validate'
 import { match, Pattern as P } from 'ts-pattern'
 
 /**
- * @param type the type to check against
- * @param value the value whose type needs to be checked
- * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
- * @param validationOptions the {@link ValidationOptions options} used for the validation process
- * @returns true if `value` is actually a valid member of the type `T`
- */
-export function isType<T extends Type>(
-  type: T,
-  value: unknown,
-  decodingOptions?: DecodingOptions,
-  validationOptions?: ValidationOptions,
-): value is Infer<T> {
-  return decode(type, value, decodingOptions, validationOptions).success
-}
-
-/**
- * @param type the type to check against
- * @param value the value whose type needs to be checked
- * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
- * @param validationOptions the {@link ValidationOptions options} used for the validation process
- */
-export function assertType<T extends Type>(
-  type: T,
-  value: unknown,
-  decodingOptions?: DecodingOptions,
-  validationOptions?: ValidationOptions,
-): asserts value is Infer<T> {
-  const result = decode(type, value, decodingOptions, validationOptions)
-  if (!result.success) {
-    throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
-  }
-}
-
-/**
  * The options that can be used when decoding a type.
  */
 export type DecodingOptions = {
@@ -62,7 +28,7 @@ export type DecodingOptions = {
 /**
  * The default recommended options to be used in the decoding process.
  */
-const defaultDecodingOptions: DecodingOptions = {
+export const defaultOptions: DecodingOptions = {
   typeCastingStrategy: 'expectExactTypes',
   errorReportingStrategy: 'stopAtFirstError',
   unionDecodingStrategy: 'untaggedUnions',
@@ -82,7 +48,7 @@ export function decode<T extends Type>(
   decodingOptions?: OptionalFields<DecodingOptions>,
   validationOptions?: OptionalFields<ValidationOptions>,
 ): Result<Infer<T>> {
-  const actualDecodingOptions = { ...defaultDecodingOptions, ...decodingOptions }
+  const actualDecodingOptions = { ...defaultOptions, ...decodingOptions }
   // TODO: if we ever rework the current Error interface (maybe we should and factor out the short circuiting logic in
   // a generic error like other languages like Scala/Haskell/Elm/Gleam/Rust) this should be rewritten as a series
   // of `.then().then()`

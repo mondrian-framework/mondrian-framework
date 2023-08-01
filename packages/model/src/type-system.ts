@@ -1,4 +1,4 @@
-import { DecodingOptions } from './decoder'
+import { decoder } from './index'
 import { Result } from './result'
 import { ValidationOptions } from './validate'
 import { JSONType } from '@mondrian-framework/utils'
@@ -386,7 +386,11 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
   options?: CustomTypeOptions<Options>
 
   encode(value: InferredAs, options?: CustomTypeOptions<Options>): JSONType
-  decode(value: unknown, decodingOptions: DecodingOptions, options?: CustomTypeOptions<Options>): Result<InferredAs>
+  decode(
+    value: unknown,
+    decodingOptions: decoder.DecodingOptions,
+    options?: CustomTypeOptions<Options>,
+  ): Result<InferredAs>
   validate(value: InferredAs, validationOptions: ValidationOptions, options?: CustomTypeOptions<Options>): Result<true>
 
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
@@ -1082,7 +1086,7 @@ export function custom<Name extends string, Options extends Record<string, any>,
   encode: (value: InferredAs, options?: CustomTypeOptions<Options>) => JSONType,
   decode: (
     value: unknown,
-    decodingOptions: DecodingOptions,
+    decodingOptions: decoder.DecodingOptions,
     options?: CustomTypeOptions<Options>,
   ) => Result<InferredAs>,
   validate: (
@@ -1222,6 +1226,40 @@ export function areEqual<T extends Type>(one: T, other: T): boolean {
     || (type1.kind === 'object' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.types, type2.types))
     || (type1.kind === 'union' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
   )
+}
+
+/**
+ * @param type the type to check against
+ * @param value the value whose type needs to be checked
+ * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
+ * @param validationOptions the {@link ValidationOptions options} used for the validation process
+ * @returns true if `value` is actually a valid member of the type `T`
+ */
+export function isType<T extends Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: decoder.DecodingOptions,
+  validationOptions?: ValidationOptions,
+): value is Infer<T> {
+  return decoder.decode(type, value, decodingOptions, validationOptions).success
+}
+
+/**
+ * @param type the type to check against
+ * @param value the value whose type needs to be checked
+ * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
+ * @param validationOptions the {@link ValidationOptions options} used for the validation process
+ */
+export function assertType<T extends Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: decoder.DecodingOptions,
+  validationOptions?: ValidationOptions,
+): asserts value is Infer<T> {
+  const result = decoder.decode(type, value, decodingOptions, validationOptions)
+  if (!result.success) {
+    throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
+  }
 }
 
 /*

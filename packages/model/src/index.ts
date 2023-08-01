@@ -3,8 +3,9 @@ import * as m from './exports'
 export { m }
 export default m
 
-export { decode, DecodingOptions, isType, assertType } from './decoder'
-export { encode } from './encoder'
+export * as decoder from './decoder'
+export * as encoder from './encoder'
+
 export { validateAndEncode } from './converter'
 export { validate, ValidationOptions } from './validate'
 

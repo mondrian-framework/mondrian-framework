@@ -111,11 +111,11 @@ describe('Infer', () => {
     test("second object overrides the first object's fields", () => {
       const model = types.merge(
         'immutable',
-        types.object({ field: types.string() }),
         types.object({ field: types.number() }),
+        types.object({ field: types.string() }),
       )
       type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: number }>()
+      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: string }>()
     })
   })
 

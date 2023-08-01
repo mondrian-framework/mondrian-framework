@@ -73,23 +73,16 @@ export type Infer<T extends Type>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
-type OptionalKeys<T extends Types> = {
-  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never
-}[keyof T]
-type NonOptionalKeys<T extends Types> = {
-  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? never : K
-}[keyof T]
+type OptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never }[keyof T]
 
-type HasOptionalDecorator<T extends Type> = [T] extends [never] //why?
-  ? false
-  : [T] extends [OptionalType<any>]
-  ? true
-  : [T] extends [NullableType<infer ST>]
-  ? HasOptionalDecorator<ST>
-  : [T] extends [ReferenceType<infer ST>]
-  ? HasOptionalDecorator<ST>
-  : [T] extends [() => infer LT extends Type]
-  ? HasOptionalDecorator<LT>
+type NonOptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? never : K }[keyof T]
+
+//prettier-ignore
+type HasOptionalDecorator<T extends Type> 
+  = [T] extends [OptionalType<any>] ? true
+  : [T] extends [NullableType<infer T1>] ? HasOptionalDecorator<T1>
+  : [T] extends [ReferenceType<infer T1>] ? HasOptionalDecorator<T1>
+  : [T] extends [() => infer T1 extends Type] ? HasOptionalDecorator<T1>
   : false
 
 /**
@@ -874,15 +867,19 @@ export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability
   mutable: M,
   one: ObjectType<any, Ts1> | (() => ObjectType<any, Ts1>),
   other: ObjectType<any, Ts2> | (() => ObjectType<any, Ts2>),
-  options?: OptionsOf<ObjectType<M, Ts1 & Ts2>>,
-): ObjectType<M, Ts1 & Ts2> {
+  options?: OptionsOf<ObjectType<M, MergeObjectFields<Ts1, Ts2>>>,
+): ObjectType<M, MergeObjectFields<Ts1, Ts2>> {
   const object1 = typeof one === 'function' ? one() : one
   const object2 = typeof other === 'function' ? other() : other
   if (mutable == 'immutable') {
-    return object({ ...object1.types, ...object2.types }, options) as ObjectType<M, Ts1 & Ts2>
+    return object({ ...object1.types, ...object2.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
   } else {
-    return mutableObject({ ...object1.types, ...object2.types }, options) as ObjectType<M, Ts1 & Ts2>
+    return mutableObject({ ...object1.types, ...object2.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
   }
+}
+
+type MergeObjectFields<T1 extends Types, T2 extends Types> = {
+  [K in keyof T1 | keyof T2]: T2 extends Record<K, Type> ? T2[K] : T1 extends Record<K, Type> ? T1[K] : never
 }
 
 /**

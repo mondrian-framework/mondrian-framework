@@ -1,13 +1,10 @@
-import { Result, success } from '../result'
-import { CustomType, OptionsOf, custom } from '../type-system'
+import { result, types, decoder, validator } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
-import { DecodingOptions } from 'src/decoder'
-import { ValidationOptions } from 'src/validate'
 
 /**
  * The type of unknown, defined as a custom type.
  */
-export type UnknownType = CustomType<'unknown', UnknownOptions, unknown>
+export type UnknownType = types.CustomType<'unknown', UnknownOptions, unknown>
 
 /**
  * Additional options for the Unknown CustomType
@@ -22,8 +19,8 @@ export type UnknownOptions = {}
  * @param options the options used to create the new unknown custom type
  * @returns a {@link CustomType `CustomType`} representing a unknown
  */
-export function unknown(options?: OptionsOf<UnknownType>): UnknownType {
-  return custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, options)
+export function unknown(options?: types.OptionsOf<UnknownType>): UnknownType {
+  return types.custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, options)
 }
 
 function encodeUnknown(value: unknown): JSONType {
@@ -35,16 +32,16 @@ function encodeUnknown(value: unknown): JSONType {
 
 function decodeUnknown(
   value: unknown,
-  _decodingOptions: DecodingOptions,
-  _options?: OptionsOf<UnknownType>,
-): Result<unknown> {
-  return success(value)
+  _decodingOptions: decoder.DecodingOptions,
+  _options?: types.OptionsOf<UnknownType>,
+): result.Result<unknown> {
+  return result.success(value)
 }
 
 function validateUnknown(
   _value: unknown,
-  _validationOptions: ValidationOptions,
-  _options?: OptionsOf<UnknownType>,
-): Result<true> {
-  return success(true)
+  _validationOptions: validator.ValidationOptions,
+  _options?: types.OptionsOf<UnknownType>,
+): result.Result<true> {
+  return result.success(true)
 }

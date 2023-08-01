@@ -1,5 +1,4 @@
-import { types } from '../../src'
-import { error } from '../../src/result'
+import { types, result } from '../../src'
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe } from 'vitest'
 
@@ -77,9 +76,17 @@ describe('Infer', () => {
       const model = types.object({
         field1: types.number(),
         field2: types.string(),
+        field3: types.object({ inner: types.boolean() }).mutable(),
       })
       type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: number; readonly field2: string }>()
+      type Expected = {
+        readonly field1: number
+        readonly field2: string
+        readonly field3: {
+          inner: boolean
+        }
+      }
+      expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
     })
 
     test('mutable ObjectType inferred with mutable fields', () => {
@@ -165,8 +172,8 @@ describe('Infer', () => {
     const model = types.custom<'myCustomType', {}, number>(
       'myCustomType',
       () => null,
-      () => error('test', 'test'),
-      () => error('test', 'test'),
+      () => result.error('test', 'test'),
+      () => result.error('test', 'test'),
     )
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

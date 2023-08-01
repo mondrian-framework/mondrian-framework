@@ -1,6 +1,5 @@
-import m from '../../src'
 import { test } from '@fast-check/vitest'
-import { expect, describe } from 'vitest'
+import { describe } from 'vitest'
 
 describe('optional', () => {
   test('TODO', () => {})

@@ -1,6 +1,5 @@
 import { types } from './index'
-import { ObjectType } from './type-system'
-import { filterMapObject } from './utils'
+import { filterMapObject, internalError } from './utils'
 
 /**
  * This is the Mondrian type describing the structure of a projection: it is either the literal value
@@ -29,25 +28,25 @@ type Projections = Record<string, types.OptionalType<Projection>>
  *          ```
  */
 // prettier-ignore
-export type InferProjection<T extends types.Type>
+export type FromType<T extends types.Type>
   = [T] extends [types.NumberType] ? types.LiteralType<true>
   : [T] extends [types.StringType] ? types.LiteralType<true>
   : [T] extends [types.BooleanType] ? types.LiteralType<true>
   : [T] extends [types.EnumType<infer _>] ? types.LiteralType<true>
   : [T] extends [types.LiteralType<infer _>] ? types.LiteralType<true>
   : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? types.LiteralType<true>
-  : [T] extends [types.ArrayType<infer _, infer T1>] ? InferProjection<T1>
-  : [T] extends [types.OptionalType<infer T1>] ? InferProjection<T1>
-  : [T] extends [types.NullableType<infer T1>] ? InferProjection<T1>
-  : [T] extends [types.ReferenceType<infer T1>] ? InferProjection<T1>
-  : [T] extends [(() => infer T1 extends types.Type)] ? InferProjection<T1>
+  : [T] extends [types.ArrayType<infer _, infer T1>] ? FromType<T1>
+  : [T] extends [types.OptionalType<infer T1>] ? FromType<T1>
+  : [T] extends [types.NullableType<infer T1>] ? FromType<T1>
+  : [T] extends [types.ReferenceType<infer T1>] ? FromType<T1>
+  : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1>
   : [T] extends [types.UnionType<infer Ts>] ? types.UnionType<{ 
       all: types.LiteralType<true>,
-      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<InferProjection<Ts[Key]>> }>
+      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<FromType<Ts[Key]>> }>
     }>
   : [T] extends [types.ObjectType<infer _, infer Ts>] ? types.UnionType<{
       all: types.LiteralType<true>,
-      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<InferProjection<Ts[Key]>> }>
+      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<FromType<Ts[Key]>> }>
     }>
   : never
 
@@ -66,7 +65,7 @@ export type InferProjection<T extends types.Type>
  *          // })
  *          ```
  */
-export function fromType<T extends types.Type>(type: T): InferProjection<T> {
+export function fromType<T extends types.Type>(type: T): FromType<T> {
   const actualType = types.concretise(type)
   switch (actualType.kind) {
     case 'boolean':
@@ -75,16 +74,16 @@ export function fromType<T extends types.Type>(type: T): InferProjection<T> {
     case 'string':
     case 'enum':
     case 'number':
-      return types.literal(true) as InferProjection<T>
+      return types.literal(true) as FromType<T>
     case 'array':
     case 'nullable':
     case 'optional':
     case 'reference':
-      return fromType(actualType.wrappedType) as InferProjection<T>
+      return fromType(actualType.wrappedType) as FromType<T>
     case 'object':
-      return projectTypesOrLiteralTrue(actualType.types) as InferProjection<T>
+      return projectTypesOrLiteralTrue(actualType.types) as FromType<T>
     case 'union':
-      return projectTypesOrLiteralTrue(actualType.variants) as InferProjection<T>
+      return projectTypesOrLiteralTrue(actualType.variants) as FromType<T>
   }
 }
 
@@ -161,8 +160,8 @@ export function subProjection<const P extends Projection, K extends ProjectionKe
   if (projection.kind === 'union') {
     return projection.variants.partial.types[key] as SubProjection<P, K>
   } else {
-    throw new Error(
-      'INTERNAL ERROR: it appears that projection.subProjection was called with a type whose keys should have been `never` (and thus this call should have been impossible to make)',
+    throw internalError(
+      'It appears that `projection.subProjection` was called with a type whose keys should have been `never` (and thus this call should have been impossible to make in the first place)',
     )
   }
 }
@@ -191,32 +190,104 @@ export function depth<P extends Projection>(projection: P): number {
 }
 
 // prettier-ignore
-export type ProjectedType<P extends Record<string, any> | true, T extends types.Type>
+export type ProjectedType<T extends types.Type, P extends types.Infer<FromType<T>>>
   = [P] extends [true] ? T
-  : [P] extends [Record<string, any>]
-    // If P is an object but we have primitive types we cannot perform the projection
-    ? [T] extends [types.NumberType] ? never
-    : [T] extends [types.StringType] ? never
-    : [T] extends [types.BooleanType] ? never
-    : [T] extends [types.LiteralType<infer _L>] ? never
-    : [T] extends [types.EnumType<infer _Vs>] ? never
-    : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? never
-    // If P is an object and we have a wrapper type we perform the projection on the inner type
-    : [T] extends [types.ArrayType<infer M, infer T1>] ? types.ArrayType<M, ProjectedType<P, T1>>
-    : [T] extends [types.OptionalType<infer T1>] ? types.OptionalType<ProjectedType<P, T1>>
-    : [T] extends [types.NullableType<infer T1>] ? types.NullableType<ProjectedType<P, T1>>
-    : [T] extends [(() => infer T1 extends types.Type)] ? ProjectedType<P, T1>
-    : [T] extends [types.ReferenceType<infer T1>] ? ProjectedType<P, T1>
-    // If P is an object and we have an object-like type we perform the projection picking the selected fields
-    : [T] extends [types.UnionType<infer Ts>]
-      ? [keyof P] extends [keyof Ts] ? types.ObjectType<"immutable", { [K in keyof P]: ProjectedType<P[K], Ts[K]> }>
-      : never
-    : [T] extends [types.ObjectType<infer _, infer Ts>]
-      ? [keyof P] extends [keyof Ts] ? types.ObjectType<"immutable", { [K in keyof P]: ProjectedType<P[K], Ts[K]> }>
-      : never
-    // If we cannot tell the static type of type we just return a generic Type
-    : types.Type
+  // If P is an object but we have primitive types we cannot perform the projection
+  : [T] extends [types.NumberType] ? never
+  : [T] extends [types.StringType] ? never
+  : [T] extends [types.BooleanType] ? never
+  : [T] extends [types.LiteralType<infer _L>] ? never
+  : [T] extends [types.EnumType<infer _Vs>] ? never
+  : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? never
+  // If P is an object and we have a wrapper type we perform the projection on the inner type
+  : [T] extends [types.ArrayType<infer M, infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+      ? types.ArrayType<M, ProjectedType<T1, P>> : never 
+  : [T] extends [types.OptionalType<infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+      ? types.OptionalType<ProjectedType<T1, P>> : never
+  : [T] extends [types.NullableType<infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+      ? types.NullableType<ProjectedType<T1, P>> : never
+  : [T] extends [(() => infer T1 extends types.Type)] ? [P] extends [types.Infer<FromType<T1>>]
+      ? ProjectedType<T1, P> : never
+  : [T] extends [types.ReferenceType<infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+      ? ProjectedType<T1, P> : never
+  // If P is an object and we have an object-like type we perform the projection picking the selected fields
+  : [T] extends [types.UnionType<infer Ts>] ? [keyof P] extends [keyof Ts]
+    ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, types.Infer<FromType<Ts[K]>>> ? ProjectedType<Ts[K], P[K]> : never }> : never
+  : [T] extends [types.ObjectType<infer _, infer Ts>] ? [keyof P] extends [keyof Ts]
+    ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, types.Infer<FromType<Ts[K]>>> ? ProjectedType<Ts[K], P[K]> : never }> : never
   : never
+
+export function projectedType<T extends types.Type, P extends types.Infer<FromType<T>>>(
+  type: T,
+  projection: P,
+): ProjectedType<T, P> {
+  if (projection === true) {
+    return type as ProjectedType<T, P>
+  }
+
+  const concreteType = types.concretise(type)
+  switch (concreteType.kind) {
+    case 'number':
+    case 'string':
+    case 'boolean':
+    case 'literal':
+    case 'enum':
+    case 'custom':
+      //return undefined
+      throw 'TODO'
+    case 'array':
+      return projectedType(concreteType.wrappedType, projection as any).array()
+    case 'nullable':
+      return projectedType(concreteType.wrappedType, projection as any).nullable()
+    case 'optional':
+      return projectedType(concreteType.wrappedType, projection as any).optional()
+    case 'reference':
+      return projectedType(concreteType.wrappedType, projection as any)
+    case 'object':
+      const projectionKeys = Object.keys(projection as any)
+      const a = concreteType.types
+      //filterMapObject()
+      //return 1
+      throw 'TODO'
+    case 'union':
+      throw 'TODO'
+  }
+}
+
+function unsafeProjectedType(type: any, projection: any): any {
+  if (projection === true) {
+    return type
+  }
+
+  const concreteType = types.concretise(type)
+  switch (concreteType.kind) {
+    case 'number':
+    case 'string':
+    case 'boolean':
+    case 'literal':
+    case 'enum':
+    case 'custom':
+      throw internalError(
+        'It appears that `projectedType` was called with a simple type and a projection different from `true`. This should not be allowed by the type system and could be an internal error',
+      )
+    case 'array':
+      return projectedType(concreteType.wrappedType, projection).array()
+    case 'nullable':
+      return projectedType(concreteType.wrappedType, projection).nullable()
+    case 'optional':
+      return projectedType(concreteType.wrappedType, projection).optional()
+    case 'reference':
+      return projectedType(concreteType.wrappedType, projection)
+    case 'object':
+      const projectionKeys = Object.keys(projection)
+      const a = concreteType.types
+      //filterMapObject()
+      //return 1
+      throw 'TODO'
+    case 'union':
+      throw 'TODO'
+  }
+}
 
 /*
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {

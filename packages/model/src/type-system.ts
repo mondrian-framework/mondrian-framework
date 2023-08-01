@@ -1,6 +1,5 @@
-import { decoder } from './index'
-import { Result } from './result'
-import { ValidationOptions } from './validate'
+import { decoder, result, validator } from './index'
+import { UndefinedToOptionalFields } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -64,8 +63,8 @@ export type Infer<T extends Type>
   : [T] extends [EnumType<infer Vs>] ? Vs[number]
   : [T] extends [LiteralType<infer L>] ? L
   : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
-  : [T] extends [ObjectType<"immutable", infer Ts>] ? { readonly [Key in keyof Ts]: Infer<Ts[Key]> }
-  : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }
+  : [T] extends [ObjectType<"immutable", infer Ts>] ? Readonly<UndefinedToOptionalFields<{ [Key in keyof Ts]: Infer<Ts[Key]> }>>
+  : [T] extends [ObjectType<"mutable", infer Ts>] ? UndefinedToOptionalFields<{ [Key in keyof Ts]: Infer<Ts[Key]> }>
   : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
   : [T] extends [ArrayType<"mutable", infer T1>] ? Infer<T1>[]
   : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
@@ -390,8 +389,12 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
     value: unknown,
     decodingOptions: decoder.DecodingOptions,
     options?: CustomTypeOptions<Options>,
-  ): Result<InferredAs>
-  validate(value: InferredAs, validationOptions: ValidationOptions, options?: CustomTypeOptions<Options>): Result<true>
+  ): result.Result<InferredAs>
+  validate(
+    value: InferredAs,
+    validationOptions: validator.ValidationOptions,
+    options?: CustomTypeOptions<Options>,
+  ): result.Result<true>
 
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
   nullable(): NullableType<CustomType<Name, Options, InferredAs>>
@@ -1088,12 +1091,12 @@ export function custom<Name extends string, Options extends Record<string, any>,
     value: unknown,
     decodingOptions: decoder.DecodingOptions,
     options?: CustomTypeOptions<Options>,
-  ) => Result<InferredAs>,
+  ) => result.Result<InferredAs>,
   validate: (
     value: InferredAs,
-    validationOptions: ValidationOptions,
+    validationOptions: validator.ValidationOptions,
     options?: CustomTypeOptions<Options>,
-  ) => Result<true>,
+  ) => result.Result<true>,
   options?: OptionsOf<CustomType<Name, Options, InferredAs>>,
 ): CustomType<Name, Options, InferredAs> {
   return {
@@ -1239,7 +1242,7 @@ export function isType<T extends Type>(
   type: T,
   value: unknown,
   decodingOptions?: decoder.DecodingOptions,
-  validationOptions?: ValidationOptions,
+  validationOptions?: validator.ValidationOptions,
 ): value is Infer<T> {
   return decoder.decode(type, value, decodingOptions, validationOptions).success
 }
@@ -1254,7 +1257,7 @@ export function assertType<T extends Type>(
   type: T,
   value: unknown,
   decodingOptions?: decoder.DecodingOptions,
-  validationOptions?: ValidationOptions,
+  validationOptions?: validator.ValidationOptions,
 ): asserts value is Infer<T> {
   const result = decoder.decode(type, value, decodingOptions, validationOptions)
   if (!result.success) {

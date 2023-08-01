@@ -1,7 +1,6 @@
 import { DecodingOptions } from './decoder'
 import { Result } from './result'
 import { ValidationOptions } from './validate'
-import { fc as gen } from '@fast-check/vitest'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -389,7 +388,6 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
   encode(value: InferredAs, options?: CustomTypeOptions<Options>): JSONType
   decode(value: unknown, decodingOptions: DecodingOptions, options?: CustomTypeOptions<Options>): Result<InferredAs>
   validate(value: InferredAs, validationOptions: ValidationOptions, options?: CustomTypeOptions<Options>): Result<true>
-  arbitrary: gen.Arbitrary<InferredAs>
 
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
   nullable(): NullableType<CustomType<Name, Options, InferredAs>>
@@ -1092,7 +1090,6 @@ export function custom<Name extends string, Options extends Record<string, any>,
     validationOptions: ValidationOptions,
     options?: CustomTypeOptions<Options>,
   ) => Result<true>,
-  arbitrary: gen.Arbitrary<InferredAs>,
   options?: OptionsOf<CustomType<Name, Options, InferredAs>>,
 ): CustomType<Name, Options, InferredAs> {
   return {
@@ -1102,7 +1099,6 @@ export function custom<Name extends string, Options extends Record<string, any>,
     encode,
     decode,
     validate,
-    arbitrary,
     optional() {
       return optional(this)
     },

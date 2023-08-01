@@ -1,6 +1,5 @@
-import { Result, error, success } from '../result'
+import { Result, success } from '../result'
 import { CustomType, OptionsOf, custom } from '../type-system'
-import { fc as gen } from '@fast-check/vitest'
 import { JSONType } from '@mondrian-framework/utils'
 import { DecodingOptions } from 'src/decoder'
 import { ValidationOptions } from 'src/validate'
@@ -24,7 +23,7 @@ export type UnknownOptions = {}
  * @returns a {@link CustomType `CustomType`} representing a unknown
  */
 export function unknown(options?: OptionsOf<UnknownType>): UnknownType {
-  return custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, gen.anything(), options)
+  return custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, options)
 }
 
 function encodeUnknown(value: unknown): JSONType {

@@ -20,4 +20,3 @@ export {
 } from './projection'
 
 export { Error, Failure, Result, Success, error, success } from './result'
-export { getArbitrary } from './arbitrary'

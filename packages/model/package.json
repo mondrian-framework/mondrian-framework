@@ -12,11 +12,10 @@
     "prerelease": "tsc -p tsconfig.build.json"
   },
   "keywords": [],
-  "dependencies": {
-    "@fast-check/vitest": "^0.0.6"
-  },
   "peerDependencies": {
     "@mondrian-framework/utils": "^1.0.6"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@fast-check/vitest": "^0.0.6"
+  }
 }

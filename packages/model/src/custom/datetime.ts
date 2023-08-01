@@ -1,6 +1,5 @@
 import { Result, error, success } from '../result'
 import { CustomType, OptionsOf, custom } from '../type-system'
-import { fc as gen } from '@fast-check/vitest'
 import { DecodingOptions } from 'src/decoder'
 import { ValidationOptions } from 'src/validate'
 
@@ -19,7 +18,7 @@ export type DateTimeOptions = { minimum?: Date; maximum?: Date }
  * @returns a {@link CustomType `CustomType`} representing a datetime
  */
 export function dateTime(options?: OptionsOf<DateTimeType>): DateTimeType {
-  return custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, dateTimeArbitrary(options), options)
+  return custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, options)
 }
 
 function encodeDateTime(date: Date): string {
@@ -60,8 +59,4 @@ function validateDateTime(
     return error(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
   return success(true)
-}
-
-function dateTimeArbitrary(options?: OptionsOf<DateTimeType>): gen.Arbitrary<Date> {
-  return gen.date({ min: options?.minimum, max: options?.maximum })
 }

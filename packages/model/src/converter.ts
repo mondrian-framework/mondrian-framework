@@ -2,7 +2,7 @@ import { encode } from './encoder'
 import { Result, success } from './result'
 import { Infer, Type } from './type-system'
 import { OptionalFields } from './utils'
-import { ValidationOptions, validate } from './validate'
+import { ValidationOptions, validate } from './validator'
 import { JSONType } from '@mondrian-framework/utils'
 
 export function validateAndEncode<const T extends Type>(

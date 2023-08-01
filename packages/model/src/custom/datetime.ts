@@ -1,7 +1,7 @@
 import { Result, error, success } from '../result'
 import { CustomType, OptionsOf, custom } from '../type-system'
 import { DecodingOptions } from 'src/decoder'
-import { ValidationOptions } from 'src/validate'
+import { ValidationOptions } from 'src/validator'
 
 /**
  * The type of a datetime, defined as a custom type.

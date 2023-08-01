@@ -31,7 +31,6 @@ const knownInvalidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(m.isbn, {
-    validValues: m.isbn().arbitrary,
     knownInvalidValues,
     knownValidValues,
   }),

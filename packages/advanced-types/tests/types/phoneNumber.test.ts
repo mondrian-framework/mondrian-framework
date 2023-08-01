@@ -21,7 +21,6 @@ const knownInvalidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(m.phoneNumber, {
-    validValues: m.phoneNumber().arbitrary,
     knownInvalidValues,
     knownValidValues,
   }),

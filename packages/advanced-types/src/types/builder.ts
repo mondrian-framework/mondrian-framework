@@ -1,4 +1,3 @@
-import { fc as gen } from '@fast-check/vitest'
 import { DecodingOptions, m } from '@mondrian-framework/model'
 import { Result, error, success } from '@mondrian-framework/model'
 
@@ -9,14 +8,7 @@ export function fromRegexes<Name extends string, Options extends Record<string, 
   regex: RegExp,
   ...regexes: RegExp[]
 ): m.CustomType<Name, Options, string> {
-  return m.custom(
-    typeName,
-    encode,
-    decode,
-    (input) => validate(input, errorMessage, [regex, ...regexes]),
-    gen.oneof(gen.stringMatching(regex), ...regexes.map((regex) => gen.stringMatching(regex))),
-    options,
-  )
+  return m.custom(typeName, encode, decode, (input) => validate(input, errorMessage, [regex, ...regexes]), options)
 }
 
 function encode(string: string): string {

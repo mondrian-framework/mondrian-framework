@@ -112,7 +112,7 @@ function unsafeDecode(type: Type, value: unknown, options: DecodingOptions): Res
     .with({ kind: 'object' }, (type) => decodeObject(type, value, options))
     .with({ kind: 'array' }, (type) => decodeArray(type, value, options))
     .with({ kind: 'reference' }, (type) => decodeReference(type, value, options))
-    .with({ kind: 'custom' }, (type) => type.decode(value, type.options, options))
+    .with({ kind: 'custom' }, (type) => type.decode(value, options, type.options))
     .exhaustive()
 }
 

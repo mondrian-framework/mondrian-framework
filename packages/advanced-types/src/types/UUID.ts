@@ -1,7 +1,7 @@
 import { fromRegexes } from './builder'
 import { m } from '@mondrian-framework/model'
 
-const UUID_REGEX = /^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$/
+const UUID_REGEX = /^[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$/
 
 export type UUIDType = m.CustomType<'UUID', {}, string>
 

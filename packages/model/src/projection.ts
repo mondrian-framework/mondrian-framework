@@ -1,4 +1,5 @@
 import { types } from './index'
+import { ObjectType } from './type-system'
 import { filterMapObject } from './utils'
 
 /**
@@ -161,7 +162,7 @@ export function subProjection<const P extends Projection, K extends ProjectionKe
     return projection.variants.partial.types[key] as SubProjection<P, K>
   } else {
     throw new Error(
-      'INTERNAL ERROR: it appears that subProjection was called with a type whose keys should have been `never` (and thus this call should have been impossible to make)',
+      'INTERNAL ERROR: it appears that projection.subProjection was called with a type whose keys should have been `never` (and thus this call should have been impossible to make)',
     )
   }
 }
@@ -190,23 +191,32 @@ export function depth<P extends Projection>(projection: P): number {
 }
 
 // prettier-ignore
-export type ProjectedType<P extends Record<string, any>, T extends types.Type>
+export type ProjectedType<P extends Record<string, any> | true, T extends types.Type>
   = [P] extends [true] ? T
-  : [T] extends [types.NumberType] ? T
-  : [T] extends [types.StringType] ? T
-  : [T] extends [types.BooleanType] ? T
-  : [T] extends [types.LiteralType<infer _>] ? T
-  : [T] extends [types.EnumType<infer _>] ? T
-  : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAd>] ? T
-  : [T] extends [types.OptionalType<infer T1>] ? ProjectedType<P , T1>
-  : [T] extends [types.NullableType<infer T1>] ? ProjectedType<P, T1>
-  : [T] extends [types.ReferenceType<infer T1>] ? ProjectedType<P, T1>
-  : [T] extends [types.ArrayType<infer _, infer T1>] ? ProjectedType<P, T1>
-  : [T] extends [() => infer T1 extends types.Type] ? ProjectedType<P, T1>
-  : [T] extends [types.ObjectType<infer _, infer Ts>] ?
-    [keyof P] extends [keyof Ts] ? { [K in keyof P]: ProjectedType<P[K], Ts[K]> }
-    : never
-  : types.Type
+  : [P] extends [Record<string, any>]
+    // If P is an object but we have primitive types we cannot perform the projection
+    ? [T] extends [types.NumberType] ? never
+    : [T] extends [types.StringType] ? never
+    : [T] extends [types.BooleanType] ? never
+    : [T] extends [types.LiteralType<infer _L>] ? never
+    : [T] extends [types.EnumType<infer _Vs>] ? never
+    : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? never
+    // If P is an object and we have a wrapper type we perform the projection on the inner type
+    : [T] extends [types.ArrayType<infer M, infer T1>] ? types.ArrayType<M, ProjectedType<P, T1>>
+    : [T] extends [types.OptionalType<infer T1>] ? types.OptionalType<ProjectedType<P, T1>>
+    : [T] extends [types.NullableType<infer T1>] ? types.NullableType<ProjectedType<P, T1>>
+    : [T] extends [(() => infer T1 extends types.Type)] ? ProjectedType<P, T1>
+    : [T] extends [types.ReferenceType<infer T1>] ? ProjectedType<P, T1>
+    // If P is an object and we have an object-like type we perform the projection picking the selected fields
+    : [T] extends [types.UnionType<infer Ts>]
+      ? [keyof P] extends [keyof Ts] ? types.ObjectType<"immutable", { [K in keyof P]: ProjectedType<P[K], Ts[K]> }>
+      : never
+    : [T] extends [types.ObjectType<infer _, infer Ts>]
+      ? [keyof P] extends [keyof Ts] ? types.ObjectType<"immutable", { [K in keyof P]: ProjectedType<P[K], Ts[K]> }>
+      : never
+    // If we cannot tell the static type of type we just return a generic Type
+    : types.Type
+  : never
 
 /*
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {

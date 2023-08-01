@@ -1,4 +1,3 @@
-import { fc as gen } from '@fast-check/vitest'
 import { m } from '@mondrian-framework/model'
 import { error, success, Result } from '@mondrian-framework/model'
 
@@ -14,7 +13,6 @@ export function port(options?: m.BaseOptions): m.CustomType<'port', {}, number> 
         ? success(value)
         : error('Expected a TCP port number', value),
     validatePort,
-    gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER }),
     options,
   )
 }

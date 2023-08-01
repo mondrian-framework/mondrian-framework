@@ -1,4 +1,3 @@
-import { fc as gen } from '@fast-check/vitest'
 import { m } from '@mondrian-framework/model'
 import { error, success, Result } from '@mondrian-framework/model'
 
@@ -8,7 +7,6 @@ export function email(options?: m.BaseOptions): m.CustomType<'email', {}, string
     (value) => value,
     (value) => (typeof value === 'string' ? success(value) : error('Expected a mail string', value)),
     validateEmail,
-    gen.emailAddress(),
     options,
   )
 }

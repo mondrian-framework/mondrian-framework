@@ -1,6 +1,5 @@
 import { fromRegexes } from './builder'
-import { fc as gen } from '@fast-check/vitest'
-import { Infer, Type, decode, encode, error, getArbitrary, m, validate } from '@mondrian-framework/model'
+import { Infer, Result, Type, decode, encode, error, m, validate } from '@mondrian-framework/model'
 import jsonwebtoken from 'jsonwebtoken'
 
 const JWT_REGEX = /^[a-zA-Z0-9\-_]+?\.[a-zA-Z0-9\-_]+?\.([a-zA-Z0-9\-_]+)?$/
@@ -10,38 +9,55 @@ export function jwt(options?: m.BaseOptions): m.CustomType<'JWT', {}, string> {
   return fromRegexes('JWT', 'Invalid JWT', options, JWT_REGEX)
 }
 
-type HsJwtOptions = { algorithm?: 'HS256' | 'HS384' | 'HS512' } & Omit<
+/*
+type HsJwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
   jsonwebtoken.VerifyOptions,
   'algorithms' | 'complete'
 >
+
+const DEFAULT_HS_JWT_ALGORITHM = 'HS256'
+
 //TODO: to evaluate
 export function hsJwt<T extends Type>(
   payloadType: T,
   secret: string,
   options?: m.BaseOptions & HsJwtOptions,
-): m.CustomType<'JWT', { algorithm?: 'HS256' | 'HS384' | 'HS512' }, Infer<T>> {
+): m.CustomType<'JWT', HsJwtOptions, Infer<T>> {
   return m.custom(
     'JWT',
     (payload) => {
-      const encoded = encode(payloadType, payload) as object
-      return jsonwebtoken.sign(encoded, secret, { algorithm: options?.algorithm ?? 'HS256' })
+      const encoded = encode(payloadType, payload)
+      console.log(
+        jsonwebtoken.sign(null as unknown as object, secret, {
+          algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM,
+        }),
+      )
+      return jsonwebtoken.sign(encoded as object, secret, { algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM })
     },
-    (value) => {
-      if (typeof value !== 'string') {
-        return error('Invalid JWT type. String expected.', value)
-      }
-      const decoded = jsonwebtoken.verify(value, secret, {
-        ...options,
-        complete: true,
-        algorithms: [options?.algorithm ?? 'HS256'],
-      })
-      if (decoded === null) {
-        return error('Invalid JWT type. Verify failed.', value)
-      }
-      return decode(payloadType, decoded.payload)
-    },
+    (value) => decodeHsJwt(value, payloadType, secret, options),
     (payload) => validate(payloadType, payload),
-    getArbitrary(payloadType),
     options,
   )
 }
+
+function decodeHsJwt<T extends Type>(
+  value: unknown,
+  payloadType: T,
+  secret: string,
+  options?: HsJwtOptions,
+): Result<Infer<T>> {
+  if (typeof value !== 'string') {
+    return error('Invalid JWT type. String expected.', value)
+  }
+  try {
+    const decoded = jsonwebtoken.verify(value, secret, {
+      ...options,
+      complete: true,
+      algorithms: [options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM],
+    })
+    return decode(payloadType, decoded.payload)
+  } catch {
+    return error('Invalid JWT type. Verify failed.', value)
+  }
+}
+*/

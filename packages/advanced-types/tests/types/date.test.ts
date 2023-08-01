@@ -2,25 +2,20 @@ import { m } from '../../src/index'
 import { testTypeEncodingAndDecoding } from './property-helper'
 import { describe } from 'vitest'
 
-const validValues = m.date().arbitrary.map((date) => ({
-  raw: date.toISOString().split('T')[0],
-  expected: date,
-}))
-
 const knownInvalidValues = [
   '2000-02-31',
-  //'2020-04-32',
-  //'2020-06-32',
-  //'2020-09-32',
-  //'2020-11-32',
-  //'20230101',
-  //'01012023',
-  //'01-01-2023',
-  //'',
-  //10,
-  //true,
-  //null,
-  //undefined,
+  '2020-04-32',
+  '2020-06-32',
+  '2020-09-32',
+  '2020-11-32',
+  '20230101',
+  '01012023',
+  '01-01-2023',
+  '',
+  10,
+  true,
+  null,
+  undefined,
 ]
 const knownValidValues = [
   { raw: '2020-01-01', expected: new Date('2020-01-01') },
@@ -34,7 +29,6 @@ const knownValidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(m.date, {
-    validValues,
     knownInvalidValues,
     knownValidValues,
   }),

@@ -1,4 +1,3 @@
-import { fc as gen } from '@fast-check/vitest'
 import { m } from '@mondrian-framework/model'
 import { Result, error, success } from '@mondrian-framework/model'
 
@@ -12,7 +11,6 @@ export function longitude(options?: m.BaseOptions): m.CustomType<'longitude', {}
     (number) => number,
     (value) => (typeof value === 'number' ? success(value) : error('Expected a longitude number', value)),
     validateLongitude,
-    gen.double({ min: MIN_LON, max: MAX_LON }).map((v) => Number.parseFloat(v.toFixed(MAX_PRECISION))),
     options,
   )
 }

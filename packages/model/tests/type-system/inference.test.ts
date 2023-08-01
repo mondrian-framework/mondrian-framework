@@ -77,9 +77,17 @@ describe('Infer', () => {
       const model = types.object({
         field1: types.number(),
         field2: types.string(),
+        field3: types.object({ inner: types.boolean() }).mutable(),
       })
       type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: number; readonly field2: string }>()
+      type Expected = {
+        readonly field1: number
+        readonly field2: string
+        readonly field3: {
+          inner: boolean
+        }
+      }
+      expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
     })
 
     test('mutable ObjectType inferred with mutable fields', () => {

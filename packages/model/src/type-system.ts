@@ -1,5 +1,6 @@
 import { decoder } from './index'
 import { Result } from './result'
+import { UndefinedToOptionalFields } from './utils'
 import { ValidationOptions } from './validate'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -64,8 +65,8 @@ export type Infer<T extends Type>
   : [T] extends [EnumType<infer Vs>] ? Vs[number]
   : [T] extends [LiteralType<infer L>] ? L
   : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
-  : [T] extends [ObjectType<"immutable", infer Ts>] ? { readonly [Key in keyof Ts]: Infer<Ts[Key]> }
-  : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }
+  : [T] extends [ObjectType<"immutable", infer Ts>] ? Readonly<UndefinedToOptionalFields<{ [Key in keyof Ts]: Infer<Ts[Key]> }>>
+  : [T] extends [ObjectType<"mutable", infer Ts>] ? UndefinedToOptionalFields<{ [Key in keyof Ts]: Infer<Ts[Key]> }>
   : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
   : [T] extends [ArrayType<"mutable", infer T1>] ? Infer<T1>[]
   : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>

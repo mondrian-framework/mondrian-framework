@@ -1186,7 +1186,7 @@ export function setName<T extends Type>(type: T, name: string): T {
  * @returns true if the two types model the same type
  * TODO: add documentation and tests
  */
-export function areSameType<T extends Type>(one: T, other: T): boolean {
+export function areEqual<T extends Type>(one: T, other: T): boolean {
   const type1 = concretise(one)
   const type2 = concretise(other)
 
@@ -1203,7 +1203,7 @@ export function areSameType<T extends Type>(one: T, other: T): boolean {
     const otherKeys = Object.keys(other)
     return (
       arraysHaveSameElements(oneKeys, otherKeys) &&
-      Object.entries(one).every(([fieldName, fieldType]) => areSameType(other[fieldName], fieldType))
+      Object.entries(one).every(([fieldName, fieldType]) => areEqual(other[fieldName], fieldType))
     )
   }
 
@@ -1215,10 +1215,10 @@ export function areSameType<T extends Type>(one: T, other: T): boolean {
     || (type1.kind === 'literal' && type1.kind === type2.kind && type1.options === type2.options && type1.literalValue === type2.literalValue)
     || (type1.kind === 'enum' && type1.kind === type2.kind && type1.options === type2.options && type1.variants === type2.variants)
     || (type1.kind === 'custom' && type1.kind === type2.kind && type1.options === type2.options && type1.typeName === type2.typeName)
-    || (type1.kind === 'array' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'nullable' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'optional' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'reference' && type1.kind === type2.kind && type1.options === type2.options && areSameType(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'array' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'nullable' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'optional' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === 'reference' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === 'object' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.types, type2.types))
     || (type1.kind === 'union' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
   )

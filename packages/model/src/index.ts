@@ -19,4 +19,4 @@ export {
   //projectionDepth,
 } from './projection'
 
-export { Error, Failure, Result, Success, error, success } from './result'
+export * as Result from './result'

@@ -1,0 +1,19 @@
+{
+  "name": "@mondrian-framework/arbitrary",
+  "version": "1.0.0",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@mondrian-framework/model": "*",
+    "@mondrian-framework/advanced-types": "*",
+    "@fast-check/vitest": "0.0.6"
+  }
+}

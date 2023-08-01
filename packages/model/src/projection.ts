@@ -234,9 +234,9 @@ export type ProjectedType<P extends Record<string, any>, T extends Type>
     [keyof P] extends [keyof Ts] ? { [K in keyof P]: ProjectedType<P[K], Ts[K]> } : never
   : "never" // AllOptional<T>
 
-const model = object({ field1: number(), field2: object({ inner1: string() }) })
-type projection = { field2: { inner1: true } }
-type D = ProjectedType<projection, typeof model>
+//const model = object({ field1: number(), field2: object({ inner1: string() }) })
+//type projection = { field2: { inner1: true } }
+//type D = ProjectedType<projection, typeof model>
 
 /*
 export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {

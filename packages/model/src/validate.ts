@@ -198,32 +198,20 @@ function validateUnion<Ts extends Types>(
   value: Infer<UnionType<Ts>>,
   options: ValidationOptions,
 ): Result<true> {
-  return error('TODO', null)
-  /*
-
-  Problema
-
-  n : number | string | object = "ciao"
-  validate(n)
-    -> validate(NumberType, n) // Exception!
-    -> validate(StringType, n)
-    -> validate(ObjectType, n)
-
-
-  // TODO: there is a bug here! It doesn't check that it is one of the union variants
-
-    const errs: { path?: string; error: string; value: unknown }[] = []
-    for (const [key, u] of Object.entries(t.types)) {
-      const result = validateInternal(u, value, opts)
-      if (result.success) {
-        return result
-      }
-      errs.push(...result.errors.map((e) => ({ ...e, unionElement: key })))
+  const errs: { path?: string; error: string; value: unknown }[] = []
+  for (const [key, u] of Object.entries(type.variants)) {
+    const variantCheck = type.variantsChecks?.[key]
+    if (variantCheck && !variantCheck(value)) {
+      continue
     }
-    return errors(errs)
+    const result = internalValidate(u, value as never, options)
+    if (result.success) {
+      return result
+    }
+    errs.push(...result.errors.map((e) => ({ ...e, unionElement: key })))
   }
-  if (t.kind === 'custom') {
-    return t.validate(value, t.opts)
+  if (errs.length === 0) {
+    return error('Value does not pass any variant check.', value)
   }
-  */
+  return errors(errs)
 }

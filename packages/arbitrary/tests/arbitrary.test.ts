@@ -1,0 +1,75 @@
+import { arbitrary } from '../src'
+import { fc } from '@fast-check/vitest'
+import t from '@mondrian-framework/advanced-types'
+import m, { decoder, encoder, validate } from '@mondrian-framework/model'
+import { expect, test } from 'vitest'
+
+test('fromType', async () => {
+  const jwtLoginType = m.object({ sub: m.string(), name: m.string(), iat: m.integer() })
+  const myType = () =>
+    m.object({
+      //base
+      number: m
+        .integer({ multipleOf: 15, minimum: [3, 'inclusive'], maximum: [90, 'exclusive'] })
+        .nullable()
+        .optional(),
+      string: m
+        .string({ regex: /^abc-.*-xyz$/, minLength: 10, maxLength: 100 })
+        .nullable()
+        .optional(),
+      boolean: m.boolean().nullable().optional(),
+      null: m.literal(null),
+      array: m.array(m.number(), { minItems: 5, maxItems: 10 }),
+      enum: m.enumeration(['A', 'B']),
+      union: m.union({ a: m.literal('A'), b: m.literal('B') }, { a: (v) => v === 'A', b: (v) => v === 'B' }),
+      emptyObject: m.object({}),
+      object: m.object({ a: m.literal(true).optional() }),
+
+      //custom
+      unknown: m.unknown(),
+      datetime: m.dateTime({ minimum: new Date(123), maximum: new Date(123000) }),
+      timestamp: m.timestamp({ minimum: new Date(123), maximum: new Date(123000) }),
+      countryCode: t.countryCode(),
+      currency: t.currency(),
+      locale: t.locale(),
+      ip: t.ip(),
+      email: t.email(),
+      coordinates: m.object({ longitude: t.longitude(), latitude: t.latitude() }).array(),
+      url: t.url(),
+      uuid: t.uuid(),
+      date: t.date(),
+      port: t.port(),
+      loginJwt: t.jwt('login', jwtLoginType, 'secret'),
+
+      self: m.reference(m.nullable(myType)),
+    })
+
+  const myArbitrary = arbitrary.fromType({
+    type: myType,
+    customArbitraries: {
+      IP: arbitrary.custom.ipv4,
+      latitude: arbitrary.custom.latitude,
+      longitude: arbitrary.custom.longitude,
+      date: arbitrary.custom.date,
+      port: arbitrary.custom.port,
+      URL: arbitrary.custom.url,
+      email: () => fc.emailAddress(),
+      unknown: () => fc.anything(),
+      datetime: (options) => fc.date({ min: options?.minimum, max: options?.maximum }),
+      timestamp: (options) => fc.date({ min: options?.minimum, max: options?.maximum }),
+      UUID: () => fc.uuid(),
+      'login-jwt': () => arbitrary.fromType({ type: jwtLoginType }),
+    },
+    maxDepth: 3,
+  })
+
+  const property = fc.property(myArbitrary, (v) => {
+    const encoded = encoder.encode(myType, v)
+    const decode = decoder.decode(myType, encoded)
+    if (!decode.success) {
+      console.log(decode)
+    }
+    expect(decode.success).toBe(true)
+  })
+  fc.assert(property)
+})

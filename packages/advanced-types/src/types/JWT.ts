@@ -1,53 +1,41 @@
-import { fromRegexes } from './builder'
-import { Infer, Result, Type, decode, encode, error, m, validate } from '@mondrian-framework/model'
+import { result, m, encoder, validate, types, decoder } from '@mondrian-framework/model'
 import jsonwebtoken from 'jsonwebtoken'
 
-const JWT_REGEX = /^[a-zA-Z0-9\-_]+?\.[a-zA-Z0-9\-_]+?\.([a-zA-Z0-9\-_]+)?$/
-
-export function jwt(options?: m.BaseOptions): m.CustomType<'JWT', {}, string> {
-  //TODO: regex is not exaustive, check also with jsonwebtoken.decode
-  return fromRegexes('JWT', 'Invalid JWT', options, JWT_REGEX)
-}
-
-/*
-type HsJwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
+type JwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
   jsonwebtoken.VerifyOptions,
   'algorithms' | 'complete'
 >
 
 const DEFAULT_HS_JWT_ALGORITHM = 'HS256'
 
-//TODO: to evaluate
-export function hsJwt<T extends Type>(
+export type JWTType<T extends types.Type, Name extends string> = m.CustomType<`${Name}-jwt`, JwtOptions, types.Infer<T>>
+
+export function jwt<T extends types.Type, Name extends string>(
+  name: Name,
   payloadType: T,
   secret: string,
-  options?: m.BaseOptions & HsJwtOptions,
-): m.CustomType<'JWT', HsJwtOptions, Infer<T>> {
+  options?: m.BaseOptions & JwtOptions,
+): JWTType<T, Name> {
   return m.custom(
-    'JWT',
+    `${name}-jwt`,
     (payload) => {
-      const encoded = encode(payloadType, payload)
-      console.log(
-        jsonwebtoken.sign(null as unknown as object, secret, {
-          algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM,
-        }),
-      )
+      const encoded = encoder.encode(payloadType, payload)
       return jsonwebtoken.sign(encoded as object, secret, { algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM })
     },
-    (value) => decodeHsJwt(value, payloadType, secret, options),
+    (value) => decodeJwt(value, payloadType, secret, options),
     (payload) => validate(payloadType, payload),
     options,
   )
 }
 
-function decodeHsJwt<T extends Type>(
+function decodeJwt<T extends types.Type>(
   value: unknown,
   payloadType: T,
   secret: string,
-  options?: HsJwtOptions,
-): Result<Infer<T>> {
+  options?: JwtOptions,
+): result.Result<types.Infer<T>> {
   if (typeof value !== 'string') {
-    return error('Invalid JWT type. String expected.', value)
+    return result.error('Invalid JWT type. String expected.', value)
   }
   try {
     const decoded = jsonwebtoken.verify(value, secret, {
@@ -55,9 +43,8 @@ function decodeHsJwt<T extends Type>(
       complete: true,
       algorithms: [options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM],
     })
-    return decode(payloadType, decoded.payload)
+    return decoder.decode(payloadType, decoded.payload)
   } catch {
-    return error('Invalid JWT type. Verify failed.', value)
+    return result.error('Invalid JWT type. Verify failed.', value)
   }
 }
-*/

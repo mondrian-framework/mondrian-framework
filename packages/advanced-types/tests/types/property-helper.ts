@@ -1,5 +1,5 @@
 import { fc as gen, test } from '@fast-check/vitest'
-import { decode, encode, m } from '@mondrian-framework/model'
+import { decoder, encoder, m } from '@mondrian-framework/model'
 import { SuiteFactory, expect } from 'vitest'
 
 /**
@@ -39,18 +39,20 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       // If the decoded value is not the same as the raw value (e.g. in Time where the raw can be a string
       // and the decoded is a Date)
       const { raw, expected } = rawValueAndExpectedValueFromUnknown(rawValue)
-      expect(decode(type, raw)).toEqual({ success: true, value: expected })
+      expect(decoder.decode(type, raw)).toEqual({ success: true, value: expected })
     }
 
     const checkIsNotDecoded = (rawValue: unknown) =>
-      decode(type, rawValue).success ? expect.fail(`${rawValue} was decoded but I expected the decoding to fail`) : true
+      decoder.decode(type, rawValue).success
+        ? expect.fail(`${rawValue} was decoded but I expected the decoding to fail`)
+        : true
 
     // informally, we check that `encode(decode(x)) = x`
     const checkEncodeInverseOfDecode = (rawValue: unknown) => {
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
-      const decoded = decode(type, raw)
+      const decoded = decoder.decode(type, raw)
       if (decoded.success) {
-        expect(encode(type, decoded.value)).toEqual(raw)
+        expect(encoder.encode(type, decoded.value)).toEqual(raw)
       } else {
         // If the decoding fails I fail the test, it doesn't make sense to check for inverse in that case
         return expect.fail(
@@ -64,15 +66,15 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       // We expect to receive as input only raw valid values. First we decode them expecting the result to be valid
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValidValue)
 
-      const decodingResult = decode(type, raw)
+      const decodingResult = decoder.decode(type, raw)
       if (!decodingResult.success) {
         expect.fail(`I was expecting to get only valid raw values as input but got ${rawValidValue}.
         Most likely there is a bug in the \`validValues\` passed as input`)
       } else {
         // If we got a valid value `Infer<T>` we check that by encoding and decoding we get back the same result
         const validValue = decodingResult.value
-        const encodedValue = encode(type, validValue)
-        expect(decode(type, encodedValue)).toEqual({ success: true, value: validValue })
+        const encodedValue = encoder.encode(type, validValue)
+        expect(decoder.decode(type, encodedValue)).toEqual({ success: true, value: validValue })
       }
     }
 

@@ -79,7 +79,7 @@ type NonOptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalDecorator<T
 
 //prettier-ignore
 type HasOptionalDecorator<T extends Type> 
-  = [T] extends [OptionalType<any>] ? true
+  = [T] extends [OptionalType<infer _T1>] ? true
   : [T] extends [NullableType<infer T1>] ? HasOptionalDecorator<T1>
   : [T] extends [ReferenceType<infer T1>] ? HasOptionalDecorator<T1>
   : [T] extends [() => infer T1 extends Type] ? HasOptionalDecorator<T1>
@@ -879,7 +879,7 @@ export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability
 }
 
 type MergeObjectFields<T1 extends Types, T2 extends Types> = {
-  [K in keyof T1 | keyof T2]: T2 extends Record<K, Type> ? T2[K] : T1 extends Record<K, Type> ? T1[K] : never
+  [K in keyof T1 | keyof T2]: K extends keyof T2 ? T2[K] : K extends keyof T1 ? T1[K] : never
 }
 
 /**

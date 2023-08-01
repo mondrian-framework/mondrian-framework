@@ -29,7 +29,6 @@ test('fromType', async () => {
       unknown: m.unknown(),
       datetime: m.dateTime({ minimum: new Date(123), maximum: new Date(123000) }),
       timestamp: m.timestamp({ minimum: new Date(123), maximum: new Date(123000) }),
-
       countryCode: t.countryCode(),
       currency: t.currency(),
       date: t.date(),

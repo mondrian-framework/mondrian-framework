@@ -13,16 +13,16 @@ const exampleCustom = types.custom(
 
 describe('Projection inference', () => {
   test('is true for base types', () => {
-    expectTypeOf<projection.InferProjection<types.NumberType>>().toEqualTypeOf<types.LiteralType<true>>()
-    expectTypeOf<projection.InferProjection<types.StringType>>().toEqualTypeOf<types.LiteralType<true>>()
-    expectTypeOf<projection.InferProjection<types.BooleanType>>().toEqualTypeOf<types.LiteralType<true>>()
-    expectTypeOf<projection.InferProjection<types.EnumType<['one', 'two']>>>().toEqualTypeOf<types.LiteralType<true>>()
-    expectTypeOf<projection.InferProjection<typeof exampleCustom>>().toEqualTypeOf<types.LiteralType<true>>()
+    expectTypeOf<projection.InferProjection<types.NumberType>>().toEqualTypeOf(types.literal(true))
+    expectTypeOf<projection.InferProjection<types.StringType>>().toEqualTypeOf(types.literal(true))
+    expectTypeOf<projection.InferProjection<types.BooleanType>>().toEqualTypeOf(types.literal(true))
+    expectTypeOf<projection.InferProjection<types.EnumType<['one', 'two']>>>().toEqualTypeOf(types.literal(true))
+    expectTypeOf<projection.InferProjection<typeof exampleCustom>>().toEqualTypeOf(types.literal(true))
 
-    expectTypeOf<projection.InferProjection<types.LiteralType<null>>>().toEqualTypeOf<types.LiteralType<true>>()
-    expectTypeOf<projection.InferProjection<types.LiteralType<'string'>>>().toEqualTypeOf<types.LiteralType<true>>()
-    expectTypeOf<projection.InferProjection<types.LiteralType<true>>>().toEqualTypeOf<types.LiteralType<true>>()
-    expectTypeOf<projection.InferProjection<types.LiteralType<1>>>().toEqualTypeOf<types.LiteralType<true>>()
+    expectTypeOf<projection.InferProjection<types.LiteralType<null>>>().toEqualTypeOf(types.literal(true))
+    expectTypeOf<projection.InferProjection<types.LiteralType<'string'>>>().toEqualTypeOf(types.literal(true))
+    expectTypeOf<projection.InferProjection<types.LiteralType<true>>>().toEqualTypeOf(types.literal(true))
+    expectTypeOf<projection.InferProjection<types.LiteralType<1>>>().toEqualTypeOf(types.literal(true))
   })
 
   test('is a correct object for ObjectType', () => {
@@ -184,9 +184,7 @@ describe('projection.SubProjection', () => {
   test('returns subprojection for union projection', () => {
     const model = types.object({ field1: types.number, field2: types.object({ inner: types.boolean }) })
     type Projection = projection.InferProjection<typeof model>
-    expectTypeOf<projection.SubProjection<Projection, 'field1'>>().toEqualTypeOf<
-      types.OptionalType<types.LiteralType<true>>
-    >()
+    expectTypeOf<projection.SubProjection<Projection, 'field1'>>().toEqualTypeOf(types.literal(true).optional())
 
     const expectedProjection = types
       .union({

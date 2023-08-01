@@ -11,7 +11,7 @@ const exampleCustom = types.custom(
   () => error('test', 'test'),
 )
 
-describe('projection.InferProjection', () => {
+describe('projection.FromType', () => {
   test('is true for base types', () => {
     expectTypeOf<projection.FromType<types.NumberType>>().toEqualTypeOf(types.literal(true))
     expectTypeOf<projection.FromType<types.StringType>>().toEqualTypeOf(types.literal(true))
@@ -160,6 +160,34 @@ describe('projection.fromType', () => {
     })
 
     expect(types.areEqual(projection.fromType(model), expectedProjectionModel)).toEqual(true)
+  })
+
+  test("returns the projection of an array's wrapped type", () => {
+    const model = types.object({ field1: types.number }).array()
+    const arrayProjection = projection.fromType(model)
+    const wrappedTypeProjection = projection.fromType(model.wrappedType)
+    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
+  })
+
+  test("returns the projection of an optional's wrapped type", () => {
+    const model = types.object({ field1: types.number }).optional()
+    const arrayProjection = projection.fromType(model)
+    const wrappedTypeProjection = projection.fromType(model.wrappedType)
+    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
+  })
+
+  test("returns the projection of a nullable's wrapped type", () => {
+    const model = types.object({ field1: types.number }).nullable()
+    const arrayProjection = projection.fromType(model)
+    const wrappedTypeProjection = projection.fromType(model.wrappedType)
+    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
+  })
+
+  test("returns the projection of a reference's wrapped type", () => {
+    const model = types.object({ field1: types.number }).reference()
+    const arrayProjection = projection.fromType(model)
+    const wrappedTypeProjection = projection.fromType(model.wrappedType)
+    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
   })
 })
 

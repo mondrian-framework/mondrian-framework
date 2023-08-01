@@ -1,5 +1,5 @@
 import { types } from './index'
-import { filterMapObject } from './utils'
+import { filterMapObject, internalError } from './utils'
 
 /**
  * This is the Mondrian type describing the structure of a projection: it is either the literal value
@@ -160,8 +160,8 @@ export function subProjection<const P extends Projection, K extends ProjectionKe
   if (projection.kind === 'union') {
     return projection.variants.partial.types[key] as SubProjection<P, K>
   } else {
-    throw new Error(
-      'INTERNAL ERROR: it appears that projection.subProjection was called with a type whose keys should have been `never` (and thus this call should have been impossible to make)',
+    throw internalError(
+      'It appears that `projection.subProjection` was called with a type whose keys should have been `never` (and thus this call should have been impossible to make in the first place)',
     )
   }
 }
@@ -245,6 +245,41 @@ export function projectedType<T extends types.Type, P extends types.Infer<FromTy
       return projectedType(concreteType.wrappedType, projection as any)
     case 'object':
       const projectionKeys = Object.keys(projection as any)
+      const a = concreteType.types
+      //filterMapObject()
+      //return 1
+      throw 'TODO'
+    case 'union':
+      throw 'TODO'
+  }
+}
+
+function unsafeProjectedType(type: any, projection: any): any {
+  if (projection === true) {
+    return type
+  }
+
+  const concreteType = types.concretise(type)
+  switch (concreteType.kind) {
+    case 'number':
+    case 'string':
+    case 'boolean':
+    case 'literal':
+    case 'enum':
+    case 'custom':
+      throw internalError(
+        'It appears that `projectedType` was called with a simple type and a projection different from `true`. This should not be allowed by the type system and could be an internal error',
+      )
+    case 'array':
+      return projectedType(concreteType.wrappedType, projection).array()
+    case 'nullable':
+      return projectedType(concreteType.wrappedType, projection).nullable()
+    case 'optional':
+      return projectedType(concreteType.wrappedType, projection).optional()
+    case 'reference':
+      return projectedType(concreteType.wrappedType, projection)
+    case 'object':
+      const projectionKeys = Object.keys(projection)
       const a = concreteType.types
       //filterMapObject()
       //return 1

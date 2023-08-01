@@ -64,3 +64,10 @@ export type UndefinedToOptionalFields<R extends Record<string, any>> =
 
 type NullableKeys<T> = { [Key in keyof T]: undefined extends T[Key] ? Key : never }[keyof T]
 type NonNullableKeys<T> = { [Key in keyof T]: undefined extends T[Key] ? never : Key }[keyof T]
+
+export function internalError(message: string): Error {
+  const header = '[INTERNAL ERROR]'
+  const mondrianIssueUrl = 'https://github.com/twinlogix/mondrian-framework/issues'
+  const reportMessage = `If you think this could be a bug in the framework, please report it at ${mondrianIssueUrl}`
+  return Error(`${header} ${message}\n${reportMessage}`)
+}

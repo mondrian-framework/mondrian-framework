@@ -22,6 +22,18 @@ describe('Infer', () => {
     expectTypeOf<Inferred>().toEqualTypeOf<boolean>()
   })
 
+  test('DateTimeType inferred as Date', () => {
+    const model = types.dateTime()
+    type Inferred = types.Infer<typeof model>
+    expectTypeOf<Inferred>().toEqualTypeOf<Date>()
+  })
+
+  test('TimestampType inferred as Date', () => {
+    const model = types.timestamp()
+    type Inferred = types.Infer<typeof model>
+    expectTypeOf<Inferred>().toEqualTypeOf<Date>()
+  })
+
   test('UnknownType inferred as unknown', () => {
     const model = types.unknown()
     type Inferred = types.Infer<typeof model>

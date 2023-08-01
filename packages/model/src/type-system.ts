@@ -1,7 +1,5 @@
-import { decoder } from './index'
-import { Result } from './result'
+import { decoder, result, validator } from './index'
 import { UndefinedToOptionalFields } from './utils'
-import { ValidationOptions } from './validate'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -391,8 +389,12 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
     value: unknown,
     decodingOptions: decoder.DecodingOptions,
     options?: CustomTypeOptions<Options>,
-  ): Result<InferredAs>
-  validate(value: InferredAs, validationOptions: ValidationOptions, options?: CustomTypeOptions<Options>): Result<true>
+  ): result.Result<InferredAs>
+  validate(
+    value: InferredAs,
+    validationOptions: validator.ValidationOptions,
+    options?: CustomTypeOptions<Options>,
+  ): result.Result<true>
 
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
   nullable(): NullableType<CustomType<Name, Options, InferredAs>>
@@ -1089,12 +1091,12 @@ export function custom<Name extends string, Options extends Record<string, any>,
     value: unknown,
     decodingOptions: decoder.DecodingOptions,
     options?: CustomTypeOptions<Options>,
-  ) => Result<InferredAs>,
+  ) => result.Result<InferredAs>,
   validate: (
     value: InferredAs,
-    validationOptions: ValidationOptions,
+    validationOptions: validator.ValidationOptions,
     options?: CustomTypeOptions<Options>,
-  ) => Result<true>,
+  ) => result.Result<true>,
   options?: OptionsOf<CustomType<Name, Options, InferredAs>>,
 ): CustomType<Name, Options, InferredAs> {
   return {
@@ -1240,7 +1242,7 @@ export function isType<T extends Type>(
   type: T,
   value: unknown,
   decodingOptions?: decoder.DecodingOptions,
-  validationOptions?: ValidationOptions,
+  validationOptions?: validator.ValidationOptions,
 ): value is Infer<T> {
   return decoder.decode(type, value, decodingOptions, validationOptions).success
 }
@@ -1255,7 +1257,7 @@ export function assertType<T extends Type>(
   type: T,
   value: unknown,
   decodingOptions?: decoder.DecodingOptions,
-  validationOptions?: ValidationOptions,
+  validationOptions?: validator.ValidationOptions,
 ): asserts value is Infer<T> {
   const result = decoder.decode(type, value, decodingOptions, validationOptions)
   if (!result.success) {

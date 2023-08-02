@@ -6,8 +6,7 @@ export function timezone(options?: m.BaseOptions): TimezoneType {
   return m.custom(
     'timezone',
     (value) => value,
-    (value) =>
-      typeof value === 'string' ? decoder.succeed(value) : decoder.fail('Expected a string timezone', value),
+    (value) => (typeof value === 'string' ? decoder.succeed(value) : decoder.fail('Expected a string timezone', value)),
     validateTimezone,
     options,
   )

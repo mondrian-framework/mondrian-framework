@@ -10,8 +10,7 @@ export function latitude(options?: m.BaseOptions): LatitudeType {
   return m.custom(
     'latitude',
     (number) => number,
-    (value) =>
-      typeof value === 'number' ? decoder.succeed(value) : decoder.fail('Expected a latitude number', value),
+    (value) => (typeof value === 'number' ? decoder.succeed(value) : decoder.fail('Expected a latitude number', value)),
     validateLatitude,
     options,
   )

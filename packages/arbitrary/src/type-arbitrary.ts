@@ -22,7 +22,9 @@ const stringOpts = fromType({
 }).filter((opts) => opts?.maxLength == null || opts.minLength == null || opts.maxLength > opts.minLength)
 const string = stringOpts.map(types.string)
 const literal = fc.oneof(fc.string(), fc.boolean(), fc.double(), fc.constant(null)).map(types.literal)
-const enumeration = fc.array(fc.string(), { minLength: 1, maxLength: 20 }).map(([head, ...tail]) => types.enumeration([head, ...tail]))
+const enumeration = fc
+  .array(fc.string(), { minLength: 1, maxLength: 20 })
+  .map(([head, ...tail]) => types.enumeration([head, ...tail]))
 const flatTypes = [number, boolean, string, literal, enumeration] //TODO: customs
 const flatTypesArbitrary = applyDecorators(fc.oneof(...flatTypes))
 const arrayOpts = fromType({

@@ -1,4 +1,4 @@
-import { types, result } from '../../src'
+import { types, decoder, validator } from '../../src'
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe } from 'vitest'
 
@@ -172,8 +172,8 @@ describe('Infer', () => {
     const model = types.custom<'myCustomType', {}, number>(
       'myCustomType',
       () => null,
-      () => result.error('test', 'test'),
-      () => result.error('test', 'test'),
+      () => decoder.baseFail('test', 'test'),
+      () => validator.baseFail('test', 'test'),
     )
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

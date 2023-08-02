@@ -25,28 +25,28 @@ function encodeTimestamp(timestamp: Date): JSONType {
 
 function decodeTimestamp(
   value: unknown,
-  _decodingOptions: decoder.DecodingOptions,
+  _decodingOptions: decoder.Options,
   _options?: types.OptionsOf<TimestampType>,
-): result.Result<Date> {
+): decoder.Result<Date> {
   return typeof value === 'number' && -864000000000000 < value && value < 864000000000000
-    ? result.success(new Date(value))
-    : result.error(`Timestamp must be between -864000000000000 and 864000000000000`, value)
+    ? decoder.succeed(new Date(value))
+    : decoder.baseFail(`timestamp`, value)
 }
 
 function validateTimestamp(
   input: Date,
-  _validationOptions: validator.ValidationOptions,
+  _validationOptions: validator.Options,
   options?: types.OptionsOf<TimestampType>,
-): result.Result<true> {
+): validator.Result {
   if (options === undefined) {
-    return result.success(true)
+    return validator.succeed()
   }
   const { minimum, maximum } = options
   if (maximum && input.getTime() > maximum.getTime()) {
-    return result.error(`Timestamp must be maximum ${maximum.toISOString()}`, input)
+    return validator.baseFail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
   }
   if (minimum && input.getTime() < minimum.getTime()) {
-    return result.error(`Timestamp must be minimum ${minimum.toISOString()}`, input)
+    return validator.baseFail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
   }
-  return result.success(true)
+  return validator.succeed()
 }

@@ -1,5 +1,5 @@
 import { types } from './index'
-import { filterMapObject, internalError } from './utils'
+import { filterMapObject, failWithInternalError } from './utils'
 
 /**
  * This is the Mondrian type describing the structure of a projection: it is either the literal value
@@ -157,13 +157,11 @@ export function subProjection<const P extends Projection, K extends ProjectionKe
   projection: P,
   key: K,
 ): SubProjection<P, K> {
-  if (projection.kind === 'union') {
-    return projection.variants.partial.types[key] as SubProjection<P, K>
-  } else {
-    throw internalError(
-      'It appears that `projection.subProjection` was called on a true projection with a key that should have been inferred as `never`',
-    )
-  }
+  return projection.kind === 'union'
+    ? (projection.variants.partial.types[key] as SubProjection<P, K>)
+    : failWithInternalError(
+        'It appears that `projection.subProjection` was called on a true projection with a key that should have been inferred as `never`',
+      )
 }
 
 /**
@@ -237,7 +235,7 @@ function unsafeProjectedType(type: any, projection: any): any {
     case 'literal':
     case 'enum':
     case 'custom':
-      throw internalError(
+      failWithInternalError(
         'It appears that `projectedType` was called with a simple type and a projection different from `true`. This should not be allowed by the type system and could be an internal error',
       )
     case 'array':

@@ -32,16 +32,16 @@ function encodeUnknown(value: unknown): JSONType {
 
 function decodeUnknown(
   value: unknown,
-  _decodingOptions: decoder.DecodingOptions,
+  _decodingOptions: decoder.Options,
   _options?: types.OptionsOf<UnknownType>,
-): result.Result<unknown> {
-  return result.success(value)
+): decoder.Result<unknown> {
+  return decoder.succeed(value)
 }
 
 function validateUnknown(
   _value: unknown,
-  _validationOptions: validator.ValidationOptions,
+  _validationOptions: validator.Options,
   _options?: types.OptionsOf<UnknownType>,
-): result.Result<true> {
-  return result.success(true)
+): validator.Result {
+  return validator.succeed()
 }

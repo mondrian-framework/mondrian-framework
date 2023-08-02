@@ -1,4 +1,4 @@
-import { decoder, result, validator } from './index'
+import { decoder, validator } from './index'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -398,14 +398,14 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
   encode(value: InferredAs, options?: CustomTypeOptions<Options>): JSONType
   decode(
     value: unknown,
-    decodingOptions: decoder.DecodingOptions,
+    decodingOptions: decoder.Options,
     options?: CustomTypeOptions<Options>,
-  ): result.Result<InferredAs>
+  ): decoder.Result<InferredAs>
   validate(
     value: InferredAs,
-    validationOptions: validator.ValidationOptions,
+    validationOptions: validator.Options,
     options?: CustomTypeOptions<Options>,
-  ): result.Result<true>
+  ): validator.Result
 
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
   nullable(): NullableType<CustomType<Name, Options, InferredAs>>
@@ -1104,14 +1104,14 @@ export function custom<Name extends string, Options extends Record<string, any>,
   encode: (value: InferredAs, options?: CustomTypeOptions<Options>) => JSONType,
   decode: (
     value: unknown,
-    decodingOptions: decoder.DecodingOptions,
+    decodingOptions: decoder.Options,
     options?: CustomTypeOptions<Options>,
-  ) => result.Result<InferredAs>,
+  ) => decoder.Result<InferredAs>,
   validate: (
     value: InferredAs,
-    validationOptions: validator.ValidationOptions,
+    validationOptions: validator.Options,
     options?: CustomTypeOptions<Options>,
-  ) => result.Result<true>,
+  ) => validator.Result,
   options?: OptionsOf<CustomType<Name, Options, InferredAs>>,
 ): CustomType<Name, Options, InferredAs> {
   return {
@@ -1235,7 +1235,7 @@ export function areEqual<T extends Type>(one: T, other: T): boolean {
     || type1.kind === 'boolean' && sameKindAndOptions(type1, type2)
     || type1.kind === 'string' && sameKindAndOptions(type1, type2)
     || (type1.kind === 'literal' && type1.kind === type2.kind && type1.options === type2.options && type1.literalValue === type2.literalValue)
-    || (type1.kind === 'enum' && type1.kind === type2.kind && type1.options === type2.options && type1.variants === type2.variants)
+    || (type1.kind === 'enum' && type1.kind === type2.kind && type1.options === type2.options && arraysHaveSameElements(type1.variants, type2.variants))
     || (type1.kind === 'custom' && type1.kind === type2.kind && type1.options === type2.options && type1.typeName === type2.typeName)
     || (type1.kind === 'array' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === 'nullable' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
@@ -1256,10 +1256,13 @@ export function areEqual<T extends Type>(one: T, other: T): boolean {
 export function isType<T extends Type>(
   type: T,
   value: unknown,
-  decodingOptions?: decoder.DecodingOptions,
-  validationOptions?: validator.ValidationOptions,
+  decodingOptions?: decoder.Options,
+  validationOptions?: validator.Options,
 ): value is Infer<T> {
-  return decoder.decode(type, value, decodingOptions, validationOptions).success
+  return decoder.decode(type, value, decodingOptions, validationOptions).match(
+    (_) => true,
+    (_) => false,
+  )
 }
 
 /**
@@ -1271,13 +1274,15 @@ export function isType<T extends Type>(
 export function assertType<T extends Type>(
   type: T,
   value: unknown,
-  decodingOptions?: decoder.DecodingOptions,
-  validationOptions?: validator.ValidationOptions,
+  decodingOptions?: decoder.Options,
+  validationOptions?: validator.Options,
 ): asserts value is Infer<T> {
-  const result = decoder.decode(type, value, decodingOptions, validationOptions)
-  if (!result.success) {
-    throw new Error(`Invalid type: ${JSON.stringify(result.errors)}`)
-  }
+  decoder.decode(type, value, decodingOptions, validationOptions).match(
+    (_) => {},
+    (errors) => {
+      throw new Error(`Invalid type: ${JSON.stringify(errors)}`)
+    },
+  )
 }
 
 /*

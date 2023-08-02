@@ -37,17 +37,13 @@ export function filterMapObject<A, B>(
 }
 
 /**
- * @param keyValuePairs a list of key-value pairs
- * @param lookup the key to lookup
- * @returns true if the `keyValuePairs` list contains the `lookup` key
+ *
+ * @param message the message to display in the error
+ * @returns a TypeScript `Error` where
  */
-export function containsKey<A, B>(keyValuePairs: [A, B][], lookup: A): boolean {
-  return keyValuePairs.some(([key, _]) => key === lookup)
-}
-
-export function internalError(message: string): Error {
+export function failWithInternalError(message: string): never {
   const header = '[INTERNAL ERROR]'
   const mondrianIssueUrl = 'https://github.com/twinlogix/mondrian-framework/issues'
   const reportMessage = `If you think this could be a bug in the framework, please report it at ${mondrianIssueUrl}`
-  return Error(`${header} ${message}\n${reportMessage}`)
+  throw Error(`${header} ${message}\n${reportMessage}`)
 }

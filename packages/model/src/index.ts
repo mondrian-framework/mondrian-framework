@@ -1,7 +1,5 @@
 import * as m from './types-exports'
 
-export { validateAndEncode } from './converter'
-
 export * as types from './types-exports'
 export * as decoder from './decoder'
 export * as encoder from './encoder'

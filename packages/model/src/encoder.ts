@@ -1,5 +1,5 @@
-import { types } from './index'
-import { filterMap, filterMapObject } from './utils'
+import { types, encoder, validator, result } from './index'
+import { filterMapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 import { match } from 'ts-pattern'
 
@@ -15,6 +15,14 @@ export function encode<const T extends types.Type>(type: T, value: types.Infer<T
   // It is important that the matching decoder treats a `null` as an `undefined` optional type when
   // decoding optionals!
   return encoded === undefined ? null : encoded
+}
+
+export function validateAndEncode<const T extends types.Type>(
+  type: T,
+  value: types.Infer<T>,
+  validationOptions?: Partial<validator.Options>,
+): result.Result<JSONType, validator.Error[]> {
+  return validator.validate(type, value, validationOptions).replace(encoder.encode(type, value))
 }
 
 /**
@@ -97,7 +105,7 @@ function unsafeEncodeArray<T extends types.Type, M extends types.Mutability>(
   type: types.ArrayType<M, T>,
   values: any,
 ): JSONType[] {
-  return filterMap(values, (value) => unsafeEncode(type.wrappedType, value))
+  return values.map((value: any) => unsafeEncode(type.wrappedType, value))
 }
 
 /**

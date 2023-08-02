@@ -1,5 +1,4 @@
-import { projection, types } from '../src'
-import { error } from '../src/result'
+import { projection, types, decoder, validator } from '../src'
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe, expect } from 'vitest'
 
@@ -7,8 +6,8 @@ import { expectTypeOf, describe, expect } from 'vitest'
 const exampleCustom = types.custom(
   'customType',
   () => null,
-  () => error('test', 'test'),
-  () => error('test', 'test'),
+  () => decoder.baseFail('test', 'test'),
+  () => validator.baseFail('test', 'test'),
 )
 
 function expectSameTypes(t1: types.Type, t2: types.Type): void {

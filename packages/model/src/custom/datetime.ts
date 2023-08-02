@@ -24,36 +24,36 @@ function encodeDateTime(date: Date): string {
 
 function decodeDateTime(
   value: unknown,
-  decodingOptions: decoder.DecodingOptions,
+  decodingOptions: decoder.Options,
   _options?: types.OptionsOf<DateTimeType>,
-): result.Result<Date> {
+): decoder.Result<Date> {
   if (typeof value === 'string' && decodingOptions.typeCastingStrategy === 'expectExactTypes') {
     return tryMakeDate(value)
   } else if (typeof value === 'number' && decodingOptions.typeCastingStrategy === 'tryCasting') {
     return tryMakeDate(value)
   }
-  return result.error('ISO date expected', value)
+  return decoder.baseFail('ISO date', value)
 }
 
-function tryMakeDate(value: number | string): result.Result<Date> {
+function tryMakeDate(value: number | string): decoder.Result<Date> {
   const date = new Date(value)
-  return Number.isNaN(date.valueOf()) ? result.error('ISO date expected', value) : result.success(date)
+  return Number.isNaN(date.valueOf()) ? decoder.baseFail('ISO date', value) : decoder.succeed(date)
 }
 
 function validateDateTime(
   date: Date,
-  _validationOptions: validator.ValidationOptions,
+  _validationOptions: validator.Options,
   options?: types.OptionsOf<DateTimeType>,
-): result.Result<true> {
+): validator.Result {
   if (options === undefined) {
-    return result.success(true)
+    return validator.succeed()
   }
   const { maximum, minimum } = options
   if (maximum && date.getTime() > maximum.getTime()) {
-    return result.error(`Datetime must be maximum ${maximum.toISOString()}`, date)
+    return validator.baseFail(`Datetime must be maximum ${maximum.toISOString()}`, date)
   }
   if (minimum && date.getTime() < minimum.getTime()) {
-    return result.error(`Datetime must be minimum ${minimum.toISOString()}`, date)
+    return validator.baseFail(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
-  return result.success(true)
+  return validator.succeed()
 }

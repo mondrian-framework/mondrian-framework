@@ -6,8 +6,8 @@ import { expectTypeOf, describe, expect } from 'vitest'
 const exampleCustom = types.custom(
   'customType',
   () => null,
-  () => decoder.baseFail('test', 'test'),
-  () => validator.baseFail('test', 'test'),
+  () => decoder.fail('test', 'test'),
+  () => validator.fail('test', 'test'),
 )
 
 function expectSameTypes(t1: types.Type, t2: types.Type): void {

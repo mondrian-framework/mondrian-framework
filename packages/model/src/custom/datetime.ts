@@ -32,12 +32,12 @@ function decodeDateTime(
   } else if (typeof value === 'number' && decodingOptions.typeCastingStrategy === 'tryCasting') {
     return tryMakeDate(value)
   }
-  return decoder.baseFail('ISO date', value)
+  return decoder.fail('ISO date', value)
 }
 
 function tryMakeDate(value: number | string): decoder.Result<Date> {
   const date = new Date(value)
-  return Number.isNaN(date.valueOf()) ? decoder.baseFail('ISO date', value) : decoder.succeed(date)
+  return Number.isNaN(date.valueOf()) ? decoder.fail('ISO date', value) : decoder.succeed(date)
 }
 
 function validateDateTime(
@@ -50,10 +50,10 @@ function validateDateTime(
   }
   const { maximum, minimum } = options
   if (maximum && date.getTime() > maximum.getTime()) {
-    return validator.baseFail(`Datetime must be maximum ${maximum.toISOString()}`, date)
+    return validator.fail(`Datetime must be maximum ${maximum.toISOString()}`, date)
   }
   if (minimum && date.getTime() < minimum.getTime()) {
-    return validator.baseFail(`Datetime must be minimum ${minimum.toISOString()}`, date)
+    return validator.fail(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
   return validator.succeed()
 }

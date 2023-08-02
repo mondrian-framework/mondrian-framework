@@ -1,4 +1,4 @@
-import { types, result, validator } from './index'
+import { types, decoder, result, validator, path } from './index'
 import { match, Pattern as P } from 'ts-pattern'
 
 /**
@@ -38,29 +38,27 @@ export function decode<T extends types.Type>(
   decodingOptions?: Partial<Options>,
   validationOptions?: Partial<validator.Options>,
 ): result.Result<types.Infer<T>, validator.Error[] | Error[]> {
-  const actualOptions = { ...defaultOptions, ...decodingOptions }
-  type R = result.Result<types.Infer<T>, validator.Error[] | Error[]>
-  const decodingResult = unsafeDecode(type, value, actualOptions) as R
-  return decodingResult.then((decodedValue) =>
-    validator.validate<T>(type, decodedValue, validationOptions).replace(decodedValue),
-  )
+  return decodeWithoutValidation(type, value, decodingOptions)
+    .mapError((errors) => errors as validator.Error[] | decoder.Error[])
+    .then((decodedValue) => {
+      return validator.validate<T>(type, decodedValue, validationOptions).replace(decodedValue)
+    })
+}
 
-  /*
-  // TODO: if we ever rework the current Error interface (maybe we should and factor out the short circuiting logic in
-  // a generic error like other languages like Scala/Haskell/Elm/Gleam/Rust) this should be rewritten as a series
-  // of `.then().then()`
-  const decodingResult = unsafeDecode(type, value, actualOptions) as result.Result<types.Infer<T>>
-  if (decodingResult.success) {
-    const validationResult = validator.validate(type, decodingResult.value, validationOptions)
-    if (validationResult.success) {
-      return decodingResult
-    } else {
-      return result.enrichErrors({ success: false, errors: validationResult.errors } as result.Result<types.Infer<T>>)
-    }
-  } else {
-    return result.enrichErrors(decodingResult)
-  }
-  */
+/**
+ * TODO: add doc and make sure that it makes clear that this should be used for custom decoders only
+ * @param type
+ * @param value
+ * @param decodingOptions
+ * @returns
+ */
+export function decodeWithoutValidation<T extends types.Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: Partial<Options>,
+): decoder.Result<types.Infer<T>> {
+  const actualOptions = { ...defaultOptions, ...decodingOptions }
+  return unsafeDecode(type, value, actualOptions) as decoder.Result<types.Infer<T>>
 }
 
 /**
@@ -69,7 +67,7 @@ export function decode<T extends types.Type>(
 export type Error = {
   expected: string
   got: unknown
-  path: string[]
+  path: path.Path
 }
 
 /**
@@ -85,13 +83,22 @@ function addExpected(otherExpected: string): (error: Error) => Error {
 /**
  * Utility function to prepend a prefix to the path of a `decoder.Error`.
  */
-function prependToPath(prefix: string): (error: Error) => Error {
-  // ⚠️ Possible pain point: error is mutated in place so if an error is shared and multiple pieces
-  // update it, it may lead to wrong error messages.
-  return (error: Error) => {
-    error.path.unshift(prefix)
-    return error
-  }
+function prependFieldToPath(fieldName: string): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependField(fieldName) })
+}
+
+/**
+ * Utility function to prepend an index to the path of a `decoder.Error`.
+ */
+function prependIndexToPath(index: number): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependIndex(index) })
+}
+
+/**
+ * Utility function to prepend a variant to the path of a `decoder.Error`.
+ */
+function prependVariantToPath(variantName: string): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependVariant(variantName) })
 }
 
 /**
@@ -104,7 +111,7 @@ export const succeed = <A>(value: A): Result<A> => result.ok(value)
  * @param errors the errors that made the decoding process fail
  * @returns a `decoder.Result` that fails with the given array of errors
  */
-export const fail = <A>(errors: Error[]): Result<A> => result.fail(errors)
+export const failWithErrors = <A>(errors: Error[]): Result<A> => result.fail(errors)
 
 /**
  * @param expected the expected value
@@ -112,7 +119,8 @@ export const fail = <A>(errors: Error[]): Result<A> => result.fail(errors)
  * @returns a `decoder.Result` that fails with a single error with an empty path and the provided
  *          `expected` and `got` values
  */
-export const baseFail = <A>(expected: string, got: unknown): Result<A> => fail([{ expected, got, path: [] }])
+export const fail = <A>(expected: string, got: unknown): Result<A> =>
+  failWithErrors([{ expected, got, path: path.empty() }])
 
 function unsafeDecode(type: types.Type, value: unknown, options: Options): Result<unknown> {
   return match(types.concretise(type))
@@ -141,7 +149,7 @@ function decodeBoolean(value: unknown, options: Options): Result<boolean> {
     .with(['tryCasting', 'true'], () => succeed(true))
     .with(['tryCasting', 'false'], () => succeed(false))
     .with(['tryCasting', P.number], ([_, n]) => succeed(n !== 0))
-    .otherwise((_) => baseFail('boolean', value))
+    .otherwise((_) => fail('boolean', value))
 }
 
 /**
@@ -151,12 +159,12 @@ function decodeNumber(value: unknown, options: Options): Result<number> {
   return match([options.typeCastingStrategy, value])
     .with([P._, P.number], ([_, n]) => succeed(n))
     .with(['tryCasting', P.string], ([_, s]) => numberFromString(s))
-    .otherwise((_) => baseFail('number', value))
+    .otherwise((_) => fail('number', value))
 }
 
 function numberFromString(string: string): Result<number> {
   return match(Number(string))
-    .with(NaN, (_) => baseFail<number>('number', string))
+    .with(NaN, (_) => fail<number>('number', string))
     .with(P.number, (n) => succeed(n))
     .exhaustive()
 }
@@ -169,7 +177,7 @@ function decodeString(value: unknown, options: Options): Result<string> {
     .with([P._, P.string], ([_, s]) => succeed(s))
     .with(['tryCasting', P.number], ([_, n]) => succeed(n.toString()))
     .with(['tryCasting', P.boolean], ([_, b]) => succeed(b.toString()))
-    .otherwise((_) => baseFail('string', value))
+    .otherwise((_) => fail('string', value))
 }
 
 /**
@@ -179,7 +187,7 @@ function decodeLiteral(type: types.LiteralType<any>, value: unknown, options: Op
   return match([options.typeCastingStrategy, type.literalValue, value])
     .with([P._, P._, P.when((value) => value === type.literalValue)], ([_opts, literal, _value]) => succeed(literal))
     .with(['tryCasting', null, 'null'], ([_opts, literal, _value]) => succeed(literal))
-    .otherwise((_) => baseFail(`literal (${type.literalValue})`, value))
+    .otherwise((_) => fail(`literal (${type.literalValue})`, value))
   /*
     const castedValue = decodeInternal(union({ n: number(), b: boolean(), s: string() }), value, opts)
     if (castedValue.success) {
@@ -197,7 +205,7 @@ function decodeLiteral(type: types.LiteralType<any>, value: unknown, options: Op
 function decodeEnum(type: types.EnumType<any>, value: unknown): Result<any> {
   return type.variants.includes(value)
     ? succeed(value)
-    : baseFail(`enum (${type.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
+    : fail(`enum (${type.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
 }
 
 /**
@@ -250,7 +258,7 @@ function decodeArray(type: types.ArrayType<any, any>, value: unknown, options: O
   return match([options.typeCastingStrategy, value])
     .with([P._, P.array(P._)], ([_, array]) => decodeArrayValues(type, array, options))
     .with(['tryCasting', P.instanceOf(Object)], ([_, object]) => decodeObjectAsArray(type, object, options))
-    .otherwise((_) => baseFail('array', value))
+    .otherwise((_) => fail('array', value))
 }
 
 /**
@@ -269,14 +277,14 @@ function decodeArrayValues(type: types.ArrayType<any, any>, array: unknown[], op
       },
       (errors) => {
         encounteredError = true
-        decodingErrors.push(...errors.map(prependToPath(`[${i}]`)))
+        decodingErrors.push(...errors.map(prependIndexToPath(i)))
       },
     )
     if (options.errorReportingStrategy === 'stopAtFirstError' && encounteredError) {
       break
     }
   }
-  return encounteredError ? succeed(decodedValues) : fail(decodingErrors)
+  return encounteredError ? succeed(decodedValues) : failWithErrors(decodingErrors)
 }
 
 /**
@@ -293,7 +301,7 @@ function decodeObjectAsArray(type: types.ArrayType<any, any>, object: Object, op
  */
 function objectToArray(object: Object): Result<any[]> {
   const keys = keysAsConsecutiveNumbers(object)
-  return keys === undefined ? baseFail('array', object) : succeed(keys.map((i) => object[i as keyof object]))
+  return keys === undefined ? fail('array', object) : succeed(keys.map((i) => object[i as keyof object]))
 }
 
 /**
@@ -346,7 +354,7 @@ function decodeUntaggedUnion(type: types.UnionType<any>, value: unknown, options
       },
       (errors) => {
         encounteredError = true
-        decodingErrors.push(...errors.map(prependToPath(`${variantName}`)))
+        decodingErrors.push(...errors.map(prependVariantToPath(variantName)))
       },
     )
 
@@ -356,7 +364,7 @@ function decodeUntaggedUnion(type: types.UnionType<any>, value: unknown, options
       break
     }
   }
-  return fail(decodingErrors)
+  return failWithErrors(decodingErrors)
 }
 
 function decodeTaggedUnion(type: types.UnionType<any>, value: unknown, options: Options): Result<any> {
@@ -365,11 +373,11 @@ function decodeTaggedUnion(type: types.UnionType<any>, value: unknown, options: 
     const variantName = singleKeyFromObject(object)
     if (variantName !== undefined && Object.keys(type.variants).includes(variantName)) {
       const decodingResult = unsafeDecode(type.variants[variantName], object[variantName], options)
-      return decodingResult.mapError((errors) => errors.map(prependToPath(variantName)))
+      return decodingResult.mapError((errors) => errors.map(prependVariantToPath(variantName)))
     }
   }
   const prettyVariants = Object.keys(type.variants).join(', ')
-  return baseFail(`union (${prettyVariants})`, value)
+  return fail(`union (${prettyVariants})`, value)
 }
 
 /**
@@ -386,7 +394,7 @@ function decodeObject(type: types.ObjectType<any, any>, value: unknown, options:
 }
 
 function castToObject(value: unknown): Result<Record<string, unknown>> {
-  return typeof value === 'object' ? succeed(value as Record<string, unknown>) : baseFail('object', value)
+  return typeof value === 'object' ? succeed(value as Record<string, unknown>) : fail('object', value)
 }
 
 function decodeObjectProperties(
@@ -406,12 +414,14 @@ function decodeObjectProperties(
       },
       (errors) => {
         encounteredError = true
-        decodingErrors.push(...errors.map(prependToPath(fieldName)))
+        decodingErrors.push(...errors.map(prependFieldToPath(fieldName)))
       },
     )
     if (options.errorReportingStrategy === 'stopAtFirstError' && encounteredError) {
       break
     }
   }
-  return encounteredError ? fail(decodingErrors) : succeed(decodedObject)
+  return encounteredError ? failWithErrors(decodingErrors) : succeed(decodedObject)
 }
+
+// TODO rimuovere union

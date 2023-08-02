@@ -172,8 +172,8 @@ describe('Infer', () => {
     const model = types.custom<'myCustomType', {}, number>(
       'myCustomType',
       () => null,
-      () => decoder.baseFail('test', 'test'),
-      () => validator.baseFail('test', 'test'),
+      () => decoder.fail('test', 'test'),
+      () => validator.fail('test', 'test'),
     )
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

@@ -30,7 +30,7 @@ function decodeTimestamp(
 ): decoder.Result<Date> {
   return typeof value === 'number' && -864000000000000 < value && value < 864000000000000
     ? decoder.succeed(new Date(value))
-    : decoder.baseFail(`timestamp`, value)
+    : decoder.fail(`timestamp`, value)
 }
 
 function validateTimestamp(
@@ -43,10 +43,10 @@ function validateTimestamp(
   }
   const { minimum, maximum } = options
   if (maximum && input.getTime() > maximum.getTime()) {
-    return validator.baseFail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
+    return validator.fail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
   }
   if (minimum && input.getTime() < minimum.getTime()) {
-    return validator.baseFail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
+    return validator.fail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
   }
   return validator.succeed()
 }

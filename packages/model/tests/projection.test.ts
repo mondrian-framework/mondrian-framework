@@ -11,6 +11,10 @@ const exampleCustom = types.custom(
   () => error('test', 'test'),
 )
 
+function expectSameTypes(t1: types.Type, t2: types.Type): void {
+  expect(types.areEqual(t1, t2)).toBe(true)
+}
+
 describe('projection.FromType', () => {
   test('is true for base types', () => {
     expectTypeOf<projection.FromType<types.NumberType>>().toEqualTypeOf(types.literal(true))
@@ -98,16 +102,16 @@ describe('projection.FromType', () => {
 
 describe('projection.fromType', () => {
   test('returns the types.literal true for base types', () => {
-    expect(types.areEqual(projection.fromType(types.number), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.boolean), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.string), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.enumeration(['a', 'b'])), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.literal(1)), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.literal('a')), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.literal(true)), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.literal(false)), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(types.literal(null)), types.literal(true))).toEqual(true)
-    expect(types.areEqual(projection.fromType(exampleCustom), types.literal(true))).toEqual(true)
+    expectSameTypes(projection.fromType(types.number), types.literal(true))
+    expectSameTypes(projection.fromType(types.boolean), types.literal(true))
+    expectSameTypes(projection.fromType(types.string), types.literal(true))
+    expectSameTypes(projection.fromType(types.enumeration(['a', 'b'])), types.literal(true))
+    expectSameTypes(projection.fromType(types.literal(1)), types.literal(true))
+    expectSameTypes(projection.fromType(types.literal('a')), types.literal(true))
+    expectSameTypes(projection.fromType(types.literal(true)), types.literal(true))
+    expectSameTypes(projection.fromType(types.literal(false)), types.literal(true))
+    expectSameTypes(projection.fromType(types.literal(null)), types.literal(true))
+    expectSameTypes(projection.fromType(exampleCustom), types.literal(true))
   })
 
   test('returns an object model for objects', () => {
@@ -133,7 +137,7 @@ describe('projection.fromType', () => {
       }),
     })
 
-    expect(types.areEqual(projection.fromType(model), expectedProjectionModel)).toEqual(true)
+    expectSameTypes(projection.fromType(model), expectedProjectionModel)
   })
 
   test('returns an object model for unions', () => {
@@ -159,35 +163,35 @@ describe('projection.fromType', () => {
       }),
     })
 
-    expect(types.areEqual(projection.fromType(model), expectedProjectionModel)).toEqual(true)
+    expectSameTypes(projection.fromType(model), expectedProjectionModel)
   })
 
   test("returns the projection of an array's wrapped type", () => {
     const model = types.object({ field1: types.number }).array()
     const arrayProjection = projection.fromType(model)
     const wrappedTypeProjection = projection.fromType(model.wrappedType)
-    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
+    expectSameTypes(arrayProjection, wrappedTypeProjection)
   })
 
   test("returns the projection of an optional's wrapped type", () => {
     const model = types.object({ field1: types.number }).optional()
     const arrayProjection = projection.fromType(model)
     const wrappedTypeProjection = projection.fromType(model.wrappedType)
-    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
+    expectSameTypes(arrayProjection, wrappedTypeProjection)
   })
 
   test("returns the projection of a nullable's wrapped type", () => {
     const model = types.object({ field1: types.number }).nullable()
     const arrayProjection = projection.fromType(model)
     const wrappedTypeProjection = projection.fromType(model.wrappedType)
-    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
+    expectSameTypes(arrayProjection, wrappedTypeProjection)
   })
 
   test("returns the projection of a reference's wrapped type", () => {
     const model = types.object({ field1: types.number }).reference()
     const arrayProjection = projection.fromType(model)
     const wrappedTypeProjection = projection.fromType(model.wrappedType)
-    expect(types.areEqual(arrayProjection, wrappedTypeProjection)).toBe(true)
+    expectSameTypes(arrayProjection, wrappedTypeProjection)
   })
 })
 
@@ -227,7 +231,7 @@ describe('projection.subProjection', () => {
   test('returns the sub object when provided the corresponding key', () => {
     const model = types.object({ field1: types.number, field2: types.object({ inner1: types.string }) })
     const subProjectionOnField1 = projection.subProjection(projection.fromType(model), 'field1')
-    expect(types.areEqual(subProjectionOnField1, types.literal(true).optional())).toBe(true)
+    expectSameTypes(subProjectionOnField1, types.literal(true).optional())
 
     const subProjectionOnField2 = projection.subProjection(projection.fromType(model), 'field2')
     const expectedSubProjection = types
@@ -236,7 +240,11 @@ describe('projection.subProjection', () => {
         partial: types.object({ inner1: types.literal(true).optional() }),
       })
       .optional()
-    expect(types.areEqual(subProjectionOnField2, expectedSubProjection)).toBe(true)
+    expectSameTypes(subProjectionOnField2, expectedSubProjection)
+  })
+
+  test('cannot be called on true projections', () => {
+    expect(() => projection.subProjection(types.literal(true), {} as never)).toThrowError()
   })
 })
 
@@ -331,5 +339,77 @@ describe('projection.ProjectedType', () => {
     const reference = model.reference()
     type ReferenceProjection = projection.ProjectedType<typeof reference, P>
     expectTypeOf<ReferenceProjection>().toEqualTypeOf(projected)
+  })
+})
+
+describe('projection.projectedType', () => {
+  test('returns the same type when given a true projection', () => {
+    const projectedType = projection.projectedType(types.number, true)
+    expectSameTypes(projectedType, types.number())
+  })
+
+  test('cannot be called with a base type and an object', () => {
+    expect(() => projection.projectedType(types.number, {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.string, {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.literal(true), {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.literal(false), {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.literal(1), {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.literal(''), {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.literal(null), {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.boolean, {} as any)).toThrowError()
+    expect(() => projection.projectedType(exampleCustom, {} as any)).toThrowError()
+  })
+
+  test('returns an array of projections when called on array', () => {
+    const model = types.object({ field1: types.number, field2: types.string }).array()
+    const projectedType = projection.projectedType(model, { field1: true })
+    const expectedProjection = types.object({ field1: types.number }).array()
+    expectSameTypes(projectedType, expectedProjection)
+  })
+
+  test('returns an optional projection when called on optional value', () => {
+    const model = types.object({ field1: types.number, field2: types.string }).optional()
+    const projectedType = projection.projectedType(model, { field1: true })
+    const expectedProjection = types.object({ field1: types.number }).optional()
+    expectSameTypes(projectedType, expectedProjection)
+  })
+
+  test('returns a nullable projection when called on nullable value', () => {
+    const model = types.object({ field1: types.number, field2: types.string }).nullable()
+    const projectedType = projection.projectedType(model, { field1: true })
+    const expectedProjection = types.object({ field1: types.number }).nullable()
+    expectSameTypes(projectedType, expectedProjection)
+  })
+
+  test('returns the inner projection when called on reference value', () => {
+    const model = types.object({ field1: types.number, field2: types.string }).reference()
+    const projectedType = projection.projectedType(model, { field1: true })
+    const expectedProjection = types.object({ field1: types.number })
+    expectSameTypes(projectedType, expectedProjection)
+  })
+
+  test('returns a union of projected variants when called on union', () => {
+    const model = types.union({
+      variant1: types.string,
+      variant2: types.object({
+        field1: types.boolean,
+        field2: types.number,
+      }),
+      variant3: types.boolean,
+    })
+    const p = {
+      variant1: true,
+      variant2: {
+        field1: true,
+      },
+    }
+
+    const projectedType = projection.projectedType(model, p)
+    const expectedProjection = types.union({
+      variant1: types.string(),
+      variant2: types.object({ field1: types.boolean }),
+    })
+
+    expectSameTypes(projectedType, expectedProjection)
   })
 })

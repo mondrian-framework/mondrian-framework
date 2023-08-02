@@ -161,7 +161,7 @@ export function subProjection<const P extends Projection, K extends ProjectionKe
     return projection.variants.partial.types[key] as SubProjection<P, K>
   } else {
     throw internalError(
-      'It appears that `projection.subProjection` was called with a type whose keys should have been `never` (and thus this call should have been impossible to make in the first place)',
+      'It appears that `projection.subProjection` was called on a true projection with a key that should have been inferred as `never`',
     )
   }
 }
@@ -221,37 +221,7 @@ export function projectedType<T extends types.Type, P extends types.Infer<FromTy
   type: T,
   projection: P,
 ): ProjectedType<T, P> {
-  if (projection === true) {
-    return type as ProjectedType<T, P>
-  }
-
-  const concreteType = types.concretise(type)
-  switch (concreteType.kind) {
-    case 'number':
-    case 'string':
-    case 'boolean':
-    case 'literal':
-    case 'enum':
-    case 'custom':
-      //return undefined
-      throw 'TODO'
-    case 'array':
-      return projectedType(concreteType.wrappedType, projection as any).array()
-    case 'nullable':
-      return projectedType(concreteType.wrappedType, projection as any).nullable()
-    case 'optional':
-      return projectedType(concreteType.wrappedType, projection as any).optional()
-    case 'reference':
-      return projectedType(concreteType.wrappedType, projection as any)
-    case 'object':
-      const projectionKeys = Object.keys(projection as any)
-      const a = concreteType.types
-      //filterMapObject()
-      //return 1
-      throw 'TODO'
-    case 'union':
-      throw 'TODO'
-  }
+  return unsafeProjectedType(type, projection)
 }
 
 function unsafeProjectedType(type: any, projection: any): any {
@@ -271,22 +241,22 @@ function unsafeProjectedType(type: any, projection: any): any {
         'It appears that `projectedType` was called with a simple type and a projection different from `true`. This should not be allowed by the type system and could be an internal error',
       )
     case 'array':
-      return projectedType(concreteType.wrappedType, projection).array()
+      return unsafeProjectedType(concreteType.wrappedType, projection).array()
     case 'nullable':
-      return projectedType(concreteType.wrappedType, projection).nullable()
+      return unsafeProjectedType(concreteType.wrappedType, projection).nullable()
     case 'optional':
-      return projectedType(concreteType.wrappedType, projection).optional()
+      return unsafeProjectedType(concreteType.wrappedType, projection).optional()
     case 'reference':
-      return projectedType(concreteType.wrappedType, projection)
+      return unsafeProjectedType(concreteType.wrappedType, projection)
     case 'object':
-      const projectionKeys = Object.keys(projection)
-      const a = concreteType.types
-      //filterMapObject()
-      //return 1
-      throw 'TODO'
+      return types.object(unsafeProjectFields(concreteType.types, projection))
     case 'union':
-      throw 'TODO'
+      return types.union(unsafeProjectFields(concreteType.variants, projection))
   }
+}
+
+function unsafeProjectFields(types: types.Types, projection: any): Record<string, any> {
+  return filterMapObject(projection, (fieldName, subProjection) => unsafeProjectedType(types[fieldName], subProjection))
 }
 
 /*

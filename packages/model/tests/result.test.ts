@@ -63,6 +63,11 @@ describe('mapError', () => {
     ))
 })
 
+describe('replace', () => {
+  test('replaces the success value', () => expectOk(result.ok(1).replace(2), 2))
+  test('leaves the error unchanged', () => expectFailure(result.fail('error').replace(2), 'error'))
+})
+
 describe('unwrap', () => {
   test('returns value if called on ok value', () => expect(result.ok(1).unwrap(0)).toBe(1))
   test('returns fallback if called on failure value', () => expect(result.fail('error').unwrap(1)).toBe(1))

@@ -398,9 +398,9 @@ describe('projection.projectedType', () => {
       variant3: types.boolean,
     })
     const p = {
-      variant1: true,
+      variant1: true as true,
       variant2: {
-        field1: true,
+        field1: true as true,
       },
     }
 

@@ -50,10 +50,10 @@ function validateDateTime(
   }
   const { maximum, minimum } = options
   if (maximum && date.getTime() > maximum.getTime()) {
-    return validator.baseFail(`Datetime must be maximum ${maximum.toISOString()}`, date)
+    return validator.fail(`Datetime must be maximum ${maximum.toISOString()}`, date)
   }
   if (minimum && date.getTime() < minimum.getTime()) {
-    return validator.baseFail(`Datetime must be minimum ${minimum.toISOString()}`, date)
+    return validator.fail(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
   return validator.succeed()
 }

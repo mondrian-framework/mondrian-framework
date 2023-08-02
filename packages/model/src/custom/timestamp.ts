@@ -43,10 +43,10 @@ function validateTimestamp(
   }
   const { minimum, maximum } = options
   if (maximum && input.getTime() > maximum.getTime()) {
-    return validator.baseFail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
+    return validator.fail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
   }
   if (minimum && input.getTime() < minimum.getTime()) {
-    return validator.baseFail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
+    return validator.fail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
   }
   return validator.succeed()
 }

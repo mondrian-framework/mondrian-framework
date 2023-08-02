@@ -55,7 +55,7 @@ export const succeed: () => Result = () => result.ok(true)
  * @param errors the errors that made the validation process fail
  * @returns a `validator.Result` that fails with the given array of errors
  */
-export const fail = (errors: Error[]): Result => result.fail(errors)
+export const failWithErrors = (errors: Error[]): Result => result.fail(errors)
 
 /**
  * @param assertion the assertion that failed
@@ -63,7 +63,8 @@ export const fail = (errors: Error[]): Result => result.fail(errors)
  * @returns a `validator.Result` that fails with a single error with an empty path and the provided
  *          `assertion` and `got` values
  */
-export const baseFail = (assertion: string, got: unknown): Result => fail([{ assertion, got, path: path.empty() }])
+export const fail = (assertion: string, got: unknown): Result =>
+  failWithErrors([{ assertion, got, path: path.empty() }])
 
 /**
  * @param type the {@link Type type} to define the validation logic
@@ -109,21 +110,21 @@ function validateNumber(type: types.NumberType, value: number): validator.Result
   if (maximum) {
     const [bound, inclusivity] = maximum
     if (inclusivity === 'inclusive' && value > bound) {
-      return validator.baseFail(`number must be less than or equal to ${bound}`, value)
+      return validator.fail(`number must be less than or equal to ${bound}`, value)
     } else if (inclusivity === 'exclusive' && value >= bound) {
-      return validator.baseFail(`number must be less than ${bound}`, value)
+      return validator.fail(`number must be less than ${bound}`, value)
     }
   }
   if (minimum) {
     const [bound, inclusivity] = minimum
     if (inclusivity === 'inclusive' && value < bound) {
-      return validator.baseFail(`number must be greater than or equal to ${bound}`, value)
+      return validator.fail(`number must be greater than or equal to ${bound}`, value)
     } else if (inclusivity === 'exclusive' && value <= bound) {
-      return validator.baseFail(`number must be greater than ${bound}`, value)
+      return validator.fail(`number must be greater than ${bound}`, value)
     }
   }
   if (multipleOf && value % multipleOf !== 0) {
-    return validator.baseFail(`number must be mutiple of ${multipleOf}`, value)
+    return validator.fail(`number must be mutiple of ${multipleOf}`, value)
   }
   return validator.succeed()
 }
@@ -134,13 +135,13 @@ function validateString(type: types.StringType, value: string): validator.Result
   }
   const { regex, maxLength, minLength } = type.options
   if (maxLength && value.length > maxLength) {
-    return validator.baseFail(`string longer than max length (${maxLength})`, value)
+    return validator.fail(`string longer than max length (${maxLength})`, value)
   }
   if (minLength && value.length < minLength) {
-    return validator.baseFail(`string shorter than min length (${minLength})`, value)
+    return validator.fail(`string shorter than min length (${minLength})`, value)
   }
   if (regex && !regex.test(value)) {
-    return validator.baseFail(`string regex mismatch (${regex.source})`, value)
+    return validator.fail(`string regex mismatch (${regex.source})`, value)
   }
   return validator.succeed()
 }
@@ -180,7 +181,7 @@ function validateObject<Ts extends types.Types>(
       break
     }
   }
-  return encounteredError ? validator.fail(validationErrors) : validator.succeed()
+  return encounteredError ? validator.failWithErrors(validationErrors) : validator.succeed()
   /* TODO see what to do with object strictness
   if (strict) {
       for (const [key, subvalue] of Object.entries(value)) {
@@ -205,10 +206,10 @@ function validateArray<T extends types.Type>(
   }
   const { maxItems, minItems } = type.options
   if (maxItems && value.length > maxItems) {
-    return validator.baseFail(`array must have at most ${maxItems} items`, value)
+    return validator.fail(`array must have at most ${maxItems} items`, value)
   }
   if (minItems && value.length < minItems) {
-    return validator.baseFail(`array must have at least ${minItems} items`, value)
+    return validator.fail(`array must have at least ${minItems} items`, value)
   }
   return validateArrayElements(type, value, options)
 }
@@ -232,7 +233,7 @@ function validateArrayElements<T extends types.Type>(
       break
     }
   }
-  return encounteredError ? validator.fail(validationErrors) : validator.succeed()
+  return encounteredError ? validator.failWithErrors(validationErrors) : validator.succeed()
 }
 
 function validateReference<T extends types.Type>(
@@ -262,8 +263,8 @@ function validateUnion<Ts extends types.Types>(
           validationErrors.push(...errors.map(prependVariantToPath(variantName)))
         },
       )
-      return encounteredError ? validator.succeed() : validator.fail(validationErrors)
+      return encounteredError ? validator.succeed() : validator.failWithErrors(validationErrors)
     }
   }
-  return validator.baseFail('value does not pass any of the variant checks', value)
+  return validator.fail('value does not pass any of the variant checks', value)
 }

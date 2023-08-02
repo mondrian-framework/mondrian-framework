@@ -1,4 +1,4 @@
-import { types, result, validator } from './index'
+import { types, result, validator, path } from './index'
 import { match } from 'ts-pattern'
 
 /* TODO: figure out how to deal with object strictness */
@@ -22,19 +22,28 @@ export type Result = result.Result<true, Error[]>
 export type Error = {
   assertion: string
   got: unknown
-  path: string[]
+  path: path.Path
 }
 
 /**
- * Utility function to prepend a prefix to the path of a `decoder.Error`.
+ * Utility function to prepend a prefix to the path of a `validator.Error`.
  */
-function prependToPath(prefix: string): (error: Error) => Error {
-  // ⚠️ Possible pain point: error is mutated in place so if an error is shared and multiple pieces
-  // update it, it may lead to wrong error messages.
-  return (error: Error) => {
-    error.path.unshift(prefix)
-    return error
-  }
+function prependFieldToPath(fieldName: string): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependField(fieldName) })
+}
+
+/**
+ * Utility function to prepend an index to the path of a `validator.Error`.
+ */
+function prependIndexToPath(index: number): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependIndex(index) })
+}
+
+/**
+ * Utility function to prepend a variant to the path of a `validator.Error`.
+ */
+function prependVariantToPath(variantName: string): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependVariant(variantName) })
 }
 
 /**
@@ -54,7 +63,7 @@ export const fail = (errors: Error[]): Result => result.fail(errors)
  * @returns a `validator.Result` that fails with a single error with an empty path and the provided
  *          `assertion` and `got` values
  */
-export const baseFail = (assertion: string, got: unknown): Result => fail([{ assertion, got, path: [] }])
+export const baseFail = (assertion: string, got: unknown): Result => fail([{ assertion, got, path: path.empty() }])
 
 /**
  * @param type the {@link Type type} to define the validation logic
@@ -164,7 +173,7 @@ function validateObject<Ts extends types.Types>(
       (_) => {},
       (errors) => {
         encounteredError = true
-        validationErrors.push(...errors.map(prependToPath(fieldName)))
+        validationErrors.push(...errors.map(prependFieldToPath(fieldName)))
       },
     )
     if (encounteredError && options.errorReportingStrategy === 'stopAtFirstError') {
@@ -216,7 +225,7 @@ function validateArrayElements<T extends types.Type>(
       (_) => {},
       (errors) => {
         encounteredError = true
-        validationErrors.push(...errors.map(prependToPath(`[${i}]`)))
+        validationErrors.push(...errors.map(prependIndexToPath(i)))
       },
     )
     if (encounteredError && options.errorReportingStrategy === 'stopAtFirstError') {
@@ -250,7 +259,7 @@ function validateUnion<Ts extends types.Types>(
         (_) => {},
         (errors) => {
           encounteredError = true
-          validationErrors.push(...errors.map(prependToPath(variantName)))
+          validationErrors.push(...errors.map(prependVariantToPath(variantName)))
         },
       )
       return encounteredError ? validator.succeed() : validator.fail(validationErrors)

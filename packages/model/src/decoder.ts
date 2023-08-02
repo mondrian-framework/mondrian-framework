@@ -1,4 +1,4 @@
-import { types, result, validator } from './index'
+import { types, decoder, result, validator, path } from './index'
 import { match, Pattern as P } from 'ts-pattern'
 
 /**
@@ -38,29 +38,27 @@ export function decode<T extends types.Type>(
   decodingOptions?: Partial<Options>,
   validationOptions?: Partial<validator.Options>,
 ): result.Result<types.Infer<T>, validator.Error[] | Error[]> {
-  const actualOptions = { ...defaultOptions, ...decodingOptions }
-  type R = result.Result<types.Infer<T>, validator.Error[] | Error[]>
-  const decodingResult = unsafeDecode(type, value, actualOptions) as R
-  return decodingResult.then((decodedValue) =>
-    validator.validate<T>(type, decodedValue, validationOptions).replace(decodedValue),
-  )
+  return decodeWithoutValidation(type, value, decodingOptions)
+    .mapError((errors) => errors as validator.Error[] | decoder.Error[])
+    .then((decodedValue) => {
+      return validator.validate<T>(type, decodedValue, validationOptions).replace(decodedValue)
+    })
+}
 
-  /*
-  // TODO: if we ever rework the current Error interface (maybe we should and factor out the short circuiting logic in
-  // a generic error like other languages like Scala/Haskell/Elm/Gleam/Rust) this should be rewritten as a series
-  // of `.then().then()`
-  const decodingResult = unsafeDecode(type, value, actualOptions) as result.Result<types.Infer<T>>
-  if (decodingResult.success) {
-    const validationResult = validator.validate(type, decodingResult.value, validationOptions)
-    if (validationResult.success) {
-      return decodingResult
-    } else {
-      return result.enrichErrors({ success: false, errors: validationResult.errors } as result.Result<types.Infer<T>>)
-    }
-  } else {
-    return result.enrichErrors(decodingResult)
-  }
-  */
+/**
+ * TODO: add doc and make sure that it makes clear that this should be used for custom decoders only
+ * @param type
+ * @param value
+ * @param decodingOptions
+ * @returns
+ */
+export function decodeWithoutValidation<T extends types.Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: Partial<Options>,
+): decoder.Result<types.Infer<T>> {
+  const actualOptions = { ...defaultOptions, ...decodingOptions }
+  return unsafeDecode(type, value, actualOptions) as decoder.Result<types.Infer<T>>
 }
 
 /**
@@ -69,7 +67,7 @@ export function decode<T extends types.Type>(
 export type Error = {
   expected: string
   got: unknown
-  path: string[]
+  path: path.Path
 }
 
 /**
@@ -85,13 +83,22 @@ function addExpected(otherExpected: string): (error: Error) => Error {
 /**
  * Utility function to prepend a prefix to the path of a `decoder.Error`.
  */
-function prependToPath(prefix: string): (error: Error) => Error {
-  // ⚠️ Possible pain point: error is mutated in place so if an error is shared and multiple pieces
-  // update it, it may lead to wrong error messages.
-  return (error: Error) => {
-    error.path.unshift(prefix)
-    return error
-  }
+function prependFieldToPath(fieldName: string): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependField(fieldName) })
+}
+
+/**
+ * Utility function to prepend an index to the path of a `decoder.Error`.
+ */
+function prependIndexToPath(index: number): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependIndex(index) })
+}
+
+/**
+ * Utility function to prepend a variant to the path of a `decoder.Error`.
+ */
+function prependVariantToPath(variantName: string): (error: Error) => Error {
+  return (error: Error) => ({ ...error, path: error.path.prependVariant(variantName) })
 }
 
 /**
@@ -112,7 +119,7 @@ export const fail = <A>(errors: Error[]): Result<A> => result.fail(errors)
  * @returns a `decoder.Result` that fails with a single error with an empty path and the provided
  *          `expected` and `got` values
  */
-export const baseFail = <A>(expected: string, got: unknown): Result<A> => fail([{ expected, got, path: [] }])
+export const baseFail = <A>(expected: string, got: unknown): Result<A> => fail([{ expected, got, path: path.empty() }])
 
 function unsafeDecode(type: types.Type, value: unknown, options: Options): Result<unknown> {
   return match(types.concretise(type))
@@ -269,7 +276,7 @@ function decodeArrayValues(type: types.ArrayType<any, any>, array: unknown[], op
       },
       (errors) => {
         encounteredError = true
-        decodingErrors.push(...errors.map(prependToPath(`[${i}]`)))
+        decodingErrors.push(...errors.map(prependIndexToPath(i)))
       },
     )
     if (options.errorReportingStrategy === 'stopAtFirstError' && encounteredError) {
@@ -346,7 +353,7 @@ function decodeUntaggedUnion(type: types.UnionType<any>, value: unknown, options
       },
       (errors) => {
         encounteredError = true
-        decodingErrors.push(...errors.map(prependToPath(`${variantName}`)))
+        decodingErrors.push(...errors.map(prependVariantToPath(variantName)))
       },
     )
 
@@ -365,7 +372,7 @@ function decodeTaggedUnion(type: types.UnionType<any>, value: unknown, options: 
     const variantName = singleKeyFromObject(object)
     if (variantName !== undefined && Object.keys(type.variants).includes(variantName)) {
       const decodingResult = unsafeDecode(type.variants[variantName], object[variantName], options)
-      return decodingResult.mapError((errors) => errors.map(prependToPath(variantName)))
+      return decodingResult.mapError((errors) => errors.map(prependVariantToPath(variantName)))
     }
   }
   const prettyVariants = Object.keys(type.variants).join(', ')
@@ -406,7 +413,7 @@ function decodeObjectProperties(
       },
       (errors) => {
         encounteredError = true
-        decodingErrors.push(...errors.map(prependToPath(fieldName)))
+        decodingErrors.push(...errors.map(prependFieldToPath(fieldName)))
       },
     )
     if (options.errorReportingStrategy === 'stopAtFirstError' && encounteredError) {
@@ -415,3 +422,5 @@ function decodeObjectProperties(
   }
   return encounteredError ? fail(decodingErrors) : succeed(decodedObject)
 }
+
+// TODO rimuovere union

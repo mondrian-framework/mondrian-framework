@@ -128,3 +128,31 @@ export function fromType<T extends types.Type>({
     })
     .exhaustive() as gen.Arbitrary<types.Infer<T>>
 }
+
+export function type(maxDepth: number = 5): gen.Arbitrary<types.Type> {
+  function applyDecorators(arbitrary: gen.Arbitrary<types.Type>): gen.Arbitrary<types.Type> {
+    return arbitrary
+      .chain((t) => gen.tuple(gen.constant(t), gen.boolean()))
+      .map(([t, isNullable]) => (isNullable ? types.nullable(t) : t))
+      .chain((t) => gen.tuple(gen.constant(t), gen.boolean()))
+      .map(([t, isOptinoal]) => (isOptinoal ? types.optional(t) : t))
+      .chain((t) => gen.tuple(gen.constant(t), gen.boolean()))
+      .map(([t, isReference]) => (isReference ? types.reference(t) : t))
+      .chain((t) => gen.tuple(gen.constant(t), gen.boolean()))
+      .map(([t, isLazy]) => (isLazy ? () => t : t))
+  }
+
+  const number = gen.constant(types.number())
+  const boolean = gen.constant(types.boolean())
+  const string = gen.constant(types.string())
+  const literal = gen.oneof(gen.string(), gen.boolean(), gen.double(), gen.constant(null)).map((v) => types.literal(v))
+  const flatTypes = [number, boolean, string, literal]
+  if (maxDepth <= 1) {
+    return applyDecorators(gen.oneof(...flatTypes))
+  }
+
+  const subTypeArbitrary = type(maxDepth - 1)
+  const array = subTypeArbitrary.map((t) => types.array(t))
+  const object = gen.array(gen.tuple(gen.string(), subTypeArbitrary)).map((t) => types.object(Object.fromEntries(t)))
+  return applyDecorators(gen.oneof(object, array, ...flatTypes))
+}

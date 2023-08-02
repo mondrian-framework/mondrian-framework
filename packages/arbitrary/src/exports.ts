@@ -1,2 +1,2 @@
-export { fromType } from './type-arbitrary'
+export { fromType, type } from './type-arbitrary'
 export * as custom from './custom-arbitraries'

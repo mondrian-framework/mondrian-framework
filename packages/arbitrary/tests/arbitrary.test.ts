@@ -4,7 +4,7 @@ import t from '@mondrian-framework/advanced-types'
 import m, { decoder, encoder, types } from '@mondrian-framework/model'
 import { expect, test } from 'vitest'
 
-test('fromType', async () => {
+test('fromType', () => {
   const jwtLoginType = m.object({ sub: m.string(), name: m.string(), iat: m.integer() })
   const myType = () =>
     m.object({
@@ -90,4 +90,19 @@ test('fromType', async () => {
     expect(decode.success).toBe(true)
   })
   fc.assert(property)
+})
+
+test('randomType', () => {
+  const property = fc.property(arbitrary.type(), (type) => {
+    const property2 = fc.property(arbitrary.fromType({ type }), (value) => {
+      const encoded = encoder.encode(type, value)
+      const decode = decoder.decode(type, encoded)
+      if (!decode.success) {
+        console.log(decode)
+      }
+      expect(decode.success).toBe(true)
+    })
+    fc.assert(property2, { numRuns: 10 })
+  })
+  fc.assert(property, { numRuns: 10000 })
 })

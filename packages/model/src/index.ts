@@ -6,6 +6,7 @@ export * as encoder from './encoder'
 export * as validator from './validator'
 export * as projection from './projection'
 export * as result from './result'
+export * as path from './path'
 
 export { m }
 export default m

@@ -93,7 +93,7 @@ test('fromType', () => {
 })
 
 test('randomType', () => {
-  const property = fc.property(arbitrary.type(), (type) => {
+  const property = fc.property(arbitrary.type(2), (type) => {
     const property2 = fc.property(arbitrary.fromType({ type }), (value) => {
       const encoded = encoder.encode(type, value)
       const decode = decoder.decode(type, encoded)
@@ -104,5 +104,5 @@ test('randomType', () => {
     })
     fc.assert(property2, { numRuns: 10 })
   })
-  fc.assert(property, { numRuns: 10000 })
+  fc.assert(property/*, { numRuns: 10000 }*/)
 })

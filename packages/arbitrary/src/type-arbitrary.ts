@@ -44,7 +44,7 @@ export function type(maxDepth: number = 5): fc.Arbitrary<types.Type> {
   //TODO: union?
   return applyDecorators(fc.oneof(array, ...flatTypes))
 }
-Number.EPSILON
+
 function applyDecorators(arbitrary: fc.Arbitrary<types.Type>): fc.Arbitrary<types.Type> {
   return arbitrary
     .chain((t) => fc.tuple(fc.constant(t), fc.boolean()))

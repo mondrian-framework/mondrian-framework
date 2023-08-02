@@ -1,5 +1,4 @@
-import { m } from '@mondrian-framework/model'
-import { result } from '@mondrian-framework/model'
+import { decoder, m, validator } from '@mondrian-framework/model'
 
 export type URLType = m.CustomType<'URL', {}, URL>
 
@@ -8,21 +7,21 @@ export function url(options?: m.BaseOptions): URLType {
     'URL',
     (value) => value.toString(),
     decodeUrl,
-    (_url) => result.success(true),
+    (_url) => validator.succeed(),
     options,
   )
 }
 
-function decodeUrl(value: unknown): result.Result<URL> {
+function decodeUrl(value: unknown): decoder.Result<URL> {
   return typeof value === 'string' || value instanceof URL
     ? makeUrl(value)
-    : result.error('Invalid URL format (RFC 3986)', value)
+    : decoder.baseFail('Invalid URL format (RFC 3986)', value)
 }
 
-function makeUrl(value: string | URL): result.Result<URL> {
+function makeUrl(value: string | URL): decoder.Result<URL> {
   try {
-    return result.success(new URL(value))
+    return decoder.succeed(new URL(value))
   } catch (_) {
-    return result.error('Invalid URL format (RFC 3986)', value)
+    return decoder.baseFail('Invalid URL format (RFC 3986)', value)
   }
 }

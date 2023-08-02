@@ -1,4 +1,4 @@
-export interface Result<A, E> {
+export type Result<A, E> = {
   then<B>(f: (value: A) => Result<B, E>): Result<B, E>
   replace<B>(value: B): Result<B, E>
   map<B>(f: (value: A) => B): Result<B, E>
@@ -8,10 +8,11 @@ export interface Result<A, E> {
   or(other: Result<A, E>): Result<A, E>
   lazyOr(other: () => Result<A, E>): Result<A, E>
   match<B>(onOk: (value: A) => B, onFailure: (error: E) => B): B
-}
+} & ({ readonly isOk: true; readonly value: A } | { readonly isOk: false; readonly error: E })
 
-class Ok<A, E> implements Result<A, E> {
-  private value: A
+class Ok<A, E> {
+  readonly value: A
+  readonly isOk: true = true
   constructor(value: A) {
     this.value = value
   }
@@ -27,8 +28,9 @@ class Ok<A, E> implements Result<A, E> {
   match = <B>(onOk: (value: A) => B, _onFailure: (error: E) => B): B => onOk(this.value)
 }
 
-class Failure<A, E> implements Result<A, E> {
-  private error: E
+class Failure<A, E> {
+  readonly error: E
+  readonly isOk: false = false
   constructor(error: E) {
     this.error = error
   }

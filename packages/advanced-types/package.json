@@ -13,5 +13,8 @@
   "keywords": [],
   "peerDependencies": {
     "@mondrian-framework/model": "^1.0.6"
+  },
+  "dependencies": {
+    "bignumber.js": "^9.1.1"
   }
 }

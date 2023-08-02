@@ -1,4 +1,4 @@
-import { m, decoder } from '@mondrian-framework/model'
+import { m, decoder, validator } from '@mondrian-framework/model'
 import { result } from '@mondrian-framework/model'
 
 export function fromRegexes<Name extends string, Options extends Record<string, any>>(
@@ -17,12 +17,12 @@ function encode(string: string): string {
 
 function decode<Name extends string, Options extends Record<string, any>>(
   value: unknown,
-  _decodingOptions: decoder.DecodingOptions,
+  _decodingOptions: decoder.Options,
   _options?: m.OptionsOf<m.CustomType<Name, Options, string>>,
-): result.Result<string> {
-  return typeof value === 'string' ? result.success(value) : result.error('Expected a string value', value)
+): decoder.Result<string> {
+  return typeof value === 'string' ? decoder.succeed(value) : decoder.baseFail('Expected a string value', value)
 }
 
-function validate(input: string, errorMessage: string, regexes: RegExp[]): result.Result<true> {
-  return regexes.some((regex) => regex.test(input)) ? result.success(true) : result.error(errorMessage, input)
+function validate(input: string, errorMessage: string, regexes: RegExp[]): validator.Result {
+  return regexes.some((regex) => regex.test(input)) ? validator.succeed() : validator.baseFail(errorMessage, input)
 }

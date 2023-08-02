@@ -84,10 +84,10 @@ test('fromType', () => {
   const property = fc.property(myArbitrary, (v) => {
     const encoded = encoder.encode(myType, v)
     const decode = decoder.decode(myType, encoded)
-    if (!decode.success) {
-      console.log(decode)
+    if (!decode.isOk) {
+      console.log(decode.error)
     }
-    expect(decode.success).toBe(true)
+    expect(decode.isOk).toBe(true)
   })
   fc.assert(property)
 })
@@ -97,12 +97,12 @@ test('randomType', () => {
     const property2 = fc.property(arbitrary.fromType({ type }), (value) => {
       const encoded = encoder.encode(type, value)
       const decode = decoder.decode(type, encoded)
-      if (!decode.success) {
+      if (!decode.isOk) {
         console.log(decode)
       }
-      expect(decode.success).toBe(true)
+      expect(decode.isOk).toBe(true)
     })
     fc.assert(property2, { numRuns: 10 })
   })
-  fc.assert(property/*, { numRuns: 10000 }*/)
+  fc.assert(property /*, { numRuns: 10000 }*/)
 })

@@ -1,4 +1,4 @@
-import { result, m, encoder, validator, types, decoder } from '@mondrian-framework/model'
+import { m, encoder, validator, types, decoder } from '@mondrian-framework/model'
 import jsonwebtoken from 'jsonwebtoken'
 
 type JwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
@@ -40,9 +40,9 @@ function decodeJwt<T extends types.Type>(
   payloadType: T,
   secret: string,
   options?: JwtOptions,
-): result.Result<types.Infer<T>> {
+): decoder.Result<types.Infer<T>> {
   if (typeof value !== 'string') {
-    return result.error('Invalid JWT type. String expected.', value)
+    return decoder.baseFail('Invalid JWT type. String expected.', value)
   }
   try {
     const decoded = jsonwebtoken.verify(value, secret, {
@@ -50,8 +50,8 @@ function decodeJwt<T extends types.Type>(
       complete: true,
       algorithms: [options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM],
     })
-    return decoder.decode(payloadType, decoded.payload)
+    return decoder.decodeWithoutValidate(payloadType, decoded.payload)
   } catch {
-    return result.error('Invalid JWT type. Verify failed.', value)
+    return decoder.baseFail('Invalid JWT type. Verify failed.', value)
   }
 }

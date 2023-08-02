@@ -15,10 +15,10 @@ export function date(options?: m.OptionsOf<DateType>): DateType {
 
 function decodeDate(value: unknown): decoder.Result<Date> {
   if (typeof value !== 'string' || !DATE_REGEX.test(value)) {
-    return decoder.baseFail('Invalid date format (expected: yyyy-mm-dd)', value)
+    return decoder.fail('Invalid date format (expected: yyyy-mm-dd)', value)
   }
   const date = new Date(Date.parse(value))
-  return isNaN(date.valueOf()) ? decoder.baseFail('Invalid date', value) : decoder.succeed(date)
+  return isNaN(date.valueOf()) ? decoder.fail('Invalid date', value) : decoder.succeed(date)
 }
 
 function validateDate(

@@ -16,7 +16,7 @@ function encodeTime(value: Date) {
 
 function decodeTime(value: unknown): decoder.Result<Date> {
   if (typeof value !== 'string' || !TIME_REGEX.test(value)) {
-    return decoder.baseFail('Invalid time format [RFC 3339]', value)
+    return decoder.fail('Invalid time format [RFC 3339]', value)
   }
   const currentDateString = new Date().toISOString()
   const currentDateAtGivenTime = new Date(currentDateString.substring(0, currentDateString.indexOf('T') + 1) + value)

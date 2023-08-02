@@ -40,11 +40,11 @@ function decodeDecimal(value: unknown, options?: m.OptionsOf<DecimalType>): deco
     const decoded = new BigNumber(value, options?.base ?? 10)
     const number = options?.decimals != null ? decoded.decimalPlaces(options?.decimals) : decoded
     if (number.isNaN()) {
-      return decoder.baseFail('', value)
+      return decoder.fail('', value)
     }
     return result.ok(number)
   }
-  return decoder.baseFail('', value)
+  return decoder.fail('', value)
 }
 
 function validateDecimal(
@@ -53,19 +53,19 @@ function validateDecimal(
   options?: m.OptionsOf<DecimalType>,
 ): validator.Result {
   if (options?.maximum != null && value.gt(options.maximum)) {
-    return validator.baseFail('', value)
+    return validator.fail('', value)
   }
   if (options?.minimum != null && value.lt(options.minimum)) {
-    return validator.baseFail('', value)
+    return validator.fail('', value)
   }
   if (options?.exclusiveMaximum != null && value.gte(options.exclusiveMaximum)) {
-    return validator.baseFail('', value)
+    return validator.fail('', value)
   }
   if (options?.exclusiveMinimum != null && value.lte(options.exclusiveMinimum)) {
-    return validator.baseFail('', value)
+    return validator.fail('', value)
   }
   if (options?.multipleOf != null && !value.mod(options.multipleOf).eq(options.multipleOf)) {
-    return validator.baseFail('', value)
+    return validator.fail('', value)
   }
   return validator.succeed()
 }

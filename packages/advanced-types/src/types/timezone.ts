@@ -7,7 +7,7 @@ export function timezone(options?: m.BaseOptions): TimezoneType {
     'timezone',
     (value) => value,
     (value) =>
-      typeof value === 'string' ? decoder.succeed(value) : decoder.baseFail('Expected a string timezone', value),
+      typeof value === 'string' ? decoder.succeed(value) : decoder.fail('Expected a string timezone', value),
     validateTimezone,
     options,
   )
@@ -15,16 +15,16 @@ export function timezone(options?: m.BaseOptions): TimezoneType {
 
 function validateTimezone(value: string): validator.Result {
   if (!Intl?.DateTimeFormat().resolvedOptions().timeZone) {
-    validator.baseFail('Time zones are not available in this environment', value)
+    validator.fail('Time zones are not available in this environment', value)
   }
   try {
     Intl.DateTimeFormat(undefined, { timeZone: value })
     return validator.succeed()
   } catch (ex) {
     if (ex instanceof RangeError) {
-      return validator.baseFail('Invalid IANA time zone', value)
+      return validator.fail('Invalid IANA time zone', value)
     } else {
-      return validator.baseFail('Invalid time zone', value)
+      return validator.fail('Invalid time zone', value)
     }
   }
 }

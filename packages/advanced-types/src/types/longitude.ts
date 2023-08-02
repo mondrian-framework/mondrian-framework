@@ -11,7 +11,7 @@ export function longitude(options?: m.BaseOptions): m.CustomType<'longitude', {}
     'longitude',
     (number) => number,
     (value) =>
-      typeof value === 'number' ? decoder.succeed(value) : decoder.baseFail('Expected a longitude number', value),
+      typeof value === 'number' ? decoder.succeed(value) : decoder.fail('Expected a longitude number', value),
     validateLongitude,
     options,
   )
@@ -19,9 +19,9 @@ export function longitude(options?: m.BaseOptions): m.CustomType<'longitude', {}
 
 function validateLongitude(value: number): validator.Result {
   if (value < MIN_LON || value > MAX_LON) {
-    return validator.baseFail(`Invalid longitude number (must be between ${MIN_LON} and ${MIN_LON})`, value)
+    return validator.fail(`Invalid longitude number (must be between ${MIN_LON} and ${MIN_LON})`, value)
   } else if (value !== Number.parseFloat(value.toFixed(MAX_PRECISION))) {
-    return validator.baseFail(`Invalid longitude number (max precision must be ${MAX_PRECISION})`, value)
+    return validator.fail(`Invalid longitude number (max precision must be ${MAX_PRECISION})`, value)
   } else {
     return validator.succeed()
   }

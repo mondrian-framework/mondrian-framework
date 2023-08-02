@@ -42,7 +42,7 @@ function decodeJwt<T extends types.Type>(
   options?: JwtOptions,
 ): decoder.Result<types.Infer<T>> {
   if (typeof value !== 'string') {
-    return decoder.baseFail('Invalid JWT type. String expected.', value)
+    return decoder.fail('Invalid JWT type. String expected.', value)
   }
   try {
     const decoded = jsonwebtoken.verify(value, secret, {
@@ -50,8 +50,8 @@ function decodeJwt<T extends types.Type>(
       complete: true,
       algorithms: [options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM],
     })
-    return decoder.decodeWithoutValidate(payloadType, decoded.payload)
+    return decoder.decodeWithoutValidation(payloadType, decoded.payload)
   } catch {
-    return decoder.baseFail('Invalid JWT type. Verify failed.', value)
+    return decoder.fail('Invalid JWT type. Verify failed.', value)
   }
 }

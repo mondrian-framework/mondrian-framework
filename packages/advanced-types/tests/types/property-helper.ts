@@ -39,11 +39,15 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       // If the decoded value is not the same as the raw value (e.g. in Time where the raw can be a string
       // and the decoded is a Date)
       const { raw, expected } = rawValueAndExpectedValueFromUnknown(rawValue)
-      expect(decoder.decode(type, raw)).toEqual({ success: true, value: expected })
+      const decoded = decoder.decode(type, raw)
+      expect(decoded.isOk).toBe(true)
+      if (decoded.isOk) {
+        expect(decoded.value).toEqual(expected)
+      }
     }
 
     const checkIsNotDecoded = (rawValue: unknown) =>
-      decoder.decode(type, rawValue).success
+      decoder.decode(type, rawValue).isOk
         ? expect.fail(`${rawValue} was decoded but I expected the decoding to fail`)
         : true
 
@@ -51,7 +55,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
     const checkEncodeInverseOfDecode = (rawValue: unknown) => {
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
       const decoded = decoder.decode(type, raw)
-      if (decoded.success) {
+      if (decoded.isOk) {
         expect(encoder.encode(type, decoded.value)).toEqual(raw)
       } else {
         // If the decoding fails I fail the test, it doesn't make sense to check for inverse in that case
@@ -67,14 +71,19 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValidValue)
 
       const decodingResult = decoder.decode(type, raw)
-      if (!decodingResult.success) {
+      if (!decodingResult.isOk) {
         expect.fail(`I was expecting to get only valid raw values as input but got ${rawValidValue}.
         Most likely there is a bug in the \`validValues\` passed as input`)
       } else {
         // If we got a valid value `Infer<T>` we check that by encoding and decoding we get back the same result
         const validValue = decodingResult.value
         const encodedValue = encoder.encode(type, validValue)
-        expect(decoder.decode(type, encodedValue)).toEqual({ success: true, value: validValue })
+
+        const decoded = decoder.decode(type, encodedValue)
+        expect(decoded.isOk).toBe(true)
+        if (decoded.isOk) {
+          expect(decoded.value).toEqual(validValue)
+        }
       }
     }
 

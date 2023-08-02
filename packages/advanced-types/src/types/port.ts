@@ -12,7 +12,7 @@ export function port(options?: m.BaseOptions): PortType {
     (value) =>
       typeof value === 'number' && Number.isInteger(value)
         ? decoder.succeed(value)
-        : decoder.baseFail('Expected a TCP port number', value),
+        : decoder.fail('Expected a TCP port number', value),
     validatePort,
     options,
   )
@@ -20,6 +20,6 @@ export function port(options?: m.BaseOptions): PortType {
 
 function validatePort(value: number): validator.Result {
   return value < MIN_PORT_NUMBER || value > MAX_PORT_NUMBER
-    ? validator.baseFail(`Invalid TCP port number (must be between ${MIN_PORT_NUMBER} and ${MAX_PORT_NUMBER})`, value)
+    ? validator.fail(`Invalid TCP port number (must be between ${MIN_PORT_NUMBER} and ${MAX_PORT_NUMBER})`, value)
     : validator.succeed()
 }

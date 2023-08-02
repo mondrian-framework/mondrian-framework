@@ -6,7 +6,7 @@ import { expectTypeOf, describe, expect } from 'vitest'
 const exampleCustom = types.custom(
   'customType',
   () => null,
-  () => decoder.baseFail('test', 'test'),
+  () => decoder.fail('test', 'test'),
   () => validator.baseFail('test', 'test'),
 )
 

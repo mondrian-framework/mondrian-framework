@@ -30,7 +30,7 @@ function decodeTimestamp(
 ): decoder.Result<Date> {
   return typeof value === 'number' && -864000000000000 < value && value < 864000000000000
     ? decoder.succeed(new Date(value))
-    : decoder.baseFail(`timestamp`, value)
+    : decoder.fail(`timestamp`, value)
 }
 
 function validateTimestamp(

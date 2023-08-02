@@ -42,7 +42,7 @@ export function type(maxDepth: number = 5): fc.Arbitrary<types.Type> {
   const array = arrayOpts.chain((opts) => subTypeArbitrary.map((t) => types.array(t, opts)))
   const object = fc.array(fc.tuple(fc.string(), subTypeArbitrary)).map(Object.fromEntries).map(types.object)
   //TODO: union?
-  return applyDecorators(fc.oneof(array, ...flatTypes))
+  return applyDecorators(fc.oneof(object, array, ...flatTypes))
 }
 
 function applyDecorators(arbitrary: fc.Arbitrary<types.Type>): fc.Arbitrary<types.Type> {
@@ -54,5 +54,5 @@ function applyDecorators(arbitrary: fc.Arbitrary<types.Type>): fc.Arbitrary<type
     .chain((t) => fc.tuple(fc.constant(t), fc.boolean()))
     .map(([t, isReference]) => (isReference ? types.reference(t) : t))
     .chain((t) => fc.tuple(fc.constant(t), fc.boolean()))
-    .map(([t, isLazy]) => (isLazy ? t : t))
+    .map(([t, isLazy]) => (isLazy ? () => t : t))
 }

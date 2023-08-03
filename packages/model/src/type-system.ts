@@ -247,7 +247,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
 export type LiteralTypeOptions = BaseOptions
 
 /**
- * The model of a tagged union of types in the Mondrian framework.
+ * The model of an untagged union of types in the Mondrian framework.
  */
 export type UnionType<Ts extends Types> = {
   readonly kind: 'union'
@@ -635,7 +635,7 @@ export function enumeration<const Vs extends readonly [string, ...string[]]>(
 
 /**
  * @param value the literal value held by the new `LiteralType`
- * @param opts the {@link LiteralTypeOptions options} used to define the new `LiteralType`
+ * @param options the {@link LiteralTypeOptions options} used to define the new `LiteralType`
  * @returns a {@link LiteralType `LiteralType`} representing the literal type of `value`
  * @example Imagine you have to deal with HTTP requests whose HTTP version must be `"2.0"`.
  *          The version field could be modelled with a literal type to can guarantee that a request can only be built

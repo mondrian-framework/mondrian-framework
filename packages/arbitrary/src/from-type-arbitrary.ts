@@ -37,6 +37,9 @@ type CustomMapArgument<T extends types.Type> = CustomMap<T> extends infer R
     : { customArbitraries: R }
   : never
 
+/**
+ * Build an Arbitrary that generates values that respect the given type T.
+ */
 export function fromType<T extends types.Type>({
   type,
   maxDepth,
@@ -140,7 +143,7 @@ export function fromType<T extends types.Type>({
 }
 
 /**
- * find the closes different number in a given direction
+ * Finds the closes different number in a given direction
  * @param n the number
  * @param direction the direction
  * @returns the closest floating-point

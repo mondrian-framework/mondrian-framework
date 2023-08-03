@@ -56,7 +56,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
       const decoded = decoder.decode(type, raw)
       if (decoded.isOk) {
-        expect(encoder.encode(type, decoded.value)).toEqual(raw)
+        expect(encoder.encodeWithoutValidation(type, decoded.value)).toEqual(raw)
       } else {
         // If the decoding fails I fail the test, it doesn't make sense to check for inverse in that case
         return expect.fail(
@@ -77,7 +77,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       } else {
         // If we got a valid value `Infer<T>` we check that by encoding and decoding we get back the same result
         const validValue = decodingResult.value
-        const encodedValue = encoder.encode(type, validValue)
+        const encodedValue = encoder.encodeWithoutValidation(type, validValue)
 
         const decoded = decoder.decode(type, encodedValue)
         expect(decoded.isOk).toBe(true)

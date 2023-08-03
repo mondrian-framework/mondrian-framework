@@ -82,7 +82,7 @@ test('fromType', () => {
   })
 
   const property = fc.property(myArbitrary, (v) => {
-    const encoded = encoder.encode(myType, v)
+    const encoded = encoder.encodeWithoutValidation(myType, v)
     const decode = decoder.decode(myType, encoded)
     if (!decode.isOk) {
       console.log(decode.error)
@@ -95,7 +95,7 @@ test('fromType', () => {
 test('randomType', () => {
   const property = fc.property(arbitrary.type(2), (type) => {
     const property2 = fc.property(arbitrary.fromType({ type }), (value) => {
-      const encoded = encoder.encode(type, value)
+      const encoded = encoder.encodeWithoutValidation(type, value)
       const decode = decoder.decode(type, encoded)
       if (!decode.isOk) {
         console.log(decode)

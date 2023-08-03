@@ -4,7 +4,7 @@ import { encoder } from '@mondrian-framework/model'
 import { test, expect, describe } from 'vitest'
 
 test('Time - encode', async () => {
-  expect(encoder.encode(m.time, new Date('2023-01-01T00:00:00.223Z'))).toBe('00:00:00.223Z')
+  expect(encoder.encodeWithoutValidation(m.time, new Date('2023-01-01T00:00:00.223Z'))).toBe('00:00:00.223Z')
 })
 
 const today = new Date()

@@ -23,7 +23,7 @@ export function jwt<T extends types.ObjectType<any, any>, Name extends string>(
   return m.custom(
     `${name}-jwt`,
     (payload) => {
-      const encoded = encoder.encode(payloadType, payload)
+      const encoded = encoder.encodeWithoutValidation(payloadType, payload)
       const result = jsonwebtoken.sign(encoded as object, secret, {
         algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM,
       })

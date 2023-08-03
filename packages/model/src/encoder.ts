@@ -8,7 +8,7 @@ import { match } from 'ts-pattern'
  * @param value the value to encode to a `JSONType`
  * @returns a {@link JSONType `JSONType`} encoding of the given `value`
  */
-export function encode<const T extends types.Type>(type: T, value: types.Infer<T>): JSONType {
+export function encodeWithoutValidation<const T extends types.Type>(type: T, value: types.Infer<T>): JSONType {
   const encoded = unsafeEncode(type, value)
   // If we get an `undefined` here it means that we where asked to encode an `OptionalType` with the
   // `undefined` value. Since `undefined` is not a valid JSONType we decide to encode it as `null`.
@@ -24,12 +24,12 @@ export function encode<const T extends types.Type>(type: T, value: types.Infer<T
  * @param validationOptions
  * @returns
  */
-export function validateAndEncode<const T extends types.Type>(
+export function encode<const T extends types.Type>(
   type: T,
   value: types.Infer<T>,
   validationOptions?: Partial<validator.Options>,
 ): result.Result<JSONType, validator.Error[]> {
-  return validator.validate(type, value, validationOptions).replace(encoder.encode(type, value))
+  return validator.validate(type, value, validationOptions).replace(encoder.encodeWithoutValidation(type, value))
 }
 
 /**

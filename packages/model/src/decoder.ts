@@ -269,24 +269,19 @@ function decodeArray(type: types.ArrayType<any, any>, value: unknown, options: O
 function decodeArrayValues(type: types.ArrayType<any, any>, array: unknown[], options: Options): decoder.Result<any> {
   const decodingErrors: decoder.Error[] = []
   const decodedValues: unknown[] = []
-
-  let encounteredError = false
   for (let i = 0; i < array.length; i++) {
     const value = array[i]
-    unsafeDecode(type.wrappedType, value, options).match(
-      (decodedValue) => {
-        decodedValues.push(decodedValue)
-      },
-      (errors) => {
-        encounteredError = true
-        decodingErrors.push(...errors.map(prependIndexToPath(i)))
-      },
-    )
-    if (options.errorReportingStrategy === 'stopAtFirstError' && encounteredError) {
-      break
+    const decodedItem = unsafeDecode(type.wrappedType, value, options)
+    if (decodedItem.isOk) {
+      decodedValues.push(decodedItem.value)
+    } else {
+      decodingErrors.push(...decodedItem.error.map(prependIndexToPath(i)))
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
     }
   }
-  return encounteredError ? decoder.succeed(decodedValues) : decoder.failWithErrors(decodingErrors)
+  return decodingErrors.length > 0 ? decoder.failWithErrors(decodingErrors) : decoder.succeed(decodedValues)
 }
 
 /**
@@ -346,26 +341,12 @@ function decodeUnion(type: types.UnionType<any>, value: unknown, options: Option
 
 function decodeUntaggedUnion(type: types.UnionType<any>, value: unknown, options: Options): decoder.Result<any> {
   const decodingErrors: decoder.Error[] = []
-  let decodedValue = undefined
-  let hasDecoded = false
-  let encounteredError = false
-
   for (const [variantName, variantType] of Object.entries(type.variants)) {
-    unsafeDecode(variantType as types.Type, value, options).match(
-      (value) => {
-        decodedValue = value
-        hasDecoded = true
-      },
-      (errors) => {
-        encounteredError = true
-        decodingErrors.push(...errors.map(prependVariantToPath(variantName)))
-      },
-    )
-
-    if (hasDecoded) {
-      return decoder.succeed(decodedValue)
-    } else if (options.errorReportingStrategy === 'stopAtFirstError' && encounteredError) {
-      break
+    const decodedVariant = unsafeDecode(variantType as types.Type, value, options)
+    if (decodedVariant.isOk) {
+      return decoder.succeed(decodedVariant.value)
+    } else {
+      decodingErrors.push(...decodedVariant.error.map(prependVariantToPath(variantName)))
     }
   }
   return decoder.failWithErrors(decodingErrors)
@@ -408,24 +389,20 @@ function decodeObjectProperties(
 ): decoder.Result<any> {
   const decodingErrors: decoder.Error[] = []
   const decodedObject: { [key: string]: unknown } = {} // strict ? {} : { ...value }
-  let encounteredError = false
   for (const [fieldName, fieldType] of Object.entries(type.types)) {
-    unsafeDecode(fieldType as types.Type, object[fieldName], options).match(
-      (decodedField) => {
-        if (decodedField !== undefined) {
-          decodedObject[fieldName] = decodedField
-        }
-      },
-      (errors) => {
-        encounteredError = true
-        decodingErrors.push(...errors.map(prependFieldToPath(fieldName)))
-      },
-    )
-    if (options.errorReportingStrategy === 'stopAtFirstError' && encounteredError) {
-      break
+    const decodedField = unsafeDecode(fieldType as types.Type, object[fieldName], options)
+    if (decodedField.isOk) {
+      if (decodedField.value !== undefined) {
+        decodedObject[fieldName] = decodedField.value
+      }
+    } else {
+      decodingErrors.push(...decodedField.error.map(prependFieldToPath(fieldName)))
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
     }
   }
-  return encounteredError ? decoder.failWithErrors(decodingErrors) : decoder.succeed(decodedObject)
+  return decodingErrors.length > 0 ? decoder.failWithErrors(decodingErrors) : decoder.succeed(decodedObject)
 }
 
 // TODO rimuovere union

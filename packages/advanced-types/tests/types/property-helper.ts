@@ -1,5 +1,5 @@
 import { fc as gen, test } from '@fast-check/vitest'
-import { decoder, encoder, m, result } from '@mondrian-framework/model'
+import { decoder, encoder, m, types } from '@mondrian-framework/model'
 import { JSONType } from '@mondrian-framework/utils'
 import { SuiteFactory, expect } from 'vitest'
 
@@ -118,6 +118,16 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
   }
 }
 
+/**
+ * This function can be used to test a type by providing the expected sequence of values:
+ *  raw: JSON ---[decoding]---> decoded: Infer<T> ---[encoding]---> encoded: JSON
+ *
+ * It's useful for testing all those types whose encode/decode process is not bijective.
+ *
+ * @param type the type to test
+ * @param validValues an array valid raw, decoded and encoded sequence
+ * @param knownInvalidValues an array of invalid values that does not pass the decode step
+ */
 export function testTypeDecodingAndEncoding<T extends m.Type>(
   type: T,
   {
@@ -126,7 +136,7 @@ export function testTypeDecodingAndEncoding<T extends m.Type>(
   }: {
     validValues: {
       raw: JSONType
-      decoded: unknown
+      decoded: types.Infer<T>
       encoded: JSONType
     }[]
     invalidValues: JSONType[]

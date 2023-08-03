@@ -106,13 +106,13 @@ function validateNumber(type: types.NumberType, value: number): validator.Result
   if (type.options === undefined) {
     return validator.succeed()
   }
-  const { inclusiveMaximum, inclusiveMinimum, exclusiveMaximum, exclusiveMinimum, multipleOf } = type.options
-  if (inclusiveMaximum && !(value <= inclusiveMaximum)) {
-    return validator.fail(`number must be less than or equal to ${inclusiveMaximum}`, value)
+  const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, multipleOf } = type.options
+  if (maximum && !(value <= maximum)) {
+    return validator.fail(`number must be less than or equal to ${maximum}`, value)
   } else if (exclusiveMaximum && !(value < exclusiveMaximum)) {
     return validator.fail(`number must be less than to ${exclusiveMaximum}`, value)
-  } else if (inclusiveMinimum && !(value >= inclusiveMinimum)) {
-    return validator.fail(`number must be greater than or equal to ${inclusiveMinimum}`, value)
+  } else if (minimum && !(value >= minimum)) {
+    return validator.fail(`number must be greater than or equal to ${minimum}`, value)
   } else if (exclusiveMinimum && !(value > exclusiveMinimum)) {
     return validator.fail(`number must be greater than ${exclusiveMinimum}`, value)
   } else if (multipleOf && value % multipleOf !== 0) {
@@ -161,20 +161,16 @@ function validateObject<Ts extends types.Types>(
   options: validator.Options,
 ): validator.Result {
   const validationErrors: validator.Error[] = []
-  let encounteredError = false
   for (const [fieldName, fieldValue] of Object.entries(value)) {
-    internalValidate(type.types[fieldName], fieldValue as never, options).match(
-      (_) => {},
-      (errors) => {
-        encounteredError = true
-        validationErrors.push(...errors.map(prependFieldToPath(fieldName)))
-      },
-    )
-    if (encounteredError && options.errorReportingStrategy === 'stopAtFirstError') {
-      break
+    const validationResult = internalValidate(type.types[fieldName], fieldValue as never, options)
+    if (!validationResult.isOk) {
+      validationErrors.push(...validationResult.error.map(prependFieldToPath(fieldName)))
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
     }
   }
-  return encounteredError ? validator.failWithErrors(validationErrors) : validator.succeed()
+  return validationErrors.length > 0 ? validator.failWithErrors(validationErrors) : validator.succeed()
   /* TODO see what to do with object strictness
   if (strict) {
       for (const [key, subvalue] of Object.entries(value)) {
@@ -213,20 +209,16 @@ function validateArrayElements<T extends types.Type>(
   options: validator.Options,
 ): validator.Result {
   const validationErrors: validator.Error[] = []
-  let encounteredError = false
   for (let i = 0; i < value.length; i++) {
-    internalValidate(type.wrappedType, value[i], options).match(
-      (_) => {},
-      (errors) => {
-        encounteredError = true
-        validationErrors.push(...errors.map(prependIndexToPath(i)))
-      },
-    )
-    if (encounteredError && options.errorReportingStrategy === 'stopAtFirstError') {
-      break
+    const validationResult = internalValidate(type.wrappedType, value[i], options)
+    if (!validationResult.isOk) {
+      validationErrors.push(...validationResult.error.map(prependIndexToPath(i)))
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
     }
   }
-  return encounteredError ? validator.failWithErrors(validationErrors) : validator.succeed()
+  return validationErrors.length > 0 ? validator.failWithErrors(validationErrors) : validator.succeed()
 }
 
 function validateReference<T extends types.Type>(
@@ -242,21 +234,17 @@ function validateUnion<Ts extends types.Types>(
   value: types.Infer<types.UnionType<Ts>>,
   options: validator.Options,
 ): validator.Result {
-  let encounteredError = false
   for (const [variantName, variantType] of Object.entries(type.variants)) {
     const variantCheck = type.variantsChecks?.[variantName]
     // If the variant can be decoded as one of the variants
     const valueIsVariant = variantCheck && variantCheck(value)
     if (valueIsVariant) {
       const validationErrors: Error[] = []
-      internalValidate(variantType, value as never, options).match(
-        (_) => {},
-        (errors) => {
-          encounteredError = true
-          validationErrors.push(...errors.map(prependVariantToPath(variantName)))
-        },
-      )
-      return encounteredError ? validator.succeed() : validator.failWithErrors(validationErrors)
+      const validationResult = internalValidate(variantType, value as never, options)
+      if (!validationResult.isOk) {
+        validationErrors.push(...validationResult.error.map(prependVariantToPath(variantName)))
+      }
+      return validationErrors.length > 0 ? validator.failWithErrors(validationErrors) : validator.succeed()
     }
   }
   return validator.fail('value does not pass any of the variant checks', value)

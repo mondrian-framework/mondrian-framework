@@ -176,9 +176,9 @@ export type NumberType = {
  * The options that can be used to define a {@link NumberType `NumberType`}.
  */
 export type NumberTypeOptions = BaseOptions & {
-  readonly inclusiveMaximum?: number
+  readonly maximum?: number
   readonly exclusiveMaximum?: number
-  readonly inclusiveMinimum?: number
+  readonly minimum?: number
   readonly exclusiveMinimum?: number
   readonly multipleOf?: number
 }

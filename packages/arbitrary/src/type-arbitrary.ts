@@ -78,9 +78,9 @@ export function numberTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NumberT
   return gen.record(
     {
       ...baseOptionsGeneratorsRecord(),
-      inclusiveMinimum: integerOrFloat(),
+      minimum: integerOrFloat(),
       exclusiveMinimum: integerOrFloat(),
-      inclusiveMaximum: integerOrFloat(),
+      maximum: integerOrFloat(),
       exclusiveMaximum: integerOrFloat(),
       multipleOf: integerOrFloat(),
     },

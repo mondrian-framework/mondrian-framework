@@ -1,5 +1,6 @@
 import { fc as gen, test } from '@fast-check/vitest'
-import { decoder, encoder, m } from '@mondrian-framework/model'
+import { decoder, encoder, m, result } from '@mondrian-framework/model'
+import { JSONType } from '@mondrian-framework/utils'
 import { SuiteFactory, expect } from 'vitest'
 
 /**
@@ -114,5 +115,54 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
     if (knownInvalidValues) {
       test('decoding fails for known invalid values', () => knownInvalidValues.forEach(checkIsNotDecoded))
     }
+  }
+}
+
+export function testTypeDecodingAndEncoding<T extends m.Type>(
+  type: T,
+  {
+    validValues,
+    invalidValues,
+  }: {
+    validValues: {
+      raw: JSONType
+      decoded: unknown
+      encoded: JSONType
+    }[]
+    invalidValues: JSONType[]
+  },
+  decodingOptions?: Partial<decoder.Options>,
+): SuiteFactory<{}> {
+  return () => {
+    test('decoding works for valid values', () =>
+      validValues.forEach(({ raw, decoded }) => {
+        const result = decoder.decode(type, raw, decodingOptions)
+        if (result.isOk) {
+          expect(result.value).toEqual(decoded)
+        } else {
+          expect(result.error).toEqual([])
+          expect(result.isOk).toBe(true)
+        }
+      }))
+    test('encoding works for valid values', () =>
+      validValues.forEach(({ decoded, encoded }) => {
+        const result = encoder.encode(type, decoded as any)
+        if (result.isOk) {
+          expect(result.value).toEqual(encoded)
+        } else {
+          expect(result.error).toEqual([])
+          expect(result.isOk).toBe(true)
+        }
+      }))
+    test('decoding fails for invalid values', () =>
+      invalidValues.forEach((v) => {
+        const result = decoder.decode(type, v, decodingOptions)
+        if (!result.isOk) {
+          expect(result.error.length).greaterThan(0)
+        } else {
+          expect(result.value).toEqual(result.value === null ? undefined : null)
+          expect(result.isOk).toBe(false)
+        }
+      }))
   }
 }

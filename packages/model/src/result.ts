@@ -1,3 +1,6 @@
+/**
+ * TODO: add Doc to whole module
+ */
 export type Result<A, E> = {
   then<B>(f: (value: A) => Result<B, E>): Result<B, E>
   replace<B>(value: B): Result<B, E>

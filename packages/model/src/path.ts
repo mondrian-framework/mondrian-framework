@@ -1,3 +1,6 @@
+/**
+ * TODO: add doc to whole module
+ */
 export type Fragment =
   | { kind: 'field'; fieldName: string }
   | { kind: 'index'; index: number }

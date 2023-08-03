@@ -17,6 +17,13 @@ export function encode<const T extends types.Type>(type: T, value: types.Infer<T
   return encoded === undefined ? null : encoded
 }
 
+/**
+ * TODO: add doc
+ * @param type
+ * @param value
+ * @param validationOptions
+ * @returns
+ */
 export function validateAndEncode<const T extends types.Type>(
   type: T,
   value: types.Infer<T>,

@@ -47,20 +47,31 @@ export function fromType<T extends types.Type>({
     .with({ kind: 'boolean' }, (_type) => fc.boolean())
     .with({ kind: 'number' }, (type) => {
       const multipleOf = type.options?.multipleOf
+      const min =
+        type.options?.minimum != null && type.options?.exclusiveMinimum != null
+          ? Math.max(type.options?.minimum, type.options?.exclusiveMinimum)
+          : type.options?.minimum ?? type.options?.exclusiveMinimum
+      const max =
+        type.options?.maximum != null && type.options?.exclusiveMaximum != null
+          ? Math.min(type.options?.maximum, type.options?.exclusiveMaximum)
+          : type.options?.maximum ?? type.options?.exclusiveMaximum
+      const isMinInclusive = min === type.options?.minimum
+      const isMaxInclusive = min === type.options?.maximum
       if (multipleOf) {
-        const [min, minInclusive] = type.options.minimum ?? [undefined, 'inclusive']
-        const [max, maxInclusive] = type.options.maximum ?? [undefined, 'inclusive']
         let minIndex = min != null ? Math.round(min / multipleOf + (0.5 - Number.EPSILON)) : undefined
         let maxIndex = max != null ? Math.round(max / multipleOf - (0.5 - Number.EPSILON)) : undefined
-        if (maxIndex != null && maxInclusive === 'exclusive' && maxIndex * multipleOf === max) {
+        if (maxIndex != null && !isMaxInclusive && maxIndex * multipleOf === max) {
           maxIndex--
         }
-        if (minIndex != null && minInclusive === 'exclusive' && minIndex * multipleOf === min) {
+        if (minIndex != null && !isMinInclusive && minIndex * multipleOf === min) {
           minIndex++
         }
         return fc.integer({ min: minIndex, max: maxIndex }).map((v) => v * multipleOf)
       }
-      return fc.double({ min: type.options?.minimum?.[0], max: type.options?.maximum?.[0] })
+      return fc.double({
+        min: min != null ? (isMinInclusive ? min : nextAfter(min, 'positive')) : undefined,
+        max: max != null ? (isMaxInclusive ? max : nextAfter(max, 'negative')) : undefined,
+      })
     })
     .with({ kind: 'string' }, (type) =>
       type.options?.regex
@@ -126,4 +137,31 @@ export function fromType<T extends types.Type>({
       return arbitrary(type.options)
     })
     .exhaustive() as fc.Arbitrary<types.Infer<T>>
+}
+
+/**
+ * find the closes different number in a given direction
+ * @param n the number
+ * @param direction the direction
+ * @returns the closest floating-point
+ */
+function nextAfter(n: number, direction: 'positive' | 'negative') {
+  // see https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/lang/Math.java
+  const f64 = new Float64Array(1)
+  const b64 = new BigInt64Array(f64.buffer)
+  if (direction === 'negative') {
+    if (n !== 0) {
+      f64[0] = n
+      const transducer = b64[0]
+      b64[0] = transducer + (transducer > 0n ? -1n : 1n)
+      return f64[0]
+    } else {
+      return -Number.MIN_VALUE
+    }
+  } else {
+    f64[0] = n + 0
+    const transducer = b64[0]
+    b64[0] = transducer + (transducer >= 0n ? 1n : -1n)
+    return f64[0]
+  }
 }

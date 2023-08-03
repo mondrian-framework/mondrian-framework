@@ -1,20 +1,7 @@
 import { result } from '../src/index'
+import { expectFailure, expectOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
-
-function expectOk<A>(result: result.Result<A, any>, expected: A) {
-  result.match(
-    (actual) => expect(actual).toBe(expected),
-    (error) => expect.fail(`Expected an \`ok\` result but got a \`failure\` with error\n${error}`),
-  )
-}
-
-function expectFailure<E>(result: result.Result<any, E>, expected: E) {
-  result.match(
-    (value) => expect.fail(`Expected a \`failure\` result but got an \`ok\` with value\n${value}`),
-    (actual) => expect(actual).toBe(expected),
-  )
-}
 
 describe('chain', () => {
   test('short circuits on error values', () =>

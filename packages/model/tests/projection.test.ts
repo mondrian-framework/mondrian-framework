@@ -1,4 +1,5 @@
 import { projection, types, decoder, validator } from '../src'
+import { expectSameTypes } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe, expect } from 'vitest'
 
@@ -9,10 +10,6 @@ const exampleCustom = types.custom(
   () => decoder.fail('test', 'test'),
   () => validator.fail('test', 'test'),
 )
-
-function expectSameTypes(t1: types.Type, t2: types.Type): void {
-  expect(types.areEqual(t1, t2)).toBe(true)
-}
 
 describe('projection.FromType', () => {
   test('is true for base types', () => {

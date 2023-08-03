@@ -176,8 +176,10 @@ export type NumberType = {
  * The options that can be used to define a {@link NumberType `NumberType`}.
  */
 export type NumberTypeOptions = BaseOptions & {
-  readonly maximum?: [number, 'inclusive' | 'exclusive']
-  readonly minimum?: [number, 'inclusive' | 'exclusive']
+  readonly inclusiveMaximum?: number
+  readonly exclusiveMaximum?: number
+  readonly inclusiveMinimum?: number
+  readonly exclusiveMinimum?: number
   readonly multipleOf?: number
 }
 
@@ -482,7 +484,7 @@ export function number(options?: OptionsOf<NumberType>): NumberType {
  *          const age = integer({
  *            name: "age",
  *            description: "an age that is never negative",
- *            minimum: [0, "inclusive"],
+ *            inclusiveMinimum: 0,
  *          })
  *
  *          const exampleAge: Age = 24

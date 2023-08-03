@@ -106,27 +106,20 @@ function validateNumber(type: types.NumberType, value: number): validator.Result
   if (type.options === undefined) {
     return validator.succeed()
   }
-  const { maximum, minimum, multipleOf } = type.options
-  if (maximum) {
-    const [bound, inclusivity] = maximum
-    if (inclusivity === 'inclusive' && value > bound) {
-      return validator.fail(`number must be less than or equal to ${bound}`, value)
-    } else if (inclusivity === 'exclusive' && value >= bound) {
-      return validator.fail(`number must be less than ${bound}`, value)
-    }
-  }
-  if (minimum) {
-    const [bound, inclusivity] = minimum
-    if (inclusivity === 'inclusive' && value < bound) {
-      return validator.fail(`number must be greater than or equal to ${bound}`, value)
-    } else if (inclusivity === 'exclusive' && value <= bound) {
-      return validator.fail(`number must be greater than ${bound}`, value)
-    }
-  }
-  if (multipleOf && value % multipleOf !== 0) {
+  const { inclusiveMaximum, inclusiveMinimum, exclusiveMaximum, exclusiveMinimum, multipleOf } = type.options
+  if (inclusiveMaximum && !(value <= inclusiveMaximum)) {
+    return validator.fail(`number must be less than or equal to ${inclusiveMaximum}`, value)
+  } else if (exclusiveMaximum && !(value < exclusiveMaximum)) {
+    return validator.fail(`number must be less than to ${exclusiveMaximum}`, value)
+  } else if (inclusiveMinimum && !(value >= inclusiveMinimum)) {
+    return validator.fail(`number must be greater than or equal to ${inclusiveMinimum}`, value)
+  } else if (exclusiveMinimum && !(value > exclusiveMinimum)) {
+    return validator.fail(`number must be greater than ${exclusiveMinimum}`, value)
+  } else if (multipleOf && value % multipleOf !== 0) {
     return validator.fail(`number must be mutiple of ${multipleOf}`, value)
+  } else {
+    return validator.succeed()
   }
-  return validator.succeed()
 }
 
 function validateString(type: types.StringType, value: string): validator.Result {

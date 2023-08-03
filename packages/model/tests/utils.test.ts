@@ -30,7 +30,7 @@ describe('failWithInternalError', () => {
     expect(() => failWithInternalError('foo')).toThrowError()
   })
 
-  test.prop([gen.string({ minLength: 10 })])('Has the given message', (message) => {
+  test.prop([gen.string({ minLength: 10 })])('has the given message', (message) => {
     expectToThrowErrorMatching(
       () => failWithInternalError(message),
       (error) => error.message.includes(message),

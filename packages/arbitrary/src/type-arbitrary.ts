@@ -78,8 +78,10 @@ export function numberTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NumberT
   return gen.record(
     {
       ...baseOptionsGeneratorsRecord(),
-      minimum: gen.tuple(integerOrFloat(), inclusivity()),
-      maximum: gen.tuple(integerOrFloat(), inclusivity()),
+      inclusiveMinimum: integerOrFloat(),
+      exclusiveMinimum: integerOrFloat(),
+      inclusiveMaximum: integerOrFloat(),
+      exclusiveMaximum: integerOrFloat(),
       multipleOf: integerOrFloat(),
     },
     { withDeletedKeys: true },

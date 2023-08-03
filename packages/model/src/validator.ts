@@ -98,7 +98,7 @@ function internalValidate<T extends types.Type>(
     .with({ kind: 'union' }, (type) => validateUnion(type, value as any, options))
     .with({ kind: 'array' }, (type) => validateArray(type, value as any, options))
     .with({ kind: 'reference' }, (type) => validateReference(type, value as any, options))
-    .with({ kind: 'custom' }, (type) => type.validate(value, type.options, options))
+    .with({ kind: 'custom' }, (type) => type.validate(value, options, type.options))
     .exhaustive()
 }
 

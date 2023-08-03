@@ -1,4 +1,5 @@
 import { failWithInternalError, filterMap, filterMapObject } from '../src/utils'
+import { expectToThrowErrorMatching } from './testing-utils'
 import { fc as gen, test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
 
@@ -30,27 +31,17 @@ describe('failWithInternalError', () => {
   })
 
   test.prop([gen.string({ minLength: 10 })])('Has the given message', (message) => {
-    try {
-      failWithInternalError(message)
-    } catch (error) {
-      if (error instanceof Error) {
-        expect(error.message.includes(message)).toEqual(true)
-      } else {
-        expect.fail()
-      }
-    }
+    expectToThrowErrorMatching(
+      () => failWithInternalError(message),
+      (error) => error.message.includes(message),
+    )
   })
 
   const issuePage = 'https://github.com/twinlogix/mondrian-framework/issues'
   test('Reports the repo issue page', () => {
-    try {
-      failWithInternalError('foo')
-    } catch (error) {
-      if (error instanceof Error) {
-        expect(error.message.includes(issuePage)).toEqual(true)
-      } else {
-        expect.fail()
-      }
-    }
+    expectToThrowErrorMatching(
+      () => failWithInternalError('message'),
+      (error) => error.message.includes(issuePage),
+    )
   })
 })

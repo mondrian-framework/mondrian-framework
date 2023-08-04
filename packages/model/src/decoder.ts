@@ -40,7 +40,7 @@ export function decode<T extends types.Type>(
 ): result.Result<types.Infer<T>, validator.Error[] | decoder.Error[]> {
   return decodeWithoutValidation(type, value, decodingOptions)
     .mapError((errors) => errors as validator.Error[] | decoder.Error[])
-    .then((decodedValue) => {
+    .chain((decodedValue) => {
       return validator.validate<T>(type, decodedValue, validationOptions).replace(decodedValue)
     })
 }
@@ -288,7 +288,7 @@ function decodeArrayValues(type: types.ArrayType<any, any>, array: unknown[], op
  * Tries to decode an object as an array.
  */
 function decodeObjectAsArray(type: types.ArrayType<any, any>, object: Object, options: Options): decoder.Result<any> {
-  return objectToArray(object).then((object) => decodeArrayValues(type, Object.values(object), options))
+  return objectToArray(object).chain((object) => decodeArrayValues(type, Object.values(object), options))
 }
 
 /**
@@ -375,7 +375,7 @@ function singleKeyFromObject(object: object): string | undefined {
 }
 
 function decodeObject(type: types.ObjectType<any, any>, value: unknown, options: Options): decoder.Result<any> {
-  return castToObject(value).then((object) => decodeObjectProperties(type, object, options))
+  return castToObject(value).chain((object) => decodeObjectProperties(type, object, options))
 }
 
 function castToObject(value: unknown): decoder.Result<Record<string, unknown>> {

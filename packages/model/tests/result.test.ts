@@ -6,18 +6,18 @@ import { describe, expect } from 'vitest'
 describe('chain', () => {
   test('short circuits on error values', () =>
     expectFailure(
-      result.fail('error').then((_) => expect.fail()),
+      result.fail('error').chain((_) => expect.fail()),
       'error',
     ))
 
   test('returns callback result on ok values', () => {
     expectOk(
-      result.ok(1).then((n) => result.ok(n + 1)),
+      result.ok(1).chain((n) => result.ok(n + 1)),
       2,
     )
 
     expectFailure(
-      result.ok<number, string>(1).then((_) => result.fail('error')),
+      result.ok<number, string>(1).chain((_) => result.fail('error')),
       'error',
     )
   })

@@ -71,10 +71,9 @@ export function fromType<T extends types.Type>({
         }
         return fc.integer({ min: minIndex, max: maxIndex }).map((v) => v * multipleOf)
       }
-      return fc.double({
-        min: min != null ? (isMinInclusive ? min : nextAfter(min, 'positive')) : undefined,
-        max: max != null ? (isMaxInclusive ? max : nextAfter(max, 'negative')) : undefined,
-      })
+      return fc
+        .double({ min, max })
+        .filter((v) => (min == null || isMinInclusive || min !== v) && (max == null || isMaxInclusive || max !== v))
     })
     .with({ kind: 'string' }, (type) =>
       type.options?.regex
@@ -140,31 +139,4 @@ export function fromType<T extends types.Type>({
       return arbitrary(type.options)
     })
     .exhaustive() as fc.Arbitrary<types.Infer<T>>
-}
-
-/**
- * Finds the closes different number in a given direction
- * @param n the number
- * @param direction the direction
- * @returns the closest floating-point
- */
-function nextAfter(n: number, direction: 'positive' | 'negative') {
-  // see https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/lang/Math.java
-  const f64 = new Float64Array(1)
-  const b64 = new BigInt64Array(f64.buffer)
-  if (direction === 'negative') {
-    if (n !== 0) {
-      f64[0] = n
-      const transducer = b64[0]
-      b64[0] = transducer + (transducer > 0n ? -1n : 1n)
-      return f64[0]
-    } else {
-      return -Number.MIN_VALUE
-    }
-  } else {
-    f64[0] = n + 0
-    const transducer = b64[0]
-    b64[0] = transducer + (transducer >= 0n ? 1n : -1n)
-    return f64[0]
-  }
 }

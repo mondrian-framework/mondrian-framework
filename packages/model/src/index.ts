@@ -7,6 +7,7 @@ export * as validator from './validator'
 export * as projection from './projection'
 export * as result from './result'
 export * as path from './path'
+export * as arbitrary from './arbitrary'
 
 export { m }
 export default m

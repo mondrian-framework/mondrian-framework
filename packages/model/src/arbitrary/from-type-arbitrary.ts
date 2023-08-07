@@ -1,5 +1,5 @@
+import { types } from '../index'
 import { fc } from '@fast-check/vitest'
-import { types } from '@mondrian-framework/model'
 import { match } from 'ts-pattern'
 
 export type CustomMap<T extends types.Type> = CustomMapInternal<T, []>

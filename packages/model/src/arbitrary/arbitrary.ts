@@ -1,37 +1,5 @@
-import { fc as gen } from '@fast-check/vitest'
-import { types } from '@mondrian-framework/model'
-
-/**
- * Generator for a TypeScript number.
- */
-function integerOrFloat(): gen.Arbitrary<number> {
-  return gen.oneof(gen.integer(), gen.float())
-}
-
-/**
- * A record with the same structure as `BaseOptions` but with generators for fields.
- */
-function baseOptionsGeneratorsRecord() {
-  return {
-    name: gen.string(),
-    description: gen.string(),
-  }
-}
-
-/**
- * Generator for the inclusivity ("inclusive", "exclusive") of lower and upper bounds.
- */
-function inclusivity(): gen.Arbitrary<'inclusive' | 'exclusive'> {
-  return gen.constantFrom('inclusive', 'exclusive')
-}
-
-/**
- * @param generator a generator for arbitrary values
- * @returns a new generator that may also generate the undefined value
- */
-function orUndefined<A>(generator: gen.Arbitrary<A>): gen.Arbitrary<A | undefined> {
-  return gen.oneof(gen.constant(undefined), generator)
-}
+import { types } from '../index'
+import gen from 'fast-check'
 
 /**
  * @return A generator for types' base options.
@@ -82,7 +50,7 @@ export function numberTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NumberT
       exclusiveMinimum: integerOrFloat(),
       maximum: integerOrFloat(),
       exclusiveMaximum: integerOrFloat(),
-      multipleOf: integerOrFloat(),
+      multipleOf: integerOrFloat().filter((n) => n > 0),
     },
     { withDeletedKeys: true },
   )
@@ -415,4 +383,29 @@ function withChanceOneIn<A>(chances: number, generator: gen.Arbitrary<A>, map: (
       return chance === 1 ? map(value) : value
     })
   })
+}
+
+/**
+ * Generator for a TypeScript number.
+ */
+function integerOrFloat(): gen.Arbitrary<number> {
+  return gen.oneof(gen.integer(), gen.float())
+}
+
+/**
+ * A record with the same structure as `BaseOptions` but with generators for fields.
+ */
+function baseOptionsGeneratorsRecord() {
+  return {
+    name: gen.string(),
+    description: gen.string(),
+  }
+}
+
+/**
+ * @param generator a generator for arbitrary values
+ * @returns a new generator that may also generate the undefined value
+ */
+function orUndefined<A>(generator: gen.Arbitrary<A>): gen.Arbitrary<A | undefined> {
+  return gen.oneof(gen.constant(undefined), generator)
 }

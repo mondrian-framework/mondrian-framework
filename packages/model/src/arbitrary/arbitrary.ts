@@ -358,8 +358,8 @@ function wrapperType(maxDepth: number): gen.Arbitrary<types.Type> {
  * Generator for a generic object type.
  */
 function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
-  return gen.dictionary(gen.string(), type(maxDepth - 1)).chain((fieldsGenerators) => {
-    return gen.oneof(object(fieldsGenerators as any), mutableObject(fieldsGenerators as any))
+  return gen.dictionary(gen.string(), gen.constant(type(maxDepth - 1))).chain((fieldsGenerators) => {
+    return gen.oneof(object(fieldsGenerators), mutableObject(fieldsGenerators))
   })
 }
 
@@ -367,8 +367,8 @@ function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
  * Generator for a generic enum type.
  */
 function unionType(maxDepth: number): gen.Arbitrary<types.Type> {
-  return gen.dictionary(gen.string(), type(maxDepth - 1)).chain((variantsGenerators) => {
-    return union(variantsGenerators as any)
+  return gen.dictionary(gen.string(), gen.constant(type(maxDepth - 1))).chain((variantsGenerators) => {
+    return union(variantsGenerators)
   })
 }
 

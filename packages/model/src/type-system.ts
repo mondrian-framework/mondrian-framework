@@ -444,6 +444,17 @@ export function number(options?: OptionsOf<NumberType>): NumberType {
   if (options?.multipleOf && options.multipleOf <= 0) {
     throw new Error('Invalid multipleOf for integer (must be > 0)')
   }
+
+  const minimum = options?.minimum
+  const exclusiveMinimum = options?.exclusiveMinimum
+  const maximum = options?.maximum
+  const exclusiveMaximum = options?.exclusiveMaximum
+  const lowerBound = minimum && exclusiveMinimum ? Math.max(minimum, exclusiveMinimum) : minimum ?? exclusiveMinimum
+  const upperBound = maximum && exclusiveMaximum ? Math.min(maximum, exclusiveMaximum) : maximum ?? exclusiveMaximum
+  if (lowerBound && upperBound && lowerBound >= upperBound) {
+    throw new Error(`Lower bound (${lowerBound}) must be lower than the upper bound (${upperBound})`)
+  }
+
   return {
     kind: 'number',
     options,
@@ -515,6 +526,20 @@ export function integer(options?: OptionsOf<NumberType>): NumberType {
  *          ```
  */
 export function string(options?: OptionsOf<StringType>): StringType {
+  const minLength = options?.minLength
+  const maxLength = options?.maxLength
+  if (minLength && maxLength && minLength > maxLength) {
+    throw new Error(`String type's minimum length (${minLength}) should be lower than its maximum length ${maxLength}`)
+  } else if (minLength && !Number.isInteger(minLength)) {
+    throw new Error(`The minimum length (${minLength}) must be an integer`)
+  } else if (maxLength && !Number.isInteger(maxLength)) {
+    throw new Error(`The maximum length (${maxLength}) must be an integer`)
+  } else if (minLength && minLength < 0) {
+    throw new Error(`The minimum length (${minLength}) cannot be negative`)
+  } else if (maxLength && maxLength < 0) {
+    throw new Error(`The maximum length (${maxLength}) cannot be negative`)
+  }
+
   return {
     kind: 'string',
     options,
@@ -902,6 +927,17 @@ export function array<T extends Type>(
   wrappedType: T,
   options?: OptionsOf<ArrayType<'immutable', T>>,
 ): ArrayType<'immutable', T> {
+  const maxItems = options?.maxItems
+  const minItems = options?.minItems
+  if (maxItems && !Number.isInteger(maxItems)) {
+    throw new Error(`The maximum number of items (${maxItems}) must be an integer`)
+  } else if (minItems && !Number.isInteger(minItems)) {
+    throw new Error(`The minimum number of items (${minItems}) must be an integer`)
+  } else if (minItems && minItems < 0) {
+    throw new Error(`The minimum number of items (${minItems}) cannot be negative`)
+  } else if (maxItems && maxItems < 0) {
+    throw new Error(`The maximum number of items (${maxItems}) cannot be negative`)
+  }
   return {
     kind: 'array',
     mutability: 'immutable',

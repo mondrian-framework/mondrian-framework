@@ -16,19 +16,21 @@ export function baseOptions(): gen.Arbitrary<types.BaseOptions> {
  *          All of its keys are optional and may be omitted in the generated options.
  */
 export function stringTypeOptions(): gen.Arbitrary<types.OptionsOf<types.StringType>> {
-  return minAndMax(gen.integer({ min: 0 })).chain(([min, max]) => {
-    return gen.record(
-      {
-        ...baseOptionsGeneratorsRecord(),
-        // ⚠️ possible pain point: there is no generator for regexes so we only
-        // generate a regex that matches all inputs.
-        // For now this is already enough to cover some test cases
-        regex: gen.constant(/.*/),
-        minLength: gen.constant(min),
-        maxLength: gen.constant(max),
-      },
-      { withDeletedKeys: true },
-    )
+  return gen.integer({ min: 0 }).chain((min) => {
+    return gen.integer({ min }).chain((max) => {
+      return gen.record(
+        {
+          ...baseOptionsGeneratorsRecord(),
+          // ⚠️ possible pain point: there is no generator for regexes so we only
+          // generate a regex that matches all inputs.
+          // For now this is already enough to cover some test cases
+          regex: gen.constantFrom(/.*/, undefined),
+          minLength: gen.constant(min),
+          maxLength: gen.constant(max),
+        },
+        { withDeletedKeys: true },
+      )
+    })
   })
 }
 
@@ -44,10 +46,16 @@ export function string(): gen.Arbitrary<types.StringType> {
  *          All of its keys are optional and may be omitted in the generated options.
  */
 export function numberTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NumberType>> {
-  return gen.tuple(integerOrFloat(), integerOrFloat()).chain(([minimum, exclusiveMinimum]) => {
+  const options = { noNaN: true, min: -1.0e10, max: 1.0e10 }
+  return gen.tuple(gen.double(options), gen.double(options)).chain(([minimum, exclusiveMinimum]) => {
     const lowerBound = Math.max(minimum, exclusiveMinimum)
-    const maximumGenerator = integerOrFloat().filter((n) => n > lowerBound)
-    const exclusiveMaximumGenerator = integerOrFloat().filter((n) => n > lowerBound)
+    const maximumGenerator = gen.double({ noNaN: true, min: lowerBound, max: options.max + 2, minExcluded: true })
+    const exclusiveMaximumGenerator = gen.double({
+      noNaN: true,
+      min: lowerBound,
+      max: options.max + 2,
+      minExcluded: true,
+    })
     return gen.tuple(maximumGenerator, exclusiveMaximumGenerator).chain(([maximum, exclusiveMaximum]) => {
       return gen.record(
         {
@@ -56,7 +64,7 @@ export function numberTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NumberT
           exclusiveMinimum: gen.constant(exclusiveMinimum),
           maximum: gen.constant(maximum),
           exclusiveMaximum: gen.constant(exclusiveMaximum),
-          multipleOf: integerOrFloat().filter((n) => n > 0),
+          multipleOf: gen.double({ ...options, min: 0, minExcluded: true }),
         },
         { withDeletedKeys: true },
       )
@@ -203,17 +211,19 @@ export function mutableObject<Ts extends types.Types>(
  *          All of its keys are optional and may be omitted in the generated options.
  */
 export function arrayTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ArrayType<any, any>>> {
-  return minAndMax(gen.integer({ min: 0 })).chain(([min, max]) => {
-    return gen.record(
-      {
-        ...baseOptionsGeneratorsRecord(),
-        minItems: gen.constant(min),
-        maxItems: gen.constant(max),
-      },
-      {
-        withDeletedKeys: true,
-      },
-    )
+  return gen.integer({ min: 0 }).chain((min) => {
+    return gen.integer({ min }).chain((max) => {
+      return gen.record(
+        {
+          ...baseOptionsGeneratorsRecord(),
+          minItems: gen.constant(min),
+          maxItems: gen.constant(max),
+        },
+        {
+          withDeletedKeys: true,
+        },
+      )
+    })
   })
 }
 
@@ -398,13 +408,6 @@ function withChanceOneIn<A>(chances: number, generator: gen.Arbitrary<A>, map: (
 }
 
 /**
- * Generator for a TypeScript number.
- */
-function integerOrFloat(): gen.Arbitrary<number> {
-  return gen.oneof(gen.integer(), gen.float())
-}
-
-/**
  * A record with the same structure as `BaseOptions` but with generators for fields.
  */
 function baseOptionsGeneratorsRecord() {
@@ -420,18 +423,4 @@ function baseOptionsGeneratorsRecord() {
  */
 function orUndefined<A>(generator: gen.Arbitrary<A>): gen.Arbitrary<A | undefined> {
   return gen.oneof(gen.constant(undefined), generator)
-}
-
-/**
- * A generator for tuples of numbers where the first is always lower than the second one.
- */
-function minAndMax(numberGenerator: gen.Arbitrary<number>): gen.Arbitrary<[number, number]> {
-  return numberGenerator.chain((n) => {
-    return numberGenerator
-      .filter((m) => m > n)
-      .map((m) => {
-        console.log('min', n, '- max', m, '(', n < m, ')')
-        return [n, m]
-      })
-  })
 }

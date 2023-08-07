@@ -56,13 +56,13 @@ describe('replace', () => {
 })
 
 describe('unwrap', () => {
-  test('returns value if called on ok value', () => expect(result.ok(1).unwrap(0)).toBe(1))
-  test('returns fallback if called on failure value', () => expect(result.fail('error').unwrap(1)).toBe(1))
+  test('returns value if called on ok value', () => expect(result.ok(1).recover(() => 0)).toBe(1))
+  test('returns fallback if called on failure value', () => expect(result.fail('error').recover(() => 1)).toBe(1))
 })
 
 describe('lazyUnwrap', () => {
-  test('returns value if called on ok value', () => expect(result.ok(1).lazyUnwrap(() => expect.fail())).toBe(1))
-  test('returns fallback if called on failure value', () => expect(result.fail('error').lazyUnwrap(() => 1)).toBe(1))
+  test('returns value if called on ok value', () => expect(result.ok(1).recover(() => expect.fail())).toBe(1))
+  test('returns fallback if called on failure value', () => expect(result.fail('error').recover(() => 1)).toBe(1))
 })
 
 describe('or', () => {

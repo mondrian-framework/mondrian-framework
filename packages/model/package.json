@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "prerelease": "tsc -p tsconfig.build.json"
   },
   "keywords": [],

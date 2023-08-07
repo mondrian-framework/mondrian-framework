@@ -1,9 +1,12 @@
 import { types } from '../index'
 import { fc } from '@fast-check/vitest'
+import { failWithInternalError } from 'src/utils'
 import { match } from 'ts-pattern'
 
+// TODO: Missing doc
 export type CustomMap<T extends types.Type> = CustomMapInternal<T, []>
 
+// TODO: Missing doc
 // prettier-ignore
 type CustomMapInternal<T extends types.Type, Visited extends types.Type[]> 
   = [T] extends [types.NumberType] ? {}
@@ -21,30 +24,34 @@ type CustomMapInternal<T extends types.Type, Visited extends types.Type[]>
   : [T] extends [(() => infer T1 extends types.Type)] ? WasAlredyVisited<Visited, T> extends false ? CustomMapInternal<T1, [...Visited, T]> : {}
   : {}
 
+// TODO: Missing doc
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 
-type WasAlredyVisited<Ts extends types.Type[], T extends types.Type> = Ts extends []
-  ? false
+// TODO: Missing doc
+// prettier-ignore
+type WasAlredyVisited<Ts extends types.Type[], T extends types.Type>
+  = Ts extends [] ? false
   : Ts extends [infer Head, ...infer _Tail]
-  ? [Head] extends [T]
-    ? true
-    : false
+    ? [Head] extends [T] ? true : false
   : false
 
-type CustomMapArgument<T extends types.Type> = CustomMap<T> extends infer R
-  ? keyof R extends never
-    ? { customArbitraries?: {} }
-    : { customArbitraries: R }
+// TODO: missing doc
+// prettier-ignore
+type CustomMapArgument<T extends types.Type>
+  = CustomMap<T> extends infer R ? keyof R extends never
+    ? { customArbitraries?: {} } : { customArbitraries: R }
   : never
 
 /**
  * Build an Arbitrary that generates values that respect the given type T.
  */
-export function fromType<T extends types.Type>({
-  type,
-  maxDepth,
-  customArbitraries,
-}: { type: T; maxDepth?: number } & CustomMapArgument<T>): fc.Arbitrary<types.Infer<T>> {
+// TODO: refactor move things out of the pattern matching branches to make
+//       it easier to reason about each step
+export function fromType<T extends types.Type>(
+  type: T,
+  customArbitraries: CustomMapArgument<T>,
+  maxDepth = 5,
+): fc.Arbitrary<types.Infer<T>> {
   const depth = maxDepth ?? 5
   return match(types.concretise(type))
     .with({ kind: 'boolean' }, (_type) => fc.boolean())
@@ -93,29 +100,26 @@ export function fromType<T extends types.Type>({
     .with({ kind: 'optional' }, (type) =>
       depth <= 1
         ? fc.constant(undefined)
-        : fc.oneof(
-            fc.constant(undefined),
-            fromType({ type: type.wrappedType, maxDepth: depth - 1, customArbitraries }),
-          ),
+        : fc.oneof(fc.constant(undefined), fromType(type.wrappedType, customArbitraries, depth - 1)),
     )
     .with({ kind: 'nullable' }, (type) =>
       depth <= 1
         ? fc.constant(null)
-        : fc.oneof(fc.constant(null), fromType({ type: type.wrappedType, maxDepth: depth - 1, customArbitraries })),
+        : fc.oneof(fc.constant(null), fromType(type.wrappedType, customArbitraries, depth - 1)),
     )
     .with({ kind: 'union' }, (type) =>
       fc.oneof(
-        ...Object.values(type.variants).map((v) =>
-          fromType({ type: v as types.Type, maxDepth: depth - 1, customArbitraries }),
+        ...Object.values(type.variants).map((variantType) =>
+          fromType(variantType as types.Type, customArbitraries, depth - 1),
         ),
       ),
     )
     .with({ kind: 'object' }, (type) =>
       fc.record(
         Object.fromEntries(
-          Object.entries(type.types).map(([k, st]) => [
-            k,
-            fromType({ type: st as types.Type, maxDepth: depth - 1, customArbitraries }),
+          Object.entries(type.types).map(([fieldName, fieldType]) => [
+            fieldName,
+            fromType(fieldType as types.Type, customArbitraries, depth - 1),
           ]),
         ),
       ),
@@ -123,20 +127,23 @@ export function fromType<T extends types.Type>({
     .with({ kind: 'array' }, (type) =>
       depth <= 1 && (type.options?.minItems ?? 0) <= 0
         ? fc.constant([])
-        : fc.array(fromType({ type: type.wrappedType, maxDepth: depth - 1, customArbitraries }), {
+        : fc.array(fromType(type.wrappedType, customArbitraries, depth - 1), {
             maxLength: type.options?.maxItems,
             minLength: type.options?.minItems,
           }),
     )
-    .with({ kind: 'reference' }, (type) => fromType({ type: type.wrappedType, maxDepth: depth - 1, customArbitraries }))
+    .with({ kind: 'reference' }, (type) => fromType(type.wrappedType, customArbitraries, depth - 1))
     .with({ kind: 'custom' }, (type) => {
-      const arbitrary = (customArbitraries as Record<string, (options?: types.BaseOptions) => fc.Arbitrary<unknown>>)[
-        type.typeName
-      ]
+      const arbitrary = (customArbitraries as any)[type.typeName]
+      //TODO: check this: (customArbitraries as Record<string, (options?: types.BaseOptions) => fc.Arbitrary<unknown>>)[
+      //  type.typeName
+      //]
       if (!arbitrary) {
-        throw new Error(`Need arbitrary for custom type "${type.typeName}"`)
+        const errorMessage = `\`fromType\` was given a map of cutom type generators that doesn't contain the generator for the type "${type.typeName}", this should have been impossible thanks to type checking`
+        failWithInternalError(errorMessage)
+      } else {
+        return arbitrary(type.options)
       }
-      return arbitrary(type.options)
     })
     .exhaustive() as fc.Arbitrary<types.Infer<T>>
 }

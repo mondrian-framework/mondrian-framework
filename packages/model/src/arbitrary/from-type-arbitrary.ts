@@ -57,20 +57,7 @@ export function fromType<T extends types.Type>(
   return match(types.concretise(type))
     .with({ kind: 'boolean' }, (_type) => gen.boolean())
     .with({ kind: 'number' }, (type) => numberMatchingOptions(type.options))
-    .with({ kind: 'string' }, (type) => {
-      return type.options?.regex
-        ? gen.stringMatching(type.options.regex).filter((s) => {
-            if (type.options?.maxLength && s.length > type.options.maxLength) {
-              return false
-            }
-            if (type.options?.minLength && s.length < type.options.minLength) {
-              return false
-            }
-            return true
-          })
-        : gen.string({ maxLength: type.options?.maxLength, minLength: type.options?.minLength })
-    })
-
+    .with({ kind: 'string' }, (type) => stringMatchingOptions(type.options))
     .with({ kind: 'literal' }, (type) => gen.constant(type.literalValue))
     .with({ kind: 'enum' }, (type) => gen.constantFrom(...type.variants))
     .with({ kind: 'optional' }, (type) =>
@@ -124,6 +111,7 @@ export function fromType<T extends types.Type>(
     .exhaustive() as gen.Arbitrary<types.Infer<T>>
 }
 
+// TODO 1781953724
 function numberMatchingOptions(options: types.OptionsOf<types.NumberType> | undefined): gen.Arbitrary<number> {
   if (options) {
     const { multipleOf, maximum, minimum, exclusiveMaximum, exclusiveMinimum } = options
@@ -179,5 +167,17 @@ function selectMaximum(
     return { maxExcluded: true, max: adaptToMultiple(exclusive) }
   } else {
     return undefined
+  }
+}
+
+function stringMatchingOptions(options?: types.OptionsOf<types.StringType>) {
+  if (!options) {
+    return gen.string()
+  } else {
+    const { regex, minLength, maxLength } = options
+    const longerThanMinimum = (s: string) => !minLength || s.length >= minLength
+    const shorterThanMaximum = (s: string) => !maxLength || s.length <= maxLength
+    const hasCorrectLength = (s: string) => longerThanMinimum(s) && shorterThanMaximum(s)
+    return !regex ? gen.string({ maxLength, minLength }) : gen.stringMatching(regex).filter(hasCorrectLength)
   }
 }

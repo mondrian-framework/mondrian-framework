@@ -1,7 +1,8 @@
 import { types } from '../index'
-import { fc } from '@fast-check/vitest'
+import gen from 'fast-check'
 import { failWithInternalError } from 'src/utils'
 import { match } from 'ts-pattern'
+import { select } from 'ts-pattern/dist/patterns'
 
 // TODO: Missing doc
 export type CustomMap<T extends types.Type> = CustomMapInternal<T, []>
@@ -20,7 +21,7 @@ type CustomMapInternal<T extends types.Type, Visited extends types.Type[]>
   : [T] extends [types.OptionalType<infer T1>] ? CustomMapInternal<T1, Visited>
   : [T] extends [types.NullableType<infer T1>] ? CustomMapInternal<T1, Visited>
   : [T] extends [types.ReferenceType<infer T1>] ?  CustomMapInternal<T1, Visited>
-  : [T] extends [types.CustomType<infer Name, infer Options, infer InferredAs>] ? { [K in Name]: (options?: Options) => fc.Arbitrary<InferredAs> }
+  : [T] extends [types.CustomType<infer Name, infer Options, infer InferredAs>] ? { [K in Name]: (options?: Options) => gen.Arbitrary<InferredAs> }
   : [T] extends [(() => infer T1 extends types.Type)] ? WasAlredyVisited<Visited, T> extends false ? CustomMapInternal<T1, [...Visited, T]> : {}
   : {}
 
@@ -51,40 +52,14 @@ export function fromType<T extends types.Type>(
   type: T,
   customArbitraries: CustomMapArgument<T>,
   maxDepth = 5,
-): fc.Arbitrary<types.Infer<T>> {
+): gen.Arbitrary<types.Infer<T>> {
   const depth = maxDepth ?? 5
   return match(types.concretise(type))
-    .with({ kind: 'boolean' }, (_type) => fc.boolean())
-    .with({ kind: 'number' }, (type) => {
-      const multipleOf = type.options?.multipleOf
-      const min =
-        type.options?.minimum != null && type.options?.exclusiveMinimum != null
-          ? Math.max(type.options?.minimum, type.options?.exclusiveMinimum)
-          : type.options?.minimum ?? type.options?.exclusiveMinimum
-      const max =
-        type.options?.maximum != null && type.options?.exclusiveMaximum != null
-          ? Math.min(type.options?.maximum, type.options?.exclusiveMaximum)
-          : type.options?.maximum ?? type.options?.exclusiveMaximum
-      const isMinInclusive = min === type.options?.minimum
-      const isMaxInclusive = min === type.options?.maximum
-      if (multipleOf) {
-        let minIndex = min != null ? Math.round(min / multipleOf + (0.5 - Number.EPSILON)) : undefined
-        let maxIndex = max != null ? Math.round(max / multipleOf - (0.5 - Number.EPSILON)) : undefined
-        if (maxIndex != null && !isMaxInclusive && maxIndex * multipleOf === max) {
-          maxIndex--
-        }
-        if (minIndex != null && !isMinInclusive && minIndex * multipleOf === min) {
-          minIndex++
-        }
-        return fc.integer({ min: minIndex, max: maxIndex }).map((v) => v * multipleOf)
-      }
-      return fc
-        .double({ min, max })
-        .filter((v) => (min == null || isMinInclusive || min !== v) && (max == null || isMaxInclusive || max !== v))
-    })
-    .with({ kind: 'string' }, (type) =>
-      type.options?.regex
-        ? fc.stringMatching(type.options.regex).filter((s) => {
+    .with({ kind: 'boolean' }, (_type) => gen.boolean())
+    .with({ kind: 'number' }, (type) => numberMatchingOptions(type.options))
+    .with({ kind: 'string' }, (type) => {
+      return type.options?.regex
+        ? gen.stringMatching(type.options.regex).filter((s) => {
             if (type.options?.maxLength && s.length > type.options.maxLength) {
               return false
             }
@@ -93,29 +68,30 @@ export function fromType<T extends types.Type>(
             }
             return true
           })
-        : fc.string({ maxLength: type.options?.maxLength, minLength: type.options?.minLength }),
-    )
-    .with({ kind: 'literal' }, (type) => fc.constant(type.literalValue))
-    .with({ kind: 'enum' }, (type) => fc.oneof(...type.variants.map(fc.constant)))
+        : gen.string({ maxLength: type.options?.maxLength, minLength: type.options?.minLength })
+    })
+
+    .with({ kind: 'literal' }, (type) => gen.constant(type.literalValue))
+    .with({ kind: 'enum' }, (type) => gen.constantFrom(...type.variants))
     .with({ kind: 'optional' }, (type) =>
       depth <= 1
-        ? fc.constant(undefined)
-        : fc.oneof(fc.constant(undefined), fromType(type.wrappedType, customArbitraries, depth - 1)),
+        ? gen.constant(undefined)
+        : gen.oneof(gen.constant(undefined), fromType(type.wrappedType, customArbitraries, depth - 1)),
     )
     .with({ kind: 'nullable' }, (type) =>
       depth <= 1
-        ? fc.constant(null)
-        : fc.oneof(fc.constant(null), fromType(type.wrappedType, customArbitraries, depth - 1)),
+        ? gen.constant(null)
+        : gen.oneof(gen.constant(null), fromType(type.wrappedType, customArbitraries, depth - 1)),
     )
     .with({ kind: 'union' }, (type) =>
-      fc.oneof(
+      gen.oneof(
         ...Object.values(type.variants).map((variantType) =>
           fromType(variantType as types.Type, customArbitraries, depth - 1),
         ),
       ),
     )
     .with({ kind: 'object' }, (type) =>
-      fc.record(
+      gen.record(
         Object.fromEntries(
           Object.entries(type.types).map(([fieldName, fieldType]) => [
             fieldName,
@@ -126,8 +102,8 @@ export function fromType<T extends types.Type>(
     )
     .with({ kind: 'array' }, (type) =>
       depth <= 1 && (type.options?.minItems ?? 0) <= 0
-        ? fc.constant([])
-        : fc.array(fromType(type.wrappedType, customArbitraries, depth - 1), {
+        ? gen.constant([])
+        : gen.array(fromType(type.wrappedType, customArbitraries, depth - 1), {
             maxLength: type.options?.maxItems,
             minLength: type.options?.minItems,
           }),
@@ -135,7 +111,7 @@ export function fromType<T extends types.Type>(
     .with({ kind: 'reference' }, (type) => fromType(type.wrappedType, customArbitraries, depth - 1))
     .with({ kind: 'custom' }, (type) => {
       const arbitrary = (customArbitraries as any)[type.typeName]
-      //TODO: check this: (customArbitraries as Record<string, (options?: types.BaseOptions) => fc.Arbitrary<unknown>>)[
+      //TODO: check this: (customArbitraries as Record<string, (options?: types.BaseOptions) => gen.Arbitrary<unknown>>)[
       //  type.typeName
       //]
       if (!arbitrary) {
@@ -145,5 +121,63 @@ export function fromType<T extends types.Type>(
         return arbitrary(type.options)
       }
     })
-    .exhaustive() as fc.Arbitrary<types.Infer<T>>
+    .exhaustive() as gen.Arbitrary<types.Infer<T>>
+}
+
+function numberMatchingOptions(options: types.OptionsOf<types.NumberType> | undefined): gen.Arbitrary<number> {
+  if (options) {
+    const { multipleOf, maximum, minimum, exclusiveMaximum, exclusiveMinimum } = options
+    const lowerBound = selectMinimum(minimum, exclusiveMinimum, multipleOf)
+    const upperBound = selectMaximum(maximum, exclusiveMaximum, multipleOf)
+    const generatorOptions = { ...lowerBound, ...upperBound }
+    return multipleOf
+      ? gen.integer(generatorOptions).map((n) => n * multipleOf)
+      : gen.oneof(gen.integer(generatorOptions), gen.double(generatorOptions))
+  } else {
+    return gen.oneof(gen.integer(), gen.float())
+  }
+}
+
+function selectMinimum(
+  inclusive: number | undefined,
+  exclusive: number | undefined,
+  multipleOf: number | undefined,
+): { minExcluded: boolean; min: number } | undefined {
+  const adaptToMultiple = (n: number) => (!multipleOf ? n : Math.round(n / multipleOf + (0.5 - Number.EPSILON)))
+
+  if (inclusive && exclusive) {
+    if (inclusive > exclusive) {
+      return { minExcluded: false, min: adaptToMultiple(inclusive) }
+    } else {
+      return { minExcluded: true, min: adaptToMultiple(exclusive) }
+    }
+  } else if (inclusive) {
+    return { minExcluded: false, min: adaptToMultiple(inclusive) }
+  } else if (exclusive) {
+    return { minExcluded: true, min: adaptToMultiple(exclusive) }
+  } else {
+    return undefined
+  }
+}
+
+function selectMaximum(
+  inclusive: number | undefined,
+  exclusive: number | undefined,
+  multipleOf: number | undefined,
+): { maxExcluded: boolean; max: number } | undefined {
+  const adaptToMultiple = (n: number) => (!multipleOf ? n : Math.round(n / multipleOf - (0.5 - Number.EPSILON)))
+
+  if (inclusive && exclusive) {
+    if (inclusive < exclusive) {
+      return { maxExcluded: false, max: adaptToMultiple(inclusive) }
+    } else {
+      return { maxExcluded: true, max: adaptToMultiple(exclusive) }
+    }
+  } else if (inclusive) {
+    return { maxExcluded: false, max: adaptToMultiple(inclusive) }
+  } else if (exclusive) {
+    return { maxExcluded: true, max: adaptToMultiple(exclusive) }
+  } else {
+    return undefined
+  }
 }

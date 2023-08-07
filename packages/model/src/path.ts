@@ -1,3 +1,5 @@
+import { areSameArray } from './utils'
+
 /**
  * TODO: add doc to whole module
  */
@@ -15,6 +17,7 @@ export interface Path {
   prependVariant(variantName: string): Path
   toArray(): Fragment[]
   format(): string
+  equals(other: Path): boolean
 }
 
 class PathImpl implements Path {
@@ -38,6 +41,18 @@ class PathImpl implements Path {
     }
     return pieces.join('')
   }
+
+  equals(other: Path): boolean {
+    return this === other || areSameArray(other.toArray(), this.toArray(), areFragmentsEqual)
+  }
+}
+
+function areFragmentsEqual(one: Fragment, other: Fragment): boolean {
+  return (
+    (one.kind === 'field' && other.kind === 'field' && one.fieldName === other.fieldName) ||
+    (one.kind === 'index' && other.kind === 'index' && one.index === other.index) ||
+    (one.kind === 'variant' && other.kind === 'variant' && one.variantName === other.variantName)
+  )
 }
 
 function fragmentToString(fragment: Fragment): string {

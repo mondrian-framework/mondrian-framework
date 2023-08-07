@@ -96,3 +96,17 @@ describe('path.format', () => {
     expect(pretty3).toEqual('$.field[1].inner')
   })
 })
+
+describe('path.equals', () => {
+  test('is true for paths with same fragments', () => {
+    const one = path.empty().prependField('inner').prependIndex(1).prependVariant('variant')
+    const other = path.empty().prependField('inner').prependIndex(1).prependVariant('variant')
+    expect(one.equals(other)).toBe(true)
+  })
+
+  test('is false for paths with different fragments', () => {
+    const one = path.empty().prependField('inner').prependIndex(1).prependVariant('variant')
+    const other = path.empty().prependIndex(1).prependField('inner').prependVariant('variant')
+    expect(one.equals(other)).toBe(false)
+  })
+})

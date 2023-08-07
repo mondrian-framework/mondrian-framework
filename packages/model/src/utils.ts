@@ -47,3 +47,13 @@ export function failWithInternalError(message: string): never {
   const reportMessage = `If you think this could be a bug in the framework, please report it at ${mondrianIssueUrl}`
   throw Error(`${header} ${message}\n${reportMessage}`)
 }
+
+/**
+ * @param one the first array to compare
+ * @param other the second array to compare
+ * @param compare the function used to compare the arrays' objects
+ * @returns true if the array are equal element by element
+ */
+export function areSameArray<A>(one: A[], other: A[], compare: (one: A, other: A) => boolean): boolean {
+  return one === other || (one.length === other.length && one.every((value, i) => compare(value, other[i])))
+}

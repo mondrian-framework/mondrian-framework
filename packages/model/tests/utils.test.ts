@@ -1,4 +1,4 @@
-import { failWithInternalError, filterMap, filterMapObject } from '../src/utils'
+import { areSameArray, failWithInternalError, filterMap, filterMapObject } from '../src/utils'
 import { expectToThrowErrorMatching } from './testing-utils'
 import { fc as gen, test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
@@ -43,5 +43,22 @@ describe('failWithInternalError', () => {
       () => failWithInternalError('message'),
       (error) => error.message.includes(issuePage),
     )
+  })
+})
+
+describe('areSameArray', () => {
+  test('is false for arrays with different size', () => {
+    expect(areSameArray([1], [1, 2, 3], (n, m) => n === m)).toBe(false)
+    expect(areSameArray([1, 2, 3], [1], (n, m) => n === m)).toBe(false)
+  })
+
+  test('is false for arrays with different elements', () => {
+    expect(areSameArray([1, 2, 3], [1, 2, 4], (n, m) => n === m)).toBe(false)
+    expect(areSameArray(['1'], ['2'], (n, m) => n === m)).toBe(false)
+  })
+
+  test('is true for arrays that are equal element by element', () => {
+    expect(areSameArray([1, 2, 3], [1, 2, 3], (n, m) => n === m)).toBe(true)
+    expect(areSameArray(['1'], ['1'], (n, m) => n === m)).toBe(true)
   })
 })

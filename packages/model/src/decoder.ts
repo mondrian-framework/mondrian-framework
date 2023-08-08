@@ -159,13 +159,17 @@ function unsafeDecode(type: types.Type, value: unknown, options: Options): decod
  * Tries to decode a boolean value.
  */
 function decodeBoolean(value: unknown, options: Options): decoder.Result<boolean> {
-  return match([options.typeCastingStrategy, value])
-    .with([P._, true], () => decoder.succeed(true))
-    .with([P._, false], () => decoder.succeed(false))
-    .with(['tryCasting', 'true'], () => decoder.succeed(true))
-    .with(['tryCasting', 'false'], () => decoder.succeed(false))
-    .with(['tryCasting', P.number], ([_, n]) => decoder.succeed(n !== 0))
-    .otherwise((_) => decoder.fail('boolean', value))
+  if (value === true || value === false) {
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value === 'true') {
+    return decoder.succeed(true)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value === 'false') {
+    return decoder.succeed(false)
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+    return decoder.succeed(value !== 0)
+  } else {
+    return decoder.fail('boolean', value)
+  }
 }
 
 /**

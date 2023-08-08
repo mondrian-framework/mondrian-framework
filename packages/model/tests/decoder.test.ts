@@ -1,8 +1,8 @@
-import { decoder, types, path } from '../src'
+import { decoder, types, path, validator } from '../src'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
-import { describe, expect } from 'vitest'
+import { describe, expect, vi } from 'vitest'
 
 function compareDecoderErrors(one: decoder.Error[], other: decoder.Error[]): boolean {
   const compareSingleErrors = (one: decoder.Error, other: decoder.Error) => {
@@ -564,6 +564,38 @@ describe('decoder.decodeWithoutValidation', () => {
         },
       )
     })
+  })
+
+  describe('custom type', () => {
+    const options = {
+      typeCastingStrategy: 'tryCasting',
+      errorReportingStrategy: 'allErrors',
+      unionDecodingStrategy: 'taggedUnions',
+    } as const
+    test.prop([gen.anything()])('calls the provided decoder', (value) => {
+      // spy function: https://vitest.dev/api/expect.html#tohavebeencalled
+      const decoderFunction = {
+        decode: (v: unknown, o: any) => {
+          expect(v).toEqual(value)
+          expect(o).toEqual(options)
+          return decoder.succeed(1)
+        },
+      }
+      const decoderSpy = vi.spyOn(decoderFunction, 'decode')
+
+      const model = types.custom<'custom', {}, number>(
+        'custom',
+        () => null,
+        decoderFunction.decode,
+        () => validator.fail('test', 'test'),
+      )
+      checkValue(decoder.decodeWithoutValidation(model, value, options), 1)
+      expect(decoderSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  test('when used incorrectly throws an internal exception', () => {
+    expect(() => decoder.decode({ kind: 'foo' } as any, null)).toThrowError()
   })
 })
 

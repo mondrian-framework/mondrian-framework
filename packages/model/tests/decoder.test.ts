@@ -274,6 +274,28 @@ describe('decoder.decodeWithoutValidation', () => {
       checkError(result, expectedError)
     })
   })
+
+  describe('optional value', () => {
+    const model = types.number().optional()
+
+    test('decodes null as undefined', () => {
+      checkValue(decoder.decodeWithoutValidation(model, null), undefined)
+    })
+
+    test('decodes undefined as undefined', () => {
+      checkValue(decoder.decodeWithoutValidation(model, undefined), undefined)
+    })
+
+    test('decodes wrapped type', () => {
+      checkValue(decoder.decodeWithoutValidation(model, 1), 1)
+    })
+
+    test.prop([nonNumber.filter((n) => n !== null && n !== undefined)])('fails on other values', (value) => {
+      const result = decoder.decodeWithoutValidation(model, value)
+      const expectedError = [{ expected: 'number or undefined', got: value, path: path.empty() }]
+      checkError(result, expectedError)
+    })
+  })
 })
 
 describe('decoder.decode', () => {

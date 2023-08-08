@@ -7,7 +7,8 @@ import { assertNever } from './utils'
 export type Options = {
   typeCastingStrategy: 'tryCasting' | 'expectExactTypes'
   errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
-  unionDecodingStrategy: 'taggedUnions' | 'untaggedUnions'
+  unionDecodingStrategy: 'taggedUnions' | 'untaggedUnions' // TODO: what to do with this
+  // TODO: object strictness?
 }
 
 /**
@@ -409,7 +410,11 @@ function decodeObject(type: types.ObjectType<any, any>, value: unknown, options:
 }
 
 function castToObject(value: unknown): decoder.Result<Record<string, unknown>> {
-  return typeof value === 'object' ? decoder.succeed(value as Record<string, unknown>) : decoder.fail('object', value)
+  if (typeof value === 'object') {
+    return decoder.succeed((value === null ? {} : value) as Record<string, unknown>)
+  } else {
+    return decoder.fail('object', value)
+  }
 }
 
 function decodeObjectProperties(

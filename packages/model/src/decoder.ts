@@ -1,4 +1,5 @@
 import { types, decoder, result, validator, path } from './index'
+import { assertNever } from './utils'
 import { match, Pattern as P } from 'ts-pattern'
 
 /**
@@ -123,20 +124,35 @@ export const fail = <A>(expected: string, got: unknown): decoder.Result<A> =>
   decoder.failWithErrors([{ expected, got, path: path.empty() }])
 
 function unsafeDecode(type: types.Type, value: unknown, options: Options): decoder.Result<unknown> {
-  return match(types.concretise(type))
-    .with({ kind: 'boolean' }, (_type) => decodeBoolean(value, options))
-    .with({ kind: 'number' }, (_type) => decodeNumber(value, options))
-    .with({ kind: 'string' }, (_type) => decodeString(value, options))
-    .with({ kind: 'literal' }, (type) => decodeLiteral(type, value, options))
-    .with({ kind: 'enum' }, (type) => decodeEnum(type, value))
-    .with({ kind: 'optional' }, (type) => decodeOptional(type, value, options))
-    .with({ kind: 'nullable' }, (type) => decodeNullable(type, value, options))
-    .with({ kind: 'union' }, (type) => decodeUnion(type, value, options))
-    .with({ kind: 'object' }, (type) => decodeObject(type, value, options))
-    .with({ kind: 'array' }, (type) => decodeArray(type, value, options))
-    .with({ kind: 'reference' }, (type) => decodeReference(type, value, options))
-    .with({ kind: 'custom' }, (type) => type.decode(value, options, type.options))
-    .exhaustive()
+  const concreteType = types.concretise(type)
+
+  if (concreteType.kind === 'boolean') {
+    return decodeBoolean(value, options)
+  } else if (concreteType.kind === 'number') {
+    return decodeNumber(value, options)
+  } else if (concreteType.kind === 'string') {
+    return decodeString(value, options)
+  } else if (concreteType.kind === 'literal') {
+    return decodeLiteral(concreteType, value, options)
+  } else if (concreteType.kind === 'enum') {
+    return decodeEnum(concreteType, value)
+  } else if (concreteType.kind === 'optional') {
+    return decodeOptional(concreteType, value, options)
+  } else if (concreteType.kind === 'nullable') {
+    return decodeNullable(concreteType, value, options)
+  } else if (concreteType.kind === 'union') {
+    return decodeUnion(concreteType, value, options)
+  } else if (concreteType.kind === 'object') {
+    return decodeObject(concreteType, value, options)
+  } else if (concreteType.kind === 'array') {
+    return decodeArray(concreteType, value, options)
+  } else if (concreteType.kind === 'reference') {
+    return decodeReference(concreteType, value, options)
+  } else if (concreteType.kind === 'custom') {
+    return concreteType.decode(value, options, concreteType.options)
+  } else {
+    assertNever(concreteType, 'Totality check failed when unsafe decoding a value, this should have never happened')
+  }
 }
 
 /**
@@ -156,17 +172,22 @@ function decodeBoolean(value: unknown, options: Options): decoder.Result<boolean
  * Tries to decode a number value.
  */
 function decodeNumber(value: unknown, options: Options): decoder.Result<number> {
-  return match([options.typeCastingStrategy, value])
-    .with([P._, P.number], ([_, n]) => decoder.succeed(n))
-    .with(['tryCasting', P.string], ([_, s]) => numberFromString(s))
-    .otherwise((_) => decoder.fail('number', value))
+  if (typeof value === 'number') {
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
+    return numberFromString(value)
+  } else {
+    return decoder.fail('number', value)
+  }
 }
 
 function numberFromString(string: string): decoder.Result<number> {
-  return match(Number(string))
-    .with(NaN, (_) => fail<number>('number', string))
-    .with(P.number, (n) => decoder.succeed(n))
-    .exhaustive()
+  const number = Number(string)
+  if (Number.isNaN(number)) {
+    return fail<number>('number', string)
+  } else {
+    return decoder.succeed(number)
+  }
 }
 
 /**

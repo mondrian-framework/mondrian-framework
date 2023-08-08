@@ -1,7 +1,17 @@
 import { result } from '../src/index'
-import { expectFailure, expectOk } from './testing-utils'
+import { assertFailure, assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
+
+function expectFailure<A, E>(result: result.Result<A, E>, expected: E) {
+  const error = assertFailure(result)
+  expect(error).toEqual(expected)
+}
+
+function expectOk<A, E>(result: result.Result<A, E>, expected: A) {
+  const value = assertOk(result)
+  expect(value).toEqual(expected)
+}
 
 describe('chain', () => {
   test('short circuits on error values', () =>

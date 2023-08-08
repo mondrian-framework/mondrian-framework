@@ -1,21 +1,17 @@
 import { result, types } from '../src'
 import { expect } from 'vitest'
 
-export function expectOk<A>(result: result.Result<A, any>, expected: A, compare?: (one: A, other: A) => boolean): void {
-  result.match(
-    (actual) => (compare ? expect(compare(actual, expected)).toBe(true) : expect(actual).toBe(expected)),
+export function assertOk<A>(result: result.Result<A, any>): A {
+  return result.match(
+    (value) => value,
     (error) => expect.fail(`Expected an \`ok\` result but got a \`failure\` with error\n${error}`),
   )
 }
 
-export function expectFailure<E>(
-  result: result.Result<any, E>,
-  expected: E,
-  compare?: (one: E, other: E) => boolean,
-): void {
-  result.match(
+export function assertFailure<E>(result: result.Result<any, E>): E {
+  return result.match(
     (value) => expect.fail(`Expected a \`failure\` result but got an \`ok\` with value\n${value}`),
-    (actual) => (compare ? expect(compare(actual, expected)).toBe(true) : expect(actual).toEqual(expected)),
+    (error) => error,
   )
 }
 

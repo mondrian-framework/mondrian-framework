@@ -315,6 +315,18 @@ describe('projection.ProjectedType', () => {
     expectTypeOf<Projected>().toEqualTypeOf(types.object({}))
   })
 
+  test('a projection on a union is the projection of its variants', () => {
+    const model = types.union({ variant1: types.number(), variant2: types.object({ field: types.string() }) })
+    type P1 = { variant1: true }
+    type UnionProjection1 = projection.ProjectedType<typeof model, P1>
+    const projected1 = types.union({ variant1: types.number() })
+    expectTypeOf<UnionProjection1>().toEqualTypeOf(projected1)
+
+    type P2 = { variant1: true; variant2: { field: true } }
+    type UnionProjection2 = projection.ProjectedType<typeof model, P2>
+    expectTypeOf<UnionProjection2>().toEqualTypeOf(model)
+  })
+
   test('when the object is a wrapper the projected type is itself wrapped', () => {
     const model = types.object({ field1: types.string(), field2: types.number() })
     const projected = types.object({ field1: types.string() })

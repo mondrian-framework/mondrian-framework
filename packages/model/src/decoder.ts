@@ -198,11 +198,15 @@ function numberFromString(string: string): decoder.Result<number> {
  * Tries to decode a string value.
  */
 function decodeString(value: unknown, options: Options): decoder.Result<string> {
-  return match([options.typeCastingStrategy, value])
-    .with([P._, P.string], ([_, s]) => decoder.succeed(s))
-    .with(['tryCasting', P.number], ([_, n]) => decoder.succeed(n.toString()))
-    .with(['tryCasting', P.boolean], ([_, b]) => decoder.succeed(b.toString()))
-    .otherwise((_) => decoder.fail('string', value))
+  if (typeof value === 'string') {
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+    return decoder.succeed(value.toString())
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'boolean') {
+    return decoder.succeed(value.toString())
+  } else {
+    return decoder.fail('string', value)
+  }
 }
 
 /**

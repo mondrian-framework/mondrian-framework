@@ -375,7 +375,16 @@ function decodeUntaggedUnion(type: types.UnionType<any>, value: unknown, options
   for (const [variantName, variantType] of Object.entries(type.variants)) {
     const decodedVariant = unsafeDecode(variantType as types.Type, value, options)
     if (decodedVariant.isOk) {
-      return decoder.succeed(decodedVariant.value)
+      const check = type.variantsChecks ? type.variantsChecks[variantName] : (_: any) => true
+      if (check(decodedVariant.value as any)) {
+        return decoder.succeed(decodedVariant.value)
+      } else {
+        decodingErrors.push({
+          expected: variantName,
+          got: decodedVariant.value,
+          path: path.empty(),
+        })
+      }
     } else {
       decodingErrors.push(...decodedVariant.error.map(prependVariantToPath(variantName)))
     }
@@ -389,10 +398,19 @@ function decodeTaggedUnion(type: types.UnionType<any>, value: unknown, options: 
     const variantName = singleKeyFromObject(object)
     if (variantName !== undefined && Object.keys(type.variants).includes(variantName)) {
       const decodingResult = unsafeDecode(type.variants[variantName], object[variantName], options)
-      return decodingResult.mapError((errors) => errors.map(prependVariantToPath(variantName)))
+      if (decodingResult.isOk) {
+        const check = type.variantsChecks ? type.variantsChecks[variantName] : (_: any) => true
+        if (check(decodingResult.value as any)) {
+          return decodingResult
+        } else {
+          return decoder.fail(variantName, object[variantName])
+        }
+      } else {
+        return decodingResult.mapError((errors) => errors.map(prependVariantToPath(variantName)))
+      }
     }
   }
-  const prettyVariants = Object.keys(type.variants).join(', ')
+  const prettyVariants = Object.keys(type.variants).join(' | ')
   return decoder.fail(`union (${prettyVariants})`, value)
 }
 

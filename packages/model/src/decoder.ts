@@ -245,13 +245,11 @@ function decodeEnum(type: types.EnumType<any>, value: unknown): decoder.Result<a
  * value of the wrapped type.
  */
 function decodeOptional(type: types.OptionalType<any>, value: unknown, options: Options): decoder.Result<any> {
-  return match(value)
-    .with(undefined, (_) => decoder.succeed(undefined))
-    .with(null, (_) => decoder.succeed(undefined))
-    .with(P._, (value) =>
-      unsafeDecode(type.wrappedType, value, options).mapError((errors) => errors.map(addExpected('undefined'))),
-    )
-    .exhaustive()
+  if (value === undefined || value === null) {
+    return decoder.succeed(undefined)
+  } else {
+    return unsafeDecode(type.wrappedType, value, options).mapError((errors) => errors.map(addExpected('undefined')))
+  }
 }
 
 /**

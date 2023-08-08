@@ -57,3 +57,7 @@ export function failWithInternalError(message: string): never {
 export function areSameArray<A>(one: A[], other: A[], compare: (one: A, other: A) => boolean): boolean {
   return one === other || (one.length === other.length && one.every((value, i) => compare(value, other[i])))
 }
+
+export function assertNever(_value: never, errorMessage: string): never {
+  failWithInternalError(errorMessage)
+}

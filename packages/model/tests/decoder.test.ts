@@ -21,6 +21,12 @@ const nonNumber = gen.anything().filter((value) => typeof value !== 'number')
 const nonNull = gen.anything().filter((value) => value !== null)
 const nonArray = gen.anything().filter((value) => !(value instanceof Array))
 const nonObject = gen.anything().filter((value) => !(typeof value === 'object'))
+const evenNumberOrString = gen.oneof(
+  number.filter((n) => n % 2 === 0),
+  gen.string(),
+)
+const oddNumber = number.filter((n) => n % 2 !== 0)
+const notNumberNorString = gen.anything().filter((value) => !(typeof value === 'number' || typeof value === 'string'))
 
 function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
   const error = assertFailure(result)
@@ -466,6 +472,97 @@ describe('decoder.decodeWithoutValidation', () => {
         ]
         checkError(result, expectedError)
       })
+    })
+  })
+
+  describe('union value', () => {
+    const model = types.union(
+      { variant1: types.number(), variant2: types.string() },
+      {
+        variant1: (value) => typeof value === 'number' && value % 2 == 0,
+        variant2: (value) => typeof value === 'string',
+      },
+    )
+
+    describe('when decoding untagged unions', () => {
+      const options = { unionDecodingStrategy: 'untaggedUnions' } as const
+
+      test.prop([evenNumberOrString])('can decode its variants', (value) => {
+        checkValue(decoder.decodeWithoutValidation(model, value, options), value)
+      })
+
+      test.prop([notNumberNorString])('fails with something that is not its variant', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [
+          { expected: 'number', got: value, path: path.empty().prependVariant('variant1') },
+          { expected: 'string', got: value, path: path.empty().prependVariant('variant2') },
+        ]
+        checkError(result, expectedError)
+      })
+
+      test.prop([oddNumber])("fails with something that can be decoded but doesn't respect the variant checks", (n) => {
+        const result = decoder.decodeWithoutValidation(model, n, options)
+        const expectedError = [
+          { expected: 'variant1', got: n, path: path.empty() },
+          { expected: 'string', got: n, path: path.empty().prependVariant('variant2') },
+        ]
+        checkError(result, expectedError)
+      })
+
+      test.prop([evenNumberOrString])(
+        'if union checks are not specified uses the first variant that successfully decodes',
+        (value) => {
+          const model = types.union({ variant1: types.number(), variant2: types.string() })
+          checkValue(decoder.decodeWithoutValidation(model, value, options), value)
+        },
+      )
+    })
+
+    describe('when decoding tagged unions', () => {
+      const options = { unionDecodingStrategy: 'taggedUnions' } as const
+
+      test.prop([number.filter((n) => n % 2 === 0)])('can decode its tagged variant', (number) => {
+        checkValue(decoder.decodeWithoutValidation(model, { variant1: number }, options), number)
+      })
+
+      test.prop([gen.string()])('can decode its other tagged variant', (string) => {
+        checkValue(decoder.decodeWithoutValidation(model, { variant2: string }, options), string)
+      })
+
+      test.prop([nonObject])('fails with something that is not an object', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [{ expected: 'union (variant1 | variant2)', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+
+      test('fails with objects that are not tagged as one of its unions', () => {
+        const failingValues = [{}, { variant1: 1, variant2: 2 }, { notAVariant: 2 }]
+        for (const value of failingValues) {
+          const result = decoder.decodeWithoutValidation(model, value, options)
+          const expectedError = [{ expected: 'union (variant1 | variant2)', got: value, path: path.empty() }]
+          checkError(result, expectedError)
+        }
+      })
+
+      test.prop([nonNumber])('fails if it cannot decode the variant wrapped type', (value) => {
+        const result = decoder.decodeWithoutValidation(model, { variant1: value }, options)
+        const expectedError = [{ expected: 'number', got: value, path: path.empty().prependVariant('variant1') }]
+        checkError(result, expectedError)
+      })
+
+      test.prop([oddNumber])('still performs the checks', (number) => {
+        const result = decoder.decodeWithoutValidation(model, { variant1: number }, options)
+        const expectedError = [{ expected: 'variant1', got: number, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+
+      test.prop([number])(
+        'if union checks are not specified uses the first variant that successfully decodes',
+        (value) => {
+          const model = types.union({ variant1: types.number(), variant2: types.string() })
+          checkValue(decoder.decodeWithoutValidation(model, { variant1: value }, options), value)
+        },
+      )
     })
   })
 })

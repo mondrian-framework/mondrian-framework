@@ -13,16 +13,52 @@ function compareDecoderErrors(one: decoder.Error[], other: decoder.Error[]): boo
 const number = gen.oneof(gen.integer(), gen.double(), gen.float())
 
 describe('decoder.decodeWithoutValidation', () => {
+  describe('boolean value', () => {
+    const model = types.boolean()
+    const nonBooleans = gen.anything().filter((value) => typeof value !== 'boolean')
+
+    describe('without casting', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+
+      test.prop([nonBooleans])('fails on non booleans', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        expectFailure(result, [{ expected: 'boolean', got: value, path: path.empty() }], compareDecoderErrors)
+      })
+
+      test.prop([gen.boolean()])('can decode booleans', (boolean) => {
+        const result = decoder.decodeWithoutValidation(model, boolean, options)
+        expectOk(result, boolean)
+      })
+    })
+
+    describe('with casting', () => {
+      const options = { typeCastingStrategy: 'tryCasting' } as const
+
+      test('can decode the strings "true" and "false"', () => {
+        expectOk(decoder.decodeWithoutValidation(model, 'true', options), true)
+        expectOk(decoder.decodeWithoutValidation(model, 'false', options), false)
+      })
+
+      test('decodes 0 as false', () => {
+        expectOk(decoder.decodeWithoutValidation(model, 0, options), false)
+      })
+
+      test.prop([number.filter((n) => n !== 0)])('decodes non-zero number as true', (n) => {
+        expectOk(decoder.decodeWithoutValidation(model, n, options), true)
+      })
+    })
+  })
+
   describe('number value', () => {
     const model = types.number()
 
     describe('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
-      test('fails on non numbers', () => {
-        for (const value of [null, undefined, '1', '1.1', { a: 1 }]) {
-          const result = decoder.decodeWithoutValidation(model, value, options)
-          expectFailure(result, [{ expected: 'number', got: value, path: path.empty() }], compareDecoderErrors)
-        }
+      const nonNumbers = gen.anything().filter((value) => typeof value !== 'number')
+
+      test.prop([nonNumbers])('fails on non numbers', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        expectFailure(result, [{ expected: 'number', got: value, path: path.empty() }], compareDecoderErrors)
       })
 
       test.prop([number])('can decode numbers', (n) => {

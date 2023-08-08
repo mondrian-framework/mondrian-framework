@@ -1,6 +1,5 @@
 import { types, decoder, result, validator, path } from './index'
 import { assertNever } from './utils'
-import { match, Pattern as P } from 'ts-pattern'
 
 /**
  * The options that can be used when decoding a type.
@@ -283,10 +282,13 @@ function decodeReference(type: types.ReferenceType<any>, value: unknown, options
  * Tries to decode an array by decoding each of its values as a value of the wrapped type.
  */
 function decodeArray(type: types.ArrayType<any, any>, value: unknown, options: Options): decoder.Result<any> {
-  return match([options.typeCastingStrategy, value])
-    .with([P._, P.array(P._)], ([_, array]) => decodeArrayValues(type, array, options))
-    .with(['tryCasting', P.instanceOf(Object)], ([_, object]) => decodeObjectAsArray(type, object, options))
-    .otherwise((_) => decoder.fail('array', value))
+  if (value instanceof Array) {
+    return decodeArrayValues(type, value, options)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
+    return decodeObjectAsArray(type, value, options)
+  } else {
+    return decoder.fail('array', value)
+  }
 }
 
 /**
@@ -346,11 +348,13 @@ function keysAsConsecutiveNumbers(object: Object): number[] | undefined {
  *          `[n, n+1, n+2, ...]`
  */
 function allConsecutive(numbers: number[]): boolean {
-  const [previousNumber, ...rest] = numbers
+  let [previousNumber, ...rest] = numbers
   for (const number of rest) {
     const isConsecutive = previousNumber + 1 === number
     if (!isConsecutive) {
       return false
+    } else {
+      previousNumber = number
     }
   }
   return true

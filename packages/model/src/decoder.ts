@@ -457,5 +457,3 @@ function decodeObjectProperties(
   }
   return decodingErrors.length > 0 ? decoder.failWithErrors(decodingErrors) : decoder.succeed(decodedObject)
 }
-
-// TODO rimuovere union

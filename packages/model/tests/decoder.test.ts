@@ -252,6 +252,28 @@ describe('decoder.decodeWithoutValidation', () => {
       })
     })
   })
+
+  describe('enum variant', () => {
+    const variants = ['one', 'two', 'three'] as const
+    const model = types.enumeration(variants)
+
+    test.prop([gen.constantFrom(...variants)])('can decode its variants', (variant) => {
+      checkValue(decoder.decodeWithoutValidation(model, variant), variant)
+    })
+
+    const nonVariant = gen.string().filter((s) => !(variants as readonly string[]).includes(s))
+    test.prop([nonVariant])('fails on non variant strings', (string) => {
+      const result = decoder.decodeWithoutValidation(model, string)
+      const expectedError = [{ expected: 'enum ("one" | "two" | "three")', got: string, path: path.empty() }]
+      checkError(result, expectedError)
+    })
+
+    test.prop([nonString])('fails on non strings', (value) => {
+      const result = decoder.decodeWithoutValidation(model, value)
+      const expectedError = [{ expected: 'enum ("one" | "two" | "three")', got: value, path: path.empty() }]
+      checkError(result, expectedError)
+    })
+  })
 })
 
 describe('decoder.decode', () => {

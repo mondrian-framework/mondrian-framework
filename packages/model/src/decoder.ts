@@ -261,17 +261,15 @@ function decodeNullable<T extends types.Type>(
   value: unknown,
   options: Options,
 ): decoder.Result<T | null> {
-  return match([options.typeCastingStrategy, value])
-    .with([P._, null], (_) => decoder.succeed(null))
-    .with(['tryCasting', undefined], (_) => decoder.succeed(null))
-    .with(
-      [P._, P._],
-      ([_, value]) =>
-        unsafeDecode(type.wrappedType, value, options).mapError((errors) =>
-          errors.map(addExpected('null')),
-        ) as decoder.Result<T | null>,
-    )
-    .exhaustive()
+  if (value === null) {
+    return decoder.succeed(null)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value === undefined) {
+    return decoder.succeed(null)
+  } else {
+    return unsafeDecode(type.wrappedType, value, options).mapError((errors) =>
+      errors.map(addExpected('null')),
+    ) as decoder.Result<T | null>
+  }
 }
 
 /**

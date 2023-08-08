@@ -213,12 +213,13 @@ function decodeString(value: unknown, options: Options): decoder.Result<string> 
  * Tries to decode a literal value.
  */
 function decodeLiteral(type: types.LiteralType<any>, value: unknown, options: Options): decoder.Result<any> {
-  return match([options.typeCastingStrategy, type.literalValue, value])
-    .with([P._, P._, P.when((value) => value === type.literalValue)], ([_options, literal, _value]) =>
-      decoder.succeed(literal),
-    )
-    .with(['tryCasting', null, 'null'], ([_options, literal, _value]) => decoder.succeed(literal))
-    .otherwise((_) => decoder.fail(`literal (${type.literalValue})`, value))
+  if (value === type.literalValue) {
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && type.literalValue === null && value === 'null') {
+    return decoder.succeed(null)
+  } else {
+    return decoder.fail(`literal (${type.literalValue})`, value)
+  }
   /*
     const castedValue = decodeInternal(union({ n: number(), b: boolean(), s: string() }), value, opts)
     if (castedValue.success) {

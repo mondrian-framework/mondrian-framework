@@ -19,6 +19,7 @@ const nonString = gen.anything().filter((value) => typeof value !== 'string')
 const nonBoolean = gen.anything().filter((value) => typeof value !== 'boolean')
 const nonNumber = gen.anything().filter((value) => typeof value !== 'number')
 const nonNull = gen.anything().filter((value) => value !== null)
+const nonArray = gen.anything().filter((value) => !(value instanceof Array))
 
 function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
   const error = assertFailure(result)
@@ -323,6 +324,82 @@ describe('decoder.decodeWithoutValidation', () => {
 
       test('can decode undefined as null', () => {
         checkValue(decoder.decodeWithoutValidation(model, undefined, options), null)
+      })
+    })
+  })
+
+  describe('reference value', () => {
+    const model = types.number().reference()
+    test('decodes wrapped type', () => {
+      checkValue(decoder.decodeWithoutValidation(model, 1), 1)
+    })
+  })
+
+  describe('array value', () => {
+    const model = types.number().array()
+
+    describe('without casting', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+      test.prop([gen.array(number)])('decodes an array of values', (array) => {
+        checkValue(decoder.decodeWithoutValidation(model, array, options), array)
+      })
+
+      test.prop([nonArray])('fails with non arrays', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [{ expected: 'array', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+
+      test('stops at first error by default', () => {
+        const value = [0, 1, 'error1', 'error2']
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [{ expected: 'number', got: 'error1', path: path.empty().prependIndex(2) }]
+        checkError(result, expectedError)
+      })
+
+      describe('when reportingAllErrors', () => {
+        const options = { typeCastingStrategy: 'expectExactTypes', errorReportingStrategy: 'allErrors' } as const
+        test('reports all errors', () => {
+          const value = [0, 1, 'error1', 'error2']
+          const result = decoder.decodeWithoutValidation(model, value, options)
+          const expectedError = [
+            { expected: 'number', got: 'error1', path: path.empty().prependIndex(2) },
+            { expected: 'number', got: 'error2', path: path.empty().prependIndex(3) },
+          ]
+          checkError(result, expectedError)
+        })
+      })
+    })
+
+    describe('with casting', () => {
+      const options = { typeCastingStrategy: 'tryCasting' } as const
+
+      test('can decode array-like object with numeric keys', () => {
+        const object = { 1: 11, 0: 10, 2: 12 }
+        const result = decoder.decodeWithoutValidation(model, object, options)
+        checkValue(result, [10, 11, 12])
+      })
+
+      test('can decode array-like object with numeric string keys', () => {
+        const object = { '1': 11, '0': 10, '2': 12 }
+        const result = decoder.decodeWithoutValidation(model, object, options)
+        checkValue(result, [10, 11, 12])
+      })
+
+      test('fails on non array-like objects', () => {
+        const failingObjects = [{}, { 0: 10, 2: 12 }, { 1: 11, 2: 12 }, { notNumber: 10 }]
+        for (const object of failingObjects) {
+          const result = decoder.decodeWithoutValidation(model, object, options)
+          const expectedError = [{ expected: 'array', got: object, path: path.empty() }]
+          checkError(result, expectedError)
+        }
+      })
+
+      test('reports errors with correct indices', () => {
+        const object = { 1: 11, 0: 10, 2: 'error' }
+        const result = decoder.decodeWithoutValidation(model, object, options)
+        const expectedError = [{ expected: 'number', got: 'error', path: path.empty().prependIndex(2) }]
+        checkError(result, expectedError)
       })
     })
   })

@@ -210,7 +210,7 @@ export type ProjectedType<T extends types.Type, P extends types.Infer<FromType<T
       ? ProjectedType<T1, P> : never
   // If P is an object and we have an object-like type we perform the projection picking the selected fields
   : [T] extends [types.UnionType<infer Ts>] ? [keyof P] extends [keyof Ts]
-    ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, types.Infer<FromType<Ts[K]>>> ? ProjectedType<Ts[K], P[K]> : never }> : never
+    ? types.UnionType<{ [K in keyof P]: P extends Record<K, types.Infer<FromType<Ts[K]>>> ? ProjectedType<Ts[K], P[K]> : never }> : never
   : [T] extends [types.ObjectType<infer _, infer Ts>] ? [keyof P] extends [keyof Ts]
     ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, types.Infer<FromType<Ts[K]>>> ? ProjectedType<Ts[K], P[K]> : never }> : never
   : never

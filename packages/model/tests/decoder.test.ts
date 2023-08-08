@@ -296,6 +296,36 @@ describe('decoder.decodeWithoutValidation', () => {
       checkError(result, expectedError)
     })
   })
+
+  describe('nullable value', () => {
+    const model = types.number().nullable()
+
+    describe('without casting', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+
+      test('decodes null as null', () => {
+        checkValue(decoder.decodeWithoutValidation(model, null, options), null)
+      })
+
+      test('decodes wrapped type', () => {
+        checkValue(decoder.decodeWithoutValidation(model, 1, options), 1)
+      })
+
+      test.prop([nonNumber.filter((n) => n !== null)])('fails on other values', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [{ expected: 'number or null', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+    })
+
+    describe('with casting', () => {
+      const options = { typeCastingStrategy: 'tryCasting' } as const
+
+      test('can decode undefined as null', () => {
+        checkValue(decoder.decodeWithoutValidation(model, undefined, options), null)
+      })
+    })
+  })
 })
 
 describe('decoder.decode', () => {

@@ -5,12 +5,20 @@ import { test, fc as gen } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
 
 function compareDecoderErrors(one: decoder.Error[], other: decoder.Error[]): boolean {
-  const compareSingleErrors = (one: decoder.Error, other: decoder.Error) =>
-    one.expected === other.expected && one.got === other.got && one.path.equals(other.path)
+  const compareSingleErrors = (one: decoder.Error, other: decoder.Error) => {
+    const expectedAreEqual = one.expected === other.expected
+    const gotAreEqual = one.got === other.got || (Number.isNaN(one.got) && Number.isNaN(other.got))
+    const pathsAreEqual = one.path.equals(other.path)
+    return expectedAreEqual && gotAreEqual && pathsAreEqual
+  }
   return areSameArray(one, other, compareSingleErrors)
 }
 
 const number = gen.oneof(gen.integer(), gen.double(), gen.float())
+const nonString = gen.anything().filter((value) => typeof value !== 'string')
+const nonBoolean = gen.anything().filter((value) => typeof value !== 'boolean')
+const nonNumber = gen.anything().filter((value) => typeof value !== 'number')
+const nonNull = gen.anything().filter((value) => value !== null)
 
 function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
   const error = assertFailure(result)
@@ -26,12 +34,11 @@ function checkValue<A>(result: decoder.Result<A>, expectedValue: A): void {
 describe('decoder.decodeWithoutValidation', () => {
   describe('boolean value', () => {
     const model = types.boolean()
-    const nonBooleans = gen.anything().filter((value) => typeof value !== 'boolean')
 
     describe('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
 
-      test.prop([nonBooleans])('fails on non booleans', (value) => {
+      test.prop([nonBoolean])('fails on non booleans', (value) => {
         const result = decoder.decodeWithoutValidation(model, value, options)
         const expectedError = [{ expected: 'boolean', got: value, path: path.empty() }]
         checkError(result, expectedError)
@@ -66,9 +73,8 @@ describe('decoder.decodeWithoutValidation', () => {
 
     describe('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
-      const nonNumbers = gen.anything().filter((value) => typeof value !== 'number')
 
-      test.prop([nonNumbers])('fails on non numbers', (value) => {
+      test.prop([nonNumber])('fails on non numbers', (value) => {
         const result = decoder.decodeWithoutValidation(model, value, options)
         const expectedError = [{ expected: 'number', got: value, path: path.empty() }]
         checkError(result, expectedError)
@@ -77,16 +83,29 @@ describe('decoder.decodeWithoutValidation', () => {
       test.prop([number])('can decode numbers', (n) => {
         checkValue(decoder.decodeWithoutValidation(model, n, options), n)
       })
+
+      test('can decode NaN', () => {
+        const result = decoder.decodeWithoutValidation(model, NaN, options)
+        if (!result.isOk || !Number.isNaN(result.value)) {
+          expect.fail('should work on NaN')
+        }
+      })
     })
 
     describe('with casting', () => {
       const options = { typeCastingStrategy: 'tryCasting' } as const
-      test.prop([number])('can decode number strings', (n) => {
+
+      test('works with +-0 strings', () => {
+        checkValue(decoder.decodeWithoutValidation(model, '+0', options), 0)
+        checkValue(decoder.decodeWithoutValidation(model, '-0', options), -0)
+      })
+
+      test.prop([number.filter((n) => n !== 0 && !Number.isNaN(n))])('can decode number strings', (n) => {
         checkValue(decoder.decodeWithoutValidation(model, n.toString(), options), n)
       })
 
       test('still fails with non number strings', () => {
-        for (const value of ['foo', 'bar', '1.1not a number']) {
+        for (const value of ['foo', 'bar', '1.1 not a number']) {
           const result = decoder.decodeWithoutValidation(model, value, options)
           const expectedError = [{ expected: 'number', got: value, path: path.empty() }]
           checkError(result, expectedError)
@@ -100,7 +119,6 @@ describe('decoder.decodeWithoutValidation', () => {
 
     describe('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
-      const nonString = gen.anything().filter((value) => typeof value !== 'string')
 
       test.prop([nonString])('fails on non strings', (value) => {
         const result = decoder.decodeWithoutValidation(model, value, options)
@@ -127,10 +145,115 @@ describe('decoder.decodeWithoutValidation', () => {
       })
     })
   })
+
+  describe('literal value', () => {
+    describe('literal number', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+      const literalValue = 1
+      const model = types.literal(literalValue)
+
+      test('can decode the exact same literal', () => {
+        checkValue(decoder.decodeWithoutValidation(model, literalValue, options), literalValue)
+      })
+
+      test.prop([number.filter((n) => n !== literalValue)])('fails on numbers that are not the literal', (n) => {
+        const result = decoder.decodeWithoutValidation(model, n, options)
+        const expectedError = [{ expected: 'literal (1)', got: n, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+
+      test.prop([nonNumber])('fails on non number values', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [{ expected: 'literal (1)', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+    })
+
+    describe('literal string', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+      const literalValue = 'mondrian'
+      const model = types.literal(literalValue)
+
+      test('can decode the exact same literal', () => {
+        checkValue(decoder.decodeWithoutValidation(model, literalValue, options), literalValue)
+      })
+
+      test.prop([gen.string().filter((s) => s !== literalValue)])(
+        'fails on strings that are not the literal',
+        (string) => {
+          const result = decoder.decodeWithoutValidation(model, string, options)
+          const expectedError = [{ expected: 'literal (mondrian)', got: string, path: path.empty() }]
+          checkError(result, expectedError)
+        },
+      )
+
+      test.prop([nonString])('fail on non string values', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [{ expected: 'literal (mondrian)', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+    })
+
+    describe('literal boolean', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+      const literalValue = true
+      const model = types.literal(literalValue)
+
+      test('can decode the exact same literal', () => {
+        checkValue(decoder.decodeWithoutValidation(model, literalValue, options), literalValue)
+      })
+
+      test.prop([gen.boolean().filter((b) => b !== literalValue)])(
+        'fails on booleans that are not the literal',
+        (boolean) => {
+          const result = decoder.decodeWithoutValidation(model, boolean, options)
+          const expectedError = [{ expected: 'literal (true)', got: boolean, path: path.empty() }]
+          checkError(result, expectedError)
+        },
+      )
+
+      test.prop([nonBoolean])('fails on non boolean values', (value) => {
+        const result = decoder.decodeWithoutValidation(model, value, options)
+        const expectedError = [{ expected: 'literal (true)', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+    })
+
+    describe('literal null', () => {
+      const literalValue = null
+      const model = types.literal(literalValue)
+
+      describe('without casting', () => {
+        const options = { typeCastingStrategy: 'expectExactTypes' } as const
+
+        test('can decode the exact same literal', () => {
+          checkValue(decoder.decodeWithoutValidation(model, literalValue, options), literalValue)
+        })
+
+        test.prop([nonNull])('fails on non null values', (value) => {
+          const result = decoder.decodeWithoutValidation(model, value, options)
+          const expectedError = [{ expected: 'literal (null)', got: value, path: path.empty() }]
+          checkError(result, expectedError)
+        })
+      })
+
+      describe('with casting', () => {
+        const options = { typeCastingStrategy: 'tryCasting' } as const
+
+        test('can decode the "null" string as the null literal', () => {
+          checkValue(decoder.decodeWithoutValidation(model, 'null', options), null)
+        })
+
+        test.prop([gen.string().filter((s) => s !== 'null')])('fails on other strings', (string) => {
+          const result = decoder.decodeWithoutValidation(model, string, options)
+          const expectedError = [{ expected: 'literal (null)', got: string, path: path.empty() }]
+          checkError(result, expectedError)
+        })
+      })
+    })
+  })
 })
 
 describe('decoder.decode', () => {
-  test('should perform validation', () => {
-    // expect.fail('TODO: check')
-  })
+  test.todo('should perform validation', () => {})
 })

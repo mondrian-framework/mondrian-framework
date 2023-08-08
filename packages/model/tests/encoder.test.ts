@@ -102,7 +102,5 @@ describe('encoder.encodeWithoutValidation', () => {
 })
 
 describe('encoder.encode', () => {
-  test('performs validation', () => {
-    expect.fail('TODO: check that validation is performed')
-  })
+  test.todo('performs validation', () => {})
 })

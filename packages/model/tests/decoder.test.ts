@@ -20,6 +20,7 @@ const nonBoolean = gen.anything().filter((value) => typeof value !== 'boolean')
 const nonNumber = gen.anything().filter((value) => typeof value !== 'number')
 const nonNull = gen.anything().filter((value) => value !== null)
 const nonArray = gen.anything().filter((value) => !(value instanceof Array))
+const nonObject = gen.anything().filter((value) => !(typeof value === 'object'))
 
 function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
   const error = assertFailure(result)
@@ -399,6 +400,70 @@ describe('decoder.decodeWithoutValidation', () => {
         const object = { 1: 11, 0: 10, 2: 'error' }
         const result = decoder.decodeWithoutValidation(model, object, options)
         const expectedError = [{ expected: 'number', got: 'error', path: path.empty().prependIndex(2) }]
+        checkError(result, expectedError)
+      })
+    })
+  })
+
+  describe('object value', () => {
+    const model = types.object({
+      field1: types.number(),
+      field2: types.number().optional(),
+    })
+
+    const validObject = gen.record(
+      {
+        field1: number,
+        field2: number,
+      },
+      { requiredKeys: ['field1'] },
+    )
+
+    test.prop([validObject])('decodes its fields', (object) => {
+      checkValue(decoder.decodeWithoutValidation(model, object), object)
+    })
+
+    test('fail when a required field is missing', () => {
+      const object = { field2: 10 }
+      const result = decoder.decodeWithoutValidation(model, object)
+      const expectedError = [{ expected: 'number', got: undefined, path: path.empty().prependField('field1') }]
+      checkError(result, expectedError)
+    })
+
+    test('works when non required field is missing', () => {
+      const object = { field1: 1 }
+      checkValue(decoder.decodeWithoutValidation(model, object), object)
+    })
+
+    test('stops at first error by default', () => {
+      const object = { field1: 'error1', field2: 'error2' }
+      const result = decoder.decodeWithoutValidation(model, object)
+      const expectedError = [{ expected: 'number', got: 'error1', path: path.empty().prependField('field1') }]
+      checkError(result, expectedError)
+    })
+
+    test('treats null as an empty object', () => {
+      const result = decoder.decodeWithoutValidation(model, null)
+      const expectedError = [{ expected: 'number', got: undefined, path: path.empty().prependField('field1') }]
+      checkError(result, expectedError)
+    })
+
+    test.prop([nonObject])('fails on non objects', (value) => {
+      const result = decoder.decodeWithoutValidation(model, value)
+      const expected = [{ expected: 'object', got: value, path: path.empty() }]
+      checkError(result, expected)
+    })
+
+    describe('when reporting all errors', () => {
+      const options = { errorReportingStrategy: 'allErrors' } as const
+
+      test('reports all errors in decoding its fields', () => {
+        const object = { field1: 'error1', field2: 'error2' }
+        const result = decoder.decodeWithoutValidation(model, object, options)
+        const expectedError = [
+          { expected: 'number', got: 'error1', path: path.empty().prependField('field1') },
+          { expected: 'number or undefined', got: 'error2', path: path.empty().prependField('field2') },
+        ]
         checkError(result, expectedError)
       })
     })

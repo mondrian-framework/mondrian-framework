@@ -41,7 +41,7 @@ export function filterMapObject<A, B>(
  * @returns a TypeScript `Error` where
  */
 export function failWithInternalError(message: string): never {
-  const header = '[INTERNAL ERROR]'
+  const header = '[internal error]'
   const mondrianIssueUrl = 'https://github.com/twinlogix/mondrian-framework/issues'
   const reportMessage = `If you think this could be a bug in the framework, please report it at ${mondrianIssueUrl}`
   throw Error(`${header} ${message}\n${reportMessage}`)

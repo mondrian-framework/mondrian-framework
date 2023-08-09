@@ -350,4 +350,8 @@ describe('validator.validate', () => {
       checkError(validator.validate(model, variant), expectedError)
     })
   })
+
+  test('fails with internal error if called with unhandled type kind', () => {
+    expect(() => validator.validate({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)
+  })
 })

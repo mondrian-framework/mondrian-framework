@@ -240,7 +240,7 @@ describe('projection.subProjection', () => {
   })
 
   test('cannot be called on true projections', () => {
-    expect(() => projection.subProjection(types.literal(true), {} as never)).toThrowError()
+    expect(() => projection.subProjection(types.literal(true), {} as never)).toThrowError(/.*\[internal error\].*/)
   })
 })
 
@@ -357,15 +357,15 @@ describe('projection.projectedType', () => {
   })
 
   test('cannot be called with a base type and an object', () => {
-    expect(() => projection.projectedType(types.number, {} as any)).toThrowError()
-    expect(() => projection.projectedType(types.string, {} as any)).toThrowError()
-    expect(() => projection.projectedType(types.literal(true), {} as any)).toThrowError()
-    expect(() => projection.projectedType(types.literal(false), {} as any)).toThrowError()
-    expect(() => projection.projectedType(types.literal(1), {} as any)).toThrowError()
-    expect(() => projection.projectedType(types.literal(''), {} as any)).toThrowError()
-    expect(() => projection.projectedType(types.literal(null), {} as any)).toThrowError()
-    expect(() => projection.projectedType(types.boolean, {} as any)).toThrowError()
-    expect(() => projection.projectedType(exampleCustom, {} as any)).toThrowError()
+    expect(() => projection.projectedType(types.number, {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(types.string, {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(types.literal(true), {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(types.literal(false), {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(types.literal(1), {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(types.literal(''), {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(types.literal(null), {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(types.boolean, {} as any)).toThrowError(/.*\[internal error\].*/)
+    expect(() => projection.projectedType(exampleCustom, {} as any)).toThrowError(/.*\[internal error\].*/)
   })
 
   test('returns an array of projections when called on array', () => {

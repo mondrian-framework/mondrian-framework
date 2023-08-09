@@ -595,7 +595,7 @@ describe('decoder.decodeWithoutValidation', () => {
   })
 
   test('when used incorrectly throws an internal exception', () => {
-    expect(() => decoder.decode({ kind: 'foo' } as any, null)).toThrowError()
+    expect(() => decoder.decode({ kind: 'not a type' } as any, null)).toThrowError(/.*\[internal error\].*/)
   })
 })
 

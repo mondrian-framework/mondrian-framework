@@ -27,7 +27,7 @@ describe('filterMapObject', () => {
 
 describe('failWithInternalError', () => {
   test('throws when called', () => {
-    expect(() => failWithInternalError('foo')).toThrowError()
+    expect(() => failWithInternalError('foo')).toThrowError(/.*\[internal error\].*/)
   })
 
   test.prop([gen.string({ minLength: 10 })])('has the given message', (message) => {

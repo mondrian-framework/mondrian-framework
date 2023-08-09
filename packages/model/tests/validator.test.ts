@@ -1,22 +1,114 @@
-import { arbitrary, path, result, validator } from '../src'
-import { assertOk } from './testing-utils'
-import { test } from '@fast-check/vitest'
-import { describe } from 'vitest'
+import { arbitrary, path, result, types, validator } from '../src'
+import { areSameArray } from '../src/utils'
+import { assertFailure, assertOk } from './testing-utils'
+import { test, fc as gen } from '@fast-check/vitest'
+import { describe, expect } from 'vitest'
 
 /**
  * Check if the result is a validator error that has the given got and
  * path. We do not check the error message as here it is not relevant and may
  * be changing quite frequently.
  */
-function checkError(result: result.Result<any, validator.Error>, got: unknown, path: path.Path): void {}
+function checkError(result: validator.Result, expected: { got: unknown; path: path.Path }[]): void {
+  const error = assertFailure(result)
+  const isExpectedError = compareValidatorErrors(error, expected)
+  expect(isExpectedError).toBe(true)
+}
+
+function compareValidatorErrors(one: validator.Error[], other: { got: unknown; path: path.Path }[]): boolean {
+  const compareSingleErrors = (one: { got: unknown; path: path.Path }, other: { got: unknown; path: path.Path }) => {
+    const gotAreEqual = one.got === other.got || (Number.isNaN(one.got) && Number.isNaN(other.got))
+    const pathsAreEqual = one.path.equals(other.path)
+    return gotAreEqual && pathsAreEqual
+  }
+  const mappedOne = one.map((error) => ({ got: error.got, path: error.path }))
+  return areSameArray(mappedOne, other, compareSingleErrors)
+}
 
 describe('validator.validate', () => {
   describe('on number types', () => {
-    test.todo('checks the number is >= than its minimum', () => {})
-    test.todo('checks the number is > than its excluding minimum', () => {})
-    test.todo('checks the number is <= than its maximum', () => {})
-    test.todo('checks the number is < than its excluding maximum', () => {})
-    test.todo('checks the number is a multiple of the provided multiple', () => {})
+    test.prop([gen.double()])('always succeeds if given no options', (n) => {
+      assertOk(validator.validate(types.number, n))
+    })
+
+    describe('checks the number is >= than its minimum', () => {
+      const minimum = 11
+      const model = types.number({ minimum })
+
+      const validValue = gen.double({ min: minimum, minExcluded: false, noNaN: true })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(validator.validate(model, number))
+      })
+
+      const invalidValue = gen.double({ max: minimum, maxExcluded: true })
+      test.prop([invalidValue])('failing cases', (number) => {
+        const expectedError = [{ got: number, path: path.empty() }]
+        checkError(validator.validate(model, number), expectedError)
+      })
+    })
+
+    describe('checks the number is > than its excluding minimum', () => {
+      const exclusiveMinimum = 11
+      const model = types.number({ exclusiveMinimum })
+
+      const validValue = gen.double({ min: exclusiveMinimum, minExcluded: true, noNaN: true })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(validator.validate(model, number))
+      })
+
+      const invalidValue = gen.double({ max: exclusiveMinimum, maxExcluded: false })
+      test.prop([invalidValue])('failing cases', (number) => {
+        const expectedError = [{ got: number, path: path.empty() }]
+        checkError(validator.validate(model, number), expectedError)
+      })
+    })
+
+    describe('checks the number is <= than its maximum', () => {
+      const maximum = 11
+      const model = types.number({ maximum })
+
+      const validValue = gen.double({ max: maximum, maxExcluded: false, noNaN: true })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(validator.validate(model, number))
+      })
+
+      const invalidValue = gen.double({ min: maximum, minExcluded: true })
+      test.prop([invalidValue])('failing cases', (number) => {
+        const expectedError = [{ got: number, path: path.empty() }]
+        checkError(validator.validate(model, number), expectedError)
+      })
+    })
+
+    describe('checks the number is < than its exclusive maximum', () => {
+      const exclusiveMaximum = 11
+      const model = types.number({ exclusiveMaximum })
+
+      const validValue = gen.double({ max: exclusiveMaximum, maxExcluded: true, noNaN: true })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(validator.validate(model, number))
+      })
+
+      const invalidValue = gen.double({ min: exclusiveMaximum, minExcluded: false })
+      test.prop([invalidValue])('failing cases', (number) => {
+        const expectedError = [{ got: number, path: path.empty() }]
+        checkError(validator.validate(model, number), expectedError)
+      })
+    })
+
+    describe('checks the number is an integer', () => {
+      const model = types.number({ isInteger: true })
+
+      const validValue = gen.integer()
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(validator.validate(model, number))
+      })
+
+      const invalidValue = gen.double().filter((n) => !Number.isInteger(n))
+      test.prop([invalidValue])('failing cases', (number) => {
+        const expectedError = [{ got: number, path: path.empty() }]
+        checkError(validator.validate(model, number), expectedError)
+      })
+    })
   })
 
   describe('on string types', () => {
@@ -33,11 +125,19 @@ describe('validator.validate', () => {
   })
 
   describe('on enum types', () => {
-    test.todo('always succeeds', () => {})
+    const variants = ['one', 'two', 'three'] as const
+    test.prop([arbitrary.enumeration(gen.constant(variants))])('always succeeds', (model) => {
+      assertOk(validator.validate(model, 'one'))
+      assertOk(validator.validate(model, 'two'))
+      assertOk(validator.validate(model, 'three'))
+    })
   })
 
   describe('on literal types', () => {
-    test.todo('always succeeds', () => {})
+    const literalValue = gen.oneof(gen.string(), gen.boolean(), gen.integer(), gen.float(), gen.constant(null))
+    test.prop([arbitrary.literal(literalValue)])('always succeeds', (model) => {
+      assertOk(validator.validate(model, model.literalValue))
+    })
   })
 
   describe('on optional types', () => {
@@ -73,4 +173,6 @@ describe('validator.validate', () => {
   })
 
   describe.todo('on union types', () => {})
+
+  describe.todo('on custom types', () => {})
 })

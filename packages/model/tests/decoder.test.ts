@@ -594,11 +594,17 @@ describe('decoder.decodeWithoutValidation', () => {
     })
   })
 
-  test('when used incorrectly throws an internal exception', () => {
-    expect(() => decoder.decode({ kind: 'not a type' } as any, null)).toThrowError(/.*\[internal error\].*/)
+  test('throws an internal exception on unhandled type kind', () => {
+    expect(() => decoder.decodeWithoutValidation({ kind: 'not a type' } as any, null)).toThrowError(
+      /.*\[internal error\].*/,
+    )
   })
 })
 
 describe('decoder.decode', () => {
   test.todo('should perform validation', () => {})
+
+  test('throws internal exception on unhandled type kind', () => {
+    expect(() => decoder.decode({ kind: 'not a type' } as any, null)).toThrowError(/.*\[internal error\].*/)
+  })
 })

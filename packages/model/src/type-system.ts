@@ -866,8 +866,6 @@ export function mutableObject<Ts extends Types>(
 }
 
 /**
- * TODO: test that it works with a lazy object and doesn't crash
- *
  * @param one the first `ObjectType` to merge
  * @param other the second `ObjectType` to merge
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.

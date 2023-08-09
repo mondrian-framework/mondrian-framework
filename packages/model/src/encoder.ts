@@ -1,7 +1,6 @@
 import { types, encoder, validator, result } from './index'
-import { filterMapObject } from './utils'
+import { assertNever, filterMapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
-import { match } from 'ts-pattern'
 
 /**
  * @param type the {@link Type type} of the value to encode
@@ -37,20 +36,34 @@ export function encode<const T extends types.Type>(
  * `value` actually has the type that can be inferred from `type`.
  */
 function unsafeEncode(type: types.Type, value: any): JSONType | undefined {
-  return match(types.concretise(type))
-    .with({ kind: 'boolean' }, () => value)
-    .with({ kind: 'number' }, () => value)
-    .with({ kind: 'string' }, () => value)
-    .with({ kind: 'enum' }, () => value)
-    .with({ kind: 'literal' }, (type) => type.literalValue)
-    .with({ kind: 'optional' }, (type) => unsafeEncodeOptional(type, value))
-    .with({ kind: 'nullable' }, (type) => unsafeEncodeNullable(type, value))
-    .with({ kind: 'union' }, (type) => unsafeEncodeUnion(type, value))
-    .with({ kind: 'object' }, (type) => unsafeEncodeObject(type, value))
-    .with({ kind: 'array' }, (type) => unsafeEncodeArray(type, value))
-    .with({ kind: 'reference' }, (type) => unsafeEncodeReference(type, value))
-    .with({ kind: 'custom' }, (type) => type.encode(value, type.options))
-    .exhaustive()
+  const concreteType = types.concretise(type)
+  if (concreteType.kind === 'boolean') {
+    return value
+  } else if (concreteType.kind === 'number') {
+    return value
+  } else if (concreteType.kind === 'string') {
+    return value
+  } else if (concreteType.kind === 'enum') {
+    return value
+  } else if (concreteType.kind === 'literal') {
+    return concreteType.literalValue
+  } else if (concreteType.kind === 'optional') {
+    return unsafeEncodeOptional(concreteType, value)
+  } else if (concreteType.kind === 'nullable') {
+    return unsafeEncodeNullable(concreteType, value)
+  } else if (concreteType.kind === 'union') {
+    return unsafeEncodeUnion(concreteType, value)
+  } else if (concreteType.kind === 'object') {
+    return unsafeEncodeObject(concreteType, value)
+  } else if (concreteType.kind === 'array') {
+    return unsafeEncodeArray(concreteType, value)
+  } else if (concreteType.kind === 'reference') {
+    return unsafeEncodeReference(concreteType, value)
+  } else if (concreteType.kind === 'custom') {
+    return concreteType.encode(value, concreteType.options)
+  } else {
+    assertNever(concreteType, 'Totality check failed when unsafe encoding a value, this should have never happened')
+  }
 }
 
 /**

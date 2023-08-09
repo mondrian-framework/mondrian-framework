@@ -229,12 +229,74 @@ describe('validator.validate', () => {
   })
 
   describe('on array types', () => {
-    test.todo('validates its items', () => {})
+    test.prop([gen.array(gen.anything())])('validates its items', (array) => {
+      assertOk(validator.validate(alwaysSuccess.array(), array))
+    })
 
-    test.todo('stops at first error by default', () => {})
+    test.prop([gen.array(gen.anything(), { minLength: 1 })])('stops at first error by default', (array) => {
+      checkError(validator.validate(alwaysFail.array(), array), [{ got: array[0], path: path.empty().prependIndex(0) }])
+    })
+
+    describe('checks min length', () => {
+      const minItems = 4
+      const model = types.array(alwaysSuccess, { minItems })
+
+      const validValue = gen.array(gen.anything(), { minLength: minItems })
+      test.prop([validValue])('valid values', (value) => {
+        assertOk(validator.validate(model, value))
+      })
+
+      const invalidValue = gen.array(gen.anything(), { maxLength: minItems - 1 })
+      test.prop([invalidValue])('invalid values', (invalidValue) => {
+        checkError(validator.validate(model, invalidValue), [{ got: invalidValue, path: path.empty() }])
+      })
+    })
+
+    describe('checks max length', () => {
+      const maxItems = 4
+      const model = types.array(alwaysSuccess, { maxItems })
+
+      const validValue = gen.array(gen.anything(), { maxLength: maxItems })
+      test.prop([validValue])('valid values', (value) => {
+        assertOk(validator.validate(model, value))
+      })
+
+      const invalidValue = gen.array(gen.anything(), { minLength: maxItems + 1 })
+      test.prop([invalidValue])('invalid values', (invalidValue) => {
+        checkError(validator.validate(model, invalidValue), [{ got: invalidValue, path: path.empty() }])
+      })
+    })
+
+    describe.todo('checks max length')
 
     describe('when reporting all errors', () => {
-      test.todo('reports all the errors with its items', () => {})
+      const options = { errorReportingStrategy: 'allErrors' } as const
+      const toErrors = (array: any[]) =>
+        array.map((value, index) => ({ got: value, path: path.empty().prependIndex(index) }))
+
+      test.prop([gen.array(gen.anything(), { minLength: 1 })])('reports all the errors with its items', (array) => {
+        checkError(validator.validate(alwaysFail.array(), array, options), toErrors(array))
+      })
+
+      test.prop([gen.array(gen.anything(), { maxLength: 4 })])(
+        'reports both errors on min length and on single values',
+        (array) => {
+          const model = types.array(alwaysFail, { minItems: 5 })
+          const errors = toErrors(array)
+          errors.unshift({ got: array, path: path.empty() })
+          checkError(validator.validate(model, array, options), errors)
+        },
+      )
+
+      test.prop([gen.array(gen.anything(), { minLength: 4 })])(
+        'reports both errors on max length and on single values',
+        (array) => {
+          const model = types.array(alwaysFail, { maxItems: 3 })
+          const errors = toErrors(array)
+          errors.unshift({ got: array, path: path.empty() })
+          checkError(validator.validate(model, array, options), errors)
+        },
+      )
     })
   })
 

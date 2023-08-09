@@ -108,6 +108,16 @@ describe('Infer', () => {
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string; readonly field2: number }>()
     })
 
+    test('merged objects inferred as a mutable single object', () => {
+      const model = types.merge(
+        'mutable',
+        types.object({ field1: types.string() }),
+        types.object({ field2: types.number() }),
+      )
+      type Inferred = types.Infer<typeof model>
+      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string; field2: number }>()
+    })
+
     test("second object overrides the first object's fields", () => {
       const model = types.merge(
         'immutable',

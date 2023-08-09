@@ -6,7 +6,7 @@ import { JSONType } from '@mondrian-framework/utils'
  *
  * To learn more you can read about [the Mondrian model.](https://twinlogix.github.io/mondrian-framework/docs/docs/model)
  */
-export type Type =
+export type Type = Lazy<
   | NumberType
   | StringType
   | BooleanType
@@ -19,7 +19,12 @@ export type Type =
   | NullableType<any>
   | ReferenceType<any>
   | CustomType<any, any, any>
-  | (() => Type)
+>
+
+/**
+ * Makes any type lazy.
+ */
+export type Lazy<T> = T | (() => Lazy<T>)
 
 /**
  * A record of {@link Type `Type`s}.
@@ -120,6 +125,7 @@ export type Mutability = 'mutable' | 'immutable'
  * @returns a new {@link ConcreteType type} that is guaranteed to not be a lazily defined function
  */
 export function concretise(type: Type): ConcreteType {
+  //TODO: caching by function address?
   return typeof type === 'function' ? concretise(type()) : type
 }
 
@@ -892,16 +898,18 @@ export function mutableObject<Ts extends Types>(
  */
 export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability>(
   mutable: M,
-  one: ObjectType<any, Ts1> | (() => ObjectType<any, Ts1>),
-  other: ObjectType<any, Ts2> | (() => ObjectType<any, Ts2>),
+  one: Lazy<ObjectType<any, Ts1>>,
+  other: Lazy<ObjectType<any, Ts2>>,
   options?: OptionsOf<ObjectType<M, MergeObjectFields<Ts1, Ts2>>>,
-): ObjectType<M, MergeObjectFields<Ts1, Ts2>> {
-  const object1 = typeof one === 'function' ? one() : one
-  const object2 = typeof other === 'function' ? other() : other
+): () => ObjectType<M, MergeObjectFields<Ts1, Ts2>> {
+  if (typeof one === 'function' || typeof other === 'function') {
+    return () =>
+      merge(mutable, concretise(one) as ObjectType<any, Ts1>, concretise(other) as ObjectType<any, Ts2>, options)()
+  }
   if (mutable == 'immutable') {
-    return object({ ...object1.types, ...object2.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
+    return () => object({ ...one.types, ...other.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
   } else {
-    return mutableObject({ ...object1.types, ...object2.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
+    return () => mutableObject({ ...one.types, ...other.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
   }
 }
 

@@ -1,7 +1,7 @@
 import { encoder, arbitrary, types } from '../src'
 import { test } from '@fast-check/vitest'
 import gen from 'fast-check'
-import { describe, expect } from 'vitest'
+import { describe, expect, vi } from 'vitest'
 
 const number = gen.oneof(gen.integer(), gen.float())
 
@@ -100,7 +100,26 @@ describe('encoder.encodeWithoutValidation', () => {
     expect(() => encoder.encodeWithoutValidation(model, 1)).toThrowError()
   })
 
-  test.todo('encodes a custom type', () => {})
+  test.prop([gen.anything().filter((value) => value !== undefined)])('encodes a custom type', (value) => {
+    const customOptions = { foo: 1, bar: 2 }
+    const mocks = {
+      encode: (value: any, options: any) => {
+        expect(options).toBe(customOptions)
+        return value
+      },
+      decode: () => {
+        throw 'test'
+      },
+      validate: () => {
+        throw 'test'
+      },
+    }
+
+    const encodeSpy = vi.spyOn(mocks, 'encode')
+    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, customOptions)
+    expect(encoder.encodeWithoutValidation(model, value)).toEqual(value)
+    expect(encodeSpy).toHaveBeenCalledTimes(1)
+  })
 
   test('fails with internal error on unhandled type kind', () => {
     expect(() => encoder.encodeWithoutValidation({ kind: 'not a type' } as any, 1)).toThrowError(

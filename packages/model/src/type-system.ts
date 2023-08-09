@@ -870,6 +870,7 @@ export function mutableObject<Ts extends Types>(
  * @param other the second `ObjectType` to merge
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the merged objects are always ignored, even if this property is set to `undefined`
+ * @param mutable result object's mutability. Default is 'immutable'.
  * @returns a new {@link ObjectType `ObjectType`} obtained by merging `one` with `other`.
  *          If both objects define a field with the same name, the type of the resulting field is the one defined by
  *          `other`.
@@ -879,7 +880,7 @@ export function mutableObject<Ts extends Types>(
  *          const bookWithDescription = merge(book, description)
  *          type BookWithDescription = Infer<typeof bookWithDescription>
  *
- *          const exampleBook = {
+ *          const exampleBook: BookWithDescription = {
  *            name: "Example book",
  *            publishedIn: 2023,
  *            shortDescription: "...",
@@ -887,17 +888,17 @@ export function mutableObject<Ts extends Types>(
  *          }
  *          ```
  */
-export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability>(
-  mutable: M,
+export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability = 'immutable'>(
   one: Lazy<ObjectType<any, Ts1>>,
   other: Lazy<ObjectType<any, Ts2>>,
+  mutable?: M,
   options?: OptionsOf<ObjectType<M, MergeObjectFields<Ts1, Ts2>>>,
 ): () => ObjectType<M, MergeObjectFields<Ts1, Ts2>> {
   if (typeof one === 'function' || typeof other === 'function') {
     return () =>
-      merge(mutable, concretise(one) as ObjectType<any, Ts1>, concretise(other) as ObjectType<any, Ts2>, options)()
+      merge(concretise(one) as ObjectType<any, Ts1>, concretise(other) as ObjectType<any, Ts2>, mutable, options)()
   }
-  if (mutable == 'immutable') {
+  if (!mutable || mutable == 'immutable') {
     return () => object({ ...one.types, ...other.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
   } else {
     return () => mutableObject({ ...one.types, ...other.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
@@ -908,39 +909,41 @@ type MergeObjectFields<Ts1 extends Types, Ts2 extends Types> = {
   [K in keyof Ts1 | keyof Ts2]: K extends keyof Ts2 ? Ts2[K] : K extends keyof Ts1 ? Ts1[K] : never
 }
 
-//TODO: could we implement it recursively?
-// pick(object, { field1: true, field2: { a: true } })
-// field2 is an object
 /**
  * @param obj the `ObjectType` to pick
  * @param fields the fields to pick
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the result object are always ignored, even if this property is set to `undefined`
+ * @param mutable result object's mutability. Default is 'immutable'.
  * @returns a new {@link ObjectType `ObjectType`} obtained by picking only the wanted fields.
  * @example ```ts
  *          const book = object({ name: string(), description: string(), publishedIn: integer() })
  *          const bookWithoutDescription = pick(book, { name: true, publishedIn: true })
  *          type BookWithoutDescription = Infer<typeof bookWithoutDescription>
  *
- *          const exampleBook = {
+ *          const exampleBook: BookWithoutDescription = {
  *            name: "Example book",
  *            publishedIn: 2023,
  *          }
  *          ```
  */
-export function pick<const Ts extends Types, const Fields extends { [K in keyof Ts]?: true }, M extends Mutability>(
-  mutable: M,
+export function pick<
+  const Ts extends Types,
+  const Fields extends { [K in keyof Ts]?: true },
+  M extends Mutability = 'immutable',
+>(
   obj: Lazy<ObjectType<any, Ts>>,
   fields: Fields,
+  mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
 ): () => ObjectType<M, PickObjectFields<Ts, Fields>> {
   if (typeof obj === 'function') {
-    return () => pick(mutable, concretise(obj) as ObjectType<any, Ts>, fields, options)()
+    return () => pick(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
   const pickedFields = Object.fromEntries(
     Object.entries(obj.types).filter(([k, _v]) => k in fields && fields[k] === true),
   )
-  if (mutable == 'immutable') {
+  if (!mutable || mutable === 'immutable') {
     return () => object(pickedFields, options ?? obj.options) as ObjectType<M, PickObjectFields<Ts, Fields>>
   } else {
     return () => mutableObject(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
@@ -956,31 +959,36 @@ type PickObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true 
  * @param fields the fields to omit
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the result object are always ignored, even if this property is set to `undefined`
+ * @param mutable result object's mutability. Default is 'immutable'.
  * @returns a new {@link ObjectType `ObjectType`} obtained by omitting the specified fields.
  * @example ```ts
  *          const book = object({ name: string(), description: string(), publishedIn: integer() })
  *          const bookWithoutDescription = omit(book, { description: true })
  *          type BookWithoutDescription = Infer<typeof bookWithoutDescription>
  *
- *          const exampleBook = {
+ *          const exampleBook: BookWithoutDescription = {
  *            name: "Example book",
  *            publishedIn: 2023,
  *          }
  *          ```
  */
-export function omit<const Ts extends Types, const Fields extends { [K in keyof Ts]?: true }, M extends Mutability>(
-  mutable: M,
+export function omit<
+  const Ts extends Types,
+  const Fields extends { [K in keyof Ts]?: true },
+  M extends Mutability = 'immutable',
+>(
   obj: Lazy<ObjectType<any, Ts>>,
   fields: Fields,
+  mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
 ): () => ObjectType<M, OmitObjectFields<Ts, Fields>> {
   if (typeof obj === 'function') {
-    return () => omit(mutable, concretise(obj) as ObjectType<any, Ts>, fields, options)()
+    return () => omit(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
   const pickedFields = Object.fromEntries(
     Object.entries(obj.types).filter(([k, _v]) => !(k in fields) || fields[k] !== true),
   )
-  if (mutable == 'immutable') {
+  if (!mutable || mutable === 'immutable') {
     return () => object(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
   } else {
     return () => mutableObject(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
@@ -989,6 +997,44 @@ export function omit<const Ts extends Types, const Fields extends { [K in keyof 
 
 type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
   [K in Exclude<keyof Ts, keyof Fields>]: Ts[K]
+}
+
+/**
+ * @param obj the `ObjectType` to transform
+ * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
+ *                The options of the result object are always ignored, even if this property is set to `undefined`
+ * @param mutable result object's mutability. Default is 'immutable'.
+ * @returns a new {@link ObjectType `ObjectType`} where every fields is optional.
+ * @example ```ts
+ *          const book = object({ name: string(), description: string(), publishedIn: integer() })
+ *          const partialBook = partial(book)
+ *          type PartialBook = Infer<typeof partialBook>
+ *
+ *          const exampleBook: PartialBook = {
+ *            name: undefined,
+ *          }
+ *          ```
+ */
+export function partial<const Ts extends Types, M extends Mutability = 'immutable'>(
+  obj: Lazy<ObjectType<any, Ts>>,
+  mutable?: M,
+  options?: OptionsOf<ObjectType<M, Ts>>,
+): () => ObjectType<M, PartialObjectFields<Ts>> {
+  if (typeof obj === 'function') {
+    return () => partial(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
+  }
+  const mappedFields = Object.fromEntries(
+    Object.entries(obj.types).map(([k, v]) => [k, hasWrapper(v, 'optional') ? v : optional(v)]),
+  )
+  if (!mutable || mutable === 'immutable') {
+    return () => object(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
+  } else {
+    return () => mutableObject(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
+  }
+}
+
+type PartialObjectFields<Ts extends Types> = {
+  [K in keyof Ts]: HasOptionalDecorator<Ts[K]> extends true ? Ts[K] : OptionalType<Ts[K]>
 }
 
 /**
@@ -1402,5 +1448,14 @@ export function assertType<T extends Type>(
     (errors) => {
       throw new Error(`Invalid type: ${JSON.stringify(errors)}`)
     },
+  )
+}
+
+//TODO: export?
+function hasWrapper(type: Type, kind: 'optional' | 'nullable' | 'reference'): boolean {
+  const t = concretise(type)
+  return (
+    t.kind === kind ||
+    ((t.kind === 'optional' || t.kind === 'nullable' || t.kind === 'reference') && hasWrapper(t.wrappedType, kind))
   )
 }

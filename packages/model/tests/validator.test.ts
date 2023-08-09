@@ -326,7 +326,28 @@ describe('validator.validate', () => {
     })
   })
 
-  describe.todo('on union types', () => {})
+  describe('on union types', () => {
+    test.prop([gen.anything()])('always fails on unions with no checks', (variant) => {
+      const model = types.union({ variant1: alwaysSuccess, variant2: alwaysSuccess })
+      const expectedError = [{ got: variant, path: path.empty() }]
+      checkError(validator.validate(model, variant), expectedError)
+    })
 
-  describe.todo('on custom types', () => {})
+    test.prop([gen.anything()])('succeeds if variant is valid', (variant) => {
+      const model = types.union(
+        { variant1: alwaysSuccess, variant2: alwaysFail },
+        { variant1: (_) => true, variant2: (_) => false },
+      )
+      assertOk(validator.validate(model, variant))
+    })
+
+    test.prop([gen.anything()])('fails is variant is invalid', (variant) => {
+      const model = types.union(
+        { variant1: alwaysSuccess, variant2: alwaysFail },
+        { variant1: (_) => false, variant2: (_) => true },
+      )
+      const expectedError = [{ got: variant, path: path.empty().prependVariant('variant2') }]
+      checkError(validator.validate(model, variant), expectedError)
+    })
+  })
 })

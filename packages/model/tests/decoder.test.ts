@@ -1,4 +1,4 @@
-import { decoder, types, path, validator } from '../src'
+import { decoder, types, path, validator, result } from '../src'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
@@ -34,7 +34,7 @@ function checkError(result: decoder.Result<any>, expectedError: decoder.Error[])
   expect(isExpectedError).toBe(true)
 }
 
-function checkValue<A>(result: decoder.Result<A>, expectedValue: A): void {
+function checkValue<A>(result: result.Result<A, any>, expectedValue: A): void {
   const value = assertOk(result)
   expect(value).toEqual(expectedValue)
 }
@@ -602,7 +602,28 @@ describe('decoder.decodeWithoutValidation', () => {
 })
 
 describe('decoder.decode', () => {
-  test.todo('should perform validation', () => {})
+  test.prop([gen.anything()])('should perform validation', (value) => {
+    const options = { foo: 'bar', baz: 1 }
+    const validationOptions = { errorReportingStrategy: 'allErrors' } as const
+    const mocks = {
+      encode: () => {
+        throw 'test'
+      },
+      decode: (_: any) => decoder.succeed('decoded successfully'),
+      validate: (innerValue: any, innerValidationOptions: any, innerOptions: any) => {
+        expect(innerValue).toEqual('decoded successfully')
+        expect(innerValidationOptions).toEqual(validationOptions)
+        expect(innerOptions).toEqual(options)
+        return validator.succeed()
+      },
+    }
+    const validateSpy = vi.spyOn(mocks, 'validate')
+    const decodeSpy = vi.spyOn(mocks, 'decode')
+    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
+    checkValue(decoder.decode(model, value, {}, validationOptions), 'decoded successfully')
+    expect(validateSpy).toBeCalledTimes(1)
+    expect(decodeSpy).toBeCalledTimes(1)
+  })
 
   test('throws internal exception on unhandled type kind', () => {
     expect(() => decoder.decode({ kind: 'not a type' } as any, null)).toThrowError(/.*\[internal error\].*/)

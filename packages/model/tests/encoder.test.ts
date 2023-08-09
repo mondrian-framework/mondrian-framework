@@ -149,9 +149,11 @@ describe('encoder.encode', () => {
       },
     }
     const validateSpy = vi.spyOn(mocks, 'validate')
+    const encodeSpy = vi.spyOn(mocks, 'encode')
     const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
     assertOk(encoder.encode(model, value, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
+    expect(encodeSpy).toBeCalledTimes(1)
   })
 
   test('fails with internal error on unhandled type kind', () => {

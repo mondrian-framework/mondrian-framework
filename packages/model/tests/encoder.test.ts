@@ -1,4 +1,5 @@
-import { encoder, arbitrary, types } from '../src'
+import { encoder, arbitrary, types, validator } from '../src'
+import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import gen from 'fast-check'
 import { describe, expect, vi } from 'vitest'
@@ -129,7 +130,29 @@ describe('encoder.encodeWithoutValidation', () => {
 })
 
 describe('encoder.encode', () => {
-  test.todo('performs validation', () => {})
+  test.prop([gen.anything()])('performs validation', (value) => {
+    const options = { foo: 'bar', baz: 1 }
+    const validationOptions = { errorReportingStrategy: 'allErrors' } as const
+    const mocks = {
+      encode: (innerValue: any, innerOptions: any) => {
+        expect(innerOptions).toEqual(options)
+        return innerValue
+      },
+      decode: () => {
+        throw 'test'
+      },
+      validate: (innerValue: any, innerValidationOptions: any, innerOptions: any) => {
+        expect(innerValue).toEqual(value)
+        expect(innerValidationOptions).toEqual(validationOptions)
+        expect(innerOptions).toEqual(options)
+        return validator.succeed()
+      },
+    }
+    const validateSpy = vi.spyOn(mocks, 'validate')
+    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
+    assertOk(encoder.encode(model, value, validationOptions))
+    expect(validateSpy).toBeCalledTimes(1)
+  })
 
   test('fails with internal error on unhandled type kind', () => {
     expect(() => encoder.encode({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)

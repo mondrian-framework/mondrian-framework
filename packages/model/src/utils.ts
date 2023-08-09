@@ -26,14 +26,12 @@ export function filterMapObject<A, B>(
   object: Record<string, A>,
   mapper: (fieldName: string, fieldValue: A) => B | undefined,
 ): Record<string, B> {
-  const mappedObject: { [key: string]: B } = {}
-  for (const [fieldName, fieldValue] of Object.entries(object)) {
-    const mappedValue = mapper(fieldName, fieldValue)
-    if (mappedValue !== undefined) {
-      mappedObject[fieldName] = mappedValue
-    }
-  }
-  return mappedObject
+  return Object.fromEntries(
+    Object.entries(object).flatMap(([fieldName, fieldValue]) => {
+      const mappedValue = mapper(fieldName, fieldValue)
+      return mappedValue !== undefined ? [[fieldName, mappedValue]] : []
+    }),
+  )
 }
 
 /**

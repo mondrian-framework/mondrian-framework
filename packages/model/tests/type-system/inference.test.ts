@@ -120,7 +120,7 @@ describe('Infer', () => {
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: string }>()
     })
 
-    test('picked objects fields inferred as single field object', () => {
+    test('picked object fields inferred as single field object', () => {
       const model = types.pick(types.object({ field1: types.string(), field2: types.number() }), {
         field1: true,
         field2: undefined,
@@ -129,7 +129,7 @@ describe('Infer', () => {
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
     })
 
-    test('picked objects fields inferred as mutable single field object', () => {
+    test('picked object fields inferred as mutable single field object', () => {
       const model = types.pick(
         types.object({ field1: types.string(), field2: types.number() }),
         {
@@ -141,7 +141,7 @@ describe('Infer', () => {
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
     })
 
-    test('omitted objects fields inferred as single field object', () => {
+    test('omitted object fields inferred as single field object', () => {
       const model = types.omit(types.object({ field1: types.string(), field2: types.number() }), {
         field2: true,
         field1: undefined,
@@ -150,7 +150,7 @@ describe('Infer', () => {
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
     })
 
-    test('omitted objects fields inferred as mutable single field object', () => {
+    test('omitted object fields inferred as mutable single field object', () => {
       const model = types.omit(
         types.object({ field1: types.string(), field2: types.number() }),
         {
@@ -162,7 +162,22 @@ describe('Infer', () => {
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
     })
 
-    test('partial of objects inferred with every field optional', () => {
+    test('omitted object references inferred as single field object', () => {
+      const model = types.omitReferences(types.object({ field1: types.string(), field2: types.number().reference() }))
+      type Inferred = types.Infer<typeof model>
+      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
+    })
+
+    test('omitted object references inferred as mutable single field object', () => {
+      const model = types.omitReferences(
+        types.object({ field1: types.string(), field2: types.number().reference() }),
+        'mutable',
+      )
+      type Inferred = types.Infer<typeof model>
+      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
+    })
+
+    test('partial of object inferred with every field optional', () => {
       const model = types.partial(
         types.object({ field1: types.string().nullable(), field2: types.number().optional().reference() }),
       )
@@ -170,7 +185,7 @@ describe('Infer', () => {
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1?: string | null; readonly field2?: number }>()
     })
 
-    test('partial of mutable objects inferred with every field optional', () => {
+    test('partial of mutable object inferred with every field optional', () => {
       const model = types.partial(
         types.object({ field1: types.string().nullable(), field2: types.number().optional().reference() }),
         'mutable',

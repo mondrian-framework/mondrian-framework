@@ -79,16 +79,24 @@ export type Infer<T extends Type>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
-type OptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never }[keyof T]
+type OptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalWrapper<T[K]> extends true ? K : never }[keyof T]
 
-type NonOptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? never : K }[keyof T]
+type NonOptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalWrapper<T[K]> extends true ? never : K }[keyof T]
 
 //prettier-ignore
-type HasOptionalDecorator<T extends Type> 
+type HasOptionalWrapper<T extends Type> 
   = [T] extends [OptionalType<infer _T1>] ? true
-  : [T] extends [NullableType<infer T1>] ? HasOptionalDecorator<T1>
-  : [T] extends [ReferenceType<infer T1>] ? HasOptionalDecorator<T1>
-  : [T] extends [() => infer T1 extends Type] ? HasOptionalDecorator<T1>
+  : [T] extends [NullableType<infer T1>] ? HasOptionalWrapper<T1>
+  : [T] extends [ReferenceType<infer T1>] ? HasOptionalWrapper<T1>
+  : [T] extends [() => infer T1 extends Type] ? HasOptionalWrapper<T1>
+  : false
+
+//prettier-ignore
+type HasReferenceWrapper<T extends Type> 
+  = [T] extends [ReferenceType<infer _T1>] ? true
+  : [T] extends [NullableType<infer T1>] ? HasReferenceWrapper<T1>
+  : [T] extends [ReferenceType<infer T1>] ? HasReferenceWrapper<T1>
+  : [T] extends [() => infer T1 extends Type] ? HasReferenceWrapper<T1>
   : false
 
 /**
@@ -989,6 +997,41 @@ type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true 
 }
 
 /**
+ * @param obj the `ObjectType` to remove all reference fields
+ * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
+ *                The options of the result object are always ignored, even if this property is set to `undefined`
+ * @param mutable result object's mutability. Default is 'immutable'.
+ * @returns a new {@link ObjectType `ObjectType`} obtained by omitting all the reference fields.
+ * @example ```ts
+ *          const author = object({ id: string() })
+ *          const book = object({ name: string(), publishedIn: integer(), author: Author.reference() })
+ *          const bookWithoutAuthor = omitReference(book)
+ *          type BookWithoutAuthor = Infer<typeof bookWithoutAuthor>
+ *
+ *          const exampleBook: BookWithoutAuthor = {
+ *            name: "Example book",
+ *            publishedIn: 2023,
+ *          }
+ *          ```
+ */
+export function omitReferences<const Ts extends Types, M extends Mutability = 'immutable'>(
+  obj: Lazy<ObjectType<any, Ts>>,
+  mutable?: M,
+  options?: OptionsOf<ObjectType<M, Ts>>,
+): () => ObjectType<M, OmitReferenceObjectFields<Ts>> {
+  if (typeof obj === 'function') {
+    return () => omitReferences(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
+  }
+  const pickedFields = filterMapObject(obj.types, (_, t) => (hasWrapper(t, 'reference') ? undefined : t))
+  const constructor = mutable === 'mutable' ? mutableObject : object
+  return () => constructor(pickedFields, options) as ObjectType<M, OmitReferenceObjectFields<Ts>>
+}
+
+type OmitReferenceObjectFields<Ts extends Types> = {
+  [K in { [FK in keyof Ts]: HasReferenceWrapper<Ts[FK]> extends true ? never : FK }[keyof Ts]]: Ts[K]
+}
+
+/**
  * @param obj the `ObjectType` to transform
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the result object are always ignored, even if this property is set to `undefined`
@@ -1018,7 +1061,7 @@ export function partial<const Ts extends Types, M extends Mutability = 'immutabl
 }
 
 type PartialObjectFields<Ts extends Types> = {
-  [K in keyof Ts]: HasOptionalDecorator<Ts[K]> extends true ? Ts[K] : OptionalType<Ts[K]>
+  [K in keyof Ts]: HasOptionalWrapper<Ts[K]> extends true ? Ts[K] : OptionalType<Ts[K]>
 }
 
 /**

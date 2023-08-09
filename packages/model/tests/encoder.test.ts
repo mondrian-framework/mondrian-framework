@@ -67,7 +67,7 @@ describe('encoder.encodeWithoutValidation', () => {
 
   const objectModel = arbitrary.object({ age: arbitrary.number(), name: arbitrary.optional(arbitrary.string()) })
   const objectGenerator = gen.record({ age: number, name: gen.string() })
-  test.prop([objectModel, objectGenerator])('Encodes the fields of an object', (model, object) => {
+  test.prop([objectModel, objectGenerator])('encodes the fields of an object', (model, object) => {
     expect(encoder.encodeWithoutValidation(model, object)).toEqual(object)
   })
 
@@ -99,6 +99,8 @@ describe('encoder.encodeWithoutValidation', () => {
     const model = types.union({ variant: types.number }, { variant: () => false })
     expect(() => encoder.encodeWithoutValidation(model, 1)).toThrowError()
   })
+
+  test.todo('encodes a custom type', () => {})
 })
 
 describe('encoder.encode', () => {

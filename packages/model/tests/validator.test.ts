@@ -198,15 +198,34 @@ describe('validator.validate', () => {
   })
 
   describe('on optional types', () => {
-    test.todo('validates the inner type', () => {})
+    test.prop([gen.anything().filter((value) => value !== undefined)])('validates the inner type', (value) => {
+      assertOk(validator.validate(alwaysSuccess.optional(), value))
+      checkError(validator.validate(alwaysFail.optional(), value), [{ got: value, path: path.empty() }])
+    })
+
+    test('always succeeds on undefined', () => {
+      assertOk(validator.validate(alwaysSuccess.optional(), undefined))
+      assertOk(validator.validate(alwaysFail.optional(), undefined))
+    })
   })
 
   describe('on nullable types', () => {
-    test.todo('validates the inner type', () => {})
+    test.prop([gen.anything().filter((value) => value !== null)])('validates the inner type', (value) => {
+      assertOk(validator.validate(alwaysSuccess.nullable(), value))
+      checkError(validator.validate(alwaysFail.nullable(), value), [{ got: value, path: path.empty() }])
+    })
+
+    test('always succeeds on null', () => {
+      assertOk(validator.validate(alwaysSuccess.nullable(), null))
+      assertOk(validator.validate(alwaysFail.nullable(), null))
+    })
   })
 
   describe('on reference types', () => {
-    test.todo('validates the wrapped type', () => {})
+    test.prop([gen.anything()])('validates the inner type', (value) => {
+      assertOk(validator.validate(alwaysSuccess.reference(), value))
+      checkError(validator.validate(alwaysFail.reference(), value), [{ got: value, path: path.empty() }])
+    })
   })
 
   describe('on array types', () => {

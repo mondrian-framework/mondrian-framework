@@ -915,7 +915,7 @@ type MergeObjectFields<Ts1 extends Types, Ts2 extends Types> = {
  * @param obj the `ObjectType` to pick
  * @param fields the fields to pick
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
- *                The options of the merged objects are always ignored, even if this property is set to `undefined`
+ *                The options of the result object are always ignored, even if this property is set to `undefined`
  * @returns a new {@link ObjectType `ObjectType`} obtained by picking only the wanted fields.
  * @example ```ts
  *          const book = object({ name: string(), description: string(), publishedIn: integer() })
@@ -941,7 +941,7 @@ export function pick<const Ts extends Types, const Fields extends { [K in keyof 
     Object.entries(obj.types).filter(([k, _v]) => k in fields && fields[k] === true),
   )
   if (mutable == 'immutable') {
-    return () => object(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
+    return () => object(pickedFields, options ?? obj.options) as ObjectType<M, PickObjectFields<Ts, Fields>>
   } else {
     return () => mutableObject(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
   }
@@ -949,6 +949,46 @@ export function pick<const Ts extends Types, const Fields extends { [K in keyof 
 
 type PickObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
   [K in keyof Ts & keyof Fields]: Ts[K]
+}
+
+/**
+ * @param obj the `ObjectType` to pick
+ * @param fields the fields to omit
+ * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
+ *                The options of the result object are always ignored, even if this property is set to `undefined`
+ * @returns a new {@link ObjectType `ObjectType`} obtained by omitting the specified fields.
+ * @example ```ts
+ *          const book = object({ name: string(), description: string(), publishedIn: integer() })
+ *          const bookWithoutDescription = omit(book, { description: true })
+ *          type BookWithoutDescription = Infer<typeof bookWithoutDescription>
+ *
+ *          const exampleBook = {
+ *            name: "Example book",
+ *            publishedIn: 2023,
+ *          }
+ *          ```
+ */
+export function omit<const Ts extends Types, const Fields extends { [K in keyof Ts]?: true }, M extends Mutability>(
+  mutable: M,
+  obj: Lazy<ObjectType<any, Ts>>,
+  fields: Fields,
+  options?: OptionsOf<ObjectType<M, Ts>>,
+): () => ObjectType<M, OmitObjectFields<Ts, Fields>> {
+  if (typeof obj === 'function') {
+    return () => omit(mutable, concretise(obj) as ObjectType<any, Ts>, fields, options)()
+  }
+  const pickedFields = Object.fromEntries(
+    Object.entries(obj.types).filter(([k, _v]) => !(k in fields) || fields[k] !== true),
+  )
+  if (mutable == 'immutable') {
+    return () => object(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
+  } else {
+    return () => mutableObject(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
+  }
+}
+
+type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
+  [K in Exclude<keyof Ts, keyof Fields>]: Ts[K]
 }
 
 /**

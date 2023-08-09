@@ -199,22 +199,41 @@ function validateObject<Ts extends types.Types>(
    */
 }
 
+function and(options: validator.Options, result: validator.Result, other: () => validator.Result): validator.Result {
+  if (!result.isOk) {
+    if (options.errorReportingStrategy === 'stopAtFirstError') {
+      return result
+    } else {
+      const otherErrors = other().match(
+        () => [],
+        (errors) => errors,
+      )
+      return validator.failWithErrors([...result.error, ...otherErrors])
+    }
+  } else {
+    return other()
+  }
+}
+
 function validateArray<T extends types.Type>(
   type: types.ArrayType<any, T>,
   value: types.Infer<types.ArrayType<any, T>>,
   options: validator.Options,
 ): validator.Result {
-  if (type.options === undefined) {
-    return validator.succeed()
-  }
-  const { maxItems, minItems } = type.options
-  if (maxItems && value.length > maxItems) {
-    return validator.fail(`array must have at most ${maxItems} items`, value)
-  }
-  if (minItems && value.length < minItems) {
-    return validator.fail(`array must have at least ${minItems} items`, value)
-  }
-  return validateArrayElements(type, value, options)
+  const { maxItems, minItems } = type.options ?? {}
+  const maxLengthMessage = `array must have at most ${maxItems} items`
+  const minLengthMessage = `array must have at least ${minItems} items`
+  const maxLengthValidation =
+    maxItems && value.length > maxItems ? validator.fail(maxLengthMessage, value) : validator.succeed()
+  const minLengthValidation =
+    minItems && value.length < minItems ? validator.fail(minLengthMessage, value) : validator.succeed()
+
+  // prettier-ignore
+  return and(options, maxLengthValidation,
+    () => and(options, minLengthValidation,
+      () => validateArrayElements(type, value, options),
+    ),
+  )
 }
 
 function validateArrayElements<T extends types.Type>(

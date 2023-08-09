@@ -123,6 +123,7 @@ describe('Infer', () => {
     test('picked objects fields inferred as single field object', () => {
       const model = types.pick(types.object({ field1: types.string(), field2: types.number() }), {
         field1: true,
+        field2: undefined,
       })
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
@@ -143,6 +144,7 @@ describe('Infer', () => {
     test('omitted objects fields inferred as single field object', () => {
       const model = types.omit(types.object({ field1: types.string(), field2: types.number() }), {
         field2: true,
+        field1: undefined,
       })
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()

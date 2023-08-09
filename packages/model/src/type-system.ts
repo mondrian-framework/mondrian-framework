@@ -1,4 +1,5 @@
 import { decoder, validator } from './index'
+import { filterMapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -898,11 +899,9 @@ export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability
     return () =>
       merge(concretise(one) as ObjectType<any, Ts1>, concretise(other) as ObjectType<any, Ts2>, mutable, options)()
   }
-  if (!mutable || mutable == 'immutable') {
-    return () => object({ ...one.types, ...other.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
-  } else {
-    return () => mutableObject({ ...one.types, ...other.types }, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
-  }
+  const mergedFields = { ...one.types, ...other.types }
+  const constructor = mutable === 'mutable' ? mutableObject : object
+  return () => constructor(mergedFields, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
 }
 
 type MergeObjectFields<Ts1 extends Types, Ts2 extends Types> = {
@@ -940,18 +939,13 @@ export function pick<
   if (typeof obj === 'function') {
     return () => pick(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
-  const pickedFields = Object.fromEntries(
-    Object.entries(obj.types).filter(([k, _v]) => k in fields && fields[k] === true),
-  )
-  if (!mutable || mutable === 'immutable') {
-    return () => object(pickedFields, options ?? obj.options) as ObjectType<M, PickObjectFields<Ts, Fields>>
-  } else {
-    return () => mutableObject(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
-  }
+  const pickedFields = filterMapObject(obj.types, (k, t) => (k in fields && fields[k] === true ? t : undefined))
+  const constructor = mutable === 'mutable' ? mutableObject : object
+  return () => constructor(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
 }
 
 type PickObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
-  [K in keyof Ts & keyof Fields]: Ts[K]
+  [K in keyof Ts & { [FK in keyof Fields]: Fields[FK] extends true ? FK : never }[keyof Fields]]: Ts[K]
 }
 
 /**
@@ -985,18 +979,13 @@ export function omit<
   if (typeof obj === 'function') {
     return () => omit(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
-  const pickedFields = Object.fromEntries(
-    Object.entries(obj.types).filter(([k, _v]) => !(k in fields) || fields[k] !== true),
-  )
-  if (!mutable || mutable === 'immutable') {
-    return () => object(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
-  } else {
-    return () => mutableObject(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
-  }
+  const pickedFields = filterMapObject(obj.types, (k, t) => (!(k in fields) || fields[k] !== true ? t : undefined))
+  const constructor = mutable === 'mutable' ? mutableObject : object
+  return () => constructor(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
 }
 
 type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
-  [K in Exclude<keyof Ts, keyof Fields>]: Ts[K]
+  [K in Exclude<keyof Ts, { [FK in keyof Fields]: Fields[FK] extends true ? FK : never }[keyof Fields]>]: Ts[K]
 }
 
 /**
@@ -1023,14 +1012,9 @@ export function partial<const Ts extends Types, M extends Mutability = 'immutabl
   if (typeof obj === 'function') {
     return () => partial(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
-  const mappedFields = Object.fromEntries(
-    Object.entries(obj.types).map(([k, v]) => [k, hasWrapper(v, 'optional') ? v : optional(v)]),
-  )
-  if (!mutable || mutable === 'immutable') {
-    return () => object(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
-  } else {
-    return () => mutableObject(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
-  }
+  const mappedFields = filterMapObject(obj.types, (_, t) => (hasWrapper(t, 'optional') ? t : optional(t)))
+  const constructor = mutable === 'mutable' ? mutableObject : object
+  return () => constructor(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
 }
 
 type PartialObjectFields<Ts extends Types> = {

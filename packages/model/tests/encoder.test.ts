@@ -101,8 +101,18 @@ describe('encoder.encodeWithoutValidation', () => {
   })
 
   test.todo('encodes a custom type', () => {})
+
+  test('fails with internal error on unhandled type kind', () => {
+    expect(() => encoder.encodeWithoutValidation({ kind: 'not a type' } as any, 1)).toThrowError(
+      /.*\[internal error\].*/,
+    )
+  })
 })
 
 describe('encoder.encode', () => {
   test.todo('performs validation', () => {})
+
+  test('fails with internal error on unhandled type kind', () => {
+    expect(() => encoder.encode({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)
+  })
 })

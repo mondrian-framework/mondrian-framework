@@ -127,6 +127,22 @@ describe('Infer', () => {
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: string }>()
     })
+
+    test('picked objects fields inferred as single field object', () => {
+      const model = types.pick('immutable', types.object({ field1: types.string(), field2: types.number() }), {
+        field1: true,
+      })
+      type Inferred = types.Infer<typeof model>
+      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
+    })
+
+    test('picked objects fields inferred as mutable single field object', () => {
+      const model = types.pick('mutable', types.object({ field1: types.string(), field2: types.number() }), {
+        field1: true,
+      })
+      type Inferred = types.Infer<typeof model>
+      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
+    })
   })
 
   describe('ArrayType', () => {

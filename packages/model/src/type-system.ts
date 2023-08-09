@@ -904,8 +904,51 @@ export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability
   }
 }
 
-type MergeObjectFields<T1 extends Types, T2 extends Types> = {
-  [K in keyof T1 | keyof T2]: K extends keyof T2 ? T2[K] : K extends keyof T1 ? T1[K] : never
+type MergeObjectFields<Ts1 extends Types, Ts2 extends Types> = {
+  [K in keyof Ts1 | keyof Ts2]: K extends keyof Ts2 ? Ts2[K] : K extends keyof Ts1 ? Ts1[K] : never
+}
+
+//TODO: could we implement it recursively?
+// pick(object, { field1: true, field2: { a: true } })
+// field2 is an object
+/**
+ * @param obj the `ObjectType` to pick
+ * @param fields the fields to pick
+ * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
+ *                The options of the merged objects are always ignored, even if this property is set to `undefined`
+ * @returns a new {@link ObjectType `ObjectType`} obtained by picking only the wanted fields.
+ * @example ```ts
+ *          const book = object({ name: string(), description: string(), publishedIn: integer() })
+ *          const bookWithoutDescription = pick(book, { name: true, publishedIn: true })
+ *          type BookWithoutDescription = Infer<typeof bookWithoutDescription>
+ *
+ *          const exampleBook = {
+ *            name: "Example book",
+ *            publishedIn: 2023,
+ *          }
+ *          ```
+ */
+export function pick<const Ts extends Types, const Fields extends { [K in keyof Ts]?: true }, M extends Mutability>(
+  mutable: M,
+  obj: Lazy<ObjectType<any, Ts>>,
+  fields: Fields,
+  options?: OptionsOf<ObjectType<M, Ts>>,
+): () => ObjectType<M, PickObjectFields<Ts, Fields>> {
+  if (typeof obj === 'function') {
+    return () => pick(mutable, concretise(obj) as ObjectType<any, Ts>, fields, options)()
+  }
+  const pickedFields = Object.fromEntries(
+    Object.entries(obj.types).filter(([k, _v]) => k in fields && fields[k] === true),
+  )
+  if (mutable == 'immutable') {
+    return () => object(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
+  } else {
+    return () => mutableObject(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
+  }
+}
+
+type PickObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
+  [K in keyof Ts & keyof Fields]: Ts[K]
 }
 
 /**
@@ -1321,303 +1364,3 @@ export function assertType<T extends Type>(
     },
   )
 }
-
-/*
-type Selection<T extends LazyType, P extends InferProjection<T>> = SelectionInternal<T, P>
-type SelectionInternal<LT extends LazyType, P extends GenericProjection> = LazyToType<LT> extends infer T
-  ? T extends Type
-    ? P extends true
-      ? T
-      : [T] extends [{ kind: 'object'; type: infer ST }]
-      ? {
-          kind: 'object'
-          type: {
-            [K in keyof ST & keyof P]: ST[K] extends LazyType
-              ? P[K] extends true
-                ? ST[K]
-                : P[K] extends GenericProjection
-                ? SelectionInternal<ST[K], P[K]>
-                : never
-              : never
-          }
-          opts: ObjectType['opts']
-        }
-      : [T] extends [{ kind: 'union-operator'; types: infer ST }]
-      ? {
-          kind: 'union-operator'
-          types: {
-            [K in keyof ST & keyof P]: ST[K] extends LazyType
-              ? P[K] extends true
-                ? ST[K]
-                : P[K] extends GenericProjection
-                ? SelectionInternal<ST[K], P[K]>
-                : never
-              : never
-          }
-        }
-      : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
-      ? ST extends LazyType
-        ? { kind: 'relation-decorator'; type: SelectionInternal<ST, P> }
-        : never
-      : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-      ? ST extends LazyType
-        ? { kind: 'default-decorator'; type: SelectionInternal<ST, P> }
-        : never
-      : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
-      ? ST extends LazyType
-        ? { kind: 'optional-decorator'; type: SelectionInternal<ST, P> }
-        : never
-      : [T] extends [{ kind: 'array-decorator'; type: infer ST }]
-      ? ST extends LazyType
-        ? { kind: 'array-decorator'; type: SelectionInternal<ST, P> }
-        : never
-      : T
-    : never
-  : never
-
-export function select<const T extends LazyType, const P extends InferProjection<T>>(
-  type: T,
-  projection: P,
-): Selection<T, P> {
-  function selection(type: LazyType, projection: GenericProjection): LazyType {
-    if (typeof type === 'function') {
-      return () => selection(type(), projection)
-    }
-    if (projection === true) {
-      return type
-    }
-    const t = type as AnyType
-    if (t.kind === 'object') {
-      return {
-        kind: 'object',
-        type: Object.fromEntries(
-          Object.entries(t.type).flatMap(([k, v]) => {
-            const subProjection = projection[k]
-            if (subProjection) {
-              return [[k, selection(v, subProjection)]]
-            }
-            return []
-          }),
-        ),
-      }
-    }
-    if (t.kind === 'union-operator') {
-      return {
-        kind: 'union-operator',
-        types: Object.fromEntries(
-          Object.entries(t.types).flatMap(([k, v]) => {
-            const subProjection = projection[k]
-            if (subProjection) {
-              return [[k, selection(v, subProjection)]]
-            }
-            return []
-          }),
-        ),
-      }
-    }
-    if (
-      t.kind === 'array-decorator' ||
-      t.kind === 'optional-decorator' ||
-      t.kind === 'nullable-decorator' ||
-      t.kind === 'default-decorator' ||
-      t.kind === 'relation-decorator'
-    ) {
-      return { kind: t.kind, type: selection(t.type, projection) }
-    }
-    return type
-  }
-
-  const t = selection(type, projection)
-  if (typeof t === 'function') {
-    return new LazyTypeWrapper(() => t()) as Selection<T, P>
-  }
-  return { ...t, ...decoratorShorcuts(t) } as Selection<T, P>
-}
-
-
-*/
-
-/*
-export type InferReturn<T extends LazyType> = InferType<T, true, false>
-type InferType<T extends LazyType, Partial extends boolean, Shader extends boolean> = [T] extends [() => infer LT]
-  ? InferTypeInternal<LT, Partial, Shader>
-  : InferTypeInternal<T, Partial, Shader>
-type InferTypeInternal<T, Partial extends boolean, Shader extends boolean> = [T] extends [
-  { kind: 'array-decorator'; type: infer ST },
-]
-  ? ST extends LazyType
-    ? InferType<ST, Partial, Shader>[]
-    : never
-  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferType<ST, Partial, Shader> | undefined
-    : never
-  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferType<ST, Partial, Shader> | null
-    : never
-  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferType<ST, Partial, Shader>
-    : never
-  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferType<ST, Partial, Shader>
-    : never
-  : [T] extends [{ kind: 'string' }]
-  ? string
-  : [T] extends [{ kind: 'number' }]
-  ? number
-  : [T] extends [{ kind: 'boolean' }]
-  ? boolean
-  : [T] extends [{ kind: 'literal'; value: infer ST }]
-  ? ST
-  : [T] extends [{ kind: 'custom'; type: infer C }]
-  ? C
-  : [T] extends [{ kind: 'enum'; values: infer V }]
-  ? V extends readonly string[]
-    ? V[number]
-    : never
-  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
-  ? TS extends Types
-    ? { [K in keyof TS]: InferType<TS[K], Partial, Shader> }[keyof TS]
-    : never
-  : [T] extends [{ kind: 'object'; type: infer ST }]
-  ? ST extends ObjectType['type']
-    ? Partial extends true
-      ? Expand<{
-          [K in keyof ST]?: InferType<ST[K], Partial, Shader>
-        }>
-      : Expand<
-          {
-            [K in NonOptionalKeys<ST>]: InferType<ST[K], Partial, Shader>
-          } & {
-            [K in OptionalKeys<ST>]?: InferType<ST[K], Partial, Shader>
-          }
-        >
-    : never
-  : unknown
-*/
-
-/*
-type OptionalKeys<T extends ObjectType['type']> = {
-  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? K : never
-}[keyof T]
-type NonOptionalKeys<T extends ObjectType['type']> = {
-  [K in keyof T]: HasOptionalDecorator<T[K]> extends true ? never : K
-}[keyof T]
-
-type HasOptionalDecorator<T extends LazyType> = [T] extends [() => infer LT]
-  ? LT extends Type
-    ? HasOptionalDecorator<LT>
-    : false
-  : [T] extends [{ kind: 'optional-decorator'; type: unknown }]
-  ? true
-  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? HasOptionalDecorator<ST>
-    : false
-  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? HasOptionalDecorator<ST>
-    : false
-  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? HasOptionalDecorator<ST>
-    : false
-  : false
-
-export type Project<F, T extends LazyType> = [T] extends [() => infer LT]
-  ? ProjectInternal<F, LT>
-  : ProjectInternal<F, T>
-type ProjectInternal<F, T> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Project<F, ST>[]
-    : never
-  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Project<F, ST> | undefined
-    : never
-  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Project<F, ST> | null
-    : never
-  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Project<F, ST>
-    : never
-  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? Project<F, ST>
-    : never
-  : [T] extends [{ kind: 'string' }]
-  ? string
-  : [T] extends [{ kind: 'number' }]
-  ? number
-  : [T] extends [{ kind: 'boolean' }]
-  ? boolean
-  : [T] extends [{ kind: 'literal'; value: infer ST }]
-  ? ST
-  : [T] extends [{ kind: 'custom'; type: infer C }]
-  ? C
-  : [T] extends [{ kind: 'enum'; values: infer V }]
-  ? V extends readonly string[]
-    ? V[number]
-    : never
-  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
-  ? TS extends Types
-    ? F extends true
-      ? InferTypeInternal<T, false, true>
-      : { [K in keyof TS]: F extends Record<K, unknown> ? Project<F[K], TS[K]> : Project<{}, TS[K]> }[keyof TS]
-    : never
-  : [T] extends [{ kind: 'object'; type: infer ST }]
-  ? ST extends ObjectType['type']
-    ? F extends true
-      ? InferTypeInternal<T, false, true>
-      : Expand<
-          {
-            [K in NonOptionalKeys<ST> & keyof F]: Project<F[K], ST[K]>
-          } & {
-            [K in OptionalKeys<ST> & keyof F]?: Project<F[K], ST[K]>
-          }
-        >
-    : never
-  : unknown
-
-export type InferProjection<T extends LazyType> = [T] extends [() => infer LT]
-  ? InferProjectionInternal<LT>
-  : InferProjectionInternal<T>
-type InferProjectionInternal<T> = [T] extends [{ kind: 'array-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferProjection<ST>
-    : never
-  : [T] extends [{ kind: 'optional-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferProjection<ST>
-    : never
-  : [T] extends [{ kind: 'nullable-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferProjection<ST>
-    : never
-  : [T] extends [{ kind: 'default-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferProjection<ST>
-    : never
-  : [T] extends [{ kind: 'relation-decorator'; type: infer ST }]
-  ? ST extends LazyType
-    ? InferProjection<ST>
-    : never
-  : [T] extends [{ kind: 'object'; type: infer ST }]
-  ? ST extends ObjectType['type']
-    ?
-        | Expand<{
-            [K in keyof ST]?: InferProjection<ST[K]>
-          }>
-        | true
-    : never
-  : [T] extends [{ kind: 'union-operator'; types: infer TS }]
-  ? TS extends Types
-    ? { [K in keyof TS]?: InferProjection<TS[K]> } | true
-    : never
-  : true
-*/

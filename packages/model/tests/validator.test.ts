@@ -25,6 +25,16 @@ function compareValidatorErrors(one: validator.Error[], other: { got: unknown; p
   return areSameArray(mappedOne, other, compareSingleErrors)
 }
 
+const mockEncode = () => {
+  throw 'test'
+}
+const mockDecode = () => {
+  throw 'test'
+}
+
+const alwaysSuccess = types.custom('alwaysSuccess', mockEncode, mockDecode, () => validator.succeed())
+const alwaysFail = types.custom('alwaysFail', mockEncode, mockDecode, (value) => validator.fail('test', value))
+
 describe('validator.validate', () => {
   describe('on number types', () => {
     test.prop([gen.double()])('always succeeds if given no options', (n) => {
@@ -112,9 +122,56 @@ describe('validator.validate', () => {
   })
 
   describe('on string types', () => {
-    test.todo('checks the string matches the given regex', () => {})
-    test.todo('checks the string has the minimum length', () => {})
-    test.todo('checks the string has the maximum length', () => {})
+    test.prop([gen.string()])('always succeeds when given no options', (string) => {
+      assertOk(validator.validate(types.string(), string))
+    })
+
+    describe('checks the string matches the given regex', () => {
+      const model = types.string({ regex: /^mondrian/ })
+
+      const validValue = gen.string().map((s) => 'mondrian' + s)
+      test.prop([validValue])('ok cases', (string) => {
+        assertOk(validator.validate(model, string))
+      })
+
+      const invalidValue = gen.string().filter((s) => !s.startsWith('mondrian'))
+      test.prop([invalidValue])('failing cases', (string) => {
+        const expectedError = [{ got: string, path: path.empty() }]
+        checkError(validator.validate(model, string), expectedError)
+      })
+    })
+
+    describe('checks the string has the minimum length', () => {
+      const minLength = 3
+      const model = types.string({ minLength })
+
+      const validValue = gen.string({ minLength })
+      test.prop([validValue])('ok cases', (string) => {
+        assertOk(validator.validate(model, string))
+      })
+
+      const invalidValue = gen.string({ maxLength: minLength - 1 })
+      test.prop([invalidValue])('failing cases', (string) => {
+        const expectedError = [{ got: string, path: path.empty() }]
+        checkError(validator.validate(model, string), expectedError)
+      })
+    })
+
+    describe('checks the string has the maximum length', () => {
+      const maxLength = 3
+      const model = types.string({ maxLength })
+
+      const validValue = gen.string({ maxLength })
+      test.prop([validValue])('ok cases', (string) => {
+        assertOk(validator.validate(model, string))
+      })
+
+      const invalidValue = gen.string({ minLength: maxLength + 1 })
+      test.prop([invalidValue])('failing cases', (string) => {
+        const expectedError = [{ got: string, path: path.empty() }]
+        checkError(validator.validate(model, string), expectedError)
+      })
+    })
   })
 
   describe('on boolean types', () => {

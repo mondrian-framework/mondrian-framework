@@ -2,7 +2,7 @@ import { arbitrary, path, result, types, validator } from '../src'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
-import { describe, expect } from 'vitest'
+import { describe, expect, vi } from 'vitest'
 
 /**
  * Check if the result is a validator error that has the given got and
@@ -351,7 +351,26 @@ describe('validator.validate', () => {
     })
   })
 
-  test('fails with internal error if called with unhandled type kind', () => {
-    expect(() => validator.validate({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)
+  describe('on custom types', () => {
+    const options = { errorReportingStrategy: 'allErrors' } as const
+
+    test.prop([gen.anything()])('calls the provided decoder', (value) => {
+      // spy function: https://vitest.dev/api/expect.html#tohavebeencalled
+      const validationFunction = {
+        validate: (v: unknown, o: any) => {
+          expect(v).toEqual(value)
+          expect(o).toEqual(options)
+          return validator.succeed()
+        },
+      }
+      const validationSpy = vi.spyOn(validationFunction, 'validate')
+      const model = types.custom('custom', mockEncode, mockDecode, validationFunction.validate)
+      assertOk(validator.validate(model, value, options))
+      expect(validationSpy).toHaveBeenCalledTimes(1)
+    })
+
+    test('fails with internal error if called with unhandled type kind', () => {
+      expect(() => validator.validate({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)
+    })
   })
 })

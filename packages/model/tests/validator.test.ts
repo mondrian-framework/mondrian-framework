@@ -267,8 +267,6 @@ describe('validator.validate', () => {
       })
     })
 
-    describe.todo('checks max length')
-
     describe('when reporting all errors', () => {
       const options = { errorReportingStrategy: 'allErrors' } as const
       const toErrors = (array: any[]) =>
@@ -301,12 +299,30 @@ describe('validator.validate', () => {
   })
 
   describe('on object types', () => {
-    test.todo('validates its fields', () => {})
+    const objectGenerator = gen.record({ field1: gen.anything(), field2: gen.anything() })
 
-    test.todo('stops at first error by default', () => {})
+    test.prop([objectGenerator])('validates its fields', (object) => {
+      const model = types.object({ field1: alwaysSuccess, field2: alwaysSuccess })
+      assertOk(validator.validate(model, object))
+    })
+
+    test.prop([objectGenerator])('stops at first error by default', (object) => {
+      const model = types.object({ field1: alwaysFail, field2: alwaysFail })
+      const expectedError = [{ got: object.field1, path: path.empty().prependField('field1') }]
+      checkError(validator.validate(model, object), expectedError)
+    })
 
     describe('when reporting all errors', () => {
-      test.todo('reports all the errors with its fields', () => {})
+      const options = { errorReportingStrategy: 'allErrors' } as const
+
+      test.prop([objectGenerator])('reports all the errors with its fields', (object) => {
+        const model = types.object({ field1: alwaysFail, field2: alwaysFail })
+        const expectedError = [
+          { got: object.field1, path: path.empty().prependField('field1') },
+          { got: object.field2, path: path.empty().prependField('field2') },
+        ]
+        checkError(validator.validate(model, object, options), expectedError)
+      })
     })
   })
 

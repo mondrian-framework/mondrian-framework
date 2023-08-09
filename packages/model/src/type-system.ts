@@ -186,7 +186,7 @@ export type NumberTypeOptions = BaseOptions & {
   readonly exclusiveMaximum?: number
   readonly minimum?: number
   readonly exclusiveMinimum?: number
-  readonly multipleOf?: number
+  readonly isInteger?: boolean
 }
 
 /**
@@ -447,10 +447,6 @@ export type CustomTypeOptions<AdditionalOptions> = BaseOptions & AdditionalOptio
  *          ```
  */
 export function number(options?: OptionsOf<NumberType>): NumberType {
-  if (options?.multipleOf && options.multipleOf <= 0) {
-    throw new Error('Invalid multipleOf for integer (must be > 0)')
-  }
-
   const minimum = options?.minimum
   const exclusiveMinimum = options?.exclusiveMinimum
   const maximum = options?.maximum
@@ -508,10 +504,7 @@ export function number(options?: OptionsOf<NumberType>): NumberType {
  *           ```
  */
 export function integer(options?: OptionsOf<NumberType>): NumberType {
-  if (options?.multipleOf && options.multipleOf % 1 !== 0) {
-    throw new Error('Invalid multipleOf for integer (must be integer)')
-  }
-  return number({ multipleOf: 1, ...options })
+  return number({ ...options, isInteger: true })
 }
 
 /**

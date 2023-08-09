@@ -120,7 +120,7 @@ function validateNumber(type: types.NumberType, value: number): validator.Result
   if (type.options === undefined) {
     return validator.succeed()
   }
-  const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, multipleOf } = type.options
+  const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, isInteger } = type.options
   if (maximum && !(value <= maximum)) {
     return validator.fail(`number must be less than or equal to ${maximum}`, value)
   } else if (exclusiveMaximum && !(value < exclusiveMaximum)) {
@@ -129,8 +129,8 @@ function validateNumber(type: types.NumberType, value: number): validator.Result
     return validator.fail(`number must be greater than or equal to ${minimum}`, value)
   } else if (exclusiveMinimum && !(value > exclusiveMinimum)) {
     return validator.fail(`number must be greater than ${exclusiveMinimum}`, value)
-  } else if (multipleOf && value % multipleOf !== 0) {
-    return validator.fail(`number must be mutiple of ${multipleOf}`, value)
+  } else if (isInteger && !Number.isInteger(value)) {
+    return validator.fail(`number must be an integer`, value)
   } else {
     return validator.succeed()
   }

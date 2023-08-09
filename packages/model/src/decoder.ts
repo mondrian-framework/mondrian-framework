@@ -7,7 +7,7 @@ import { assertNever } from './utils'
 export type Options = {
   typeCastingStrategy: 'tryCasting' | 'expectExactTypes'
   errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
-  unionDecodingStrategy: 'taggedUnions' | 'untaggedUnions' // TODO: what to do with this
+  unionDecodingStrategy: 'taggedUnions' | 'untaggedUnions'
   // TODO: object strictness?
 }
 

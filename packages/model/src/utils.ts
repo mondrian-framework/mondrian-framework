@@ -37,7 +37,6 @@ export function filterMapObject<A, B>(
 }
 
 /**
- *
  * @param message the message to display in the error
  * @returns a TypeScript `Error` where
  */

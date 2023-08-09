@@ -1,7 +1,6 @@
 import { types, result, validator, path } from './index'
-import { match } from 'ts-pattern'
+import { assertNever } from './utils'
 
-/* TODO: figure out how to deal with object strictness */
 export type Options = {
   errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
 }
@@ -86,20 +85,35 @@ function internalValidate<T extends types.Type>(
   value: types.Infer<T>,
   options: validator.Options,
 ): validator.Result {
-  return match(types.concretise(type))
-    .with({ kind: 'boolean' }, (_) => validator.succeed())
-    .with({ kind: 'enum' }, (_) => validator.succeed())
-    .with({ kind: 'literal' }, (_) => validator.succeed())
-    .with({ kind: 'number' }, (type) => validateNumber(type, value as any))
-    .with({ kind: 'string' }, (type) => validateString(type, value as any))
-    .with({ kind: 'optional' }, (type) => validateOptional(type, value as any, options))
-    .with({ kind: 'nullable' }, (type) => validateNullable(type, value as any, options))
-    .with({ kind: 'object' }, (type) => validateObject(type, value as any, options))
-    .with({ kind: 'union' }, (type) => validateUnion(type, value as any, options))
-    .with({ kind: 'array' }, (type) => validateArray(type, value as any, options))
-    .with({ kind: 'reference' }, (type) => validateReference(type, value as any, options))
-    .with({ kind: 'custom' }, (type) => type.validate(value, options, type.options))
-    .exhaustive()
+  const concreteType = types.concretise(type)
+
+  if (concreteType.kind === 'boolean') {
+    return validator.succeed()
+  } else if (concreteType.kind === 'enum') {
+    return validator.succeed()
+  } else if (concreteType.kind === 'literal') {
+    return validator.succeed()
+  } else if (concreteType.kind === 'number') {
+    return validateNumber(concreteType, value as any)
+  } else if (concreteType.kind === 'string') {
+    return validateString(concreteType, value as any)
+  } else if (concreteType.kind === 'optional') {
+    return validateOptional(concreteType, value as any, options)
+  } else if (concreteType.kind === 'nullable') {
+    return validateNullable(concreteType, value as any, options)
+  } else if (concreteType.kind === 'object') {
+    return validateObject(concreteType, value as any, options)
+  } else if (concreteType.kind === 'union') {
+    return validateUnion(concreteType, value as any, options)
+  } else if (concreteType.kind === 'array') {
+    return validateArray(concreteType, value as any, options)
+  } else if (concreteType.kind === 'reference') {
+    return validateReference(concreteType, value as any, options)
+  } else if (concreteType.kind === 'custom') {
+    return concreteType.validate(value, options, concreteType.options)
+  } else {
+    assertNever(concreteType, 'Totality check failed when validating a value, this should have never happened')
+  }
 }
 
 function validateNumber(type: types.NumberType, value: number): validator.Result {

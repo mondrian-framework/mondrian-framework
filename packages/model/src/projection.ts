@@ -12,10 +12,44 @@ type Projection =
   | types.UnionType<{ all: types.LiteralType<true>; partial: types.ObjectType<'immutable', Projections> }>
 
 /**
- * This is a quick shorthand for `types.Infer<projection.FromType<T>>`.
- * Infers the type of the projection for a given {@link types.Type type} `T`.
+ * Given a Mondrian {@link Type type}, returns the type describing its projection.
+ * You can read {@link here TODO:} to learn more about what projections are and how they can be used.
+ *
+ * @example ```ts
+ *          const model = types.object({ field1: number, field2: string })
+ *          type Projection = projection.Infer<typeof model>
+ *          // -> true | { field1?: true, field2?: true }
+ *          ```
  */
-export type Infer<T extends types.Type> = types.Infer<projection.FromType<T>>
+// prettier-ignore
+export type Infer<T extends types.Type> = true | (
+  [T] extends [types.NumberType] ? never
+: [T] extends [types.StringType] ? never
+: [T] extends [types.BooleanType] ? never
+: [T] extends [types.EnumType<infer _>] ? never
+: [T] extends [types.LiteralType<infer _>] ? never
+: [T] extends [types.CustomType<infer _, infer _, infer _>] ? never
+: [T] extends [types.ArrayType<infer _, infer T1>] ? projection.Infer<T1>
+: [T] extends [types.OptionalType<infer T1>] ? projection.Infer<T1>
+: [T] extends [types.NullableType<infer T1>] ? projection.Infer<T1>
+: [T] extends [types.ReferenceType<infer T1>] ? projection.Infer<T1>
+: [T] extends [(() => infer T1 extends types.Type)] ? projection.Infer<T1>
+: [T] extends [types.UnionType<infer Ts>] ? { [Key in keyof Ts]?: projection.Infer<Ts[Key]> }
+: [T] extends [types.ObjectType<infer _, infer Ts>] ? { [Key in keyof Ts]?: projection.Infer<Ts[Key]> }
+: never)
+
+//TODO: could infer directly skipping the double transformation projection.ProjectedType -> types.Infer
+/**
+ * Given a Mondrian {@link Type type} and a projection P, returns the projection of T under P.
+ * You can read {@link here TODO:} to learn more about what projections are and how they can be used.
+ *
+ * @example ```ts
+ *          const model = types.object({ field1: number, field2: string })
+ *          type Projected = projection.Project<typeof model, { field1: true }>
+ *          // -> { readonly field1: true }
+ *          ```
+ */
+export type Project<T extends types.Type, P extends Infer<T>> = types.Infer<projection.ProjectedType<T, P>>
 
 // TODO: add doc and instead of types.Infer it should be InferPartialDeep! For now this is just a mock
 //       in order not to stop development of other modules

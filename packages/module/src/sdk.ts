@@ -1,33 +1,37 @@
-import { ContextType, Functions, Module } from './module'
+import { Functions, Module } from './module'
 import { buildLogger, randomOperationId } from './utils'
-import { Infer, InferProjection, LazyType, Project } from '@mondrian-framework/model'
+import { projection, types } from '@mondrian-framework/model'
 
 type SDK<F extends Functions> = {
-  [K in keyof F]: Infer<F[K]['input']> extends infer Input
-    ? InferProjection<F[K]['output']> extends infer Projection
-      ? SdkResolver<Input, Projection, F[K]['output']>
-      : never
-    : never
+  [K in keyof F]: SdkResolver<F[K]['input'], F[K]['output']>
 }
 
-type SdkResolver<Input, Projection, OutputType extends LazyType> = <const P extends Projection>(args: {
-  input: Input
+//TODO: need shaders
+type SdkResolver<InputType extends types.Type, OutputType extends types.Type> = <
+  P extends projection.Infer<OutputType>,
+>(args: {
+  input: types.Infer<InputType>
   projection?: P
-}) => Promise<Project<P, OutputType>>
+}) => Promise<
+  [P] extends [projection.Infer<OutputType>]
+    ? types.Infer<OutputType>
+    : types.Infer<projection.ProjectedType<OutputType, P>>
+>
 
-export function createLocalSdk<const F extends Functions, CI>({
+export function fromModule<const F extends Functions, CI>({
   module,
   context,
 }: {
   module: Module<F, CI>
-  context: () => Promise<ContextType<F>>
+  context: () => Promise<CI>
 }): SDK<F> {
   const functions = Object.fromEntries(
     Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
       const wrapper = async ({ input, projection }: { input: any; projection: any }) => {
         const operationId = randomOperationId()
         const log = buildLogger(module.name, operationId, null, functionName, 'LOCAL', new Date())
-        const ctx = await context()
+        const contextInput = await context()
+        const ctx = await module.context(contextInput)
         try {
           const result = functionBody.apply({ input, projection, context: ctx, operationId, log })
           log('Done.')

@@ -69,18 +69,22 @@ describe('encoder.encodeWithoutValidation', () => {
   const objectModel = arbitrary.object({ age: arbitrary.number(), name: arbitrary.optional(arbitrary.string()) })
   const objectGenerator = gen.record({ age: number, name: gen.string() })
   test.prop([objectModel, objectGenerator])('encodes the fields of an object', (model, object) => {
-    expect(encoder.encodeWithoutValidation(model, object)).toEqual(object)
+    expect(encoder.encodeWithoutValidation(model.immutable(), object)).toEqual(object)
+    expect(encoder.encodeWithoutValidation(model.mutable(), object)).toEqual(object)
   })
 
   test.prop([objectModel])('drops undefined fields when encoding object', (model) => {
-    expect(encoder.encodeWithoutValidation(model, { age: 1 })).toEqual({ age: 1 })
-    expect(encoder.encodeWithoutValidation(model, { age: 1, name: undefined })).toEqual({ age: 1 })
+    expect(encoder.encodeWithoutValidation(model.mutable(), { age: 1 })).toEqual({ age: 1 })
+    expect(encoder.encodeWithoutValidation(model.immutable(), { age: 1 })).toEqual({ age: 1 })
+    expect(encoder.encodeWithoutValidation(model.mutable(), { age: 1, name: undefined })).toEqual({ age: 1 })
+    expect(encoder.encodeWithoutValidation(model.immutable(), { age: 1, name: undefined })).toEqual({ age: 1 })
   })
 
   test.prop([arbitrary.array(arbitrary.number()), gen.array(number)])(
     'encodes the elements of an array',
     (model, array) => {
-      expect(encoder.encodeWithoutValidation(model, array)).toEqual(array)
+      expect(encoder.encodeWithoutValidation(model.mutable(), array)).toEqual(array)
+      expect(encoder.encodeWithoutValidation(model.immutable(), array)).toEqual(array)
     },
   )
 

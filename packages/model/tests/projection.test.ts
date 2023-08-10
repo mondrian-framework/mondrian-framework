@@ -556,6 +556,8 @@ describe('projection.Project', () => {
     expectTypeOf<projection.Project<typeof t1, true>>().toEqualTypeOf<types.Infer<typeof t1>>()
     const t2 = types.union({ username: types.string(), password: types.string() })
     expectTypeOf<projection.Project<typeof t2, true>>().toEqualTypeOf<types.Infer<typeof t2>>()
+    const user = () => types.object({ username: types.string(), password: types.string(), friends: types.array(user) })
+    expectTypeOf<projection.Project<typeof user, true>>().toEqualTypeOf<types.Infer<typeof user>>()
   })
 
   test('is a subset of types.Infer with some projection (without references)', () => {

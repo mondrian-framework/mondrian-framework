@@ -421,3 +421,71 @@ describe('projection.projectedType', () => {
     expectSameTypes(projectedType, expectedProjection)
   })
 })
+
+describe('projection.Infer', () => {
+  test('is true for base types', () => {
+    expectTypeOf<projection.Infer<types.NumberType>>().toEqualTypeOf(true as const)
+    expectTypeOf<projection.Infer<types.StringType>>().toEqualTypeOf(true as const)
+    expectTypeOf<projection.Infer<types.BooleanType>>().toEqualTypeOf(true as const)
+    expectTypeOf<projection.Infer<types.EnumType<['one', 'two']>>>().toEqualTypeOf(true as const)
+    expectTypeOf<projection.Infer<typeof exampleCustom>>().toEqualTypeOf(true as const)
+
+    expectTypeOf<projection.Infer<types.LiteralType<null>>>().toEqualTypeOf(true as const)
+    expectTypeOf<projection.Infer<types.LiteralType<'string'>>>().toEqualTypeOf(true as const)
+    expectTypeOf<projection.Infer<types.LiteralType<true>>>().toEqualTypeOf(true as const)
+    expectTypeOf<projection.Infer<types.LiteralType<1>>>().toEqualTypeOf(true as const)
+  })
+
+  test('is a correct object for ObjectType', () => {
+    const model = types.object({ field1: types.number, field2: types.number })
+    type Inferred = projection.Infer<typeof model>
+    type Expected = true | { readonly field1?: true; readonly field2?: true }
+    expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
+  })
+
+  test('works on nested objects', () => {
+    const model = types.object({ field1: types.object({ nested: types.number() }) })
+    type Inferred = projection.Infer<typeof model>
+    type Expected = true | { readonly field1?: true | { readonly nested?: true } }
+    expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
+  })
+
+  test('is a correct object for UnionType', () => {
+    const model = types.union({ variant1: types.number, variant2: types.string })
+    type Inferred = projection.Infer<typeof model>
+    type Expected = true | { readonly variant1?: true; readonly variant2?: true }
+    expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
+  })
+
+  test('works on nested unions', () => {
+    const model = types.union({ variant1: types.number, variant2: types.union({ subvariant1: types.number() }) })
+    type Inferred = projection.Infer<typeof model>
+    type Expected = true | { readonly variant1?: true; readonly variant2?: true | { readonly subvariant1?: true } }
+    expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
+  })
+
+  test('is the same as the projection for a wrapped type', () => {
+    const model = types.object({ field1: types.number, field2: types.number })
+    type Expected = true | { readonly field1?: true; readonly field2?: true }
+
+    const optionalObject = model.optional()
+    const optionalNumber = types.number().optional()
+    expectTypeOf<projection.Infer<typeof optionalObject>>().toEqualTypeOf<Expected>()
+    expectTypeOf<projection.Infer<typeof optionalNumber>>().toEqualTypeOf<true>()
+
+    const nullableObject = model.nullable()
+    const nullableNumber = types.number().nullable()
+    expectTypeOf<projection.Infer<typeof nullableObject>>().toEqualTypeOf<Expected>()
+    expectTypeOf<projection.Infer<typeof nullableNumber>>().toEqualTypeOf<true>()
+
+    const objectReference = model.reference()
+    const numberReference = types.number().reference()
+    expectTypeOf<projection.Infer<typeof objectReference>>().toEqualTypeOf<Expected>()
+    expectTypeOf<projection.Infer<typeof numberReference>>().toEqualTypeOf<true>()
+
+    const objectArray = model.array()
+    const numberArray = types.number().array()
+    expectTypeOf<projection.Infer<typeof objectArray>>().toEqualTypeOf<Expected>()
+    expectTypeOf<projection.Infer<typeof numberArray>>().toEqualTypeOf<true>()
+  })
+})

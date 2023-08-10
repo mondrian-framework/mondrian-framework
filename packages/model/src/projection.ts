@@ -1,4 +1,4 @@
-import { types } from './index'
+import { projection, types } from './index'
 import { filterMapObject, failWithInternalError } from './utils'
 
 /**
@@ -10,6 +10,12 @@ import { filterMapObject, failWithInternalError } from './utils'
 type Projection =
   | types.LiteralType<true>
   | types.UnionType<{ all: types.LiteralType<true>; partial: types.ObjectType<'immutable', Projections> }>
+
+/**
+ * This is a quick shorthand for `types.Infer<projection.FromType<T>>`.
+ * Infers the type of the projection for a given {@link types.Type type} `T`.
+ */
+export type Infer<T extends types.Type> = types.Infer<projection.FromType<T>>
 
 /**
  * A record of {@link Projection `Projection`s}.
@@ -187,8 +193,11 @@ export function depth<P extends Projection>(projection: P): number {
   }
 }
 
+/**
+ * TODO: add doc
+ */
 // prettier-ignore
-export type ProjectedType<T extends types.Type, P extends types.Infer<FromType<T>>>
+export type ProjectedType<T extends types.Type, P extends projection.Infer<T>>
   = [P] extends [true] ? T
   // If P is an object but we have primitive types we cannot perform the projection
   : [T] extends [types.NumberType] ? never
@@ -198,24 +207,27 @@ export type ProjectedType<T extends types.Type, P extends types.Infer<FromType<T
   : [T] extends [types.EnumType<infer _Vs>] ? never
   : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? never
   // If P is an object and we have a wrapper type we perform the projection on the inner type
-  : [T] extends [types.ArrayType<infer M, infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+  : [T] extends [types.ArrayType<infer M, infer T1>] ? [P] extends [projection.Infer<T1>]
       ? types.ArrayType<M, ProjectedType<T1, P>> : never 
-  : [T] extends [types.OptionalType<infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+  : [T] extends [types.OptionalType<infer T1>] ? [P] extends [projection.Infer<T1>]
       ? types.OptionalType<ProjectedType<T1, P>> : never
-  : [T] extends [types.NullableType<infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+  : [T] extends [types.NullableType<infer T1>] ? [P] extends [projection.Infer<T1>]
       ? types.NullableType<ProjectedType<T1, P>> : never
-  : [T] extends [(() => infer T1 extends types.Type)] ? [P] extends [types.Infer<FromType<T1>>]
+  : [T] extends [(() => infer T1 extends types.Type)] ? [P] extends [projection.Infer<T1>]
       ? ProjectedType<T1, P> : never
-  : [T] extends [types.ReferenceType<infer T1>] ? [P] extends [types.Infer<FromType<T1>>]
+  : [T] extends [types.ReferenceType<infer T1>] ? [P] extends [projection.Infer<T1>]
       ? ProjectedType<T1, P> : never
   // If P is an object and we have an object-like type we perform the projection picking the selected fields
   : [T] extends [types.UnionType<infer Ts>] ? [keyof P] extends [keyof Ts]
-    ? types.UnionType<{ [K in keyof P]: P extends Record<K, types.Infer<FromType<Ts[K]>>> ? ProjectedType<Ts[K], P[K]> : never }> : never
+    ? types.UnionType<{ [K in keyof P]: P extends Record<K, projection.Infer<Ts[K]>> ? ProjectedType<Ts[K], P[K]> : never }> : never
   : [T] extends [types.ObjectType<infer _, infer Ts>] ? [keyof P] extends [keyof Ts]
-    ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, types.Infer<FromType<Ts[K]>>> ? ProjectedType<Ts[K], P[K]> : never }> : never
+    ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, projection.Infer<Ts[K]>> ? ProjectedType<Ts[K], P[K]> : never }> : never
   : never
 
-export function projectedType<T extends types.Type, P extends types.Infer<FromType<T>>>(
+/**
+ * TODO: add doc
+ */
+export function projectedType<T extends types.Type, P extends projection.Infer<T>>(
   type: T,
   projection: P,
 ): ProjectedType<T, P> {

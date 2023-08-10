@@ -233,15 +233,19 @@ describe('Infer', () => {
     expectTypeOf<Inferred>().toEqualTypeOf<number>()
   })
 
-  test('UnionType inferred as union of types', () => {
+  test('UnionType inferred as tagged union of types', () => {
     const model = types.union({
       variant1: types.string(),
       variant2: types.object({ field1: types.string(), field2: types.boolean() }),
       variant3: types.boolean(),
     })
     type Inferred = types.Infer<typeof model>
-
-    expectTypeOf<Inferred>().toEqualTypeOf<string | { readonly field1: string; readonly field2: boolean } | boolean>()
+    type InferredObject = { readonly field1: string; readonly field2: boolean }
+    type Expected =
+      | { readonly variant1: string }
+      | { readonly variant2: InferredObject }
+      | { readonly variant3: boolean }
+    expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
   test('CustomType inferred as the specified type', () => {

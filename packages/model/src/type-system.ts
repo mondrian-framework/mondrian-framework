@@ -67,7 +67,7 @@ export type Infer<T extends Type>
   : [T] extends [BooleanType] ? boolean
   : [T] extends [EnumType<infer Vs>] ? Vs[number]
   : [T] extends [LiteralType<infer L>] ? L
-  : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
+  : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
   : [T] extends [ObjectType<"immutable", infer Ts>] ? Readonly<{ [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }>
   : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
@@ -264,12 +264,12 @@ export type LiteralType<L extends number | string | boolean | null> = {
 export type LiteralTypeOptions = BaseOptions
 
 /**
- * The model of an untagged union of types in the Mondrian framework.
+ * The model of a tagged union of types in the Mondrian framework.
+ * TODO: add examples (e.g. result/optional/list)
  */
 export type UnionType<Ts extends Types> = {
   readonly kind: 'union'
   readonly variants: Ts
-  readonly variantsChecks?: { [Key in keyof Ts]: (_: Infer<UnionType<Ts>>) => boolean }
   readonly options?: UnionTypeOptions
 
   optional(): OptionalType<UnionType<Ts>>
@@ -725,15 +725,10 @@ export function literal<const L extends number | string | boolean | null>(
  * @returns a new {@link UnionType `UnionType`} with the provided `variants` and `options`
  * @example Imagine you are modelling TODO
  */
-export function union<Ts extends Types>(
-  variants: Ts,
-  variantsChecks?: { [Key in keyof Ts]: (_: Infer<UnionType<Ts>>) => boolean },
-  options?: OptionsOf<UnionType<Ts>>,
-): UnionType<Ts> {
+export function union<Ts extends Types>(variants: Ts, options?: OptionsOf<UnionType<Ts>>): UnionType<Ts> {
   return {
     kind: 'union',
     variants,
-    variantsChecks,
     options,
     optional() {
       return optional(this)

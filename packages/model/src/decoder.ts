@@ -7,7 +7,6 @@ import { assertNever } from './utils'
 export type Options = {
   typeCastingStrategy: 'tryCasting' | 'expectExactTypes'
   errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
-  unionDecodingStrategy: 'taggedUnions' | 'untaggedUnions'
   // TODO: object strictness?
 }
 
@@ -17,7 +16,6 @@ export type Options = {
 export const defaultOptions: Options = {
   typeCastingStrategy: 'expectExactTypes',
   errorReportingStrategy: 'stopAtFirstError',
-  unionDecodingStrategy: 'untaggedUnions',
 }
 
 /**
@@ -365,49 +363,14 @@ function allConsecutive(numbers: number[]): boolean {
  * Tries to decode a value belonging to a union as described by `type`.
  */
 function decodeUnion(type: types.UnionType<any>, value: unknown, options: Options): decoder.Result<any> {
-  return options.unionDecodingStrategy === 'untaggedUnions'
-    ? decodeUntaggedUnion(type, value, options)
-    : decodeTaggedUnion(type, value, options)
-}
-
-function decodeUntaggedUnion(type: types.UnionType<any>, value: unknown, options: Options): decoder.Result<any> {
-  const decodingErrors: decoder.Error[] = []
-  for (const [variantName, variantType] of Object.entries(type.variants)) {
-    const decodedVariant = unsafeDecode(variantType as types.Type, value, options)
-    if (decodedVariant.isOk) {
-      const check = type.variantsChecks ? type.variantsChecks[variantName] : (_: any) => true
-      if (check(decodedVariant.value as any)) {
-        return decoder.succeed(decodedVariant.value)
-      } else {
-        decodingErrors.push({
-          expected: variantName,
-          got: decodedVariant.value,
-          path: path.empty(),
-        })
-      }
-    } else {
-      decodingErrors.push(...decodedVariant.error.map(prependVariantToPath(variantName)))
-    }
-  }
-  return decoder.failWithErrors(decodingErrors)
-}
-
-function decodeTaggedUnion(type: types.UnionType<any>, value: unknown, options: Options): decoder.Result<any> {
   if (typeof value === 'object' && value) {
     const object = value as Record<string, any>
     const variantName = singleKeyFromObject(object)
     if (variantName !== undefined && Object.keys(type.variants).includes(variantName)) {
       const decodingResult = unsafeDecode(type.variants[variantName], object[variantName], options)
-      if (decodingResult.isOk) {
-        const check = type.variantsChecks ? type.variantsChecks[variantName] : (_: any) => true
-        if (check(decodingResult.value as any)) {
-          return decodingResult
-        } else {
-          return decoder.fail(variantName, object[variantName])
-        }
-      } else {
-        return decodingResult.mapError((errors) => errors.map(prependVariantToPath(variantName)))
-      }
+      return decodingResult
+        .map((value) => Object.fromEntries([[variantName, value]]))
+        .mapError((errors) => errors.map(prependVariantToPath(variantName)))
     }
   }
   const prettyVariants = Object.keys(type.variants).join(' | ')

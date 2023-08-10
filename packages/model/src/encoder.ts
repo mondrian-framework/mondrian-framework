@@ -1,5 +1,5 @@
 import { types, encoder, validator, result } from './index'
-import { assertNever, filterMapObject } from './utils'
+import { assertNever, failWithInternalError, filterMapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -94,17 +94,20 @@ function unsafeEncodeNullable<T extends types.Type>(
  * matches with it.
  */
 function unsafeEncodeUnion<Ts extends types.Types>(type: types.UnionType<Ts>, union: any): JSONType | undefined {
-  for (const [variantName, variantType] of Object.entries(type.variants)) {
-    // If the object is well typed this check should never fail since the checks always
-    // have a field for each of the variant's names
-    const isVariant = type.variantsChecks?.[variantName]!
-    if (isVariant(union)) {
-      return unsafeEncode(variantType, union)
+  const failureMessage =
+    'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system'
+  const variantName = Object.keys(union).at(0)
+  if (variantName === undefined) {
+    failWithInternalError(failureMessage)
+  } else {
+    const variantType = type.variants[variantName]
+    if (variantType === undefined) {
+      failWithInternalError(failureMessage)
+    } else {
+      const encoded = unsafeEncode(variantType, union[variantName]) ?? null
+      return Object.fromEntries([[variantName, encoded]])
     }
   }
-  throw Error(`I could not encode a variant of a union type since none of the checking functions matched with it
-variant: ${union}
-type: ${type}`)
 }
 
 /**

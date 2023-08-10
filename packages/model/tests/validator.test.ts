@@ -327,27 +327,21 @@ describe('validator.validate', () => {
   })
 
   describe('on union types', () => {
-    test.prop([gen.anything()])('always fails on unions with no checks', (variant) => {
+    test.prop([gen.anything()])('succeeds if variant is valid', (value) => {
+      const model = types.union({ variant1: alwaysSuccess, variant2: alwaysFail })
+      assertOk(validator.validate(model, { variant1: value }))
+    })
+
+    test.prop([gen.anything()])('fails is variant is invalid', (value) => {
+      const model = types.union({ variant1: alwaysSuccess, variant2: alwaysFail })
+      const expectedError = [{ got: value, path: path.empty().prependVariant('variant2') }]
+      checkError(validator.validate(model, { variant2: value }), expectedError)
+    })
+
+    test('fail with internal error when called on unhandled variant', () => {
       const model = types.union({ variant1: alwaysSuccess, variant2: alwaysSuccess })
-      const expectedError = [{ got: variant, path: path.empty() }]
-      checkError(validator.validate(model, variant), expectedError)
-    })
-
-    test.prop([gen.anything()])('succeeds if variant is valid', (variant) => {
-      const model = types.union(
-        { variant1: alwaysSuccess, variant2: alwaysFail },
-        { variant1: (_) => true, variant2: (_) => false },
-      )
-      assertOk(validator.validate(model, variant))
-    })
-
-    test.prop([gen.anything()])('fails is variant is invalid', (variant) => {
-      const model = types.union(
-        { variant1: alwaysSuccess, variant2: alwaysFail },
-        { variant1: (_) => false, variant2: (_) => true },
-      )
-      const expectedError = [{ got: variant, path: path.empty().prependVariant('variant2') }]
-      checkError(validator.validate(model, variant), expectedError)
+      expect(() => validator.validate(model, { notAVariant: 1 } as any)).toThrowError(/^\[internal error\]/)
+      expect(() => validator.validate(model, {} as any)).toThrowError(/^\[internal error\]/)
     })
   })
 

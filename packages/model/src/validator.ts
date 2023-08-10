@@ -1,5 +1,5 @@
 import { types, result, validator, path } from './index'
-import { assertNever } from './utils'
+import { assertNever, failWithInternalError } from './utils'
 
 export type Options = {
   errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
@@ -264,21 +264,21 @@ function validateReference<T extends types.Type>(
 
 function validateUnion<Ts extends types.Types>(
   type: types.UnionType<Ts>,
-  value: types.Infer<types.UnionType<Ts>>,
+  variant: types.Infer<types.UnionType<Ts>>,
   options: validator.Options,
 ): validator.Result {
-  for (const [variantName, variantType] of Object.entries(type.variants)) {
-    const variantCheck = type.variantsChecks?.[variantName]
-    // If the variant can be decoded as one of the variants
-    const valueIsVariant = variantCheck && variantCheck(value)
-    if (valueIsVariant) {
-      const validationErrors: Error[] = []
-      const validationResult = internalValidate(variantType, value as never, options)
-      if (!validationResult.isOk) {
-        validationErrors.push(...validationResult.error.map(prependVariantToPath(variantName)))
-      }
-      return validationErrors.length > 0 ? validator.failWithErrors(validationErrors) : validator.succeed()
+  const failureMessage =
+    "I tried to validate an object that is not a union's variant. This should have been prevented by the type system"
+  const variantName = Object.keys(variant).at(0)
+  if (variantName === undefined) {
+    failWithInternalError(failureMessage)
+  } else {
+    const variantType = type.variants[variantName]
+    if (variantType === undefined) {
+      failWithInternalError(failureMessage)
+    } else {
+      const result = internalValidate(variantType, variant[variantName] as never, options)
+      return result.mapError((errors) => errors.map(prependVariantToPath(variantName)))
     }
   }
-  return validator.fail('value does not pass any of the variant checks', value)
 }

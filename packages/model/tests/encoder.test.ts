@@ -88,21 +88,31 @@ describe('encoder.encodeWithoutValidation', () => {
     },
   )
 
-  const unionChecks = {
-    variant1: (value: number | string) => typeof value === 'number',
-    variant2: (value: number | string) => typeof value === 'string',
-  }
-  type UnionFields = { variant1: types.NumberType; variant2: types.StringType }
-  const unionFields = { variant1: arbitrary.number(), variant2: arbitrary.string() }
-  const unionModel = arbitrary.union<UnionFields>(unionFields, unionChecks)
-  const unionGenerator = gen.oneof(number, gen.string())
-  test.prop([unionModel, unionGenerator])('encodes a union variant as itself', (model, variant) => {
-    expect(encoder.encodeWithoutValidation(model, variant)).toEqual(variant)
-  })
+  describe('on union values', () => {
+    const unionModel = arbitrary.union({
+      variant1: arbitrary.number(),
+      variant2: arbitrary.optional(arbitrary.string()),
+    })
 
-  test('fails when called on something that is not a variant of an enum', () => {
-    const model = types.union({ variant: types.number }, { variant: () => false })
-    expect(() => encoder.encodeWithoutValidation(model, 1)).toThrowError()
+    test.prop([unionModel, gen.double()])('encodes a variant', (model, number) => {
+      const variant = { variant1: number }
+      expect(encoder.encodeWithoutValidation(model, variant)).toEqual(variant)
+    })
+
+    test.prop([unionModel, gen.string()])('encodes the other variant', (model, string) => {
+      const variant = { variant2: string }
+      expect(encoder.encodeWithoutValidation(model, variant)).toEqual(variant)
+    })
+
+    test.prop([unionModel])('encodes a variant with only optional undefined field', (model) => {
+      const variant = { variant2: undefined }
+      expect(encoder.encodeWithoutValidation(model, variant)).toEqual({ variant2: null })
+    })
+
+    test.prop([unionModel])('fails if called with unhandled variant', (model) => {
+      expect(() => encoder.encodeWithoutValidation(model, { notVariant: 1 } as any)).toThrowError(/^\[internal error\]/)
+      expect(() => encoder.encodeWithoutValidation(model, {} as any)).toThrowError(/^\[internal error\]/)
+    })
   })
 
   test.prop([gen.anything().filter((value) => value !== undefined)])('encodes a custom type', (value) => {
@@ -163,4 +173,14 @@ describe('encoder.encode', () => {
   test('fails with internal error on unhandled type kind', () => {
     expect(() => encoder.encode({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)
   })
+
+  // TODO:
+  // const typeAndValue: gen.Arbitrary<[types.Type, never]> = arbitrary.type().chain((type) => {
+  //   return arbitrary.fromType(type, {}).map((value) => {
+  //     return [type, value]
+  //   })
+  // })
+  // test.prop([typeAndValue])('can always encode a type and a valid value', ([type, value]) => {
+  //   encoder.encode(type, value)
+  // })
 })

@@ -53,6 +53,7 @@ export type Project<T extends types.Type, P extends Infer<T>> = types.Infer<proj
 
 // TODO: add doc and instead of types.Infer it should be InferPartialDeep! For now this is just a mock
 //       in order not to stop development of other modules
+// TODO: this should return a result with the missing fields in the error case
 // tells if value is valid (meaning that it only has the fields allowed by the actual projection)
 export function respectsProjection<T extends types.Type>(
   type: T,

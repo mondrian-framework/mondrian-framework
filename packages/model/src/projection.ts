@@ -34,8 +34,8 @@ export type Infer<T extends types.Type> = true | (
 : [T] extends [types.NullableType<infer T1>] ? projection.Infer<T1>
 : [T] extends [types.ReferenceType<infer T1>] ? projection.Infer<T1>
 : [T] extends [(() => infer T1 extends types.Type)] ? projection.Infer<T1>
-: [T] extends [types.UnionType<infer Ts>] ? { [Key in keyof Ts]?: projection.Infer<Ts[Key]> }
-: [T] extends [types.ObjectType<infer _, infer Ts>] ? { [Key in keyof Ts]?: projection.Infer<Ts[Key]> }
+: [T] extends [types.UnionType<infer Ts>] ? { readonly [Key in keyof Ts]?: projection.Infer<Ts[Key]> }
+: [T] extends [types.ObjectType<infer _, infer Ts>] ? { readonly [Key in keyof Ts]?: projection.Infer<Ts[Key]> }
 : never)
 
 //TODO: could infer directly skipping the double transformation projection.ProjectedType -> types.Infer

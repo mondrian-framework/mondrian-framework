@@ -111,38 +111,46 @@ export function fromType<T extends types.Type>(
     .exhaustive() as gen.Arbitrary<types.Infer<T>>
 }
 
-// TODO 1781953724
 function numberMatchingOptions(options: types.OptionsOf<types.NumberType> | undefined): gen.Arbitrary<number> {
   if (options) {
-    const { multipleOf, maximum, minimum, exclusiveMaximum, exclusiveMinimum } = options
-    const lowerBound = selectMinimum(minimum, exclusiveMinimum, multipleOf)
-    const upperBound = selectMaximum(maximum, exclusiveMaximum, multipleOf)
-    const generatorOptions = { ...lowerBound, ...upperBound }
-    return multipleOf
-      ? gen.integer(generatorOptions).map((n) => n * multipleOf)
-      : gen.oneof(gen.integer(generatorOptions), gen.double(generatorOptions))
+    return options.isInteger ? doubleMatchingOptions(options) : integerMatchingOptions(options)
   } else {
-    return gen.oneof(gen.integer(), gen.float())
+    return gen.double()
   }
+}
+
+function doubleMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.Arbitrary<number> {
+  const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
+  const min = selectMinimum(minimum, exclusiveMinimum)
+  const max = selectMaximum(maximum, exclusiveMaximum)
+  return gen.double({ ...min, ...max })
+}
+
+function integerMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.Arbitrary<number> {
+  const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
+  const intMinimum = minimum ? Math.floor(minimum) : undefined
+  const intExclusiveMinimum = exclusiveMinimum ? Math.floor(exclusiveMinimum) : undefined
+  const intMaximum = maximum ? Math.ceil(maximum) : undefined
+  const intExclusiveMaximum = exclusiveMaximum ? Math.ceil(exclusiveMaximum) : undefined
+  const min = selectMinimum(intMinimum, intExclusiveMinimum)
+  const max = selectMaximum(intMaximum, intExclusiveMaximum)
+  return gen.integer({ ...min, ...max })
 }
 
 function selectMinimum(
   inclusive: number | undefined,
   exclusive: number | undefined,
-  multipleOf: number | undefined,
 ): { minExcluded: boolean; min: number } | undefined {
-  const adaptToMultiple = (n: number) => (!multipleOf ? n : Math.round(n / multipleOf + (0.5 - Number.EPSILON)))
-
   if (inclusive && exclusive) {
     if (inclusive > exclusive) {
-      return { minExcluded: false, min: adaptToMultiple(inclusive) }
+      return { minExcluded: false, min: inclusive }
     } else {
-      return { minExcluded: true, min: adaptToMultiple(exclusive) }
+      return { minExcluded: true, min: exclusive }
     }
   } else if (inclusive) {
-    return { minExcluded: false, min: adaptToMultiple(inclusive) }
+    return { minExcluded: false, min: inclusive }
   } else if (exclusive) {
-    return { minExcluded: true, min: adaptToMultiple(exclusive) }
+    return { minExcluded: true, min: exclusive }
   } else {
     return undefined
   }
@@ -151,20 +159,17 @@ function selectMinimum(
 function selectMaximum(
   inclusive: number | undefined,
   exclusive: number | undefined,
-  multipleOf: number | undefined,
 ): { maxExcluded: boolean; max: number } | undefined {
-  const adaptToMultiple = (n: number) => (!multipleOf ? n : Math.round(n / multipleOf - (0.5 - Number.EPSILON)))
-
   if (inclusive && exclusive) {
     if (inclusive < exclusive) {
-      return { maxExcluded: false, max: adaptToMultiple(inclusive) }
+      return { maxExcluded: false, max: inclusive }
     } else {
-      return { maxExcluded: true, max: adaptToMultiple(exclusive) }
+      return { maxExcluded: true, max: exclusive }
     }
   } else if (inclusive) {
-    return { maxExcluded: false, max: adaptToMultiple(inclusive) }
+    return { maxExcluded: false, max: inclusive }
   } else if (exclusive) {
-    return { maxExcluded: true, max: adaptToMultiple(exclusive) }
+    return { maxExcluded: true, max: exclusive }
   } else {
     return undefined
   }

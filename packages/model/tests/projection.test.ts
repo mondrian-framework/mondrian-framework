@@ -532,3 +532,63 @@ describe('projection.Infer', () => {
     expectTypeOf<projection.Infer<typeof numberArray>>().toEqualTypeOf<true>()
   })
 })
+
+describe('projection.Project', () => {
+  test('is equal to types.Infer with true projection (without references)', () => {
+    expectTypeOf<projection.Project<types.NumberType, true>>().toEqualTypeOf<types.Infer<types.NumberType>>()
+    expectTypeOf<projection.Project<types.StringType, true>>().toEqualTypeOf<types.Infer<types.StringType>>()
+    expectTypeOf<projection.Project<types.BooleanType, true>>().toEqualTypeOf<types.Infer<types.BooleanType>>()
+    expectTypeOf<projection.Project<types.EnumType<['one', 'two']>, true>>().toEqualTypeOf<
+      types.Infer<types.EnumType<['one', 'two']>>
+    >()
+    expectTypeOf<projection.Project<typeof exampleCustom, true>>().toEqualTypeOf<types.Infer<typeof exampleCustom>>()
+    expectTypeOf<projection.Project<types.LiteralType<null>, true>>().toEqualTypeOf<
+      types.Infer<types.LiteralType<null>>
+    >()
+    expectTypeOf<projection.Project<types.LiteralType<'string'>, true>>().toEqualTypeOf<
+      types.Infer<types.LiteralType<'string'>>
+    >()
+    expectTypeOf<projection.Project<types.LiteralType<true>, true>>().toEqualTypeOf<
+      types.Infer<types.LiteralType<true>>
+    >()
+    expectTypeOf<projection.Project<types.LiteralType<1>, true>>().toEqualTypeOf<types.Infer<types.LiteralType<1>>>()
+    const t1 = types.object({ username: types.string(), password: types.string() })
+    expectTypeOf<projection.Project<typeof t1, true>>().toEqualTypeOf<types.Infer<typeof t1>>()
+    const t2 = types.union({ username: types.string(), password: types.string() })
+    expectTypeOf<projection.Project<typeof t2, true>>().toEqualTypeOf<types.Infer<typeof t2>>()
+  })
+
+  test('is a subset of types.Infer with some projection (without references)', () => {
+    const t1 = types.object({ username: types.string(), password: types.string() })
+    expectTypeOf<projection.Project<typeof t1, { username: true }>>().toEqualTypeOf<{ readonly username: string }>
+    const t2 = types.union({ user: t1, jwt: types.string() })
+    expectTypeOf<projection.Project<typeof t2, { user: { username: true }; jwt: true }>>().toEqualTypeOf<
+      { readonly user: { readonly username: string } } | { readonly jwt: string }
+    >()
+  })
+
+  test('is a subset of types.Infer with true projection when references are present', () => {
+    const user = () =>
+      types.object({
+        username: types.string(),
+        password: types.string(),
+        friends: types.array(user).reference(),
+        bestFriend: types.object({
+          note: types.string(),
+          friend: types.reference(user),
+        }),
+      })
+    type Projection = projection.Project<typeof user, true>
+    //TODO: projection.Project not working as expected
+    type Expected = {
+      readonly username: string
+      readonly password: string
+      readonly friends: readonly Expected[] // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
+      readonly bestFriend: {
+        readonly note: string
+        readonly friend: Expected // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
+      }
+    }
+    expectTypeOf<Projection>().toEqualTypeOf<Expected>()
+  })
+})

@@ -180,9 +180,19 @@ export function objectTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ObjectT
 
 /**
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
- * @returns a generator for an object type
+ * @returns a generator for an object type that can either be mutable or immutable
  */
 export function object<Ts extends types.Types>(
+  fieldsGenerators: GeneratorsRecord<Ts>,
+): gen.Arbitrary<types.ObjectType<'mutable' | 'immutable', Ts>> {
+  return gen.oneof(immutableObject(fieldsGenerators), mutableObject(fieldsGenerators))
+}
+
+/**
+ * @param fieldsGenerators a generator for the fields of the randomly generated object type
+ * @returns a generator for an immutable object type
+ */
+export function immutableObject<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
 ): gen.Arbitrary<types.ObjectType<'immutable', Ts>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
@@ -194,7 +204,7 @@ export function object<Ts extends types.Types>(
 
 /**
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
- * @returns a generator for an object type
+ * @returns a generator for a mutable object type
  */
 export function mutableObject<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
@@ -229,9 +239,19 @@ export function arrayTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ArrayTyp
 
 /**
  * @param wrappedTypeGenerator a generator for the type wrapped by the randomly generated array type
- * @returns a generator for an immutable array type
+ * @returns a generator for an array type that could either be mutable or immutable
  */
 export function array<T extends types.Type>(
+  wrappedTypeGenerator: gen.Arbitrary<T>,
+): gen.Arbitrary<types.ArrayType<'mutable' | 'immutable', T>> {
+  return gen.oneof(immutableArray(wrappedTypeGenerator), mutableArray(wrappedTypeGenerator))
+}
+
+/**
+ * @param wrappedTypeGenerator a generator for the type wrapped by the randomly generated array type
+ * @returns a generator for an immutable array type
+ */
+export function immutableArray<T extends types.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
 ): gen.Arbitrary<types.ArrayType<'immutable', T>> {
   return orUndefined(arrayTypeOptions()).chain((options) => {

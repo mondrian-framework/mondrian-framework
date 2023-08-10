@@ -17,6 +17,17 @@ type Projection =
  */
 export type Infer<T extends types.Type> = types.Infer<projection.FromType<T>>
 
+// TODO: add doc and instead of types.Infer it should be InferPartialDeep! For now this is just a mock
+//       in order not to stop development of other modules
+// tells if value is valid (meaning that it only has the fields allowed by the actual projection)
+export function respectsProjection<T extends types.Type>(
+  type: T,
+  projection: projection.Infer<T>,
+  value: types.Infer<T>,
+): boolean {
+  failWithInternalError('TODO: This is not implemented, if you catch this means we forgot an implementation!')
+}
+
 /**
  * A record of {@link Projection `Projection`s}.
  */

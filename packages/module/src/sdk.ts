@@ -6,17 +6,12 @@ type SDK<F extends Functions> = {
   [K in keyof F]: SdkResolver<F[K]['input'], F[K]['output']>
 }
 
-//TODO: need shaders
 type SdkResolver<InputType extends types.Type, OutputType extends types.Type> = <
-  P extends projection.Infer<OutputType>,
+  P extends projection.Infer<OutputType> | undefined = true, //TODO with default true intellisense do not suggest projection
 >(args: {
   input: types.Infer<InputType>
   projection?: P
-}) => Promise<
-  [P] extends [projection.Infer<OutputType>]
-    ? types.Infer<OutputType>
-    : types.Infer<projection.ProjectedType<OutputType, P>>
->
+}) => Promise<projection.Project<OutputType, Exclude<P, undefined>>>
 
 export function fromModule<const F extends Functions, CI>({
   module,

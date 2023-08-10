@@ -567,7 +567,7 @@ describe('projection.Project', () => {
     >()
   })
 
-  test('is a subset of types.Infer with true projection when references are present', () => {
+  test('is a subset of types.Infer when references are present', () => {
     const user = () =>
       types.object({
         username: types.string(),
@@ -578,17 +578,35 @@ describe('projection.Project', () => {
           friend: types.reference(user),
         }),
       })
-    type Projection = projection.Project<typeof user, true>
+    type User = types.Infer<typeof user>
+
     //TODO: projection.Project not working as expected
-    type Expected = {
+    type Projection1 = projection.Project<typeof user, true>
+    type Expected1 = {
       readonly username: string
       readonly password: string
-      readonly friends: readonly Expected[] // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
+      readonly friends: readonly User[] // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
       readonly bestFriend: {
         readonly note: string
-        readonly friend: Expected // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
+        readonly friend: User // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
       }
     }
-    expectTypeOf<Projection>().toEqualTypeOf<Expected>()
+    expectTypeOf<Projection1>().toEqualTypeOf<Expected1>()
+
+    type Projection2 = projection.Project<typeof user, { bestFriend: { friend: true } }>
+    type Expected2 = {
+      readonly bestFriend: {
+        readonly friend: {
+          readonly username: string
+          readonly password: string
+          readonly friends: readonly User[] // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
+          readonly bestFriend: {
+            readonly note: string
+            readonly friend: User // TODO: this should be omitted as it's a reference and the projection does not explicitly specify it
+          }
+        }
+      }
+    }
+    expectTypeOf<Projection2>().toEqualTypeOf<Expected2>()
   })
 })

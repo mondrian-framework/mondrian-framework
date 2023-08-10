@@ -41,18 +41,18 @@ export type FromType<T extends types.Type>
   : [T] extends [types.EnumType<infer _>] ? types.LiteralType<true>
   : [T] extends [types.LiteralType<infer _>] ? types.LiteralType<true>
   : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? types.LiteralType<true>
-  : [T] extends [types.ArrayType<infer _, infer T1>] ? FromType<T1>
-  : [T] extends [types.OptionalType<infer T1>] ? FromType<T1>
-  : [T] extends [types.NullableType<infer T1>] ? FromType<T1>
-  : [T] extends [types.ReferenceType<infer T1>] ? FromType<T1>
-  : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1>
+  : [T] extends [types.ArrayType<infer _, infer T1>] ? projection.FromType<T1>
+  : [T] extends [types.OptionalType<infer T1>] ? projection.FromType<T1>
+  : [T] extends [types.NullableType<infer T1>] ? projection.FromType<T1>
+  : [T] extends [types.ReferenceType<infer T1>] ? projection.FromType<T1>
+  : [T] extends [(() => infer T1 extends types.Type)] ? projection.FromType<T1>
   : [T] extends [types.UnionType<infer Ts>] ? types.UnionType<{ 
       all: types.LiteralType<true>,
-      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<FromType<Ts[Key]>> }>
+      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<projection.FromType<Ts[Key]>> }>
     }>
   : [T] extends [types.ObjectType<infer _, infer Ts>] ? types.UnionType<{
       all: types.LiteralType<true>,
-      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<FromType<Ts[Key]>> }>
+      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<projection.FromType<Ts[Key]>> }>
     }>
   : never
 
@@ -71,7 +71,7 @@ export type FromType<T extends types.Type>
  *          // })
  *          ```
  */
-export function fromType<T extends types.Type>(type: T): FromType<T> {
+export function fromType<T extends types.Type>(type: T): projection.FromType<T> {
   const actualType = types.concretise(type)
   switch (actualType.kind) {
     case 'boolean':
@@ -80,16 +80,16 @@ export function fromType<T extends types.Type>(type: T): FromType<T> {
     case 'string':
     case 'enum':
     case 'number':
-      return types.literal(true) as FromType<T>
+      return types.literal(true) as projection.FromType<T>
     case 'array':
     case 'nullable':
     case 'optional':
     case 'reference':
-      return fromType(actualType.wrappedType) as FromType<T>
+      return projection.fromType(actualType.wrappedType) as projection.FromType<T>
     case 'object':
-      return projectTypesOrLiteralTrue(actualType.types) as FromType<T>
+      return projectTypesOrLiteralTrue(actualType.types) as projection.FromType<T>
     case 'union':
-      return projectTypesOrLiteralTrue(actualType.variants) as FromType<T>
+      return projectTypesOrLiteralTrue(actualType.variants) as projection.FromType<T>
   }
 }
 
@@ -98,7 +98,7 @@ export function fromType<T extends types.Type>(type: T): FromType<T> {
  * with the projections of the given `types`.
  */
 function projectTypesOrLiteralTrue(ts: types.Types): Projection {
-  const projectedTypes = filterMapObject(ts, (_, fieldType: any) => fromType(fieldType).optional())
+  const projectedTypes = filterMapObject(ts, (_, fieldType: any) => projection.fromType(fieldType).optional())
   return types.union({ all: types.literal(true), partial: types.object(projectedTypes) })
 }
 

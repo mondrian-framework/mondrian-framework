@@ -11,8 +11,9 @@ export type Ok<A, E> = {
    * {@link Result} discriminant. Always true.
    */
   readonly isOk: true
+
   /**
-   * the result value.
+   * The result value.
    */
   readonly value: A
 } & ResultUtility<A, E>
@@ -25,8 +26,9 @@ export type Failure<A, E> = {
    *  {@link Result} discriminant. Always false.
    */
   readonly isOk: false
+
   /**
-   * the error value.
+   * The error value.
    */
   readonly error: E
 } & ResultUtility<A, E>
@@ -51,47 +53,60 @@ export function fail<A, E>(error: E): Failure<A, E> {
 
 type ResultUtility<A, E> = {
   /**
-   * Chains a new {@link Result} in case of {@link Ok} otherwise returns the actual {@link Failure}.
-   * @param f the mapper function.
-   * @returns the chained {@link Result}.
+   * @param f a continuation function to update the value held by an `Ok` result
+   * @returns a failing result if it is called on a failing result, otherwise
+   *          the result of applying the given function `f` to the value held by
+   *          the `Ok` result
+   * @example ```ts
+   *          ok(1).chain((n) => ok(n + 1)) // -> ok(2)
+   *          ok(1).chain((n) => error("fail")) // -> error("fail")
+   *          error("fail").chain((n) => ok(n + 1)) // -> error("fail")
+   *          error("fail").chain((n) => error("fail again")) // -> error("fail")
+   *          ```
    */
   chain<B>(f: (value: A) => Result<B, E>): Result<B, E>
+
   /**
-   * Replaces the {@link Ok} value otherwise returns the actual {@link Failure}.
-   * @param value the new value.
-   * @returns the replaced {@link Result}.
+   * @param value the new value
+   * @returns replaces the value held by an `Ok` result with the given one
    */
   replace<B>(value: B): Result<B, E>
+
   /**
    * Maps the result value if is {@link Ok} otherwise returns the actual {@link Failure}.
    * @param f the mapper function.
    * @returns the mapped {@link Result}.
    */
   map<B>(f: (value: A) => B): Result<B, E>
+
   /**
    * Maps the error value if is {@link Failure} otherwise returns the actual {@link Ok}.
    * @param f the mapper function.
    * @returns the mapped {@link Result}.
    */
   mapError<E1>(f: (error: E) => E1): Result<A, E1>
+
   /**
    * Returns the {@link Ok} value otherwise call the recover function and returns it's result.
    * @param fromError the recover function.
    * @returns the {@link Ok} value or the receovered value.
    */
   recover(fromError: (error: E) => A): A
+
   /**
    * Returns this if is {@link Ok} otherwise the other result.
    * @param other the other {@link Result}.
    * @returns this if is {@link Ok} otherwise other other result.
    */
   or(other: Result<A, E>): Result<A, E>
+
   /**
    * Returns this if is {@link Ok} otherwise the other result.
    * @param other the other {@link Result} getter.
    * @returns this if is {@link Ok} otherwise other other result.
    */
   lazyOr(other: (error: E) => Result<A, E>): Result<A, E>
+
   /**
    * Match this {@link Result}.
    * @param onOk called when is {@link Ok} passing the resutl value.

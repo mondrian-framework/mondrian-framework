@@ -1,6 +1,6 @@
 import { arbitrary, types } from '../index'
 import gen from 'fast-check'
-import { failWithInternalError } from 'src/utils'
+import { failWithInternalError } from '../utils'
 import { match } from 'ts-pattern'
 
 // TODO: Missing doc

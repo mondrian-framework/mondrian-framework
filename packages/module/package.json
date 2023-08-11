@@ -12,7 +12,6 @@
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/model": "^1.0.7",
-    "@mondrian-framework/utils": "^1.0.6"
+    "@mondrian-framework/model": "^1.0.7"
   }
 }

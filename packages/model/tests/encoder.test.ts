@@ -173,14 +173,4 @@ describe('encoder.encode', () => {
   test('fails with internal error on unhandled type kind', () => {
     expect(() => encoder.encode({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)
   })
-
-  // TODO:
-  // const typeAndValue: gen.Arbitrary<[types.Type, never]> = arbitrary.type().chain((type) => {
-  //   return arbitrary.fromType(type, {}).map((value) => {
-  //     return [type, value]
-  //   })
-  // })
-  // test.prop([typeAndValue])('can always encode a type and a valid value', ([type, value]) => {
-  //   encoder.encode(type, value)
-  // })
 })

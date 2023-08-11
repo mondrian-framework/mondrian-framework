@@ -147,7 +147,7 @@ export function define<const CI = unknown>(): <const F extends Functions>(module
       }
     }
     const outputTypeCheck = module.options?.checks?.output ?? 'throw'
-    const maxProjectionDepth = module.options?.checks?.maxProjectionDepth ?? null
+    const maxProjectionDepth = module.options?.checks?.maxProjectionDepth
     const functions = Object.fromEntries(
       Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
         const f: GenericFunction = {
@@ -155,10 +155,11 @@ export function define<const CI = unknown>(): <const F extends Functions>(module
           async apply(args) {
             //PROJECTION DEPTH
             if (maxProjectionDepth != null) {
-              const depth = projection.depth(args.projection)
+              //TODO: wait for implementation change
+              /*const depth = projection.depth(args.projection)
               if (depth > maxProjectionDepth) {
                 throw new Error(`Max projection depth reached: ${depth}`)
-              }
+              }*/
             }
 
             const result = await functionBody.apply(args)
@@ -166,7 +167,7 @@ export function define<const CI = unknown>(): <const F extends Functions>(module
             //OUTPUT CHECK
             if (outputTypeCheck !== 'ignore') {
               //TODO: use projection.respectsProjection and the custom validate of partial deep
-              const projectedType = projection.projectedType(functionBody.output, args.projection)
+              /*const projectedType = projection.projectedType(functionBody.output, args.projection)
               const isCheck = decoder.decode(projectedType as types.Type, result, {
                 typeCastingStrategy: 'expectExactTypes',
               })
@@ -177,7 +178,7 @@ export function define<const CI = unknown>(): <const F extends Functions>(module
                 } else {
                   throw new Error(`Invalid output: ${m}`)
                 }
-              }
+              }*/
             }
             return result
           },

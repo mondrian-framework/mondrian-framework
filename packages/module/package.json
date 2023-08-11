@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "build": "tsc"
+    "build": "tsc",
+    "coverage": "vitest run --coverage"
   },
   "keywords": [],
   "peerDependencies": {

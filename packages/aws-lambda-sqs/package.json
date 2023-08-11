@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/aws-lambda-sqs",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [

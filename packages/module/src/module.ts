@@ -68,7 +68,15 @@ export type GenericModule = {
     options?: Partial<Record<string, { authentication?: AuthenticationMethod | 'NONE' }>>
   }
   authentication?: AuthenticationMethod
-  context: (input: any) => Promise<unknown>
+  context: (
+    input: any,
+    args: {
+      input: unknown
+      projection: undefined //TODO: GenericProjection
+      operationId: string
+      log: Logger
+    },
+  ) => Promise<unknown>
   options?: ModuleOptions
 }
 
@@ -80,7 +88,15 @@ export type Module<F extends Functions, CI> = {
     options?: { [K in keyof F]?: { authentication?: AuthenticationMethod | 'NONE' } }
   }
   authentication?: AuthenticationMethod
-  context: (input: CI) => Promise<ContextType<F>>
+  context: (
+    input: CI,
+    args: {
+      input: unknown
+      projection: undefined //TODO: GenericProjection
+      operationId: string
+      log: Logger
+    },
+  ) => Promise<ContextType<F>>
   options?: ModuleOptions
 }
 
@@ -120,7 +136,7 @@ function gatherNames(ts: types.Type[]): string[] {
   return names
 }
 
-export function define<const CI>(): <const F extends Functions>(module: Module<F, CI>) => Module<F, CI> {
+export function define<const CI = unknown>(): <const F extends Functions>(module: Module<F, CI>) => Module<F, CI> {
   return <const F extends Functions>(module: Module<F, CI>) => {
     //check for double type names
     const allTypes = gatherTypes(Object.values(module.functions.definitions).flatMap((f) => [f.input, f.output]))

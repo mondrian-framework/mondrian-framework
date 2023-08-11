@@ -1,5 +1,11 @@
 # @mondrian-framework/model
 
+## 1.0.7
+
+### Patch Changes
+
+- Update context creation
+
 ## 1.0.6
 
 ### Patch Changes

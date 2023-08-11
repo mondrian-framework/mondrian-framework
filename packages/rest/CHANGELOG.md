@@ -1,5 +1,36 @@
 # @mondrian-framework/rest
 
+## 1.0.15
+
+### Patch Changes
+
+- update swagger ui
+
+## 1.0.14
+
+### Patch Changes
+
+- fix local sdk
+- Updated dependencies
+  - @mondrian-framework/module@1.0.9
+
+## 1.0.13
+
+### Patch Changes
+
+- improve local sdk
+- Updated dependencies
+  - @mondrian-framework/module@1.0.8
+
+## 1.0.12
+
+### Patch Changes
+
+- Update context creation
+- Updated dependencies
+  - @mondrian-framework/module@1.0.7
+  - @mondrian-framework/model@1.0.7
+
 ## 1.0.11
 
 ### Patch Changes

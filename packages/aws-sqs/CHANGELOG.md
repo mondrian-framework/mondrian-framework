@@ -1,5 +1,30 @@
 # @mondrian-framework/aws-sqs
 
+## 1.0.9
+
+### Patch Changes
+
+- fix local sdk
+- Updated dependencies
+  - @mondrian-framework/module@1.0.9
+
+## 1.0.8
+
+### Patch Changes
+
+- improve local sdk
+- Updated dependencies
+  - @mondrian-framework/module@1.0.8
+
+## 1.0.7
+
+### Patch Changes
+
+- Update context creation
+- Updated dependencies
+  - @mondrian-framework/module@1.0.7
+  - @mondrian-framework/model@1.0.7
+
 ## 1.0.6
 
 ### Patch Changes

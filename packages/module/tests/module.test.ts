@@ -31,10 +31,10 @@ test('Whole module', async () => {
     },
   })
 
-  const client = sdk.fromModule({
+  const client = sdk.fromModule<{ ip?: string }>()({
     module: m,
-    async context() {
-      return { ip: 'local' }
+    async context({ metadata }) {
+      return { ip: metadata?.ip ?? 'local' }
     },
   })
 

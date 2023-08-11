@@ -1,8 +1,7 @@
-import { types } from '../index'
+import { arbitrary, types } from '../index'
 import gen from 'fast-check'
 import { failWithInternalError } from 'src/utils'
 import { match } from 'ts-pattern'
-import { select } from 'ts-pattern/dist/patterns'
 
 // TODO: Missing doc
 export type CustomMap<T extends types.Type> = CustomMapInternal<T, []>
@@ -53,67 +52,48 @@ export function fromType<T extends types.Type>(
   customArbitraries: CustomMapArgument<T>,
   maxDepth = 5,
 ): gen.Arbitrary<types.Infer<T>> {
-  const depth = maxDepth ?? 5
   return match(types.concretise(type))
     .with({ kind: 'boolean' }, (_type) => gen.boolean())
     .with({ kind: 'number' }, (type) => numberMatchingOptions(type.options))
     .with({ kind: 'string' }, (type) => stringMatchingOptions(type.options))
     .with({ kind: 'literal' }, (type) => gen.constant(type.literalValue))
     .with({ kind: 'enum' }, (type) => gen.constantFrom(...type.variants))
-    .with({ kind: 'optional' }, (type) =>
-      depth <= 1
-        ? gen.constant(undefined)
-        : gen.oneof(gen.constant(undefined), fromType(type.wrappedType, customArbitraries, depth - 1)),
-    )
-    .with({ kind: 'nullable' }, (type) =>
-      depth <= 1
-        ? gen.constant(null)
-        : gen.oneof(gen.constant(null), fromType(type.wrappedType, customArbitraries, depth - 1)),
-    )
-    .with({ kind: 'union' }, (type) =>
-      gen.oneof(
-        ...Object.values(type.variants).map((variantType) =>
-          fromType(variantType as types.Type, customArbitraries, depth - 1),
-        ),
-      ),
-    )
-    .with({ kind: 'object' }, (type) =>
-      gen.record(
-        Object.fromEntries(
-          Object.entries(type.types).map(([fieldName, fieldType]) => [
-            fieldName,
-            fromType(fieldType as types.Type, customArbitraries, depth - 1),
-          ]),
-        ),
-      ),
-    )
-    .with({ kind: 'array' }, (type) =>
-      depth <= 1 && (type.options?.minItems ?? 0) <= 0
-        ? gen.constant([])
-        : gen.array(fromType(type.wrappedType, customArbitraries, depth - 1), {
-            maxLength: type.options?.maxItems,
-            minLength: type.options?.minItems,
-          }),
-    )
-    .with({ kind: 'reference' }, (type) => fromType(type.wrappedType, customArbitraries, depth - 1))
-    .with({ kind: 'custom' }, (type) => {
-      const arbitrary = (customArbitraries as any)[type.typeName]
-      //TODO: check this: (customArbitraries as Record<string, (options?: types.BaseOptions) => gen.Arbitrary<unknown>>)[
-      //  type.typeName
-      //]
-      if (!arbitrary) {
-        const errorMessage = `\`fromType\` was given a map of cutom type generators that doesn't contain the generator for the type "${type.typeName}", this should have been impossible thanks to type checking`
-        failWithInternalError(errorMessage)
-      } else {
-        return arbitrary(type.options)
-      }
-    })
+    .with({ kind: 'optional' }, (type) => wrapInOptional(maxDepth, type.wrappedType, customArbitraries))
+    .with({ kind: 'nullable' }, (type) => wrapInNullable(maxDepth, type.wrappedType, customArbitraries))
+    .with({ kind: 'union' }, (type) => unionFromVariants(maxDepth, type.variants, customArbitraries))
+    .with({ kind: 'object' }, (type) => objectFromFields(maxDepth, type.types, customArbitraries))
+    .with({ kind: 'array' }, (type) => arrayFromOptions(maxDepth, type.wrappedType, type.options, customArbitraries))
+    .with({ kind: 'reference' }, (type) => fromType(type.wrappedType, customArbitraries, maxDepth - 1))
+    .with({ kind: 'custom' }, (type) => generatorFromArbitrariesMap(type.typeName, type.options, customArbitraries))
     .exhaustive() as gen.Arbitrary<types.Infer<T>>
+}
+
+export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[types.Type, never]> {
+  return arbitrary
+    .type(typeDepth)
+    .filter(canGenerateValueFrom)
+    .chain((type) => {
+      return arbitrary.fromType(type, {}, valueDepth).map((value) => {
+        return [type, value]
+      })
+    })
+}
+
+// TODO: doc
+export function canGenerateValueFrom(type: types.Type): boolean {
+  // This is just an ugly hack for now but really effective! If the constructor does not throw then I can
+  // generate a type for it
+  try {
+    arbitrary.fromType(type, {})
+    return true
+  } catch {
+    return false
+  }
 }
 
 function numberMatchingOptions(options: types.OptionsOf<types.NumberType> | undefined): gen.Arbitrary<number> {
   if (options) {
-    return options.isInteger ? doubleMatchingOptions(options) : integerMatchingOptions(options)
+    return options.isInteger ? integerMatchingOptions(options) : doubleMatchingOptions(options)
   } else {
     return gen.double()
   }
@@ -123,17 +103,21 @@ function doubleMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.
   const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
   const min = selectMinimum(minimum, exclusiveMinimum)
   const max = selectMaximum(maximum, exclusiveMaximum)
-  return gen.double({ ...min, ...max })
+  return gen.double({ ...min, ...max, noNaN: true })
 }
 
 function integerMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.Arbitrary<number> {
   const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
-  const intMinimum = minimum ? Math.floor(minimum) : undefined
-  const intExclusiveMinimum = exclusiveMinimum ? Math.floor(exclusiveMinimum) : undefined
-  const intMaximum = maximum ? Math.ceil(maximum) : undefined
-  const intExclusiveMaximum = exclusiveMaximum ? Math.ceil(exclusiveMaximum) : undefined
-  const min = selectMinimum(intMinimum, intExclusiveMinimum)
-  const max = selectMaximum(intMaximum, intExclusiveMaximum)
+  if (
+    (minimum && !Number.isInteger(minimum)) ||
+    (maximum && !Number.isInteger(maximum)) ||
+    (exclusiveMinimum && !Number.isInteger(exclusiveMinimum)) ||
+    (exclusiveMaximum && !Number.isInteger(exclusiveMaximum))
+  ) {
+    throw new Error('I cannot generate values from integer number types whose max/min are not integer numbers')
+  }
+  const min = selectMinimum(minimum, exclusiveMinimum)
+  const max = selectMaximum(maximum, exclusiveMaximum)
   return gen.integer({ ...min, ...max })
 }
 
@@ -180,9 +164,63 @@ function stringMatchingOptions(options?: types.OptionsOf<types.StringType>) {
     return gen.string()
   } else {
     const { regex, minLength, maxLength } = options
-    const longerThanMinimum = (s: string) => !minLength || s.length >= minLength
-    const shorterThanMaximum = (s: string) => !maxLength || s.length <= maxLength
-    const hasCorrectLength = (s: string) => longerThanMinimum(s) && shorterThanMaximum(s)
-    return !regex ? gen.string({ maxLength, minLength }) : gen.stringMatching(regex).filter(hasCorrectLength)
+    if ((regex && minLength) || (regex && maxLength)) {
+      const message = 'I cannot generate values from string types that have both a regex and min/max length defined'
+      throw new Error(message)
+    } else {
+      return !regex ? gen.string({ maxLength, minLength }) : gen.stringMatching(regex)
+    }
+  }
+}
+
+function wrapInOptional(depth: number, wrappedType: types.Type, customArbitraries: CustomMapArgument<types.Type>) {
+  return depth <= 1
+    ? gen.constant(undefined)
+    : gen.oneof(gen.constant(undefined), fromType(wrappedType, customArbitraries, depth - 1))
+}
+
+function wrapInNullable(depth: number, wrappedType: types.Type, customArbitraries: CustomMapArgument<types.Type>) {
+  return depth <= 1
+    ? gen.constant(null)
+    : gen.oneof(gen.constant(null), fromType(wrappedType, customArbitraries, depth - 1))
+}
+
+function unionFromVariants(depth: number, variants: types.Types, customArbitraries: CustomMapArgument<types.Type>) {
+  const toVariantGenerator = ([variantName, variantType]: [string, types.Type]) =>
+    fromType(variantType, customArbitraries, depth - 1).map((variantValue) => {
+      return Object.fromEntries([[variantName, variantValue]])
+    })
+
+  const variantsGenerators = Object.entries(variants).map(toVariantGenerator)
+  return gen.oneof(...variantsGenerators)
+}
+
+function objectFromFields(depth: number, fields: types.Types, customArbitraries: CustomMapArgument<types.Type>) {
+  // prettier-ignore
+  const toEntryGenerator = ([fieldName, fieldType]: [string, types.Type]) =>
+    [fieldName, fromType(fieldType, customArbitraries, depth - 1)]
+  const entriesGenerators = Object.entries(fields).map(toEntryGenerator)
+  return gen.record(Object.fromEntries(entriesGenerators))
+}
+
+function arrayFromOptions(
+  depth: number,
+  wrappedType: types.Type,
+  options: types.OptionsOf<types.ArrayType<any, any>> | undefined,
+  customArbitraries: CustomMapArgument<types.Type>,
+) {
+  return gen.array(fromType(wrappedType, customArbitraries, depth - 1), {
+    maxLength: options?.maxItems,
+    minLength: options?.minItems,
+  })
+}
+
+function generatorFromArbitrariesMap(typeName: string, options: any, customArbitraries: CustomMapArgument<types.Type>) {
+  const arbitrary = (customArbitraries as any)[typeName]
+  if (!arbitrary) {
+    const errorMessage = `\`fromType\` was given a map of cutom type generators that doesn't contain the generator for the type "${typeName}", this should have been impossible thanks to type checking`
+    failWithInternalError(errorMessage)
+  } else {
+    return arbitrary(options)
   }
 }

@@ -462,8 +462,16 @@ export function number(options?: OptionsOf<NumberType>): NumberType {
   const exclusiveMaximum = options?.exclusiveMaximum
   const lowerBound = minimum && exclusiveMinimum ? Math.max(minimum, exclusiveMinimum) : minimum ?? exclusiveMinimum
   const upperBound = maximum && exclusiveMaximum ? Math.min(maximum, exclusiveMaximum) : maximum ?? exclusiveMaximum
-  if (lowerBound && upperBound && lowerBound >= upperBound) {
-    throw new Error(`Lower bound (${lowerBound}) must be lower than the upper bound (${upperBound})`)
+  const exclude = lowerBound === exclusiveMinimum || upperBound === exclusiveMaximum
+  if (lowerBound && upperBound) {
+    if (exclude && lowerBound === upperBound) {
+      throw new Error(
+        `Lower bound (${lowerBound}) cannot be equal to upper bound (${upperBound})\nmin ${minimum}\nemin ${exclusiveMinimum}\nmax ${maximum}\nemax ${exclusiveMaximum}`,
+      )
+    }
+    if (lowerBound > upperBound) {
+      throw new Error(`Lower bound (${lowerBound}) must be lower or equal to the upper bound (${upperBound})`)
+    }
   }
 
   return {

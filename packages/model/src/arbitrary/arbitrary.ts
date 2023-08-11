@@ -16,8 +16,8 @@ export function baseOptions(): gen.Arbitrary<types.BaseOptions> {
  *          All of its keys are optional and may be omitted in the generated options.
  */
 export function stringTypeOptions(): gen.Arbitrary<types.OptionsOf<types.StringType>> {
-  return gen.integer({ min: 0 }).chain((min) => {
-    return gen.integer({ min }).chain((max) => {
+  return gen.integer({ min: 0, max: 500 }).chain((min) => {
+    return gen.integer({ min, max: 500 }).chain((max) => {
       return gen.record(
         {
           ...baseOptionsGeneratorsRecord(),
@@ -46,30 +46,23 @@ export function string(): gen.Arbitrary<types.StringType> {
  *          All of its keys are optional and may be omitted in the generated options.
  */
 export function numberTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NumberType>> {
-  const options = { noNaN: true, min: -1.0e10, max: 1.0e10 }
-  return gen.tuple(gen.double(options), gen.double(options)).chain(([minimum, exclusiveMinimum]) => {
-    const lowerBound = Math.max(minimum, exclusiveMinimum)
-    const maximumGenerator = gen.double({ noNaN: true, min: lowerBound, max: options.max + 2, minExcluded: true })
-    const exclusiveMaximumGenerator = gen.double({
-      noNaN: true,
-      min: lowerBound,
-      max: options.max + 2,
-      minExcluded: true,
-    })
-    return gen.tuple(maximumGenerator, exclusiveMaximumGenerator).chain(([maximum, exclusiveMaximum]) => {
+  return gen.boolean().chain((isInteger) => {
+    const bounds = isInteger ? integerBounds() : doubleBounds()
+    return bounds.chain((bounds) => {
       return gen.record(
-        {
-          ...baseOptionsGeneratorsRecord(),
-          minimum: gen.constant(minimum),
-          exclusiveMinimum: gen.constant(exclusiveMinimum),
-          maximum: gen.constant(maximum),
-          exclusiveMaximum: gen.constant(exclusiveMaximum),
-          multipleOf: gen.double({ ...options, min: 0, minExcluded: true }),
-        },
+        { ...baseOptionsGeneratorsRecord(), ...bounds, isInteger: gen.constant(isInteger) },
         { withDeletedKeys: true },
       )
     })
   })
+}
+
+function integerBounds() {
+  return gen.constant({})
+}
+
+function doubleBounds() {
+  return gen.constant({})
 }
 
 /**
@@ -161,11 +154,10 @@ export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionTyp
  */
 export function union<Vs extends types.Types>(
   variantsGenerators: GeneratorsRecord<Vs>,
-  variantsChecks?: { [Key in keyof Vs]: (_: types.Infer<types.UnionType<Vs>>) => boolean },
 ): gen.Arbitrary<types.UnionType<Vs>> {
   return orUndefined(unionTypeOptions()).chain((options) => {
     return gen.record(variantsGenerators).map((variants) => {
-      return types.union(variants, variantsChecks, options)
+      return types.union(variants, options)
     })
   })
 }
@@ -221,8 +213,8 @@ export function mutableObject<Ts extends types.Types>(
  *          All of its keys are optional and may be omitted in the generated options.
  */
 export function arrayTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ArrayType<any, any>>> {
-  return gen.integer({ min: 0 }).chain((min) => {
-    return gen.integer({ min }).chain((max) => {
+  return gen.integer({ min: 0, max: 500 }).chain((min) => {
+    return gen.integer({ min, max: 500 }).chain((max) => {
       return gen.record(
         {
           ...baseOptionsGeneratorsRecord(),

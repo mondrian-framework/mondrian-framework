@@ -575,3 +575,25 @@ describe('decoder.decode', () => {
     expect(() => decoder.decode({ kind: 'not a type' } as any, null)).toThrowError(/.*\[internal error\].*/)
   })
 })
+
+describe('datetime value', () => {
+  const model = types.dateTime()
+  test.prop([gen.date()])('can decode date', (date) => {
+    checkValue(decoder.decodeWithoutValidation(model, date), date)
+  })
+
+  test.prop([gen.integer({ min: -8640000000000000, max: 8640000000000000 })])('can decode integer', (number) => {
+    checkValue(decoder.decodeWithoutValidation(model, number, { typeCastingStrategy: 'tryCasting' }), new Date(number))
+  })
+})
+
+describe('timestamp value', () => {
+  const model = types.timestamp()
+  test.prop([gen.date()])('can decode date', (date) => {
+    checkValue(decoder.decodeWithoutValidation(model, date), date)
+  })
+
+  test.prop([gen.integer({ min: -8640000000000000, max: 8640000000000000 })])('can decode integer', (number) => {
+    checkValue(decoder.decodeWithoutValidation(model, number), new Date(number))
+  })
+})

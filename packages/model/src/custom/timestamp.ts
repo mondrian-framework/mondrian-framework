@@ -28,7 +28,10 @@ function decodeTimestamp(
   _decodingOptions: decoder.Options,
   _options?: types.OptionsOf<TimestampType>,
 ): decoder.Result<Date> {
-  return typeof value === 'number' && -864000000000000 < value && value < 864000000000000
+  if (value instanceof Date) {
+    return decoder.succeed(value)
+  }
+  return typeof value === 'number' && -8640000000000000 <= value && value <= 8640000000000000
     ? decoder.succeed(new Date(value))
     : decoder.fail(`timestamp`, value)
 }

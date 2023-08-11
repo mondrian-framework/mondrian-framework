@@ -1,7 +1,5 @@
 import { Logger } from './utils'
-import { validator } from '@mondrian-framework/model'
 import { projection, types } from '@mondrian-framework/model'
-import { decoder } from '@mondrian-framework/model'
 
 export type Function<I extends types.Type, O extends types.Type, Context> = {
   input: I
@@ -39,10 +37,6 @@ export function functionBuilder<const Context>(args?: {
     return { ...f, opts, namespace: f.namespace ?? args?.namespace }
   }
   return builder
-}
-
-export function functions<const F extends Functions>(functions: F): F {
-  return functions
 }
 
 //TODO: factorize UnionToIntersection to utils package
@@ -107,45 +101,41 @@ export type ModuleOptions = {
   }
 }
 
-function gatherTypes(ts: types.Type[], explored?: Set<types.Type>): types.Type[] {
-  explored = explored ?? new Set<types.Type>()
-  for (const type of ts) {
-    if (explored.has(type)) {
-      continue
+function assertUniqueNames(functions: Functions) {
+  function gatherTypes(ts: types.Type[], explored?: Set<types.Type>): types.Type[] {
+    explored = explored ?? new Set<types.Type>()
+    for (const type of ts) {
+      if (explored.has(type)) {
+        continue
+      }
+      explored.add(type)
+      const t = types.concretise(type)
+      if (t.kind === 'array' || t.kind === 'nullable' || t.kind === 'optional' || t.kind === 'reference') {
+        gatherTypes([t.wrappedType], explored)
+      } else if (t.kind === 'object') {
+        gatherTypes(Object.values(t.types), explored)
+      } else if (t.kind === 'union') {
+        gatherTypes(Object.values(t.variants), explored)
+      }
     }
-    explored.add(type)
-    const t = types.concretise(type)
-    if (t.kind === 'array' || t.kind === 'nullable' || t.kind === 'optional' || t.kind === 'reference') {
-      gatherTypes([t.wrappedType], explored)
-    } else if (t.kind === 'object') {
-      gatherTypes(Object.values(t.types), explored)
-    } else if (t.kind === 'union') {
-      gatherTypes(Object.values(t.variants), explored)
+    return [...explored.values()]
+  }
+
+  //check for double type names
+  const allTypes = gatherTypes(Object.values(functions).flatMap((f) => [f.input, f.output]))
+  const allNames = allTypes
+    .map((t) => types.concretise(t).options?.name)
+    .flatMap((name) => (name != null ? [name] : []))
+  for (let i = 0; i < allNames.length; i++) {
+    if (allNames.indexOf(allNames[i]) !== i) {
+      throw new Error(`Duplicated type name "${allNames[i]}"`)
     }
   }
-  return [...explored.values()]
-}
-function gatherNames(ts: types.Type[]): string[] {
-  const names: string[] = []
-  for (const type of ts) {
-    const t = types.concretise(type)
-    if (t.options?.name) {
-      names.push(t.options?.name)
-    }
-  }
-  return names
 }
 
 export function define<const CI = unknown>(): <const F extends Functions>(module: Module<F, CI>) => Module<F, CI> {
   return <const F extends Functions>(module: Module<F, CI>) => {
-    //check for double type names
-    const allTypes = gatherTypes(Object.values(module.functions.definitions).flatMap((f) => [f.input, f.output]))
-    const allNames = gatherNames(allTypes)
-    for (let i = 0; i < allNames.length; i++) {
-      if (allNames.indexOf(allNames[i]) !== i) {
-        throw new Error(`Duplicated type name "${allNames[i]}"`)
-      }
-    }
+    assertUniqueNames(module.functions.definitions)
     const outputTypeCheck = module.options?.checks?.output ?? 'throw'
     const maxProjectionDepth = module.options?.checks?.maxProjectionDepth
     const functions = Object.fromEntries(

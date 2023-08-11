@@ -1,6 +1,6 @@
 import { module, sdk } from '../src'
 import { types } from '@mondrian-framework/model'
-import { expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 test('Whole module', async () => {
   ///Types
@@ -68,13 +68,12 @@ test('Whole module', async () => {
     },
   })
 
-  const functions = module.functions({ login, register, completeProfile })
   const memory = new Map<string, User>()
   const m = module.define<{ ip: string; authorization: string | undefined }>()({
     name: 'Test',
     version: '1.0.0',
     functions: {
-      definitions: functions,
+      definitions: { login, register, completeProfile },
     },
     options: {
       checks: {
@@ -118,19 +117,16 @@ test('Whole module', async () => {
   expect(failedLoginResult).toBeNull()
   const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
   expect(loginResult).not.toBeNull()
-  try {
-    await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
-  } catch (error) {
-    expect(error instanceof Error).toBe(true)
-  }
-  try {
-    await client.functions.completeProfile(
-      { firstname: 'Pieter', lastname: 'Mondriaan' },
-      { metadata: { authorization: 'wrong' } },
-    )
-  } catch (error) {
-    expect(error).toBe(`Invalid authorization`)
-  }
+  await expect(
+    async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),
+  ).rejects.toThrow()
+  expect(
+    async () =>
+      await client.functions.completeProfile(
+        { firstname: 'Pieter', lastname: 'Mondriaan' },
+        { metadata: { authorization: 'wrong' } },
+      ),
+  ).rejects.toThrow()
   if (loginResult) {
     const authClient = client.with({ authorization: loginResult.jwt })
     const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
@@ -141,4 +137,30 @@ test('Whole module', async () => {
       lastname: 'Mondriaan',
     })
   }
+})
+
+describe('Unique type name', () => {
+  test('Two different type cannot have the same name', () => {
+    const n = () => types.number().setName('Input')
+    const v = types.number().setName('Input')
+    const output = types.union({ n, v: v.setName('V') })
+
+    const f = module.functionBuilder<unknown>()({
+      input: v,
+      output: output,
+      apply(args) {
+        throw 'Unreachable'
+      },
+    })
+    expect(() =>
+      module.define<unknown>()({
+        name: 'test',
+        version: '0.0.0',
+        functions: { definitions: { f } },
+        async context(input, args) {
+          return null
+        },
+      }),
+    ).toThrowError(`Duplicated type name "Input"`)
+  })
 })

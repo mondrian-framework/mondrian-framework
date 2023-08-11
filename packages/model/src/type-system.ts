@@ -19,7 +19,7 @@ export type Type = Lazy<
   | OptionalType<any>
   | NullableType<any>
   | ReferenceType<any>
-  | CustomType<any, any, any>
+  | CustomType<any, {}, any>
 >
 
 /**

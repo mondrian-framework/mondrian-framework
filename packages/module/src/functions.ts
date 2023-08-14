@@ -18,16 +18,12 @@ export type Functions<Contexts extends Record<string, unknown> = Record<string, 
   [K in keyof Contexts]: Function<types.Type, types.Type, Contexts[K]>
 }
 
-export function builder(): FunctionsBuilder {
-  return new FunctionsBuilder()
-}
-
 class FunctionsBuilder<const Context = unknown> {
   private namespace?: string
   constructor(namespace?: string) {
     this.namespace = namespace
   }
-  public withContext<const NewContext>(args?: { namespace?: string }): FunctionsBuilder<NewContext> {
+  public context<const NewContext>(args?: { namespace?: string }): FunctionsBuilder<NewContext> {
     return new FunctionsBuilder(args?.namespace)
   }
   public build<const I extends types.Type, const O extends types.Type>(
@@ -36,3 +32,5 @@ class FunctionsBuilder<const Context = unknown> {
     return { ...f, opts: { ...f.opts, namespace: f.opts?.namespace ?? this.namespace } }
   }
 }
+
+export const builder = new FunctionsBuilder()

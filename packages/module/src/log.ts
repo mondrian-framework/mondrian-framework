@@ -3,10 +3,6 @@
  */
 export type Logger = (message: string, level?: 'log' | 'warn' | 'error') => void | Promise<void>
 
-export function builder(): LoggerBuilder {
-  return new LoggerBuilder({})
-}
-
 type LoggerContext = {
   moduleName?: string
   operationId?: string
@@ -48,3 +44,5 @@ class LoggerBuilder {
     }
   }
 }
+
+export const builder = new LoggerBuilder({})

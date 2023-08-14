@@ -1,6 +1,4 @@
 import { module, functions, sdk } from '../src'
-import { Function } from '../src/functions'
-import { ContextType } from '../src/module'
 import { types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
@@ -24,9 +22,7 @@ test('Whole module', async () => {
       updateUser(user: User): User
     }
   }
-  const authentication = functions
-    .builder()
-    .withContext<SharedContext & { from?: string }>({ namespace: 'authentication' })
+  const authentication = functions.context<SharedContext & { from?: string }>({ namespace: 'authentication' })
   const login = authentication.build({
     input: LoginInput,
     output: LoginOutput,
@@ -54,7 +50,7 @@ test('Whole module', async () => {
     },
   })
 
-  const businessLogic = functions.builder().withContext<SharedContext & { authenticatedUser?: { email: string } }>({
+  const businessLogic = functions.context<SharedContext & { authenticatedUser?: { email: string } }>({
     namespace: 'business-logic',
   })
   const completeProfile = businessLogic.build({
@@ -73,7 +69,7 @@ test('Whole module', async () => {
   })
   const memory = new Map<string, User>()
   const m = module
-    .builder()
+    
     .options({ checks: { maxProjectionDepth: 2 } })
     .functions({ definitions: { login, register, completeProfile } })
     .context(async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
@@ -100,8 +96,7 @@ test('Whole module', async () => {
     .build()
 
   const client = sdk
-    .builder()
-    .withMetadata<{ ip?: string; authorization?: string }>()
+    .metadata<{ ip?: string; authorization?: string }>()
     .build({
       module: m,
       async context({ metadata }) {
@@ -144,7 +139,7 @@ describe('Unique type name', () => {
     const v = types.number().setName('Input')
     const output = types.union({ n, v: v.setName('V') })
 
-    const f = functions.builder().build({
+    const f = functions.build({
       input: v,
       output: output,
       apply(args) {
@@ -153,7 +148,7 @@ describe('Unique type name', () => {
     })
     expect(() =>
       module
-        .builder()
+        
         .functions({ definitions: { f } })
         .context(async () => ({}))
         .build(),

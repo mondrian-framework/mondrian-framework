@@ -4,7 +4,7 @@ import { Module } from './module'
 import { randomOperationId } from './utils'
 import { projection, types } from '@mondrian-framework/model'
 
-type Sdk<F extends Functions, Metadata> = {
+export type Sdk<F extends Functions, Metadata> = {
   functions: SdkFunctions<F, Metadata>
   withMetadata: (metadata: Metadata) => Sdk<F, Metadata>
 }
@@ -23,16 +23,12 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type, Me
   },
 ) => Promise<any> //TODO: Promise<projection.Project<OutputType, Exclude<P, undefined>>>
 
-export function builder(): SdkBuilder {
-  return new SdkBuilder()
-}
-
 class SdkBuilder<const Metadata = unknown> {
-  private metadata?: Metadata
+  private _metadata?: Metadata
   constructor(metadata?: Metadata) {
-    this.metadata = metadata
+    this._metadata = metadata
   }
-  public withMetadata<const NewMetadata>(args?: { metadata?: NewMetadata }): SdkBuilder<NewMetadata> {
+  public metadata<const NewMetadata>(args?: { metadata?: NewMetadata }): SdkBuilder<NewMetadata> {
     return new SdkBuilder(args?.metadata)
   }
   public build<const F extends Functions, const CI>({
@@ -42,7 +38,7 @@ class SdkBuilder<const Metadata = unknown> {
     module: Module<F, CI>
     context: (args: { metadata?: Metadata }) => Promise<CI>
   }): Sdk<F, Metadata> {
-    const defaultLogger = logger.builder().with({ moduleName: module.name, server: 'LOCAL' })
+    const defaultLogger = logger.with({ moduleName: module.name, server: 'LOCAL' })
     const functions = Object.fromEntries(
       Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
         const wrapper = async (
@@ -55,7 +51,7 @@ class SdkBuilder<const Metadata = unknown> {
           const operationId = randomOperationId()
           const log = defaultLogger.with({ operationId, operationName: functionName }).build()
           try {
-            const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
+            const contextInput = await context({ metadata: options?.metadata ?? this._metadata })
             const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
             const result = await functionBody.apply({
               input: input as never, //TODO: types.Infer<types.Type> should infer unknown
@@ -76,7 +72,9 @@ class SdkBuilder<const Metadata = unknown> {
     )
     return {
       functions: functions as unknown as SdkFunctions<F, Metadata>,
-      withMetadata: (metadata) => new SdkBuilder().withMetadata({ metadata }).build({ module, context }),
+      withMetadata: (metadata) => new SdkBuilder().metadata({ metadata }).build({ module, context }),
     }
   }
 }
+
+export const builder: SdkBuilder = new SdkBuilder()

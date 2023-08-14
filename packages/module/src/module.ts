@@ -4,7 +4,7 @@ import { projection, types } from '@mondrian-framework/model'
 
 //TODO: factorize UnionToIntersection to utils package
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
-export type ContextType<F extends Functions> = {
+type ContextType<F extends Functions> = {
   [K in keyof F]: F[K] extends Function<any, any, infer Context> ? Context : never
 } extends infer C
   ? C extends Record<keyof F, unknown>
@@ -71,10 +71,6 @@ function assertUniqueNames(functions: Functions) {
       throw new Error(`Duplicated type name "${allNames[i]}"`)
     }
   }
-}
-
-export function builder(): ModuleBuilder<{}, unknown> {
-  return new ModuleBuilder({})
 }
 
 class ModuleBuilder<const Fs extends Functions, const ContextInput> {
@@ -159,3 +155,5 @@ class ModuleBuilder<const Fs extends Functions, const ContextInput> {
     return new ModuleBuilder({ ...this.module, functions, context: undefined })
   }
 }
+
+export const builder = new ModuleBuilder({})

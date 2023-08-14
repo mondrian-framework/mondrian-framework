@@ -118,7 +118,7 @@ function unsafeEncodeObject<Ts extends types.Types, M extends types.Mutability>(
   type: types.ObjectType<M, Ts>,
   object: any,
 ): JSONType {
-  return filterMapObject(type.types, (fieldName, fieldType) => unsafeEncode(fieldType, object[fieldName]))
+  return filterMapObject(type.fields, (fieldName, fieldType) => unsafeEncode(fieldType, object[fieldName]))
 }
 
 /**

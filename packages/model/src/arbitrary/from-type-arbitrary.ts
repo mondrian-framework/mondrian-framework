@@ -1,6 +1,6 @@
 import { arbitrary, types } from '../index'
-import gen from 'fast-check'
 import { failWithInternalError } from '../utils'
+import gen from 'fast-check'
 import { match } from 'ts-pattern'
 
 // TODO: Missing doc
@@ -61,7 +61,7 @@ export function fromType<T extends types.Type>(
     .with({ kind: 'optional' }, (type) => wrapInOptional(maxDepth, type.wrappedType, customArbitraries))
     .with({ kind: 'nullable' }, (type) => wrapInNullable(maxDepth, type.wrappedType, customArbitraries))
     .with({ kind: 'union' }, (type) => unionFromVariants(maxDepth, type.variants, customArbitraries))
-    .with({ kind: 'object' }, (type) => objectFromFields(maxDepth, type.types, customArbitraries))
+    .with({ kind: 'object' }, (type) => objectFromFields(maxDepth, type.fields, customArbitraries))
     .with({ kind: 'array' }, (type) => arrayFromOptions(maxDepth, type.wrappedType, type.options, customArbitraries))
     .with({ kind: 'reference' }, (type) => fromType(type.wrappedType, customArbitraries, maxDepth - 1))
     .with({ kind: 'custom' }, (type) => generatorFromArbitrariesMap(type.typeName, type.options, customArbitraries))

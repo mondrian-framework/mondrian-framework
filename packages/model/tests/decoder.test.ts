@@ -21,12 +21,6 @@ const nonNumber = gen.anything().filter((value) => typeof value !== 'number')
 const nonNull = gen.anything().filter((value) => value !== null)
 const nonArray = gen.anything().filter((value) => !(value instanceof Array))
 const nonObject = gen.anything().filter((value) => !(typeof value === 'object'))
-const evenNumberOrString = gen.oneof(
-  number.filter((n) => n % 2 === 0),
-  gen.string(),
-)
-const oddNumber = number.filter((n) => n % 2 !== 0)
-const notNumberNorString = gen.anything().filter((value) => !(typeof value === 'number' || typeof value === 'string'))
 
 function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
   const error = assertFailure(result)

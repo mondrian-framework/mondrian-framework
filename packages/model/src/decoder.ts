@@ -405,7 +405,7 @@ function decodeObjectProperties(
 ): decoder.Result<any> {
   const decodingErrors: decoder.Error[] = []
   const decodedObject: { [key: string]: unknown } = {} // strict ? {} : { ...value }
-  for (const [fieldName, fieldType] of Object.entries(type.types)) {
+  for (const [fieldName, fieldType] of Object.entries(type.fields)) {
     const decodedField = unsafeDecode(fieldType as types.Type, object[fieldName], options)
     if (decodedField.isOk) {
       if (decodedField.value !== undefined) {

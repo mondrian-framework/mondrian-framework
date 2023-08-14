@@ -53,7 +53,7 @@ function assertUniqueNames(functions: Functions) {
       if (t.kind === 'array' || t.kind === 'nullable' || t.kind === 'optional' || t.kind === 'reference') {
         gatherTypes([t.wrappedType], explored)
       } else if (t.kind === 'object') {
-        gatherTypes(Object.values(t.types), explored)
+        gatherTypes(Object.values(t.fields), explored)
       } else if (t.kind === 'union') {
         gatherTypes(Object.values(t.variants), explored)
       }

@@ -38,7 +38,7 @@ export type FromType<T extends types.Type> = true | (
 : [T] extends [(() => infer T1 extends types.Type)] ? projection.FromType<T1>
 : [T] extends [types.UnionType<infer Ts>] ? { readonly [Key in keyof Ts]: projection.FromType<Ts[Key]> }
 : [T] extends [types.ObjectType<any, infer Ts>] ? { readonly [Key in keyof Ts]?: projection.FromType<Ts[Key]> }
-: Projection)
+: never)
 
 /**
  * @param projection the projection whose depth is returned

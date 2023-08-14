@@ -58,8 +58,8 @@ class SdkBuilder<const Metadata = unknown> {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
             const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
             const result = await functionBody.apply({
-              input,
-              projection: options?.projection,
+              input: input as never, //TODO: types.Infer<types.Type> should infer unknown
+              projection: options?.projection as never, //TODO: projection.FromType<types.Type> should infer Projection
               context: ctx,
               operationId,
               log,
@@ -75,7 +75,7 @@ class SdkBuilder<const Metadata = unknown> {
       }),
     )
     return {
-      functions: functions as SdkFunctions<F, Metadata>,
+      functions: functions as unknown as SdkFunctions<F, Metadata>,
       withMetadata: (metadata) => new SdkBuilder().withMetadata({ metadata }).build({ module, context }),
     }
   }

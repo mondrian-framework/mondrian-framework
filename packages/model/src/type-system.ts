@@ -79,10 +79,19 @@ export type Infer<T extends Type>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
+/**
+ * TODO: Add doc
+ */
 type OptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalWrapper<T[K]> extends true ? K : never }[keyof T]
 
+/**
+ * TODO: Add doc
+ */
 type NonOptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalWrapper<T[K]> extends true ? never : K }[keyof T]
 
+/**
+ * TODO: Add doc
+ */
 //prettier-ignore
 type HasOptionalWrapper<T extends Type> 
   = [T] extends [OptionalType<infer _T1>] ? true
@@ -91,6 +100,9 @@ type HasOptionalWrapper<T extends Type>
   : [T] extends [() => infer T1 extends Type] ? HasOptionalWrapper<T1>
   : false
 
+/**
+ * TODO: Add doc
+ */
 //prettier-ignore
 type HasReferenceWrapper<T extends Type> 
   = [T] extends [ReferenceType<infer _T1>] ? true
@@ -135,7 +147,11 @@ export type Mutability = 'mutable' | 'immutable'
  */
 export function concretise(type: Type): ConcreteType {
   //TODO: caching by function address?
-  return typeof type === 'function' ? concretise(type()) : type
+  let concreteType = type
+  while (typeof concreteType === 'function') {
+    concreteType = concreteType()
+  }
+  return concreteType
 }
 
 /**

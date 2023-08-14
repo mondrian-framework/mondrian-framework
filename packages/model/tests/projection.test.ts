@@ -41,14 +41,14 @@ describe('projection.FromType', () => {
   test('is a correct object for UnionType', () => {
     const model = types.union({ variant1: types.number, variant2: types.string })
     type Inferred = projection.FromType<typeof model>
-    type Expected = true | { readonly variant1?: true; readonly variant2?: true }
+    type Expected = true | { readonly variant1: true; readonly variant2: true }
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
   test('works on nested unions', () => {
     const model = types.union({ variant1: types.number, variant2: types.union({ subvariant1: types.number() }) })
     type Inferred = projection.FromType<typeof model>
-    type Expected = true | { readonly variant1?: true; readonly variant2?: true | { readonly subvariant1?: true } }
+    type Expected = true | { readonly variant1: true; readonly variant2: true | { readonly subvariant1: true } }
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
@@ -177,7 +177,7 @@ describe('projection.respectsProjection', () => {
   const model = types.union({ variant1: types.string(), variant2 })
 
   describe('checks that only the selected elements are present', () => {
-    const p = { variant2: { field2: { subfield1: true } } } as const
+    const p = { variant1: true, variant2: { field2: { subfield1: true } } } as const
 
     test('ok cases', () => {
       const values = [

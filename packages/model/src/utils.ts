@@ -66,3 +66,12 @@ export function assertNever(_value: never, errorMessage: string): never {
 export function always<A>(value: A): (_: any) => A {
   return (_) => value
 }
+
+export function unsafeObjectToTaggedVariant<T>(taggedVariant: Record<string, T>): [string, T] {
+  if (taggedVariant) {
+    const entry = Object.entries(taggedVariant).at(0)
+    return entry ? entry : failWithInternalError('I tried to get the variant name out of an empty object')
+  } else {
+    failWithInternalError('I tried to get the variant name out of a null or undefined object')
+  }
+}

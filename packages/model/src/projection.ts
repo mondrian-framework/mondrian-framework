@@ -1,5 +1,5 @@
 import { projection, result, types } from './index'
-import { always, assertNever, filterMapObject } from './utils'
+import { always, assertNever, filterMapObject, unsafeObjectToTaggedVariant } from './utils'
 
 /**
  * This is the type of a projection: it is either the literal value `true` or an object
@@ -174,16 +174,10 @@ export function respectsProjection<T extends types.Type>(
       ? result.ok(true)
       : respectsProjection(concreteType.wrappedType, projection as any, value as any)
   } else if (kind === 'union') {
-    // ⚠️ possible pain point: this pattern matching should never fail if Infer works correctly and rejects
-    // invalid types; however, this is a possible point where the program could crash if we have a bug or
-    // someone is skipping the type system's checks
-    // TODO: this could be factored out in a function that gets the only variant name from the object and fails with
-    //       an internal error otherwise so it would be clearer the source of the bug
-    const [[variantName, variantValue]] = Object.entries(value as any)
+    const [variantName, variantValue] = unsafeObjectToTaggedVariant(value as Record<string, any>)
     const variantProjection = subProjection(projection, [variantName] as any)
     const variantType = concreteType.variants[variantName]
     return respectsProjection(variantType, variantProjection, variantValue as any)
-    // TODO: enrich errors
   } else if (kind === 'object') {
     const requiredFields = getRequiredFields(concreteType, projection)
     const results = Object.entries(requiredFields).map(([fieldName, fieldType]) => {
@@ -202,9 +196,8 @@ export function respectsProjection<T extends types.Type>(
     const values = value as any[]
     const results = values.map((item) => respectsProjection(wrappedType, projection as any, item))
     return result.reduce(results, true, undefined, always(true), always(undefined))
-    // TODO: enrich errors
   } else {
-    assertNever(kind, 'a')
+    assertNever(kind, 'Totality check failed when checking a projection, this should have never happened')
   }
 }
 

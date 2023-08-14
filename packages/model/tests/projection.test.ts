@@ -78,14 +78,14 @@ describe('projection.FromType', () => {
 })
 
 describe('projection.depth', () => {
-  test('is zero for true/undefined/{} projections', () => {
+  test('is zero for true/{} projections', () => {
     expect(projection.depth(true)).toBe(0)
-    expect(projection.depth(undefined)).toBe(0)
     expect(projection.depth({})).toBe(0)
   })
 
   test('is the maximum depth of an object', () => {
     expect(projection.depth({ field: true })).toBe(1)
+    expect(projection.depth({ field1: undefined })).toBe(1)
     expect(projection.depth({ field1: undefined, field2: true })).toBe(1)
     expect(projection.depth({ field1: true, field2: { subfield: true } })).toBe(2)
     expect(projection.depth({ field1: { subfield1: true }, field2: { subfield2: { subsubfield2: true } } })).toBe(3)
@@ -93,9 +93,8 @@ describe('projection.depth', () => {
 })
 
 describe('projection.Selector', () => {
-  test('is never for true/undefined/{} projections', () => {
+  test('is never for true/{} projections', () => {
     expectTypeOf<projection.Selector<true>>().toEqualTypeOf<never>()
-    expectTypeOf<projection.Selector<undefined>>().toEqualTypeOf<never>()
     expectTypeOf<projection.Selector<{}>>().toEqualTypeOf<never>()
   })
 
@@ -114,9 +113,8 @@ describe('projection.Selector', () => {
 })
 
 describe('projection.SubProjection', () => {
-  test("is always never for true/undefined/{} since they don't have subprojections", () => {
+  test("is always never for true/{} since they don't have subprojections", () => {
     expectTypeOf<projection.SubProjection<true, never>>().toEqualTypeOf<never>()
-    expectTypeOf<projection.SubProjection<undefined, never>>().toEqualTypeOf<never>()
     expectTypeOf<projection.SubProjection<{}, never>>().toEqualTypeOf<never>()
   })
 
@@ -131,14 +129,7 @@ describe('projection.SubProjection', () => {
 })
 
 describe('projection.subProjection', () => {
-  type Projection = undefined | true | { field1?: true; field2?: true | { subfield1?: true; subfield2?: true } }
-
-  test('returns undefined if called on undefined projection', () => {
-    expect(projection.subProjection(undefined as Projection, ['field1'])).toEqual(undefined)
-    expect(projection.subProjection(undefined as Projection, ['field2'])).toEqual(undefined)
-    expect(projection.subProjection(undefined as Projection, ['field2', 'subfield1'])).toEqual(undefined)
-    expect(projection.subProjection(undefined as Projection, ['field2', 'subfield2'])).toEqual(undefined)
-  })
+  type Projection = true | { field1?: true; field2?: true | { subfield1?: true; subfield2?: true } }
 
   test('returns true if called on true projection', () => {
     expect(projection.subProjection(true as Projection, ['field1'])).toEqual(true)

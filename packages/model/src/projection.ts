@@ -11,7 +11,7 @@ import { PartialDeep, failWithInternalError } from './utils'
  *          const projection: Projection = { field1: true, field2: { inner: true } }
  *          ```
  */
-type Projection = undefined | true | { readonly [field: string]: Projection }
+type Projection = true | { readonly [field: string]: Projection | undefined }
 
 /**
  * Given a Mondrian {@link Type type}, returns the type describing its projection.
@@ -57,13 +57,13 @@ export type FromType<T extends types.Type> = true | (
  *          ```
  */
 export function depth(projection: Projection): number {
-  if (projection === true || projection === undefined) {
+  if (projection === true) {
     return 0
   } else {
     const innerProjections = Object.values(projection)
     // TODO: this is not tail recursive and may blow up the stack
     //       to be extra safe this should be implemented with no recursion
-    const depths = innerProjections.map(depth)
+    const depths = innerProjections.map((innerProjection) => (innerProjection ? depth(innerProjection) : 0))
     return 1 + Math.max(-1, ...depths)
   }
 }
@@ -151,7 +151,13 @@ export function respectsProjection<T extends types.Type>(
   projection: projection.FromType<T>,
   value: PartialDeep<types.Infer<T>>,
 ): result.Result<true, undefined> {
-  failWithInternalError('TODO: This is not implemented, if you catch this means we forgot an implementation :)')
+  const isOptional = types.concretise(type).kind === "optional"
+  
+  if (projection === true) {
+    return result.ok(true)
+  } else {
+    failWithInternalError('TODO: This is not implemented, if you catch this means we forgot an implementation :)')
+  }
 }
 
 /*

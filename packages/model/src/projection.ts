@@ -1,5 +1,5 @@
 import { projection, result, types } from './index'
-import { PartialDeep, failWithInternalError } from './utils'
+import { PartialDeep, assertNever } from './utils'
 
 /**
  * This is the type of a projection: it is either the literal value `true` or an object
@@ -151,12 +151,25 @@ export function respectsProjection<T extends types.Type>(
   projection: projection.FromType<T>,
   value: PartialDeep<types.Infer<T>>,
 ): result.Result<true, undefined> {
-  const isOptional = types.concretise(type).kind === "optional"
-  
-  if (projection === true) {
+  const concreteType = types.concretise(type)
+  const kind = concreteType.kind
+  if (kind === "boolean" || kind === "enum" || kind === "literal" || kind === "number" || kind === "string" || kind === "custom") {
+    // The projection for these types is never so it's always right
     return result.ok(true)
+  } else if (kind === "reference") {
+    return respectsProjection(concreteType.wrappedType, projection, value)
+  } else if (kind === "nullable") {
+    return value === null ? result.ok(true) : respectsProjection(concreteType.wrappedType, projection, value)
+  } else if (kind === "optional") {
+    return value === undefined ? result.ok(true) : respectsProjection(concreteType.wrappedType, projection, value)
+  } else if (kind === "union") {
+    throw "a"
+  } else if (kind === "object") {
+    throw "a"
+  } else if (kind === "array") {
+    throw "a"
   } else {
-    failWithInternalError('TODO: This is not implemented, if you catch this means we forgot an implementation :)')
+    assertNever(kind, "a")
   }
 }
 

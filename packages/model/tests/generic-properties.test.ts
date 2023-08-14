@@ -1,4 +1,4 @@
-import { arbitrary, decoder, encoder, types, validator } from '../src'
+import { arbitrary, decoder, encoder, validator } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'

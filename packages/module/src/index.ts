@@ -1,3 +1,5 @@
 export * as module from './module'
-export { randomOperationId, buildLogger, Logger } from './utils'
+export * as functions from './functions'
+export * as logger from './log'
 export * as sdk from './sdk'
+export * as utils from './utils'

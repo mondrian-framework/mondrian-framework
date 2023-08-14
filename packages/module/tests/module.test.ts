@@ -1,4 +1,6 @@
-import { module, sdk } from '../src'
+import { module, functions, sdk } from '../src'
+import { Function } from '../src/functions'
+import { ContextType } from '../src/module'
 import { types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
@@ -22,8 +24,10 @@ test('Whole module', async () => {
       updateUser(user: User): User
     }
   }
-  const authentication = module.functionBuilder<SharedContext & { from?: string }>({ namespace: 'authentication' })
-  const login = authentication({
+  const authentication = functions
+    .builder()
+    .withContext<SharedContext & { from?: string }>({ namespace: 'authentication' })
+  const login = authentication.build({
     input: LoginInput,
     output: LoginOutput,
     async apply({ input, context: { db }, log }) {
@@ -36,7 +40,7 @@ test('Whole module', async () => {
       return { jwt: user.email, user }
     },
   })
-  const register = authentication({
+  const register = authentication.build({
     input: LoginInput,
     output: types.nullable(User),
     async apply({ input, context: { db }, log }) {
@@ -50,10 +54,10 @@ test('Whole module', async () => {
     },
   })
 
-  const businessLogic = module.functionBuilder<SharedContext & { authenticatedUser?: { email: string } }>({
+  const businessLogic = functions.builder().withContext<SharedContext & { authenticatedUser?: { email: string } }>({
     namespace: 'business-logic',
   })
-  const completeProfile = businessLogic({
+  const completeProfile = businessLogic.build({
     input: types.object({ firstname: types.string(), lastname: types.string() }),
     output: User,
     async apply({ input, context: { db, authenticatedUser } }) {
@@ -67,20 +71,12 @@ test('Whole module', async () => {
       return db.updateUser({ ...user, ...input })
     },
   })
-
   const memory = new Map<string, User>()
-  const m = module.define<{ ip: string; authorization: string | undefined }>()({
-    name: 'Test',
-    version: '1.0.0',
-    functions: {
-      definitions: { login, register, completeProfile },
-    },
-    options: {
-      checks: {
-        maxProjectionDepth: 2,
-      },
-    },
-    async context({ ip, authorization }) {
+  const m = module
+    .builder()
+    .options({ checks: { maxProjectionDepth: 2 } })
+    .functions({ definitions: { login, register, completeProfile } })
+    .context(async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
       const db: SharedContext['db'] = {
         updateUser(user) {
           memory.set(user.email, user)
@@ -100,15 +96,18 @@ test('Whole module', async () => {
         }
       }
       return { from: ip, db }
-    },
-  })
+    })
+    .build()
 
-  const client = sdk.fromModule<{ ip?: string; authorization?: string }>()({
-    module: m,
-    async context({ metadata }) {
-      return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
-    },
-  })
+  const client = sdk
+    .builder()
+    .withMetadata<{ ip?: string; authorization?: string }>()
+    .build({
+      module: m,
+      async context({ metadata }) {
+        return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
+      },
+    })
 
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
@@ -128,7 +127,7 @@ test('Whole module', async () => {
       ),
   ).rejects.toThrow()
   if (loginResult) {
-    const authClient = client.with({ authorization: loginResult.jwt })
+    const authClient = client.withMetadata({ authorization: loginResult.jwt })
     const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
     expect(myUser).toEqual({
       email: 'admin@domain.com',
@@ -145,7 +144,7 @@ describe('Unique type name', () => {
     const v = types.number().setName('Input')
     const output = types.union({ n, v: v.setName('V') })
 
-    const f = module.functionBuilder<unknown>()({
+    const f = functions.builder().build({
       input: v,
       output: output,
       apply(args) {
@@ -153,14 +152,11 @@ describe('Unique type name', () => {
       },
     })
     expect(() =>
-      module.define<unknown>()({
-        name: 'test',
-        version: '0.0.0',
-        functions: { definitions: { f } },
-        async context(input, args) {
-          return null
-        },
-      }),
+      module
+        .builder()
+        .functions({ definitions: { f } })
+        .context(async () => ({}))
+        .build(),
     ).toThrowError(`Duplicated type name "Input"`)
   })
 })

@@ -11,7 +11,7 @@ import { PartialDeep, failWithInternalError } from './utils'
  *          const projection: Projection = { field1: true, field2: { inner: true } }
  *          ```
  */
-type Projection = true | { readonly [field: string]: Projection | undefined }
+export type Projection = true | { readonly [field: string]: Projection | undefined }
 
 /**
  * Given a Mondrian {@link Type type}, returns the type describing its projection.
@@ -38,7 +38,7 @@ export type FromType<T extends types.Type> = true | (
 : [T] extends [(() => infer T1 extends types.Type)] ? projection.FromType<T1>
 : [T] extends [types.UnionType<infer Ts>] ? { readonly [Key in keyof Ts]?: projection.FromType<Ts[Key]> }
 : [T] extends [types.ObjectType<any, infer Ts>] ? { readonly [Key in keyof Ts]?: projection.FromType<Ts[Key]> }
-: never)
+: Projection)
 
 /**
  * @param projection the projection whose depth is returned

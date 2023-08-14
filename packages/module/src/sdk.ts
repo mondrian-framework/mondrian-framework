@@ -1,10 +1,12 @@
-import { Functions, Module } from './module'
-import { buildLogger, randomOperationId } from './utils'
+import { logger } from '.'
+import { Functions } from './functions'
+import { Module } from './module'
+import { randomOperationId } from './utils'
 import { projection, types } from '@mondrian-framework/model'
 
 type Sdk<F extends Functions, Metadata> = {
   functions: SdkFunctions<F, Metadata>
-  with: (metadata: Metadata) => Sdk<F, Metadata>
+  withMetadata: (metadata: Metadata) => Sdk<F, Metadata>
 }
 
 type SdkFunctions<F extends Functions, Metadata> = {
@@ -12,44 +14,56 @@ type SdkFunctions<F extends Functions, Metadata> = {
 }
 
 type SdkFunction<InputType extends types.Type, OutputType extends types.Type, Metadata> = <
-  P extends projection.Infer<OutputType> | undefined = true, //TODO with default true intellisense do not suggest projection
+  P extends projection.FromType<OutputType> | undefined = true, //TODO with default true intellisense do not suggest projection
 >(
   input: types.Infer<InputType>, //TODO: defaults should be optional
   options?: {
     projection?: P
     metadata?: Metadata
   },
-) => Promise<projection.Project<OutputType, Exclude<P, undefined>>>
+) => Promise<any> //TODO: Promise<projection.Project<OutputType, Exclude<P, undefined>>>
 
-//const F extends Functions, const CI
-export function fromModule<const Metadata = unknown>(
-  metadata?: Metadata,
-): <const F extends Functions, const CI>(args: {
-  module: Module<F, CI>
-  context: (args: { metadata?: Metadata }) => Promise<CI>
-}) => Sdk<F, Metadata> {
-  return <const F extends Functions, const CI>({
+export function builder(): SdkBuilder {
+  return new SdkBuilder()
+}
+
+class SdkBuilder<const Metadata = unknown> {
+  private metadata?: Metadata
+  constructor(metadata?: Metadata) {
+    this.metadata = metadata
+  }
+  public withMetadata<const NewMetadata>(args?: { metadata?: NewMetadata }): SdkBuilder<NewMetadata> {
+    return new SdkBuilder(args?.metadata)
+  }
+  public build<const F extends Functions, const CI>({
     module,
     context,
   }: {
     module: Module<F, CI>
     context: (args: { metadata?: Metadata }) => Promise<CI>
-  }) => {
+  }): Sdk<F, Metadata> {
+    const defaultLogger = logger.builder().with({ moduleName: module.name, server: 'LOCAL' })
     const functions = Object.fromEntries(
       Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
         const wrapper = async (
           input: any,
           options?: {
-            projection?: any
+            projection?: projection.Projection
             metadata?: Metadata
           },
         ) => {
           const operationId = randomOperationId()
-          const log = buildLogger(module.name, operationId, null, functionName, 'LOCAL', new Date())
+          const log = defaultLogger.with({ operationId, operationName: functionName }).build()
           try {
-            const contextInput = await context({ metadata: options?.metadata ?? metadata })
+            const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
             const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
-            const result = await functionBody.apply({ input, projection, context: ctx, operationId, log })
+            const result = await functionBody.apply({
+              input,
+              projection: options?.projection,
+              context: ctx,
+              operationId,
+              log,
+            })
             log('Done.')
             return result
           } catch (error) {
@@ -62,7 +76,7 @@ export function fromModule<const Metadata = unknown>(
     )
     return {
       functions: functions as SdkFunctions<F, Metadata>,
-      with: (metadata) => fromModule(metadata)({ module, context }),
+      withMetadata: (metadata) => new SdkBuilder().withMetadata({ metadata }).build({ module, context }),
     }
   }
 }

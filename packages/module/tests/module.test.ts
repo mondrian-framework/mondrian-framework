@@ -1,4 +1,4 @@
-import { module, functions, sdk } from '../src'
+import { module, func, sdk } from '../src'
 import { types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
@@ -22,11 +22,13 @@ test('Whole module', async () => {
       updateUser(user: User): User
     }
   }
-  const authentication = functions.context<SharedContext & { from?: string }>({ namespace: 'authentication' })
-  const login = authentication.build({
-    input: LoginInput,
-    output: LoginOutput,
-    async apply({ input, context: { db }, log }) {
+  const authentication = func
+    .context<SharedContext & { from?: string }>()
+    .options({ namespace: 'authentication' })
+    .input(LoginInput)
+  const login = authentication
+    .output(LoginOutput)
+    .body(async ({ input, context: { db }, log }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
         log(`Invalid email or password: ${input.email}`, 'warn')
@@ -34,12 +36,11 @@ test('Whole module', async () => {
       }
       log(`Logged in: ${input.email}`, 'log')
       return { jwt: user.email, user }
-    },
-  })
-  const register = authentication.build({
-    input: LoginInput,
-    output: types.nullable(User),
-    async apply({ input, context: { db }, log }) {
+    })
+    .build()
+  const register = authentication
+    .output(types.nullable(User))
+    .body(async ({ input, context: { db }, log }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
         log(`Double register: ${input.email}`, 'error')
@@ -47,16 +48,16 @@ test('Whole module', async () => {
       }
       log(`Registered: ${input.email}`)
       return db.updateUser(input)
-    },
-  })
+    })
+    .build()
 
-  const businessLogic = functions.context<SharedContext & { authenticatedUser?: { email: string } }>({
+  const businessLogic = func.context<SharedContext & { authenticatedUser?: { email: string } }>().options({
     namespace: 'business-logic',
   })
-  const completeProfile = businessLogic.build({
-    input: types.object({ firstname: types.string(), lastname: types.string() }),
-    output: User,
-    async apply({ input, context: { db, authenticatedUser } }) {
+  const completeProfile = businessLogic
+    .input(types.object({ firstname: types.string(), lastname: types.string() }))
+    .output(User)
+    .body(async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
         throw new Error('Unauthorized')
       }
@@ -65,23 +66,26 @@ test('Whole module', async () => {
         throw new Error('Unrechable')
       }
       return db.updateUser({ ...user, ...input })
-    },
-  })
+    })
+    .build()
   const memory = new Map<string, User>()
+  const db: SharedContext['db'] = {
+    updateUser(user) {
+      memory.set(user.email, user)
+      return user
+    },
+    findUser(user) {
+      return memory.get(user.email)
+    },
+  }
+
   const m = module
-    
+    .name('Test')
+    .version('1.0.0')
     .options({ checks: { maxProjectionDepth: 2 } })
-    .functions({ definitions: { login, register, completeProfile } })
+    .functions({ login, register, completeProfile })
+    .functionsOptions({ login: { authentication: 'NONE' } })
     .context(async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
-      const db: SharedContext['db'] = {
-        updateUser(user) {
-          memory.set(user.email, user)
-          return user
-        },
-        findUser(user) {
-          return memory.get(user.email)
-        },
-      }
       if (authorization != null) {
         //dummy auth
         const user = db.findUser({ email: authorization })
@@ -96,13 +100,12 @@ test('Whole module', async () => {
     .build()
 
   const client = sdk
+    .module(m)
     .metadata<{ ip?: string; authorization?: string }>()
-    .build({
-      module: m,
-      async context({ metadata }) {
-        return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
-      },
+    .context(async ({ metadata }) => {
+      return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
     })
+    .build()
 
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
@@ -139,17 +142,16 @@ describe('Unique type name', () => {
     const v = types.number().setName('Input')
     const output = types.union({ n, v: v.setName('V') })
 
-    const f = functions.build({
-      input: v,
-      output: output,
-      apply(args) {
+    const f = func
+      .input(v)
+      .output(output)
+      .body((args) => {
         throw 'Unreachable'
-      },
-    })
+      })
+      .build()
     expect(() =>
       module
-        
-        .functions({ definitions: { f } })
+        .functions({ f })
         .context(async () => ({}))
         .build(),
     ).toThrowError(`Duplicated type name "Input"`)

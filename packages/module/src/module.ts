@@ -1,16 +1,14 @@
-import { Function, Functions } from './functions'
+import { Function, Functions } from './function'
 import { Logger } from './log'
 import { projection, types } from '@mondrian-framework/model'
 
 //TODO: factorize UnionToIntersection to utils package
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
-type ContextType<F extends Functions> = {
-  [K in keyof F]: F[K] extends Function<any, any, infer Context> ? Context : never
-} extends infer C
-  ? C extends Record<keyof F, unknown>
-    ? UnionToIntersection<C[keyof F]>
-    : never
-  : never
+type ContextType<F extends Functions> = UnionToIntersection<
+  {
+    [K in keyof F]: F[K] extends Function<any, any, infer Context> ? Context : never
+  }[keyof F]
+>
 
 type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 
@@ -73,18 +71,18 @@ function assertUniqueNames(functions: Functions) {
   }
 }
 
-class ModuleBuilder<const Fs extends Functions, const ContextInput> {
+class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
   private module: Partial<Module<Fs, ContextInput>>
   constructor(module: Partial<Module<Fs, ContextInput>>) {
     this.module = module
   }
   public build(): Module<Fs, ContextInput> {
     const moduleName = this.module.name ?? 'default'
+    const moduleVersion = this.module.version ?? '0.0.0'
     const moduleFunctions = this.module.functions
     const moduleContext = this.module.context
-    const moduleVersion = this.module.version ?? '0.0.0'
     if (!module || !moduleFunctions || !moduleContext) {
-      throw new Error('Module not defined correctly')
+      throw new Error(`You need to use '.functions' and '.context' before building a module`)
     }
     assertUniqueNames(moduleFunctions.definitions)
     const outputTypeCheck = this.module.options?.checks?.output ?? 'throw'
@@ -135,25 +133,61 @@ class ModuleBuilder<const Fs extends Functions, const ContextInput> {
       context: moduleContext,
     }
   }
-  public name(name: string): ModuleBuilder<Fs, ContextInput> {
-    return new ModuleBuilder({ ...this.module, name })
+  public name(name: string): ModuleBuilderImpl<Fs, ContextInput> {
+    return new ModuleBuilderImpl({ ...this.module, name })
   }
-  public version(version: string): ModuleBuilder<Fs, ContextInput> {
-    return new ModuleBuilder({ ...this.module, version })
+  public version(version: string): ModuleBuilderImpl<Fs, ContextInput> {
+    return new ModuleBuilderImpl({ ...this.module, version })
   }
-  public options(options: ModuleOptions): ModuleBuilder<Fs, ContextInput> {
-    return new ModuleBuilder({ ...this.module, options })
+  public options(options: ModuleOptions): ModuleBuilderImpl<Fs, ContextInput> {
+    return new ModuleBuilderImpl({ ...this.module, options })
   }
   public context<const NewContextInput>(
     context: Module<Fs, NewContextInput>['context'],
-  ): ModuleBuilder<Fs, NewContextInput> {
-    return new ModuleBuilder({ ...this.module, context })
+  ): ModuleBuilderImpl<Fs, NewContextInput> {
+    const definitions = this.module.functions?.definitions
+    if (!definitions) {
+      throw new Error(`You need to use '.functions' before`)
+    }
+    return new ModuleBuilderImpl({ ...this.module, context })
   }
   public functions<const NewFs extends Functions>(
-    functions: Module<NewFs, ContextInput>['functions'],
-  ): ModuleBuilder<NewFs, ContextInput> {
-    return new ModuleBuilder({ ...this.module, functions, context: undefined })
+    functions: Module<NewFs, ContextInput>['functions']['definitions'],
+  ): ModuleBuilderImpl<NewFs, ContextInput> {
+    return new ModuleBuilderImpl({
+      ...this.module,
+      functions: { definitions: functions },
+      context: undefined,
+    })
+  }
+  public functionsOptions(
+    options: Exclude<Module<Fs, ContextInput>['functions']['options'], undefined>,
+  ): ModuleBuilderImpl<Fs, ContextInput> {
+    const definitions = this.module.functions?.definitions
+    if (!definitions) {
+      throw new Error(`You need to use '.functions' before`)
+    }
+    return new ModuleBuilderImpl({ ...this.module, functions: { definitions, options } })
   }
 }
 
-export const builder = new ModuleBuilder({})
+type ModuleBuilder<Fs extends Functions, ContextInput, O extends string> = Omit<
+  {
+    build(): Module<Fs, ContextInput>
+    name(name: string): ModuleBuilder<Fs, ContextInput, O | 'name'>
+    version(version: string): ModuleBuilder<Fs, ContextInput, O | 'version'>
+    options(options: ModuleOptions): ModuleBuilder<Fs, ContextInput, O | 'options'>
+    context<const NewContextInput>(
+      context: Module<Fs, NewContextInput>['context'],
+    ): ModuleBuilder<Fs, NewContextInput, Exclude<O | 'context', 'build'>>
+    functions<const NewFs extends Functions>(
+      functions: Module<NewFs, ContextInput>['functions']['definitions'],
+    ): ModuleBuilder<NewFs, ContextInput, Exclude<O | 'functions', 'functionsOptions' | 'context'>>
+    functionsOptions(
+      options: Exclude<Module<Fs, ContextInput>['functions']['options'], undefined>,
+    ): ModuleBuilder<Fs, ContextInput, O | 'functionsOptions'>
+  },
+  O
+>
+
+export const builder: ModuleBuilder<{}, unknown, 'functionsOptions' | 'context' | 'build'> = new ModuleBuilderImpl({})

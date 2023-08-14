@@ -13,31 +13,31 @@ type LoggerContext = {
 
 class LoggerBuilder {
   private createdAt: Date
-  private context: LoggerContext
+  private _context: LoggerContext
 
   constructor(context: LoggerContext) {
     this.createdAt = new Date()
-    this.context = context
+    this._context = context
   }
 
-  public with(context: LoggerContext): LoggerBuilder {
-    return new LoggerBuilder({ ...this.context, ...context })
+  public context(context: LoggerContext): LoggerBuilder {
+    return new LoggerBuilder({ ...this._context, ...context })
   }
 
   public build(): Logger {
     return (message: string, level?: 'log' | 'warn' | 'error') => {
       const op =
-        this.context.operationType && this.context.operationName
-          ? `${this.context.operationType} / ${this.context.operationName}`
-          : this.context.operationName
-          ? this.context.operationName
-          : this.context.operationType
-          ? this.context.operationType
+        this._context.operationType && this._context.operationName
+          ? `${this._context.operationType} / ${this._context.operationName}`
+          : this._context.operationName
+          ? this._context.operationName
+          : this._context.operationType
+          ? this._context.operationType
           : null
       console[level ?? 'log'](
-        `${this.context.operationId ? `[${this.context.operationId}] ` : ''}[${
-          this.context.moduleName ?? 'Unknown-Module'
-        }${op ? ` / ${op}` : ''} / ${this.context.server ?? 'Unknown-Server'}]: ${message} (${
+        `${this._context.operationId ? `[${this._context.operationId}] ` : ''}[${
+          this._context.moduleName ?? 'Unknown-Module'
+        }${op ? ` / ${op}` : ''} / ${this._context.server ?? 'Unknown-Server'}]: ${message} (${
           new Date().getTime() - this.createdAt.getTime()
         } ms)`,
       )

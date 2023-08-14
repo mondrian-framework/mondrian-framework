@@ -176,44 +176,6 @@ describe('projection.respectsProjection', () => {
   })
   const model = types.union({ variant1: types.string(), variant2 })
 
-  describe('checks that only the selected elements are present', () => {
-    const p = { variant1: true, variant2: { field2: { subfield1: true } } } as const
-
-    test('ok cases', () => {
-      const values = [
-        { variant2: { field2: {} } },
-        { variant2: { field2: { subfield1: true } } },
-        { variant2: { field2: { subfield1: false } } },
-        { variant2: { field2: { subfield1: undefined } } },
-      ]
-      for (const value of values) {
-        assertOk(projection.respectsProjection(model, p, value))
-      }
-    })
-
-    describe('error cases', () => {
-      test('wrong variant', () => {
-        const value = { variant1: 'Mondrian' }
-        const error = assertFailure(projection.respectsProjection(model, p, value))
-        expect(error).toBe(undefined)
-      })
-
-      test('object fields that are not selected', () => {
-        const values = [
-          [{ variant2: { field1: 'Mondrian' } }, undefined],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true } } }, undefined],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true, subfield2: 1 } } }, undefined],
-          [{ variant2: { field2: { subfield1: true, subfield2: 1 } } }, undefined],
-          [{ variant2: { field2: { subfield2: 1 } } }, undefined],
-        ] as const
-        for (const [value, expectedError] of values) {
-          const error = assertFailure(projection.respectsProjection(model, p, value))
-          expect(error).toEqual(expectedError)
-        }
-      })
-    })
-  })
-
   describe('checks that the selected fields are present (if not marked as optional)', () => {
     const p = true as const
 

@@ -1,4 +1,6 @@
 import { projection, types, decoder, validator } from '../src'
+import { PartialDeep } from '../src/utils'
+import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expectTypeOf, describe, expect } from 'vitest'
 
@@ -165,6 +167,94 @@ describe('projection.subProjection', () => {
       expect(projection.subProjection(p, ['field2', 'subfield1'])).toBe(p.field2.subfield1)
       expect(projection.subProjection(p, ['field2', 'subfield2'])).toBe(p.field2.subfield2)
     }
+  })
+})
+
+describe('projection.respectsProjection', () => {
+  const variant2 = types.object({
+    field1: types.string(),
+    field2: types.object({ subfield1: types.boolean().optional(), subfield2: types.number() }),
+  })
+  const model = types.union({ variant1: types.string(), variant2 })
+
+  describe('checks that only the selected elements are present', () => {
+    const p = { variant2: { field2: { subfield1: true } } } as const
+
+    test('ok cases', () => {
+      const values = [
+        { variant2: { field2: {} } },
+        { variant2: { field2: { subfield1: true } } },
+        { variant2: { field2: { subfield1: false } } },
+        { variant2: { field2: { subfield1: undefined } } },
+      ]
+      for (const value of values) {
+        assertOk(projection.respectsProjection(model, p, value))
+      }
+    })
+
+    describe('error cases', () => {
+      test('wrong variant', () => {
+        const value = { variant1: 'Mondrian' }
+        const error = assertFailure(projection.respectsProjection(model, p, value))
+        expect(error).toBe(undefined)
+      })
+
+      test('object fields that are not selected', () => {
+        const values = [
+          [{ variant2: { field1: 'Mondrian' } }, undefined],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true } } }, undefined],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true, subfield2: 1 } } }, undefined],
+          [{ variant2: { field2: { subfield1: true, subfield2: 1 } } }, undefined],
+          [{ variant2: { field2: { subfield2: 1 } } }, undefined],
+        ] as const
+        for (const [value, expectedError] of values) {
+          const error = assertFailure(projection.respectsProjection(model, p, value))
+          expect(error).toEqual(expectedError)
+        }
+      })
+    })
+  })
+
+  describe('checks that the selected fields are present (if not marked as optional)', () => {
+    const p = true as const
+
+    test('ok cases', () => {
+      const values = [
+        { variant2: { field2: { subfield1: true, subfield2: 1 } } },
+        { variant2: { field2: { subfield1: false, subfield2: 1 } } },
+        { variant2: { field2: { subfield1: false } } },
+      ]
+      for (const value of values) {
+        assertOk(projection.respectsProjection(model, p, value))
+      }
+    })
+
+    describe('error cases', () => {
+      test('wrong variant', () => {
+        const error = assertFailure(projection.respectsProjection(model, p, { variant1: 'Mondrian' }))
+        expect(error).toBe(undefined)
+      })
+
+      test('correct variant, missing required field', () => {
+        const cases = [
+          [{ variant2: undefined }, undefined],
+          [{ variant2: {} }, undefined],
+          [{ variant2: { field1: undefined } }, undefined],
+          [{ variant2: { field1: undefined, field2: undefined } }, undefined],
+          [{ variant2: { field1: 'Mondrian' } }, undefined],
+          [{ variant2: { field1: 'Mondrian', field2: undefined } }, undefined],
+          [{ variant2: { field1: 'Mondrian', field2: {} } }, undefined],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: undefined } } }, undefined],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true } } }, undefined],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: false } } }, undefined],
+        ] as const
+
+        for (const [value, expectedError] of cases) {
+          const error = assertFailure(projection.respectsProjection(model, p, value))
+          expect(error).toBe(expectedError)
+        }
+      })
+    })
   })
 })
 

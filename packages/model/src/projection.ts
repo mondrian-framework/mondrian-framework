@@ -178,22 +178,22 @@ export function respectsProjection<T extends types.Type>(
 
 
  */
-/**
- * A record of {@link Projection `Projection`s}.
- */
+///**
+// * A record of {@link Projection `Projection`s}.
+// */
 //type Projections = Record<string, types.OptionalType<Projection>>
 
-/**
- * Given a Mondrian {@link Type type}, returns the Mondrian type describing its {@link Projection projection}.
- * You can read {@link here TODO:} to learn more about what projections are and how they can be used.
- *
- * @example ```ts
- *          const model = object({ field1: number, field2: string })
- *          type Projection = InferProjection<typeof model>
- *          Infer<Projection>
- *          // -> true | { field1?: true, field2?: true }
- *          ```
- */
+///**
+// * Given a Mondrian {@link Type type}, returns the Mondrian type describing its {@link Projection projection}.
+// * You can read {@link here TODO:} to learn more about what projections are and how they can be used.
+// *
+// * @example ```ts
+// *          const model = object({ field1: number, field2: string })
+// *          type Projection = InferProjection<typeof model>
+// *          Infer<Projection>
+// *          // -> true | { field1?: true, field2?: true }
+// *          ```
+// */
 // prettier-ignore
 //export type FromType<T extends types.Type>
 //  = [T] extends [types.NumberType] ? types.LiteralType<true>
@@ -217,21 +217,21 @@ export function respectsProjection<T extends types.Type>(
 //    }>
 //  : never
 
-/**
- * @param type the type whose projection model is returned
- * @returns the Mondrian model describing the type of valid projections for the given type
- * @example ```ts
- *          const model = object({ field1: number, field2: string })
- *          projectionFromType(model)
- *          // -> union({
- *          //   all: literal(true)
- *          //   partial: object({
- *          //     field1: literal(true).optional()
- *          //     field2: literal(true).optional()
- *          //   })
- *          // })
- *          ```
- */
+///**
+// * @param type the type whose projection model is returned
+// * @returns the Mondrian model describing the type of valid projections for the given type
+// * @example ```ts
+// *          const model = object({ field1: number, field2: string })
+// *          projectionFromType(model)
+// *          // -> union({
+// *          //   all: literal(true)
+// *          //   partial: object({
+// *          //     field1: literal(true).optional()
+// *          //     field2: literal(true).optional()
+// *          //   })
+// *          // })
+// *          ```
+// */
 //export function fromType<T extends types.Type>(type: T): projection.FromType<T> {
 //  const actualType = types.concretise(type)
 //  switch (actualType.kind) {
@@ -254,18 +254,18 @@ export function respectsProjection<T extends types.Type>(
 //  }
 //}
 
-/**
- * Given a record of types, returns a projection type that is either the literal `true` or an object
- * with the projections of the given `types`.
- */
+///**
+// * Given a record of types, returns a projection type that is either the literal `true` or an object
+// * with the projections of the given `types`.
+// */
 //function projectTypesOrLiteralTrue(ts: types.Types): Projection {
 //  const projectedTypes = filterMapObject(ts, (_, fieldType: any) => projection.fromType(fieldType).optional())
 //  return types.union({ all: types.literal(true), partial: types.object(projectedTypes) })
 //}
 
-/**
- * TODO: add doc
- */
+///**
+// * TODO: add doc
+// */
 // prettier-ignore
 //export type ProjectedType<T extends types.Type, P extends projection.Infer<T>>
 //  = [P] extends [true] ? T
@@ -294,9 +294,9 @@ export function respectsProjection<T extends types.Type>(
 //    ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, projection.Infer<Ts[K]>> ? ProjectedType<Ts[K], P[K]> : never }> : never
 //  : never
 
-/**
- * TODO: add doc
- */
+///**
+// * TODO: add doc
+// */
 //export function projectedType<T extends types.Type, P extends projection.Infer<T>>(
 //  type: T,
 //  projection: P,

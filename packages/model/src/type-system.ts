@@ -1499,9 +1499,8 @@ export function assertType<T extends Type>(
 
 //TODO: export?
 function hasWrapper(type: Type, kind: 'optional' | 'nullable' | 'reference'): boolean {
-  const t = concretise(type)
-  return (
-    t.kind === kind ||
-    ((t.kind === 'optional' || t.kind === 'nullable' || t.kind === 'reference') && hasWrapper(t.wrappedType, kind))
-  )
+  const concreteType = concretise(type)
+  const typeKind = concreteType.kind
+  const isWrapperType = typeKind === 'optional' || typeKind === 'nullable' || typeKind === 'reference'
+  return typeKind === kind || (isWrapperType && hasWrapper(concreteType.wrappedType, kind))
 }

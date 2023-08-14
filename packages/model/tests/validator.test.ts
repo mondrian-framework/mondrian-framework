@@ -1,4 +1,4 @@
-import { arbitrary, path, result, types, validator } from '../src'
+import { arbitrary, path, types, validator } from '../src'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'

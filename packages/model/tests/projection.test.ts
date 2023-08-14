@@ -1,5 +1,4 @@
 import { projection, types, decoder, validator } from '../src'
-import { PartialDeep } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expectTypeOf, describe, expect } from 'vitest'

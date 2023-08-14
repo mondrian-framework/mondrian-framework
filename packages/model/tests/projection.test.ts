@@ -181,9 +181,9 @@ describe('projection.respectsProjection', () => {
 
     test('ok cases', () => {
       const values = [
-        { variant2: { field2: { subfield1: true, subfield2: 1 } } },
-        { variant2: { field2: { subfield1: false, subfield2: 1 } } },
-        { variant2: { field2: { subfield1: false } } },
+        { variant2: { field1: 'Mondrian', field2: { subfield1: true, subfield2: 1 } } },
+        { variant2: { field1: 'Mondrian', field2: { subfield1: false, subfield2: 1 } } },
+        { variant2: { field1: 'Mondrian', field2: { subfield2: 1 } } },
       ]
       for (const value of values) {
         assertOk(projection.respectsProjection(model, p, value))
@@ -191,14 +191,8 @@ describe('projection.respectsProjection', () => {
     })
 
     describe('error cases', () => {
-      test('wrong variant', () => {
-        const error = assertFailure(projection.respectsProjection(model, p, { variant1: 'Mondrian' }))
-        expect(error).toBe(undefined)
-      })
-
       test('correct variant, missing required field', () => {
         const cases = [
-          [{ variant2: undefined }, undefined],
           [{ variant2: {} }, undefined],
           [{ variant2: { field1: undefined } }, undefined],
           [{ variant2: { field1: undefined, field2: undefined } }, undefined],
@@ -215,6 +209,40 @@ describe('projection.respectsProjection', () => {
           expect(error).toBe(expectedError)
         }
       })
+    })
+  })
+
+  describe('when selecting only some fields', () => {
+    const p = { variant1: true, variant2: { field1: true } } as const
+
+    test('ok values', () => {
+      const values = [
+        { variant1: 'Mondrian' },
+        { variant2: { field1: 'Mondrian' } },
+        { variant2: { field1: 'Mondrian', field2: {} } },
+        { variant2: { field1: 'Mondrian', field2: undefined } },
+        { variant2: { field1: 'Mondrian', field2: { subfield1: true } } },
+      ]
+      for (const value of values) {
+        assertOk(projection.respectsProjection(model, p, value))
+      }
+    })
+
+    test('failing values', () => {
+      const cases = [
+        [{ variant2: {} }, undefined],
+        [{ variant2: { field1: undefined } }, undefined],
+        [{ variant2: { field1: undefined, field2: undefined } }, undefined],
+        [{ variant2: { field2: {} } }, undefined],
+        [{ variant2: { field2: { subfield1: undefined } } }, undefined],
+        [{ variant2: { field2: { subfield1: true } } }, undefined],
+        [{ variant2: { field1: undefined, field2: { subfield1: false } } }, undefined],
+      ] as const
+
+      for (const [value, expectedError] of cases) {
+        const error = assertFailure(projection.respectsProjection(model, p, value))
+        expect(error).toBe(expectedError)
+      }
     })
   })
 })

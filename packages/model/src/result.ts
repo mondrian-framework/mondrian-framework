@@ -149,3 +149,29 @@ class FailureImpl<A, E> implements Failure<A, E> {
   lazyOr = (other: (error: E) => Result<A, E>): Result<A, E> => other(this.error)
   match = <B>(_onOk: (value: A) => B, onFailure: (error: E) => B): B => onFailure(this.error)
 }
+
+// TODO: doc and ad hoc tests
+export function reduce<R, R1, E, E1>(
+  results: Result<R, E>[],
+  initialResult: R1,
+  initialError: E1,
+  combineResults: (accumulator: R1, result: R) => R1,
+  combineErrors: (accumulator: E1, error: E) => E1,
+): Result<R1, E1> {
+  let resultAccumulator = initialResult
+  let errorAccumulator = initialError
+  let encounteredError = false
+  for (const result of results) {
+    if (result.isOk) {
+      if (encounteredError) {
+        continue
+      } else {
+        resultAccumulator = combineResults(resultAccumulator, result.value)
+      }
+    } else {
+      encounteredError = true
+      errorAccumulator = combineErrors(errorAccumulator, result.error)
+    }
+  }
+  return encounteredError ? fail(errorAccumulator) : ok(resultAccumulator)
+}

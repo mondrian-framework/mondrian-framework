@@ -60,7 +60,9 @@ export function assertNever(_value: never, errorMessage: string): never {
 }
 
 /**
- * Just like TypeScript's {@link Partial} type but recursivley applied to all of the
- * object's fields.
+ * @param value
+ * @returns a function that always returns the given value, no matter the input
  */
-export type PartialDeep<T> = Partial<{ [Key in keyof T]: PartialDeep<T[Key]> }>
+export function always<A>(value: A): (_: any) => A {
+  return (_) => value
+}

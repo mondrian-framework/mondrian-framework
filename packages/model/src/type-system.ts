@@ -79,36 +79,55 @@ export type Infer<T extends Type>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
-/**
- * TODO: Add doc
- */
-type OptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalWrapper<T[K]> extends true ? K : never }[keyof T]
+// prettier-ignore
+export type InferPartial<T extends Type>
+  = [T] extends [NumberType] ? number
+  : [T] extends [StringType] ? string
+  : [T] extends [BooleanType] ? boolean
+  : [T] extends [EnumType<infer Vs>] ? Vs[number]
+  : [T] extends [LiteralType<infer L>] ? L
+  : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: InferPartial<Ts[Key]> } }[keyof Ts]
+  : [T] extends [ObjectType<"immutable", infer Ts>] ? { readonly [Key in keyof Ts]?: InferPartial<Ts[Key]> }
+  : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in keyof Ts]?: InferPartial<Ts[Key]> }
+  : [T] extends [ArrayType<"immutable", infer T1>] ? readonly InferPartial<T1>[]
+  : [T] extends [ArrayType<"mutable", infer T1>] ? InferPartial<T1>[]
+  : [T] extends [OptionalType<infer T1>] ? undefined | InferPartial<T1>
+  : [T] extends [NullableType<infer T1>] ? null | InferPartial<T1>
+  : [T] extends [ReferenceType<infer T1>] ? InferPartial<T1>
+  : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
+  : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
+  : never
 
 /**
  * TODO: Add doc
  */
-type NonOptionalKeys<T extends Types> = { [K in keyof T]: HasOptionalWrapper<T[K]> extends true ? never : K }[keyof T]
+type OptionalKeys<T extends Types> = { [K in keyof T]: IsOptional<T[K]> extends true ? K : never }[keyof T]
+
+/**
+ * TODO: Add doc
+ */
+type NonOptionalKeys<T extends Types> = { [K in keyof T]: IsOptional<T[K]> extends true ? never : K }[keyof T]
 
 /**
  * TODO: Add doc
  */
 //prettier-ignore
-type HasOptionalWrapper<T extends Type> 
+type IsOptional<T extends Type> 
   = [T] extends [OptionalType<infer _T1>] ? true
-  : [T] extends [NullableType<infer T1>] ? HasOptionalWrapper<T1>
-  : [T] extends [ReferenceType<infer T1>] ? HasOptionalWrapper<T1>
-  : [T] extends [() => infer T1 extends Type] ? HasOptionalWrapper<T1>
+  : [T] extends [NullableType<infer T1>] ? IsOptional<T1>
+  : [T] extends [ReferenceType<infer T1>] ? IsOptional<T1>
+  : [T] extends [() => infer T1 extends Type] ? IsOptional<T1>
   : false
 
 /**
  * TODO: Add doc
  */
 //prettier-ignore
-type HasReferenceWrapper<T extends Type> 
+type IsReference<T extends Type> 
   = [T] extends [ReferenceType<infer _T1>] ? true
-  : [T] extends [NullableType<infer T1>] ? HasReferenceWrapper<T1>
-  : [T] extends [ReferenceType<infer T1>] ? HasReferenceWrapper<T1>
-  : [T] extends [() => infer T1 extends Type] ? HasReferenceWrapper<T1>
+  : [T] extends [NullableType<infer T1>] ? IsReference<T1>
+  : [T] extends [ReferenceType<infer T1>] ? IsReference<T1>
+  : [T] extends [() => infer T1 extends Type] ? IsReference<T1>
   : false
 
 /**
@@ -1047,7 +1066,7 @@ export function omitReferences<const Ts extends Types, M extends Mutability = 'i
 }
 
 type OmitReferenceObjectFields<Ts extends Types> = {
-  [K in { [FK in keyof Ts]: HasReferenceWrapper<Ts[FK]> extends true ? never : FK }[keyof Ts]]: Ts[K]
+  [K in { [FK in keyof Ts]: IsReference<Ts[FK]> extends true ? never : FK }[keyof Ts]]: Ts[K]
 }
 
 /**
@@ -1080,7 +1099,7 @@ export function partial<const Ts extends Types, M extends Mutability = 'immutabl
 }
 
 type PartialObjectFields<Ts extends Types> = {
-  [K in keyof Ts]: HasOptionalWrapper<Ts[K]> extends true ? Ts[K] : OptionalType<Ts[K]>
+  [K in keyof Ts]: IsReference<Ts[K]> extends true ? Ts[K] : OptionalType<Ts[K]>
 }
 
 /**
@@ -1503,4 +1522,12 @@ function hasWrapper(type: Type, kind: 'optional' | 'nullable' | 'reference'): bo
   const typeKind = concreteType.kind
   const isWrapperType = typeKind === 'optional' || typeKind === 'nullable' || typeKind === 'reference'
   return typeKind === kind || (isWrapperType && hasWrapper(concreteType.wrappedType, kind))
+}
+
+/**
+ * @param type the type to check
+ * @returns true if the type is an optional type
+ */
+export function isOptional(type: Type): type is Lazy<OptionalType<Type>> {
+  return hasWrapper(type, 'optional')
 }

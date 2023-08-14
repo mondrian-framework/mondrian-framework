@@ -1,5 +1,5 @@
 import { projection, result, types } from './index'
-import { PartialDeep, assertNever } from './utils'
+import { always, assertNever, filterMapObject } from './utils'
 
 /**
  * This is the type of a projection: it is either the literal value `true` or an object
@@ -149,27 +149,77 @@ export function subProjection<P extends Projection, S extends Selector<P>>(
 export function respectsProjection<T extends types.Type>(
   type: T,
   projection: projection.FromType<T>,
-  value: PartialDeep<types.Infer<T>>,
+  value: types.InferPartial<T>,
 ): result.Result<true, undefined> {
   const concreteType = types.concretise(type)
   const kind = concreteType.kind
-  if (kind === "boolean" || kind === "enum" || kind === "literal" || kind === "number" || kind === "string" || kind === "custom") {
+  if (
+    kind === 'boolean' ||
+    kind === 'enum' ||
+    kind === 'literal' ||
+    kind === 'number' ||
+    kind === 'string' ||
+    kind === 'custom'
+  ) {
     // The projection for these types is never so it's always right
-    return result.ok(true)
-  } else if (kind === "reference") {
-    return respectsProjection(concreteType.wrappedType, projection, value)
-  } else if (kind === "nullable") {
-    return value === null ? result.ok(true) : respectsProjection(concreteType.wrappedType, projection, value)
-  } else if (kind === "optional") {
-    return value === undefined ? result.ok(true) : respectsProjection(concreteType.wrappedType, projection, value)
-  } else if (kind === "union") {
-    throw "a"
-  } else if (kind === "object") {
-    throw "a"
-  } else if (kind === "array") {
-    throw "a"
+    return value === undefined ? result.fail(undefined) : result.ok(true)
+  } else if (kind === 'reference') {
+    return respectsProjection(concreteType.wrappedType, projection as any, value as any)
+  } else if (kind === 'nullable') {
+    return value === null
+      ? result.ok(true)
+      : respectsProjection(concreteType.wrappedType, projection as any, value as any)
+  } else if (kind === 'optional') {
+    return value === undefined
+      ? result.ok(true)
+      : respectsProjection(concreteType.wrappedType, projection as any, value as any)
+  } else if (kind === 'union') {
+    // ⚠️ possible pain point: this pattern matching should never fail if Infer works correctly and rejects
+    // invalid types; however, this is a possible point where the program could crash if we have a bug or
+    // someone is skipping the type system's checks
+    // TODO: this could be factored out in a function that gets the only variant name from the object and fails with
+    //       an internal error otherwise so it would be clearer the source of the bug
+    const [[variantName, variantValue]] = Object.entries(value as any)
+    const variantProjection = subProjection(projection, [variantName] as any)
+    const variantType = concreteType.variants[variantName]
+    return respectsProjection(variantType, variantProjection, variantValue as any)
+    // TODO: enrich errors
+  } else if (kind === 'object') {
+    const requiredFields = getRequiredFields(concreteType, projection)
+    const results = Object.entries(requiredFields).map(([fieldName, fieldType]) => {
+      const object = value as Record<string, any>
+      const fieldValue = object[fieldName]
+      if (fieldValue === undefined) {
+        return result.fail(undefined)
+      } else {
+        const fieldProjection = subProjection(projection, [fieldName] as any)
+        return respectsProjection(fieldType, fieldProjection, fieldValue as never)
+      }
+    })
+    return result.reduce(results, true, undefined, always(true), always(undefined))
+  } else if (kind === 'array') {
+    const wrappedType = concreteType.wrappedType
+    const values = value as any[]
+    const results = values.map((item) => respectsProjection(wrappedType, projection as any, item))
+    return result.reduce(results, true, undefined, always(true), always(undefined))
+    // TODO: enrich errors
   } else {
-    assertNever(kind, "a")
+    assertNever(kind, 'a')
+  }
+}
+
+function getRequiredFields(type: types.ObjectType<any, types.Types>, projection: Projection): types.Types {
+  if (projection === true) {
+    const dropOptionals = (_: string, fieldType: types.Type) => (types.isOptional(fieldType) ? undefined : fieldType)
+    return filterMapObject(type.fields, dropOptionals)
+  } else {
+    return filterMapObject(projection, (fieldName, selection) => {
+      const fieldType = type.fields[fieldName]
+      const isFieldRequiredByProjection = selection !== undefined
+      const isFieldRequiredByType = !types.isOptional(fieldType)
+      const isFieldRequired = isFieldRequiredByProjection && isFieldRequiredByType
+      return isFieldRequired ? fieldType : undefined
+    })
   }
 }
 
@@ -207,7 +257,6 @@ export function respectsProjection<T extends types.Type>(
 // *          // -> true | { field1?: true, field2?: true }
 // *          ```
 // */
-// prettier-ignore
 //export type FromType<T extends types.Type>
 //  = [T] extends [types.NumberType] ? types.LiteralType<true>
 //  : [T] extends [types.StringType] ? types.LiteralType<true>
@@ -279,7 +328,6 @@ export function respectsProjection<T extends types.Type>(
 ///**
 // * TODO: add doc
 // */
-// prettier-ignore
 //export type ProjectedType<T extends types.Type, P extends projection.Infer<T>>
 //  = [P] extends [true] ? T
 //  // If P is an object but we have primitive types we cannot perform the projection

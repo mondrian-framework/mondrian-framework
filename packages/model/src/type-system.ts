@@ -308,7 +308,7 @@ export type UnionTypeOptions = BaseOptions
 export type ObjectType<M extends Mutability, Ts extends Types> = {
   readonly kind: 'object'
   readonly mutability: M
-  readonly types: Ts
+  readonly fields: Ts
   readonly options?: ObjectTypeOptions
 
   immutable(): ObjectType<'immutable', Ts>
@@ -808,19 +808,19 @@ export function union<Ts extends Types>(variants: Ts, options?: OptionsOf<UnionT
  *          ```
  */
 export function object<Ts extends Types>(
-  types: Ts,
+  fields: Ts,
   options?: OptionsOf<ObjectType<'immutable', Ts>>,
 ): ObjectType<'immutable', Ts> {
   return {
     kind: 'object',
     mutability: 'immutable',
-    types,
+    fields,
     options,
     immutable() {
       return this
     },
     mutable() {
-      return mutableObject(types, options)
+      return mutableObject(fields, options)
     },
     optional() {
       return optional(this)
@@ -855,16 +855,16 @@ export function object<Ts extends Types>(
  * @returns an {@link ObjectType `ObjectType`} with the provided `values` and `options`
  */
 export function mutableObject<Ts extends Types>(
-  types: Ts,
+  fields: Ts,
   options?: OptionsOf<ObjectType<'mutable', Ts>>,
 ): ObjectType<'mutable', Ts> {
   return {
     kind: 'object',
     mutability: 'mutable',
-    types,
+    fields,
     options,
     immutable() {
-      return object(types, options)
+      return object(fields, options)
     },
     mutable() {
       return this
@@ -926,7 +926,7 @@ export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability
     return () =>
       merge(concretise(one) as ObjectType<any, Ts1>, concretise(other) as ObjectType<any, Ts2>, mutable, options)()
   }
-  const mergedFields = { ...one.types, ...other.types }
+  const mergedFields = { ...one.fields, ...other.fields }
   const constructor = mutable === 'mutable' ? mutableObject : object
   return () => constructor(mergedFields, options) as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
 }
@@ -966,7 +966,7 @@ export function pick<
   if (typeof obj === 'function') {
     return () => pick(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
-  const pickedFields = filterMapObject(obj.types, (k, t) => (k in fields && fields[k] === true ? t : undefined))
+  const pickedFields = filterMapObject(obj.fields, (k, t) => (k in fields && fields[k] === true ? t : undefined))
   const constructor = mutable === 'mutable' ? mutableObject : object
   return () => constructor(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
 }
@@ -1006,7 +1006,7 @@ export function omit<
   if (typeof obj === 'function') {
     return () => omit(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
-  const pickedFields = filterMapObject(obj.types, (k, t) => (!(k in fields) || fields[k] !== true ? t : undefined))
+  const pickedFields = filterMapObject(obj.fields, (k, t) => (!(k in fields) || fields[k] !== true ? t : undefined))
   const constructor = mutable === 'mutable' ? mutableObject : object
   return () => constructor(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
 }
@@ -1041,7 +1041,7 @@ export function omitReferences<const Ts extends Types, M extends Mutability = 'i
   if (typeof obj === 'function') {
     return () => omitReferences(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
-  const pickedFields = filterMapObject(obj.types, (_, t) => (hasWrapper(t, 'reference') ? undefined : t))
+  const pickedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, 'reference') ? undefined : t))
   const constructor = mutable === 'mutable' ? mutableObject : object
   return () => constructor(pickedFields, options) as ObjectType<M, OmitReferenceObjectFields<Ts>>
 }
@@ -1074,7 +1074,7 @@ export function partial<const Ts extends Types, M extends Mutability = 'immutabl
   if (typeof obj === 'function') {
     return () => partial(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
-  const mappedFields = filterMapObject(obj.types, (_, t) => (hasWrapper(t, 'optional') ? t : optional(t)))
+  const mappedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, 'optional') ? t : optional(t)))
   const constructor = mutable === 'mutable' ? mutableObject : object
   return () => constructor(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
 }
@@ -1453,7 +1453,7 @@ export function areEqual<T extends Type>(one: T, other: T): boolean {
     || (type1.kind === 'nullable' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === 'optional' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === 'reference' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'object' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.types, type2.types))
+    || (type1.kind === 'object' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.fields, type2.fields))
     || (type1.kind === 'union' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
   )
 }

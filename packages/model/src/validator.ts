@@ -176,7 +176,7 @@ function validateObject<Ts extends types.Types>(
 ): validator.Result {
   const validationErrors: validator.Error[] = []
   for (const [fieldName, fieldValue] of Object.entries(value)) {
-    const validationResult = internalValidate(type.types[fieldName], fieldValue as never, options)
+    const validationResult = internalValidate(type.fields[fieldName], fieldValue as never, options)
     if (!validationResult.isOk) {
       validationErrors.push(...validationResult.error.map(prependFieldToPath(fieldName)))
       if (options.errorReportingStrategy === 'stopAtFirstError') {

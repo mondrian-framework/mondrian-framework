@@ -58,3 +58,9 @@ export function areSameArray<A>(one: A[], other: A[], compare: (one: A, other: A
 export function assertNever(_value: never, errorMessage: string): never {
   failWithInternalError(errorMessage)
 }
+
+/**
+ * Just like TypeScript's {@link Partial} type but recursivley applied to all of the
+ * object's fields.
+ */
+export type PartialDeep<T> = Partial<{ [Key in keyof T]: PartialDeep<T[Key]> }>

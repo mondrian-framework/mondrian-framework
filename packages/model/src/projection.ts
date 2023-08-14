@@ -1,5 +1,5 @@
-import { projection, types } from './index'
-import { failWithInternalError } from './utils'
+import { projection, result, types } from './index'
+import { PartialDeep, failWithInternalError } from './utils'
 
 /**
  * This is the type of a projection: it is either the literal value `true` or an object
@@ -66,18 +66,6 @@ export function depth(projection: Projection): number {
     const depths = innerProjections.map(depth)
     return 1 + Math.max(-1, ...depths)
   }
-}
-
-// TODO: add doc and instead of types.Infer it should be InferPartialDeep! For now this is just a mock
-//       in order not to stop development of other modules
-// TODO: this should return a result with the missing fields in the error case
-// tells if value is valid (meaning that it only has the fields allowed by the actual projection)
-export function respectsProjection<T extends types.Type>(
-  type: T,
-  projection: projection.FromType<T>,
-  value: types.Infer<T>,
-): boolean {
-  failWithInternalError('TODO: This is not implemented, if you catch this means we forgot an implementation :)')
 }
 
 /**
@@ -152,6 +140,18 @@ export function subProjection<P extends Projection, S extends Selector<P>>(
     }
   }
   return selected
+}
+
+// TODO: add doc and instead of types.Infer it should be InferPartialDeep! For now this is just a mock
+//       in order not to stop development of other modules
+// TODO: this should return a result with the missing fields in the error case
+// tells if value is valid (meaning that it only has the fields allowed by the actual projection)
+export function respectsProjection<T extends types.Type>(
+  type: T,
+  projection: projection.FromType<T>,
+  value: PartialDeep<types.Infer<T>>,
+): result.Result<true, undefined> {
+  failWithInternalError('TODO: This is not implemented, if you catch this means we forgot an implementation :)')
 }
 
 /*

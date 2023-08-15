@@ -95,7 +95,7 @@ export type InferPartial<T extends Type>
   : [T] extends [NullableType<infer T1>] ? null | InferPartial<T1>
   : [T] extends [ReferenceType<infer T1>] ? InferPartial<T1>
   : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
-  : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? InferPartial<T1>
   : never
 
 /**

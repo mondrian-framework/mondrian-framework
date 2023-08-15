@@ -387,12 +387,15 @@ function singleKeyFromObject(object: object): string | undefined {
 }
 
 function decodeObject(type: types.ObjectType<any, any>, value: unknown, options: Options): decoder.Result<any> {
-  return castToObject(value).chain((object) => decodeObjectProperties(type, object, options))
+  return castToObject(value, options).chain((object) => decodeObjectProperties(type, object, options))
 }
 
-function castToObject(value: unknown): decoder.Result<Record<string, unknown>> {
+function castToObject(value: unknown, options: Options): decoder.Result<Record<string, unknown>> {
   if (typeof value === 'object') {
-    return decoder.succeed((value === null ? {} : value) as Record<string, unknown>)
+    if (value === null && options.typeCastingStrategy === 'expectExactTypes') {
+      return decoder.fail('object', null)
+    }
+    return decoder.succeed((value ?? {}) as Record<string, unknown>)
   } else {
     return decoder.fail('object', value)
   }

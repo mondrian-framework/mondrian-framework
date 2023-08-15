@@ -430,6 +430,18 @@ describe('decoder.decodeWithoutValidation', () => {
       checkError(result, expectedError)
     })
 
+    test('fail when null is given istead of an empty object', () => {
+      const object = null
+      const result = decoder.decodeWithoutValidation(types.object({}), object)
+      const expectedError = [{ expected: 'object', got: null, path: path.empty() }]
+      checkError(result, expectedError)
+    })
+
+    test('works when null is given istead of an empty object while casting', () => {
+      const object = null
+      checkValue(decoder.decodeWithoutValidation(types.object({}), object, { typeCastingStrategy: 'tryCasting' }), {})
+    })
+
     test('works when non required field is missing', () => {
       const object = { field1: 1 }
       checkValue(decoder.decodeWithoutValidation(model, object), object)
@@ -443,7 +455,7 @@ describe('decoder.decodeWithoutValidation', () => {
     })
 
     test('treats null as an empty object', () => {
-      const result = decoder.decodeWithoutValidation(model, null)
+      const result = decoder.decodeWithoutValidation(model, null, { typeCastingStrategy: 'tryCasting' })
       const expectedError = [{ expected: 'number', got: undefined, path: path.empty().prependField('field1') }]
       checkError(result, expectedError)
     })

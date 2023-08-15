@@ -2,16 +2,9 @@ import { Function, Functions } from './function'
 import { Logger } from './log'
 import { projection, types } from '@mondrian-framework/model'
 
-//TODO: factorize UnionToIntersection to utils package
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
-type ContextType<F extends Functions> = UnionToIntersection<
-  {
-    [K in keyof F]: F[K] extends Function<any, any, infer Context> ? Context : never
-  }[keyof F]
->
-
-type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
-
+/**
+ * The Mondrian module type.
+ */
 export type Module<Fs extends Functions, ContextInput = unknown> = {
   name: string
   version: string
@@ -32,13 +25,45 @@ export type Module<Fs extends Functions, ContextInput = unknown> = {
   options?: ModuleOptions
 }
 
+/**
+ * Mondrian module options.
+ */
 export type ModuleOptions = {
   checks?: {
+    /**
+     * Checks (at runtime) if the output value of any function is valid.
+     * It also checks if the projection is respected.
+     * Default is 'throw'.
+     * With 'ignore' the check is skipped (could be usefull in production environment in order to improve performance)
+     */
     output?: 'ignore' | 'log' | 'throw'
+    /**
+     * Maximum projection depth allowed. If the requested projection is deeper an error is thrown.
+     */
     maxProjectionDepth?: number
   }
 }
 
+//TODO: factorize UnionToIntersection to utils package
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
+
+/**
+ * Intersection of all function's Contexts.
+ */
+type ContextType<F extends Functions> = UnionToIntersection<
+  {
+    [K in keyof F]: F[K] extends Function<any, any, infer Context> ? Context : never
+  }[keyof F]
+>
+
+/**
+ * TODO
+ */
+type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
+
+/**
+ * Checks for name collisions.
+ */
 function assertUniqueNames(functions: Functions) {
   function gatherTypes(ts: types.Type[], explored?: Set<types.Type>): types.Type[] {
     explored = explored ?? new Set<types.Type>()
@@ -59,7 +84,6 @@ function assertUniqueNames(functions: Functions) {
     return [...explored.values()]
   }
 
-  //check for double type names
   const allTypes = gatherTypes(Object.values(functions).flatMap((f) => [f.input, f.output]))
   const allNames = allTypes
     .map((t) => types.concretise(t).options?.name)
@@ -71,6 +95,9 @@ function assertUniqueNames(functions: Functions) {
   }
 }
 
+/**
+ * Implementation of {@link ModuleBuilder}.
+ */
 class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
   private module: Partial<Module<Fs, ContextInput>>
   constructor(module: Partial<Module<Fs, ContextInput>>) {
@@ -92,32 +119,36 @@ class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
         const f: Function<types.Type, types.Type, unknown> = {
           ...functionBody,
           async apply(args) {
-            //PROJECTION DEPTH
+            //check projection depth
             if (maxProjectionDepth != null) {
-              //TODO: wait for implementation change
-              /*const depth = projection.depth(args.projection)
+              const depth = projection.depth(args.projection ?? true)
               if (depth > maxProjectionDepth) {
-                throw new Error(`Max projection depth reached: ${depth}`)
-              }*/
+                throw new Error(
+                  `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxProjectionDepth}.`,
+                )
+              }
             }
 
+            //function call
             const result = await functionBody.apply(args)
 
-            //OUTPUT CHECK
+            //check result value
             if (outputTypeCheck !== 'ignore') {
-              //TODO: use projection.respectsProjection and the custom validate of partial deep
-              /*const projectedType = projection.projectedType(functionBody.output, args.projection)
-              const isCheck = decoder.decode(projectedType as types.Type, result, {
-                typeCastingStrategy: 'expectExactTypes',
-              })
-              if (!isCheck.isOk) {
-                const m = JSON.stringify({ projection: args.projection, errors: isCheck.error })
+              //TODO: should also validator.validate
+              const projectionRespectedResult = projection.respectsProjection(
+                functionBody.output,
+                args.projection ?? true,
+                result,
+              )
+              if (!projectionRespectedResult.isOk) {
+                //TODO: prettify error?
+                const m = JSON.stringify({ projection: args.projection, errors: projectionRespectedResult.error })
                 if (outputTypeCheck === 'log') {
                   args.log(`Invalid output: ${m}`, 'error')
                 } else {
                   throw new Error(`Invalid output: ${m}`)
                 }
-              }*/
+              }
             }
             return result
           },
@@ -171,6 +202,9 @@ class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
   }
 }
 
+/**
+ * Module builder type.
+ */
 type ModuleBuilder<Fs extends Functions, ContextInput, O extends string> = Omit<
   {
     build(): Module<Fs, ContextInput>
@@ -190,4 +224,21 @@ type ModuleBuilder<Fs extends Functions, ContextInput, O extends string> = Omit<
   O
 >
 
+/**
+ * The module builder singleton. It's used to build any Mondrian module.
+ *
+ * Example:
+ * ```typescript
+ * import { types } from '@mondrian-framework/model'
+ * import { module } from '@mondrian-framework/module'
+ *
+ * const myModule = module
+ *   .name("MyModule")
+ *   .version("0.0.1")
+ *   .options({ checks: { maxProjectionDepth: 5 } })
+ *   .functions({ login: loginFunction })
+ *   .context(() => async ({}))
+ *   .build()
+ * ```
+ */
 export const builder: ModuleBuilder<{}, unknown, 'functionsOptions' | 'context' | 'build'> = new ModuleBuilderImpl({})

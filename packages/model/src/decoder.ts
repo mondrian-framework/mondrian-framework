@@ -63,11 +63,10 @@ export function decodeWithoutValidation<T extends types.Type>(
 /**
  * TODO: add doc
  */
-export type Error = {
+export type Error = path.WithPath<{
   expected: string
   got: unknown
-  path: path.Path
-}
+}>
 
 /**
  * Utility function to add a new expected type to the `expected` field of a `decoder.Error`.
@@ -77,27 +76,6 @@ function addExpected(otherExpected: string): (error: decoder.Error) => decoder.E
     ...error,
     expected: `${error.expected} or ${otherExpected}`,
   })
-}
-
-/**
- * Utility function to prepend a prefix to the path of a `decoder.Error`.
- */
-function prependFieldToPath(fieldName: string): (error: decoder.Error) => decoder.Error {
-  return (error: decoder.Error) => ({ ...error, path: error.path.prependField(fieldName) })
-}
-
-/**
- * Utility function to prepend an index to the path of a `decoder.Error`.
- */
-function prependIndexToPath(index: number): (error: decoder.Error) => decoder.Error {
-  return (error: decoder.Error) => ({ ...error, path: error.path.prependIndex(index) })
-}
-
-/**
- * Utility function to prepend a variant to the path of a `decoder.Error`.
- */
-function prependVariantToPath(variantName: string): (error: decoder.Error) => decoder.Error {
-  return (error: decoder.Error) => ({ ...error, path: error.path.prependVariant(variantName) })
 }
 
 /**
@@ -302,7 +280,7 @@ function decodeArrayValues(type: types.ArrayType<any, any>, array: unknown[], op
     if (decodedItem.isOk) {
       decodedValues.push(decodedItem.value)
     } else {
-      decodingErrors.push(...decodedItem.error.map(prependIndexToPath(i)))
+      decodingErrors.push(...decodedItem.error.map((error) => path.prependIndex(error, i)))
       if (options.errorReportingStrategy === 'stopAtFirstError') {
         break
       }
@@ -370,7 +348,7 @@ function decodeUnion(type: types.UnionType<any>, value: unknown, options: Option
       const decodingResult = unsafeDecode(type.variants[variantName], object[variantName], options)
       return decodingResult
         .map((value) => Object.fromEntries([[variantName, value]]))
-        .mapError((errors) => errors.map(prependVariantToPath(variantName)))
+        .mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
     }
   }
   const prettyVariants = Object.keys(type.variants).join(' | ')
@@ -415,7 +393,7 @@ function decodeObjectProperties(
         decodedObject[fieldName] = decodedField.value
       }
     } else {
-      decodingErrors.push(...decodedField.error.map(prependFieldToPath(fieldName)))
+      decodingErrors.push(...decodedField.error.map((error) => path.prependField(error, fieldName)))
       if (options.errorReportingStrategy === 'stopAtFirstError') {
         break
       }

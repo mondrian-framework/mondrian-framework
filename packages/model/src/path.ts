@@ -76,3 +76,32 @@ function fragmentToSeparator(lookahead: Fragment): string {
       return '.'
   }
 }
+
+export type WithPath<Data extends Record<string, any>> = Data & { path: Path }
+
+/**
+ * Utility function to prepend a prefix to the path of a `decoder.Error`.
+ */
+export function prependField<Data extends Record<string, any>, T extends WithPath<Data>>(
+  value: T,
+  fieldName: string,
+): T {
+  return { ...value, path: value.path.prependField(fieldName) }
+}
+
+/**
+ * Utility function to prepend an index to the path of a `decoder.Error`.
+ */
+export function prependIndex<Data extends Record<string, any>, T extends WithPath<Data>>(value: T, index: number): T {
+  return { ...value, path: value.path.prependIndex(index) }
+}
+
+/**
+ * Utility function to prepend a variant to the path of a `decoder.Error`.
+ */
+export function prependVariant<Data extends Record<string, any>, T extends WithPath<Data>>(
+  value: T,
+  variantName: string,
+): T {
+  return { ...value, path: value.path.prependVariant(variantName) }
+}

@@ -18,32 +18,10 @@ export type Result = result.Result<true, Error[]>
 /**
  * TODO: add doc
  */
-export type Error = {
+export type Error = path.WithPath<{
   assertion: string
   got: unknown
-  path: path.Path
-}
-
-/**
- * Utility function to prepend a prefix to the path of a `validator.Error`.
- */
-function prependFieldToPath(fieldName: string): (error: Error) => Error {
-  return (error: Error) => ({ ...error, path: error.path.prependField(fieldName) })
-}
-
-/**
- * Utility function to prepend an index to the path of a `validator.Error`.
- */
-function prependIndexToPath(index: number): (error: Error) => Error {
-  return (error: Error) => ({ ...error, path: error.path.prependIndex(index) })
-}
-
-/**
- * Utility function to prepend a variant to the path of a `validator.Error`.
- */
-function prependVariantToPath(variantName: string): (error: Error) => Error {
-  return (error: Error) => ({ ...error, path: error.path.prependVariant(variantName) })
-}
+}>
 
 /**
  * The value returned by a succeeding validation process.
@@ -178,7 +156,7 @@ function validateObject<Ts extends types.Types>(
   for (const [fieldName, fieldValue] of Object.entries(value)) {
     const validationResult = internalValidate(type.fields[fieldName], fieldValue as never, options)
     if (!validationResult.isOk) {
-      validationErrors.push(...validationResult.error.map(prependFieldToPath(fieldName)))
+      validationErrors.push(...validationResult.error.map((error) => path.prependField(error, fieldName)))
       if (options.errorReportingStrategy === 'stopAtFirstError') {
         break
       }
@@ -245,7 +223,7 @@ function validateArrayElements<T extends types.Type>(
   for (let i = 0; i < value.length; i++) {
     const validationResult = internalValidate(type.wrappedType, value[i], options)
     if (!validationResult.isOk) {
-      validationErrors.push(...validationResult.error.map(prependIndexToPath(i)))
+      validationErrors.push(...validationResult.error.map((error) => path.prependIndex(error, i)))
       if (options.errorReportingStrategy === 'stopAtFirstError') {
         break
       }
@@ -278,7 +256,7 @@ function validateUnion<Ts extends types.Types>(
       failWithInternalError(failureMessage)
     } else {
       const result = internalValidate(variantType, variant[variantName] as never, options)
-      return result.mapError((errors) => errors.map(prependVariantToPath(variantName)))
+      return result.mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
     }
   }
 }

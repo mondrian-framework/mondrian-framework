@@ -9,10 +9,8 @@ import { projection, types } from '@mondrian-framework/model'
 export type Module<Fs extends Functions, ContextInput = unknown> = {
   name: string
   version: string
-  functions: {
-    definitions: Fs
-    options?: { [K in keyof Fs]?: { authentication?: AuthenticationMethod | 'NONE' } }
-  }
+  functions: Fs
+  functinoOptions?: { [K in keyof Fs]?: { authentication?: AuthenticationMethod | 'NONE' } }
   authentication?: AuthenticationMethod
   context: (
     input: ContextInput,
@@ -106,10 +104,15 @@ function assertUniqueNames(functions: Functions) {
  */
 class ModuleBuilder {
   constructor() {}
+
+  /**
+   * Builds a mondrian module
+   * @returns The builded mondrian Module.
+   */
   public build<const Fs extends Functions, const ContextInput>(
     module: Module<Fs, ContextInput>,
   ): Module<Fs, ContextInput> {
-    assertUniqueNames(module.functions.definitions)
+    assertUniqueNames(module.functions)
     const outputTypeCheck = module.options?.checks?.output ?? 'throw'
     const maxProjectionDepth = module.options?.checks?.maxProjectionDepth
     const maxDepthMiddleware: BeforeMiddleware<types.Type, types.Type, {}> = {
@@ -147,7 +150,7 @@ class ModuleBuilder {
       },
     }
     const wrappedFunctions = Object.fromEntries(
-      Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
+      Object.entries(module.functions).map(([functionName, functionBody]) => {
         const wrappedFunction = func.build({
           ...functionBody,
           before: [maxDepthMiddleware],
@@ -155,11 +158,8 @@ class ModuleBuilder {
         })
         return [functionName, wrappedFunction]
       }),
-    )
-    return {
-      ...module,
-      functions: { definitions: wrappedFunctions as Fs, options: module.functions.options },
-    }
+    ) as Fs
+    return { ...module, functions: wrappedFunctions }
   }
 }
 

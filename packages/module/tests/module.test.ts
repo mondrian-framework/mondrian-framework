@@ -104,7 +104,7 @@ test('Whole module', async () => {
     name: 'test',
     version: '1.0.0',
     options: { checks: { maxProjectionDepth: 2 } },
-    functions: { definitions: { login, register, completeProfile } },
+    functions: { login, register, completeProfile },
     context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
       if (authorization != null) {
         //dummy auth
@@ -174,7 +174,7 @@ describe('Unique type name', () => {
       module.build({
         name: 'test',
         version: '1.0.0',
-        functions: { definitions: { f } },
+        functions: { f },
         context: async () => ({}),
       }),
     ).toThrowError(`Duplicated type name "Input"`)

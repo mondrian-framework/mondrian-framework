@@ -41,7 +41,7 @@ class SdkBuilder<const Metadata> {
   }): Sdk<Fs, Metadata> {
     const defaultLogger = logger.context({ moduleName: module.name, server: 'LOCAL' })
     const functions = Object.fromEntries(
-      Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
+      Object.entries(module.functions).map(([functionName, functionBody]) => {
         const wrapper = async (
           input: any,
           options?: {

@@ -11,6 +11,9 @@ export type Function<I extends types.Type, O extends types.Type, Context extends
   options?: { namespace?: string; description?: string }
 }
 
+/**
+ * Arguments of a function call.
+ */
 export type FunctionArguments<I extends types.Type, O extends types.Type, Context> = {
   input: types.Infer<I>
   projection: projection.FromType<O> | undefined
@@ -19,6 +22,10 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
   log: Logger
 }
 
+/**
+ * 'Before' function's middleware. Applied before calling the {@link Function}'s apply.
+ * Usefull for trasforming the {@link FunctionArguments} of a function.
+ */
 export type BeforeMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
   name?: string
   apply: (args: {
@@ -27,6 +34,10 @@ export type BeforeMiddleware<I extends types.Type, O extends types.Type, Context
   }) => FunctionArguments<I, O, Context> | Promise<FunctionArguments<I, O, Context>>
 }
 
+/**
+ * 'After' function's middleware. Applied after calling the {@link Function}'s apply.
+ * Usefull for trasforming the {@link Function} apply result.
+ */
 export type AfterMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
   name?: string
   apply: (args: {
@@ -48,10 +59,19 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
  */
 class FunctionBuilder<const Context extends Record<string, unknown>> {
   constructor() {}
+
+  /**
+   * Assigns the Context type of the function that are being building.
+   * @returns
+   */
   public withContext<const Context extends Record<string, unknown>>(): FunctionBuilder<Context> {
     return new FunctionBuilder()
   }
 
+  /**
+   * Builds a Mondrian function.
+   * @returns A Mondrian function with the applied middlewares.
+   */
   public build<const I extends types.Type, const O extends types.Type>({
     before,
     after,

@@ -23,42 +23,25 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type, Me
   },
 ) => Promise<any> //TODO: Promise<projection.Project<OutputType, Exclude<P, undefined>>>
 
-class SdkBuilderImpl<const F extends Functions, const ContextInput, const Metadata> {
+class SdkBuilder<const Metadata> {
   private _metadata?: Metadata
-  private _module?: Module<F, ContextInput>
-  private _context?: (args: { metadata?: Metadata }) => Promise<ContextInput>
 
-  constructor(
-    module?: Module<F, ContextInput>,
-    context?: (args: { metadata?: Metadata }) => Promise<ContextInput>,
-    metadata?: Metadata,
-  ) {
-    this._module = module
-    this._context = context
+  constructor(metadata?: Metadata) {
     this._metadata = metadata
   }
-  public module<const F extends Functions, const ContextInput>(
-    m?: Module<F, ContextInput>,
-  ): SdkBuilderImpl<F, ContextInput, Metadata> {
-    return new SdkBuilderImpl(m, undefined, this._metadata)
+  public withMetadata<const Metadata>(metadata?: Metadata): SdkBuilder<Metadata> {
+    return new SdkBuilder(metadata)
   }
-  public metadata<const Metadata>(metadata?: Metadata): SdkBuilderImpl<F, ContextInput, Metadata> {
-    return new SdkBuilderImpl(this._module, undefined, metadata)
-  }
-  public context(
-    context?: (args: { metadata?: Metadata }) => Promise<ContextInput>,
-  ): SdkBuilderImpl<F, ContextInput, Metadata> {
-    return new SdkBuilderImpl(this._module, context, this._metadata)
-  }
-  public build(): Sdk<F, Metadata> {
-    const m = this._module
-    const context = this._context
-    if (!m || !context) {
-      throw new Error(`You need to use '.module' and '.context' before`)
-    }
-    const defaultLogger = logger.context({ moduleName: m.name, server: 'LOCAL' })
+  public build<const Fs extends Functions, ContextInput>({
+    module,
+    context,
+  }: {
+    module: Module<Fs, ContextInput>
+    context: (args: { metadata?: Metadata }) => Promise<ContextInput>
+  }): Sdk<Fs, Metadata> {
+    const defaultLogger = logger.context({ moduleName: module.name, server: 'LOCAL' })
     const functions = Object.fromEntries(
-      Object.entries(m.functions.definitions).map(([functionName, functionBody]) => {
+      Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
         const wrapper = async (
           input: any,
           options?: {
@@ -70,7 +53,7 @@ class SdkBuilderImpl<const F extends Functions, const ContextInput, const Metada
           const log = defaultLogger.context({ operationId, operationName: functionName }).build()
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this._metadata })
-            const ctx = await m.context(contextInput, { input, projection: options?.projection, operationId, log })
+            const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
             const result = await functionBody.apply({
               input: input as never, //TODO: types.Infer<types.Type> should infer unknown
               projection: options?.projection as never, //TODO: projection.FromType<types.Type> should infer Projection
@@ -89,26 +72,10 @@ class SdkBuilderImpl<const F extends Functions, const ContextInput, const Metada
       }),
     )
     return {
-      functions: functions as unknown as SdkFunctions<F, Metadata>,
-      withMetadata: (metadata) => builder.metadata(metadata).module(m).context(context).build(),
+      functions: functions as unknown as SdkFunctions<Fs, Metadata>,
+      withMetadata: (metadata) => builder.withMetadata(metadata).build({ module, context }),
     }
   }
 }
 
-type SdkBuilder<F extends Functions, ContextInput, Metadata, Excluded extends string> = Omit<
-  {
-    module<const F extends Functions, ContextInput>(
-      module: Module<F, ContextInput>,
-    ): SdkBuilder<F, ContextInput, Metadata, Exclude<Excluded | 'module', 'context'>>
-    metadata<const Metadata>(
-      metadata?: Metadata,
-    ): SdkBuilder<F, ContextInput, Metadata, Exclude<Excluded | 'build', 'context'>>
-    context(
-      context: (args: { metadata?: Metadata }) => Promise<ContextInput>,
-    ): SdkBuilder<F, ContextInput, Metadata, Exclude<Excluded, 'build'>>
-    build(): Sdk<F, Metadata>
-  },
-  Excluded
->
-
-export const builder: SdkBuilder<{}, unknown, unknown, 'build' | 'context'> = new SdkBuilderImpl()
+export const builder: SdkBuilder<unknown> = new SdkBuilder()

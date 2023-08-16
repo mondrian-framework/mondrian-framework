@@ -1,16 +1,6 @@
 import { ErrorHandler, RestFunctionSpecs, RestRequest } from './api'
 import { getInputExtractor } from './openapi'
-import {
-  GenericProjection,
-  Result,
-  decode,
-  decodeAndValidate,
-  encode,
-  getProjectedType,
-  getProjectionType,
-  getRequiredProjection,
-  mergeProjections,
-} from '@mondrian-framework/model'
+import { decoder, projection } from '@mondrian-framework/model'
 import { Functions, GenericFunction, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
 
 export function generateRestRequestHandler<ServerContext, ContextInput>({
@@ -36,7 +26,7 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
   const inputExtractor = getInputExtractor({ functionBody, module, specification })
-  const projectionType = getProjectionType(functionBody.output)
+  const projectionType = projection.fromType(functionBody.output)
 
   return async ({ request, serverContext }) => {
     const startDate = new Date()
@@ -62,15 +52,15 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
     const projectionHeader = request.headers['projection']
     const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
     const decoded = specification.openapi
-      ? decodeAndValidate(functionBody.input, input, { cast: true })
-      : Result.firstOf2(
-          () => decodeAndValidate(functionBody.input, input, { cast: true }),
-          () =>
-            decodeAndValidate(functionBody.input, request.query[specification.inputName ?? 'input'], { cast: true }),
+      ? decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' })
+      : decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' }).lazyOr(() =>
+          decoder.decode(functionBody.input, request.query[specification.inputName ?? 'input'], {
+            typeCastingStrategy: 'tryCasting',
+          }),
         )
-    if (!decoded.success) {
+    if (!decoded.isOk) {
       log('Bad request.')
-      return { status: 400, body: { errors: decoded.errors }, headers }
+      return { status: 400, body: { errors: decoded.error }, headers }
     }
     const projection =
       projectionObject != null ? decode(projectionType, projectionObject, { cast: true, strict: true }) : undefined

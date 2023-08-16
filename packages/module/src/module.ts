@@ -1,5 +1,5 @@
 import { func } from '.'
-import { Function, Functions } from './function'
+import { AfterMiddleware, BeforeMiddleware, Function, Functions } from './function'
 import { Logger } from './log'
 import { projection, types } from '@mondrian-framework/model'
 
@@ -74,11 +74,16 @@ function assertUniqueNames(functions: Functions) {
       }
       explored.add(type)
       const t = types.concretise(type)
-      if (t.kind === 'array' || t.kind === 'nullable' || t.kind === 'optional' || t.kind === 'reference') {
+      if (
+        t.kind === types.Kind.Array ||
+        t.kind === types.Kind.Nullable ||
+        t.kind === types.Kind.Optional ||
+        t.kind === types.Kind.Reference
+      ) {
         gatherTypes([t.wrappedType], explored)
-      } else if (t.kind === 'object') {
+      } else if (t.kind === types.Kind.Object) {
         gatherTypes(Object.values(t.fields), explored)
-      } else if (t.kind === 'union') {
+      } else if (t.kind === types.Kind.Union) {
         gatherTypes(Object.values(t.variants), explored)
       }
     }
@@ -97,26 +102,19 @@ function assertUniqueNames(functions: Functions) {
 }
 
 /**
- * Implementation of {@link ModuleBuilder}.
+ * Module builder.
  */
-class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
-  private module: Partial<Module<Fs, ContextInput>>
-  constructor(module: Partial<Module<Fs, ContextInput>>) {
-    this.module = module
-  }
-  public build(): Module<Fs, ContextInput> {
-    const moduleName = this.module.name ?? 'default'
-    const moduleVersion = this.module.version ?? '0.0.0'
-    const moduleFunctions = this.module.functions
-    const moduleContext = this.module.context
-    if (!module || !moduleFunctions || !moduleContext) {
-      throw new Error(`You need to use '.functions' and '.context' before building a module`)
-    }
-    assertUniqueNames(moduleFunctions.definitions)
-    const outputTypeCheck = this.module.options?.checks?.output ?? 'throw'
-    const maxProjectionDepth = this.module.options?.checks?.maxProjectionDepth
-    const wrapperBuilder = func
-      .before(({ args }) => {
+class ModuleBuilder {
+  constructor() {}
+  public build<const Fs extends Functions, const ContextInput>(
+    module: Module<Fs, ContextInput>,
+  ): Module<Fs, ContextInput> {
+    assertUniqueNames(module.functions.definitions)
+    const outputTypeCheck = module.options?.checks?.output ?? 'throw'
+    const maxProjectionDepth = module.options?.checks?.maxProjectionDepth
+    const maxDepthMiddleware: BeforeMiddleware<types.Type, types.Type, {}> = {
+      name: 'Check max projection depth',
+      apply: ({ args }) => {
         if (maxProjectionDepth != null) {
           const depth = projection.depth(args.projection ?? true)
           if (depth > maxProjectionDepth) {
@@ -126,9 +124,11 @@ class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
           }
         }
         return args
-      })
-      .after(({ args, result, thisFunction }) => {
-        //TODO: should also validator.validate
+      },
+    }
+    const outputCheckMiddleware: AfterMiddleware<types.Type, types.Type, {}> = {
+      name: 'Check output type',
+      apply: ({ args, thisFunction, result }) => {
         const projectionRespectedResult = projection.respectsProjection(
           thisFunction.output,
           args.projection ?? true,
@@ -144,85 +144,24 @@ class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
           }
         }
         return result
-      })
+      },
+    }
     const wrappedFunctions = Object.fromEntries(
-      Object.entries(moduleFunctions.definitions).map(([functionName, functionBody]) => {
-        const wrappedFunction = wrapperBuilder
-          .input(functionBody.input)
-          .output(functionBody.output)
-          .options(functionBody.options)
-          .body(functionBody.apply)
-          .build()
+      Object.entries(module.functions.definitions).map(([functionName, functionBody]) => {
+        const wrappedFunction = func.build({
+          ...functionBody,
+          before: [maxDepthMiddleware],
+          after: [outputCheckMiddleware],
+        })
         return [functionName, wrappedFunction]
       }),
     )
     return {
-      ...this.module,
-      functions: { definitions: wrappedFunctions as Fs, options: moduleFunctions.options },
-      name: moduleName,
-      version: moduleVersion,
-      context: moduleContext,
+      ...module,
+      functions: { definitions: wrappedFunctions as Fs, options: module.functions.options },
     }
-  }
-  public name(name: string): ModuleBuilderImpl<Fs, ContextInput> {
-    return new ModuleBuilderImpl({ ...this.module, name })
-  }
-  public version(version: string): ModuleBuilderImpl<Fs, ContextInput> {
-    return new ModuleBuilderImpl({ ...this.module, version })
-  }
-  public options(options: ModuleOptions): ModuleBuilderImpl<Fs, ContextInput> {
-    return new ModuleBuilderImpl({ ...this.module, options })
-  }
-  public context<const NewContextInput>(
-    context: Module<Fs, NewContextInput>['context'],
-  ): ModuleBuilderImpl<Fs, NewContextInput> {
-    const definitions = this.module.functions?.definitions
-    if (!definitions) {
-      throw new Error(`You need to use '.functions' before`)
-    }
-    return new ModuleBuilderImpl({ ...this.module, context })
-  }
-  public functions<const NewFs extends Functions>(
-    functions: Module<NewFs, ContextInput>['functions']['definitions'],
-  ): ModuleBuilderImpl<NewFs, ContextInput> {
-    return new ModuleBuilderImpl({
-      ...this.module,
-      functions: { definitions: functions },
-      context: undefined,
-    })
-  }
-  public functionsOptions(
-    options: Exclude<Module<Fs, ContextInput>['functions']['options'], undefined>,
-  ): ModuleBuilderImpl<Fs, ContextInput> {
-    const definitions = this.module.functions?.definitions
-    if (!definitions) {
-      throw new Error(`You need to use '.functions' before`)
-    }
-    return new ModuleBuilderImpl({ ...this.module, functions: { definitions, options } })
   }
 }
-
-/**
- * Module builder type.
- */
-type ModuleBuilder<Fs extends Functions, ContextInput, Excluded extends string> = Omit<
-  {
-    build(): Module<Fs, ContextInput>
-    name(name: string): ModuleBuilder<Fs, ContextInput, Excluded | 'name'>
-    version(version: string): ModuleBuilder<Fs, ContextInput, Excluded | 'version'>
-    options(options: ModuleOptions): ModuleBuilder<Fs, ContextInput, Excluded | 'options'>
-    context<const NewContextInput>(
-      context: Module<Fs, NewContextInput>['context'],
-    ): ModuleBuilder<Fs, NewContextInput, Exclude<Excluded | 'context', 'build'>>
-    functions<const NewFs extends Functions>(
-      functions: Module<NewFs, ContextInput>['functions']['definitions'],
-    ): ModuleBuilder<NewFs, ContextInput, Exclude<Excluded | 'functions', 'functionsOptions' | 'context'>>
-    functionsOptions(
-      options: Exclude<Module<Fs, ContextInput>['functions']['options'], undefined>,
-    ): ModuleBuilder<Fs, ContextInput, Excluded | 'functionsOptions'>
-  },
-  Excluded
->
 
 /**
  * The module builder singleton. It's used to build any Mondrian module.
@@ -233,12 +172,13 @@ type ModuleBuilder<Fs extends Functions, ContextInput, Excluded extends string> 
  * import { module } from '@mondrian-framework/module'
  *
  * const myModule = module
- *   .name("MyModule")
- *   .version("0.0.1")
- *   .options({ checks: { maxProjectionDepth: 5 } })
- *   .functions({ login: loginFunction })
- *   .context(() => async ({}))
- *   .build()
+ *   .build({
+ *     name: "MyModule",
+ *     version: "0.0.1",
+ *     options: { checks: { maxProjectionDepth: 5 } },
+ *     functions: { login: loginFunction },
+ *     context: async () => ({})
+ *   })
  * ```
  */
-export const builder: ModuleBuilder<{}, unknown, 'functionsOptions' | 'context' | 'build'> = new ModuleBuilderImpl({})
+export const builder: ModuleBuilder = new ModuleBuilder()

@@ -22,19 +22,11 @@ test('Whole module', async () => {
       updateUser(user: User): User
     }
   }
-  const authentication = func
-    .context<SharedContext & { from?: string }>()
-    .options({ namespace: 'authentication' })
-    .input(LoginInput)
-    .before(({ args }) => {
-      if (args.input.password === '123') {
-        throw new Error('Weak password')
-      }
-      return args
-    })
-  const login = authentication
-    .output(LoginOutput)
-    .body(async ({ input, context: { db }, log }) => {
+
+  const login = func.withContext<SharedContext & { from?: string }>().build({
+    input: LoginInput,
+    output: LoginOutput,
+    apply: async ({ input, context: { db }, log }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
         log(`Invalid email or password: ${input.email}`, 'warn')
@@ -42,17 +34,24 @@ test('Whole module', async () => {
       }
       log(`Logged in: ${input.email}`, 'log')
       return { jwt: user.email, user }
-    })
-    .after(({ result }) => {
-      if (result?.user?.password) {
-        return { ...result, user: { ...result.user, password: '****' } }
-      }
-      return result
-    })
-    .build()
-  const register = authentication
-    .output(types.nullable(User))
-    .body(async ({ input, context: { db }, log }) => {
+    },
+    after: [
+      {
+        name: 'Hide password',
+        apply: ({ result }) => {
+          if (result?.user?.password) {
+            return { ...result, user: { ...result.user, password: '****' } }
+          }
+          return result
+        },
+      },
+    ],
+    options: { namespace: 'authentication' },
+  })
+  const register = func.withContext<SharedContext & { from?: string }>().build({
+    input: LoginInput,
+    output: types.nullable(User),
+    apply: async ({ input, context: { db }, log }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
         log(`Double register: ${input.email}`, 'error')
@@ -60,16 +59,25 @@ test('Whole module', async () => {
       }
       log(`Registered: ${input.email}`)
       return db.updateUser(input)
-    })
-    .build()
-
-  const businessLogic = func.context<SharedContext & { authenticatedUser?: { email: string } }>().options({
-    namespace: 'business-logic',
+    },
+    before: [
+      {
+        name: 'Avoid weak passwords',
+        apply: ({ args }) => {
+          if (args.input.password === '123') {
+            throw new Error('Weak password')
+          }
+          return args
+        },
+      },
+    ],
+    options: { namespace: 'authentication' },
   })
-  const completeProfile = businessLogic
-    .input(types.object({ firstname: types.string(), lastname: types.string() }))
-    .output(User)
-    .body(async ({ input, context: { db, authenticatedUser } }) => {
+
+  const completeProfile = func.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
+    input: types.object({ firstname: types.string(), lastname: types.string() }),
+    output: User,
+    apply: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
         throw new Error('Unauthorized')
       }
@@ -78,8 +86,9 @@ test('Whole module', async () => {
         throw new Error('Unrechable')
       }
       return db.updateUser({ ...user, ...input })
-    })
-    .build()
+    },
+    options: { namespace: 'business-logic' },
+  })
   const memory = new Map<string, User>()
   const db: SharedContext['db'] = {
     updateUser(user) {
@@ -91,13 +100,12 @@ test('Whole module', async () => {
     },
   }
 
-  const m = module
-    .name('Test')
-    .version('1.0.0')
-    .options({ checks: { maxProjectionDepth: 2 } })
-    .functions({ login, register, completeProfile })
-    .functionsOptions({ login: { authentication: 'NONE' } })
-    .context(async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
+  const m = module.build({
+    name: 'test',
+    version: '1.0.0',
+    options: { checks: { maxProjectionDepth: 2 } },
+    functions: { definitions: { login, register, completeProfile } },
+    context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
       if (authorization != null) {
         //dummy auth
         const user = db.findUser({ email: authorization })
@@ -108,16 +116,15 @@ test('Whole module', async () => {
         }
       }
       return { from: ip, db }
-    })
-    .build()
+    },
+  })
 
-  const client = sdk
-    .module(m)
-    .metadata<{ ip?: string; authorization?: string }>()
-    .context(async ({ metadata }) => {
+  const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
+    module: m,
+    context: async ({ metadata }) => {
       return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
-    })
-    .build()
+    },
+  })
   await expect(
     async () => await client.functions.register({ email: 'admin@domain.com', password: '123' }),
   ).rejects.toThrow()
@@ -153,21 +160,23 @@ test('Whole module', async () => {
 describe('Unique type name', () => {
   test('Two different type cannot have the same name', () => {
     const n = () => types.number().setName('Input')
-    const v = types.number().setName('Input')
-    const output = types.union({ n, v: v.setName('V') })
+    const input = types.number().setName('Input')
+    const output = types.union({ n, v: input.setName('V') })
 
-    const f = func
-      .input(v)
-      .output(output)
-      .body((args) => {
+    const f = func.build({
+      input,
+      output,
+      apply: () => {
         throw 'Unreachable'
-      })
-      .build()
+      },
+    })
     expect(() =>
-      module
-        .functions({ f })
-        .context(async () => ({}))
-        .build(),
+      module.build({
+        name: 'test',
+        version: '1.0.0',
+        functions: { definitions: { f } },
+        context: async () => ({}),
+      }),
     ).toThrowError(`Duplicated type name "Input"`)
   })
 })

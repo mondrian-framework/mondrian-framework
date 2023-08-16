@@ -19,16 +19,22 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
   log: Logger
 }
 
-type BeforeMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = (args: {
-  args: FunctionArguments<I, O, Context>
-  thisFunction: Function<I, O, Context>
-}) => FunctionArguments<I, O, Context> | Promise<FunctionArguments<I, O, Context>>
+export type BeforeMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
+  name?: string
+  apply: (args: {
+    args: FunctionArguments<I, O, Context>
+    thisFunction: Function<I, O, Context>
+  }) => FunctionArguments<I, O, Context> | Promise<FunctionArguments<I, O, Context>>
+}
 
-type AfterMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = (args: {
-  args: FunctionArguments<I, O, Context>
-  result: types.InferPartial<O>
-  thisFunction: Function<I, O, Context>
-}) => types.InferPartial<O> | Promise<types.InferPartial<O>>
+export type AfterMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
+  name?: string
+  apply: (args: {
+    args: FunctionArguments<I, O, Context>
+    result: types.InferPartial<O>
+    thisFunction: Function<I, O, Context>
+  }) => types.InferPartial<O> | Promise<types.InferPartial<O>>
+}
 
 /**
  * A map of {@link Function}s.
@@ -38,112 +44,37 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
 }
 
 /**
- * Implementation of {@link FunctionBuilder}.
+ * Function builder.
  */
-class FunctionBuilderImpl<
-  const I extends types.Type,
-  const O extends types.Type,
-  const Context extends Record<string, unknown>,
-> {
-  private readonly func: Partial<Function<I, O, Context>>
-  private readonly beforeMiddlewares: BeforeMiddleware<I, O, Context>[] = []
-  private readonly afterMiddlewares: AfterMiddleware<I, O, Context>[] = []
-  constructor(
-    func: Partial<Function<I, O, Context>>,
-    beforeMiddlewares: BeforeMiddleware<I, O, Context>[],
-    afterMiddlewares: AfterMiddleware<I, O, Context>[],
-  ) {
-    this.beforeMiddlewares = beforeMiddlewares
-    this.afterMiddlewares = afterMiddlewares
-    this.func = func
+class FunctionBuilder<const Context extends Record<string, unknown>> {
+  constructor() {}
+  public withContext<const Context extends Record<string, unknown>>(): FunctionBuilder<Context> {
+    return new FunctionBuilder()
   }
-  public context<const Context extends Record<string, unknown>>(): FunctionBuilderImpl<I, O, Context> {
-    return new FunctionBuilderImpl(
-      { ...this.func, apply: undefined },
-      this.beforeMiddlewares as unknown as BeforeMiddleware<I, O, Context>[],
-      this.afterMiddlewares as unknown as AfterMiddleware<I, O, Context>[],
-    )
-  }
-  public input<const I extends types.Type>(input: I): FunctionBuilderImpl<I, O, Context> {
-    return new FunctionBuilderImpl(
-      { ...this.func, input } as Partial<Function<I, O, Context>>,
-      this.beforeMiddlewares as unknown as BeforeMiddleware<I, O, Context>[],
-      this.afterMiddlewares as unknown as AfterMiddleware<I, O, Context>[],
-    )
-  }
-  public output<const O extends types.Type>(output: O): FunctionBuilderImpl<I, O, Context> {
-    return new FunctionBuilderImpl(
-      { ...this.func, output } as Partial<Function<I, O, Context>>,
-      this.beforeMiddlewares as unknown as BeforeMiddleware<I, O, Context>[],
-      this.afterMiddlewares as unknown as AfterMiddleware<I, O, Context>[],
-    )
-  }
-  public body(apply: Function<I, O, Context>['apply']): FunctionBuilderImpl<I, O, Context> {
-    return new FunctionBuilderImpl({ ...this.func, apply }, this.beforeMiddlewares, this.afterMiddlewares)
-  }
-  public options(options: Function<I, O, Context>['options']): FunctionBuilderImpl<I, O, Context> {
-    return new FunctionBuilderImpl({ ...this.func, options }, this.beforeMiddlewares, this.afterMiddlewares)
-  }
-  public before(middlewre: BeforeMiddleware<I, O, Context>): FunctionBuilderImpl<I, O, Context> {
-    return new FunctionBuilderImpl(this.func, [...this.beforeMiddlewares, middlewre], this.afterMiddlewares)
-  }
-  public after(middlewre: AfterMiddleware<I, O, Context>): FunctionBuilderImpl<I, O, Context> {
-    return new FunctionBuilderImpl(this.func, this.beforeMiddlewares, [...this.afterMiddlewares, middlewre])
-  }
-  public build(): Function<I, O, Context> {
-    const input = this.func.input
-    const output = this.func.output
-    const apply = this.func.apply
-    if (!input || !output || !apply) {
-      throw new Error(`You need to use '.body' before`)
-    }
-    const thisFunction: Function<I, O, Context> = { ...this.func, apply, input, output }
+
+  public build<const I extends types.Type, const O extends types.Type>({
+    before,
+    after,
+    ...func
+  }: Function<I, O, Context> & {
+    before?: BeforeMiddleware<I, O, Context>[]
+    after?: AfterMiddleware<I, O, Context>[]
+  }): Function<I, O, Context> {
     return {
-      ...this.func,
-      input,
-      output,
+      ...func,
       apply: async (args) => {
-        for (const middleware of this.beforeMiddlewares) {
-          args = await middleware({ args, thisFunction })
+        for (const middleware of before ?? []) {
+          args = await middleware.apply({ args, thisFunction: func })
         }
-        let result = await apply(args)
-        for (const middleware of this.afterMiddlewares) {
-          result = await middleware({ args, result, thisFunction })
+        let result = await func.apply(args)
+        for (const middleware of after ?? []) {
+          result = await middleware.apply({ args, result, thisFunction: func })
         }
         return result
       },
     }
   }
 }
-
-/**
- * Function builder type.
- */
-type FunctionBuilder<
-  I extends types.Type,
-  O extends types.Type,
-  Context extends Record<string, unknown>,
-  Excluded extends string,
-> = Omit<
-  {
-    build(): Function<I, O, Context>
-    input<const I extends types.Type>(input: I): FunctionBuilder<I, O, Context, Exclude<Excluded | 'input', 'body'>>
-    output<const O extends types.Type>(output: O): FunctionBuilder<I, O, Context, Exclude<Excluded | 'output', 'body'>>
-    body(
-      apply: Function<I, O, Context>['apply'],
-    ): FunctionBuilder<I, O, Context, Exclude<Excluded | 'input' | 'output' | 'context' | 'body', 'build'>>
-    context<const Context extends Record<string, unknown>>(): FunctionBuilder<
-      I,
-      O,
-      Context,
-      Exclude<Excluded | 'context', 'body'>
-    >
-    options(opts: Function<I, O, Context>['options']): FunctionBuilder<I, O, Context, Excluded>
-    before(middlewre: BeforeMiddleware<I, O, Context>): FunctionBuilder<I, O, Context, Excluded>
-    after(middlewre: AfterMiddleware<I, O, Context>): FunctionBuilder<I, O, Context, Excluded>
-  },
-  Excluded
->
 
 /**
  * The function builder singleton. It's used to build any Mondrian function.
@@ -154,18 +85,13 @@ type FunctionBuilder<
  * import { func } from '@mondrian-framework/module'
  *
  * const loginFunction = func
- *   .input(type.object({ username: types.stirng(), password: types.string() }))
- *   .output(types.string())
- *   .body(async ({ input: { username, password } }) => {
- *     return 'TODO'
- *   }).build()
+ *   .build({
+ *     input: type.object({ username: types.stirng(), password: types.string() }),
+ *     output: types.string(),
+ *     body: async ({ input: { username, password } }) => {
+ *       return 'TODO'
+ *     }
+ *   })
  * ```
  */
-export const builder: FunctionBuilder<types.Type, types.Type, {}, 'build'> = new FunctionBuilderImpl(
-  {
-    input: types.unknown() as types.Type,
-    output: types.unknown() as types.Type,
-  },
-  [],
-  [],
-)
+export const builder: FunctionBuilder<{}> = new FunctionBuilder()

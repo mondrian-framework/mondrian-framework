@@ -75,3 +75,7 @@ export function unsafeObjectToTaggedVariant<T>(taggedVariant: Record<string, T>)
     failWithInternalError('I tried to get the variant name out of a null or undefined object')
   }
 }
+
+export function mergeArrays<A>(one: A[], other: A[]): A[] {
+  return [...one, ...other]
+}

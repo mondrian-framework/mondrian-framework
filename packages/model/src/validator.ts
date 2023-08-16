@@ -1,5 +1,5 @@
 import { types, result, validator, path } from './index'
-import { assertNever, failWithInternalError } from './utils'
+import { always, assertNever, failWithInternalError, mergeArrays } from './utils'
 
 export type Options = {
   errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
@@ -149,32 +149,18 @@ function validateNullable<T extends types.Type>(
 
 function validateObject<Ts extends types.Types>(
   type: types.ObjectType<any, Ts>,
-  value: types.Infer<types.ObjectType<any, Ts>>,
+  object: types.Infer<types.ObjectType<any, Ts>>,
   options: validator.Options,
 ): validator.Result {
-  const validationErrors: validator.Error[] = []
-  for (const [fieldName, fieldValue] of Object.entries(value)) {
-    const validationResult = internalValidate(type.fields[fieldName], fieldValue as never, options)
-    if (!validationResult.isOk) {
-      validationErrors.push(...validationResult.error.map((error) => path.prependField(error, fieldName)))
-      if (options.errorReportingStrategy === 'stopAtFirstError') {
-        break
-      }
-    }
-  }
-  return validationErrors.length > 0 ? validator.failWithErrors(validationErrors) : validator.succeed()
-  /* TODO see what to do with object strictness
-  if (strict) {
-      for (const [key, subvalue] of Object.entries(value)) {
-        if (!(key in t.type) && subvalue !== undefined) {
-          errs.push(richError(`Value not expected`, subvalue, key))
-          if (errorLevel === 'minimum') {
-            break
-          }
-        }
-      }
-    }
-   */
+  const validateEntry = ([fieldName, fieldValue]: [string, unknown]) =>
+    internalValidate(type.fields[fieldName], fieldValue as never, options).mapError((errors) =>
+      path.prependFieldToAll(errors, fieldName),
+    )
+
+  const entries = Object.entries(object)
+  return options.errorReportingStrategy === 'stopAtFirstError'
+    ? result.tryEachFailFast(entries, true, always(true), validateEntry)
+    : result.tryEach(entries, true, always(true), [] as validator.Error[], mergeArrays, validateEntry)
 }
 
 function and(options: validator.Options, result: validator.Result, other: () => validator.Result): validator.Result {
@@ -216,20 +202,14 @@ function validateArray<T extends types.Type>(
 
 function validateArrayElements<T extends types.Type>(
   type: types.ArrayType<any, T>,
-  value: types.Infer<types.ArrayType<any, T>>,
+  array: types.Infer<types.ArrayType<any, T>>,
   options: validator.Options,
 ): validator.Result {
-  const validationErrors: validator.Error[] = []
-  for (let i = 0; i < value.length; i++) {
-    const validationResult = internalValidate(type.wrappedType, value[i], options)
-    if (!validationResult.isOk) {
-      validationErrors.push(...validationResult.error.map((error) => path.prependIndex(error, i)))
-      if (options.errorReportingStrategy === 'stopAtFirstError') {
-        break
-      }
-    }
-  }
-  return validationErrors.length > 0 ? validator.failWithErrors(validationErrors) : validator.succeed()
+  const validateItem = (item: types.Infer<T>, index: number) =>
+    internalValidate(type.wrappedType, item, options).mapError((errors) => path.prependIndexToAll(errors, index))
+  return options.errorReportingStrategy === 'stopAtFirstError'
+    ? result.tryEachFailFast(array, true, always(true), validateItem)
+    : result.tryEach(array, true, always(true), [] as validator.Error[], mergeArrays, validateItem)
 }
 
 function validateReference<T extends types.Type>(
@@ -256,7 +236,7 @@ function validateUnion<Ts extends types.Types>(
       failWithInternalError(failureMessage)
     } else {
       const result = internalValidate(variantType, variant[variantName] as never, options)
-      return result.mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
+      return result.mapError((errors) => path.prependVariantToAll(errors, variantName))
     }
   }
 }

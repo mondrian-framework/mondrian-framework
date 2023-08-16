@@ -205,7 +205,7 @@ function validateUnion(
   const variantProjection = subProjection(projection, [variantName] as never)
   const variantType = variants[variantName]
   const result = respectsProjection(variantType, variantProjection, variantValue as never)
-  return result.mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
+  return result.mapError((errors) => path.prependVariantToAll(errors, variantName))
 }
 
 function validateObject(
@@ -231,7 +231,7 @@ function validateRequiredField(
   } else {
     const fieldProjection = subProjection(projection, [fieldName] as never)
     const result = respectsProjection(fieldType, fieldProjection, fieldValue as never)
-    return result.mapError((errors) => errors.map((error) => path.prependField(error, fieldName)))
+    return result.mapError((errors) => path.prependFieldToAll(errors, fieldName))
   }
 }
 
@@ -259,7 +259,7 @@ function validateArray(
 ): result.Result<true, projection.Error[]> {
   const validateArrayItem = (item: any, index: number) =>
     respectsProjection(type, projection as any, item as never).mapError((errors) =>
-      errors.map((error) => path.prependIndex(error, index)),
+      path.prependIndexToAll(errors, index),
     )
 
   const results = array.map(validateArrayItem)

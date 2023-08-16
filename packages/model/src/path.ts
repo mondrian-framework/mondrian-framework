@@ -89,26 +89,29 @@ export type WithPath<Data extends Record<string, any>> = Data & { path: Path }
 /**
  * Utility function to prepend a prefix to the path of a `decoder.Error`.
  */
-export function prependField<Data extends Record<string, any>, T extends WithPath<Data>>(
-  value: T,
+export function prependFieldToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
+  values: T[],
   fieldName: string,
-): T {
-  return { ...value, path: value.path.prependField(fieldName) }
+): T[] {
+  return values.map((value) => ({ ...value, path: value.path.prependField(fieldName) }))
 }
 
 /**
  * Utility function to prepend an index to the path of a `decoder.Error`.
  */
-export function prependIndex<Data extends Record<string, any>, T extends WithPath<Data>>(value: T, index: number): T {
-  return { ...value, path: value.path.prependIndex(index) }
+export function prependIndexToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
+  values: T[],
+  index: number,
+): T[] {
+  return values.map((value) => ({ ...value, path: value.path.prependIndex(index) }))
 }
 
 /**
  * Utility function to prepend a variant to the path of a `decoder.Error`.
  */
-export function prependVariant<Data extends Record<string, any>, T extends WithPath<Data>>(
-  value: T,
+export function prependVariantToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
+  values: T[],
   variantName: string,
-): T {
-  return { ...value, path: value.path.prependVariant(variantName) }
+): T[] {
+  return values.map((value) => ({ ...value, path: value.path.prependVariant(variantName) }))
 }

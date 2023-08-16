@@ -150,28 +150,73 @@ class FailureImpl<A, E> implements Failure<A, E> {
   match = <B>(_onOk: (value: A) => B, onFailure: (error: E) => B): B => onFailure(this.error)
 }
 
-// TODO: doc and ad hoc tests
-export function reduce<R, R1, E, E1>(
-  results: Result<R, E>[],
-  initialResult: R1,
+export function tryEach<A, R, R1, E, E1>(
+  values: readonly A[],
+  initialValue: R1,
+  combineValues: (previous: R1, current: R) => R1,
   initialError: E1,
-  combineResults: (accumulator: R1, result: R) => R1,
-  combineErrors: (accumulator: E1, error: E) => E1,
+  combineErrors: (previous: E1, current: E) => E1,
+  action: (currentValue: A, index: number) => Result<R, E>,
 ): Result<R1, E1> {
-  let resultAccumulator = initialResult
-  let errorAccumulator = initialError
+  let valuesAccumulator = initialValue
+  let errorsAccumulator = initialError
   let encounteredError = false
-  for (const result of results) {
+  for (let index = 0; index < values.length; index++) {
+    const result = action(values[index], index)
     if (result.isOk) {
       if (encounteredError) {
         continue
       } else {
-        resultAccumulator = combineResults(resultAccumulator, result.value)
+        valuesAccumulator = combineValues(valuesAccumulator, result.value)
       }
     } else {
       encounteredError = true
-      errorAccumulator = combineErrors(errorAccumulator, result.error)
+      errorsAccumulator = combineErrors(errorsAccumulator, result.error)
     }
   }
-  return encounteredError ? fail(errorAccumulator) : ok(resultAccumulator)
+  return encounteredError ? fail(errorsAccumulator) : ok(valuesAccumulator)
 }
+
+export function tryEachFailFast<A, R, R1, E>(
+  values: readonly A[],
+  initialValue: R1,
+  combineValues: (previous: R1, current: R) => R1,
+  action: (currentValue: A, index: number) => Result<R, E>,
+): Result<R1, E> {
+  let valuesAccumulator = initialValue
+  for (let index = 0; index < values.length; index++) {
+    const result = action(values[index], index)
+    if (result.isOk) {
+      valuesAccumulator = combineValues(valuesAccumulator, result.value)
+    } else {
+      return fail(result.error)
+    }
+  }
+  return ok(valuesAccumulator)
+}
+
+// TODO: doc and ad hoc tests
+//export function reduce<R, R1, E, E1>(
+//  results: Result<R, E>[],
+//  initialResult: R1,
+//  initialError: E1,
+//  combineResults: (accumulator: R1, result: R) => R1,
+//  combineErrors: (accumulator: E1, error: E) => E1,
+//): Result<R1, E1> {
+//  let resultAccumulator = initialResult
+//  let errorAccumulator = initialError
+//  let encounteredError = false
+//  for (const result of results) {
+//    if (result.isOk) {
+//      if (encounteredError) {
+//        continue
+//      } else {
+//        resultAccumulator = combineResults(resultAccumulator, result.value)
+//      }
+//    } else {
+//      encounteredError = true
+//      errorAccumulator = combineErrors(errorAccumulator, result.error)
+//    }
+//  }
+//  return encounteredError ? fail(errorAccumulator) : ok(resultAccumulator)
+//}

@@ -1,5 +1,5 @@
 import { types, decoder, result, validator, path } from './index'
-import { assertNever } from './utils'
+import { assertNever, mergeArrays } from './utils'
 
 /**
  * The options that can be used when decoding a type.
@@ -196,14 +196,6 @@ function decodeLiteral(type: types.LiteralType<any>, value: unknown, options: Op
   } else {
     return decoder.fail(`literal (${type.literalValue})`, value)
   }
-  /*
-    const castedValue = decodeInternal(union({ n: number(), b: boolean(), s: string() }), value, opts)
-    if (castedValue.success) {
-      if (t.value === castedValue.value) {
-        return ok(t.value)
-      }
-    }
-  */
 }
 
 /**
@@ -272,21 +264,16 @@ function decodeArray(type: types.ArrayType<any, any>, value: unknown, options: O
  * Decodes the values of an array returning an array of decoded values if successful.
  */
 function decodeArrayValues(type: types.ArrayType<any, any>, array: unknown[], options: Options): decoder.Result<any> {
-  const decodingErrors: decoder.Error[] = []
-  const decodedValues: unknown[] = []
-  for (let i = 0; i < array.length; i++) {
-    const value = array[i]
-    const decodedItem = unsafeDecode(type.wrappedType, value, options)
-    if (decodedItem.isOk) {
-      decodedValues.push(decodedItem.value)
-    } else {
-      decodingErrors.push(...decodedItem.error.map((error) => path.prependIndex(error, i)))
-      if (options.errorReportingStrategy === 'stopAtFirstError') {
-        break
-      }
-    }
+  const addDecodedItem = (accumulator: any[], item: any) => {
+    accumulator.push(item)
+    return accumulator
   }
-  return decodingErrors.length > 0 ? decoder.failWithErrors(decodingErrors) : decoder.succeed(decodedValues)
+  const decodeItem = (item: unknown, index: number) =>
+    unsafeDecode(type.wrappedType, item, options).mapError((errors) => path.prependIndexToAll(errors, index))
+
+  return options.errorReportingStrategy === 'stopAtFirstError'
+    ? result.tryEachFailFast(array, [] as unknown[], addDecodedItem, decodeItem)
+    : result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoder.Error[], mergeArrays, decodeItem)
 }
 
 /**
@@ -348,7 +335,7 @@ function decodeUnion(type: types.UnionType<any>, value: unknown, options: Option
       const decodingResult = unsafeDecode(type.variants[variantName], object[variantName], options)
       return decodingResult
         .map((value) => Object.fromEntries([[variantName, value]]))
-        .mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
+        .mapError((errors) => path.prependVariantToAll(errors, variantName))
     }
   }
   const prettyVariants = Object.keys(type.variants).join(' | ')
@@ -384,20 +371,17 @@ function decodeObjectProperties(
   object: Record<string, unknown>,
   options: Options,
 ): decoder.Result<any> {
-  const decodingErrors: decoder.Error[] = []
-  const decodedObject: { [key: string]: unknown } = {} // strict ? {} : { ...value }
-  for (const [fieldName, fieldType] of Object.entries(type.fields)) {
-    const decodedField = unsafeDecode(fieldType as types.Type, object[fieldName], options)
-    if (decodedField.isOk) {
-      if (decodedField.value !== undefined) {
-        decodedObject[fieldName] = decodedField.value
-      }
-    } else {
-      decodingErrors.push(...decodedField.error.map((error) => path.prependField(error, fieldName)))
-      if (options.errorReportingStrategy === 'stopAtFirstError') {
-        break
-      }
-    }
+  const addDecodedEntry = (accumulator: { [key: string]: unknown }, [fieldName, value]: readonly [string, unknown]) => {
+    accumulator[fieldName] = value
+    return accumulator
   }
-  return decodingErrors.length > 0 ? decoder.failWithErrors(decodingErrors) : decoder.succeed(decodedObject)
+  const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
+    unsafeDecode(fieldType, object[fieldName], options)
+      .map((value) => [fieldName, value] as const)
+      .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+
+  const entries = Object.entries(type.fields) as [string, types.Type][]
+  return options.errorReportingStrategy === 'stopAtFirstError'
+    ? result.tryEachFailFast(entries, {}, addDecodedEntry, decodeEntry)
+    : result.tryEach(entries, {}, addDecodedEntry, [] as decoder.Error[], mergeArrays, decodeEntry)
 }

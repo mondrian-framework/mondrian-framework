@@ -95,20 +95,20 @@ class SdkBuilderImpl<const F extends Functions, const ContextInput, const Metada
   }
 }
 
-type SdkBuilder<F extends Functions, ContextInput, Metadata, E extends string> = Omit<
+type SdkBuilder<F extends Functions, ContextInput, Metadata, Excluded extends string> = Omit<
   {
     module<const F extends Functions, ContextInput>(
       module: Module<F, ContextInput>,
-    ): SdkBuilder<F, ContextInput, Metadata, Exclude<E | 'module', 'context'>>
+    ): SdkBuilder<F, ContextInput, Metadata, Exclude<Excluded | 'module', 'context'>>
     metadata<const Metadata>(
       metadata?: Metadata,
-    ): SdkBuilder<F, ContextInput, Metadata, Exclude<E | 'build', 'context'>>
+    ): SdkBuilder<F, ContextInput, Metadata, Exclude<Excluded | 'build', 'context'>>
     context(
       context: (args: { metadata?: Metadata }) => Promise<ContextInput>,
-    ): SdkBuilder<F, ContextInput, Metadata, Exclude<E, 'build'>>
+    ): SdkBuilder<F, ContextInput, Metadata, Exclude<Excluded, 'build'>>
     build(): Sdk<F, Metadata>
   },
-  E
+  Excluded
 >
 
 export const builder: SdkBuilder<{}, unknown, unknown, 'build' | 'context'> = new SdkBuilderImpl()

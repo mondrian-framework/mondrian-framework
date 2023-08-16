@@ -26,6 +26,12 @@ test('Whole module', async () => {
     .context<SharedContext & { from?: string }>()
     .options({ namespace: 'authentication' })
     .input(LoginInput)
+    .before(({ args }) => {
+      if (args.input.password === '123') {
+        throw new Error('Weak password')
+      }
+      return args
+    })
   const login = authentication
     .output(LoginOutput)
     .body(async ({ input, context: { db }, log }) => {
@@ -36,6 +42,12 @@ test('Whole module', async () => {
       }
       log(`Logged in: ${input.email}`, 'log')
       return { jwt: user.email, user }
+    })
+    .after(({ result }) => {
+      if (result?.user?.password) {
+        return { ...result, user: { ...result.user, password: '****' } }
+      }
+      return result
     })
     .build()
   const register = authentication
@@ -106,14 +118,16 @@ test('Whole module', async () => {
       return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
     })
     .build()
-
+  await expect(
+    async () => await client.functions.register({ email: 'admin@domain.com', password: '123' }),
+  ).rejects.toThrow()
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   expect(failedRegisterResult).toBeNull()
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult).toBeNull()
   const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
-  expect(loginResult).not.toBeNull()
+  expect(loginResult).toEqual({ user: { email: 'admin@domain.com', password: '****' }, jwt: 'admin@domain.com' })
   await expect(
     async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),
   ).rejects.toThrow()

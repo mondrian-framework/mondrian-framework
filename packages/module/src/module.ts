@@ -1,3 +1,4 @@
+import { func } from '.'
 import { Function, Functions } from './function'
 import { Logger } from './log'
 import { projection, types } from '@mondrian-framework/model'
@@ -114,51 +115,50 @@ class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
     assertUniqueNames(moduleFunctions.definitions)
     const outputTypeCheck = this.module.options?.checks?.output ?? 'throw'
     const maxProjectionDepth = this.module.options?.checks?.maxProjectionDepth
-    const functions = Object.fromEntries(
-      Object.entries(moduleFunctions.definitions).map(([functionName, functionBody]) => {
-        const f: Function<types.Type, types.Type, unknown> = {
-          ...functionBody,
-          async apply(args) {
-            //check projection depth
-            if (maxProjectionDepth != null) {
-              const depth = projection.depth(args.projection ?? true)
-              if (depth > maxProjectionDepth) {
-                throw new Error(
-                  `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxProjectionDepth}.`,
-                )
-              }
-            }
-
-            //function call
-            const result = await functionBody.apply(args)
-
-            //check result value
-            if (outputTypeCheck !== 'ignore') {
-              //TODO: should also validator.validate
-              const projectionRespectedResult = projection.respectsProjection(
-                functionBody.output,
-                args.projection ?? true,
-                result,
-              )
-              if (!projectionRespectedResult.isOk) {
-                //TODO: prettify error?
-                const m = JSON.stringify({ projection: args.projection, errors: projectionRespectedResult.error })
-                if (outputTypeCheck === 'log') {
-                  args.log(`Invalid output: ${m}`, 'error')
-                } else {
-                  throw new Error(`Invalid output: ${m}`)
-                }
-              }
-            }
-            return result
-          },
+    const wrapperBuilder = func
+      .before(({ args }) => {
+        if (maxProjectionDepth != null) {
+          const depth = projection.depth(args.projection ?? true)
+          if (depth > maxProjectionDepth) {
+            throw new Error(
+              `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxProjectionDepth}.`,
+            )
+          }
         }
-        return [functionName, f]
+        return args
+      })
+      .after(({ args, result, thisFunction }) => {
+        //TODO: should also validator.validate
+        const projectionRespectedResult = projection.respectsProjection(
+          thisFunction.output,
+          args.projection ?? true,
+          result,
+        )
+        if (!projectionRespectedResult.isOk) {
+          //TODO: prettify error?
+          const m = JSON.stringify({ projection: args.projection, errors: projectionRespectedResult.error })
+          if (outputTypeCheck === 'log') {
+            args.log(`Invalid output: ${m}`, 'error')
+          } else {
+            throw new Error(`Invalid output: ${m}`)
+          }
+        }
+        return result
+      })
+    const wrappedFunctions = Object.fromEntries(
+      Object.entries(moduleFunctions.definitions).map(([functionName, functionBody]) => {
+        const wrappedFunction = wrapperBuilder
+          .input(functionBody.input)
+          .output(functionBody.output)
+          .options(functionBody.options)
+          .body(functionBody.apply)
+          .build()
+        return [functionName, wrappedFunction]
       }),
     )
     return {
       ...this.module,
-      functions: { definitions: functions as Fs, options: moduleFunctions.options },
+      functions: { definitions: wrappedFunctions as Fs, options: moduleFunctions.options },
       name: moduleName,
       version: moduleVersion,
       context: moduleContext,
@@ -205,23 +205,23 @@ class ModuleBuilderImpl<const Fs extends Functions, const ContextInput> {
 /**
  * Module builder type.
  */
-type ModuleBuilder<Fs extends Functions, ContextInput, O extends string> = Omit<
+type ModuleBuilder<Fs extends Functions, ContextInput, Excluded extends string> = Omit<
   {
     build(): Module<Fs, ContextInput>
-    name(name: string): ModuleBuilder<Fs, ContextInput, O | 'name'>
-    version(version: string): ModuleBuilder<Fs, ContextInput, O | 'version'>
-    options(options: ModuleOptions): ModuleBuilder<Fs, ContextInput, O | 'options'>
+    name(name: string): ModuleBuilder<Fs, ContextInput, Excluded | 'name'>
+    version(version: string): ModuleBuilder<Fs, ContextInput, Excluded | 'version'>
+    options(options: ModuleOptions): ModuleBuilder<Fs, ContextInput, Excluded | 'options'>
     context<const NewContextInput>(
       context: Module<Fs, NewContextInput>['context'],
-    ): ModuleBuilder<Fs, NewContextInput, Exclude<O | 'context', 'build'>>
+    ): ModuleBuilder<Fs, NewContextInput, Exclude<Excluded | 'context', 'build'>>
     functions<const NewFs extends Functions>(
       functions: Module<NewFs, ContextInput>['functions']['definitions'],
-    ): ModuleBuilder<NewFs, ContextInput, Exclude<O | 'functions', 'functionsOptions' | 'context'>>
+    ): ModuleBuilder<NewFs, ContextInput, Exclude<Excluded | 'functions', 'functionsOptions' | 'context'>>
     functionsOptions(
       options: Exclude<Module<Fs, ContextInput>['functions']['options'], undefined>,
-    ): ModuleBuilder<Fs, ContextInput, O | 'functionsOptions'>
+    ): ModuleBuilder<Fs, ContextInput, Excluded | 'functionsOptions'>
   },
-  O
+  Excluded
 >
 
 /**

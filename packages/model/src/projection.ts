@@ -1,5 +1,5 @@
 import { path, projection, result, types } from './index'
-import { always, assertNever, filterMapObject, unsafeObjectToTaggedVariant } from './utils'
+import { always, assertNever, filterMapObject, mergeArrays, unsafeObjectToTaggedVariant } from './utils'
 
 /**
  * This is the type of a projection: it is either the literal value `true` or an object
@@ -213,10 +213,10 @@ function validateObject(
   projection: Projection,
   object: Record<string, any>,
 ): result.Result<true, projection.Error[]> {
-  const results = getRequiredFields(fields, projection).map(([fieldName, fieldType]) =>
-    validateRequiredField(fieldName, fieldType, projection, object),
-  )
-  return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
+  const requiredFields = getRequiredFields(fields, projection)
+  const validateField = ([fieldName, fieldType]: [string, types.Type]) =>
+    validateRequiredField(fieldName, fieldType, projection, object)
+  return result.tryEach(requiredFields, true, always(true), [] as projection.Error[], mergeArrays, validateField)
 }
 
 function validateRequiredField(
@@ -257,13 +257,12 @@ function validateArray(
   projection: Projection,
   array: any[],
 ): result.Result<true, projection.Error[]> {
-  const validateArrayItem = (item: any, index: number) =>
+  const validateItem = (item: any, index: number) =>
     respectsProjection(type, projection as any, item as never).mapError((errors) =>
       path.prependIndexToAll(errors, index),
     )
 
-  const results = array.map(validateArrayItem)
-  return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
+  return result.tryEach(array, true, always(true), [] as projection.Error[], mergeArrays, validateItem)
 }
 
 /*

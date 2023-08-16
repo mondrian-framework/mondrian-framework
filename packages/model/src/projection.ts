@@ -153,30 +153,28 @@ export function respectsProjection<T extends types.Type>(
   value: types.InferPartial<T>,
 ): result.Result<true, projection.Error[]> {
   const concreteType = types.concretise(type)
-  const kind = concreteType.kind
-  if (
-    kind === 'boolean' ||
-    kind === 'enum' ||
-    kind === 'literal' ||
-    kind === 'number' ||
-    kind === 'string' ||
-    kind === 'custom'
-  ) {
-    return result.ok(true)
-  } else if (kind === 'reference') {
-    return respectsProjection(concreteType.wrappedType, projection as any, value as any)
-  } else if (kind === 'nullable') {
-    return validateNullable(concreteType.wrappedType, projection, value)
-  } else if (kind === 'optional') {
-    return validateOptional(concreteType.wrappedType, projection, value)
-  } else if (kind === 'union') {
-    return validateUnion(concreteType.variants, projection, value)
-  } else if (kind === 'object') {
-    return validateObject(concreteType.fields, projection, value as Record<string, any>)
-  } else if (kind === 'array') {
-    return validateArray(concreteType.wrappedType, projection, value as any[])
-  } else {
-    assertNever(kind, 'Totality check failed when checking a projection, this should have never happened')
+  switch (concreteType.kind) {
+    case types.Kind.Boolean:
+    case types.Kind.Enum:
+    case types.Kind.Literal:
+    case types.Kind.Number:
+    case types.Kind.String:
+    case types.Kind.Custom:
+      return result.ok(true)
+    case types.Kind.Reference:
+      return respectsProjection(concreteType.wrappedType, projection as any, value as any)
+    case types.Kind.Nullable:
+      return validateNullable(concreteType.wrappedType, projection, value)
+    case types.Kind.Optional:
+      return validateOptional(concreteType.wrappedType, projection, value)
+    case types.Kind.Union:
+      return validateUnion(concreteType.variants, projection, value)
+    case types.Kind.Object:
+      return validateObject(concreteType.fields, projection, value as Record<string, any>)
+    case types.Kind.Array:
+      return validateArray(concreteType.wrappedType, projection, value as any[])
+    default:
+      assertNever(concreteType, 'Totality check failed when checking a projection, this should have never happened')
   }
 }
 
@@ -240,15 +238,7 @@ function getRequiredFields(fields: types.Types, projection: Projection): [string
     const dropOptionals = (_: string, fieldType: types.Type) => (types.isOptional(fieldType) ? undefined : fieldType)
     return Object.entries(filterMapObject(fields, dropOptionals))
   } else {
-    return Object.entries(
-      filterMapObject(projection, (fieldName, selection) => {
-        const fieldType = fields[fieldName]
-        const isFieldRequiredByProjection = selection !== undefined
-        const isFieldRequiredByType = !types.isOptional(fieldType)
-        const isFieldRequired = isFieldRequiredByProjection && isFieldRequiredByType
-        return isFieldRequired ? fieldType : undefined
-      }),
-    )
+    return Object.entries(filterMapObject(projection, (fieldName, _) => fields[fieldName]))
   }
 }
 

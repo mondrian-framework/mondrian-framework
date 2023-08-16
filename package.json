@@ -46,7 +46,5 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "ts-pattern": "^5.0.1"
-  }
+  "dependencies": {}
 }

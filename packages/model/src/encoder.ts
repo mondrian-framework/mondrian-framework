@@ -37,32 +37,29 @@ export function encode<const T extends types.Type>(
  */
 function unsafeEncode(type: types.Type, value: any): JSONType | undefined {
   const concreteType = types.concretise(type)
-  if (concreteType.kind === 'boolean') {
-    return value
-  } else if (concreteType.kind === 'number') {
-    return value
-  } else if (concreteType.kind === 'string') {
-    return value
-  } else if (concreteType.kind === 'enum') {
-    return value
-  } else if (concreteType.kind === 'literal') {
-    return concreteType.literalValue
-  } else if (concreteType.kind === 'optional') {
-    return unsafeEncodeOptional(concreteType, value)
-  } else if (concreteType.kind === 'nullable') {
-    return unsafeEncodeNullable(concreteType, value)
-  } else if (concreteType.kind === 'union') {
-    return unsafeEncodeUnion(concreteType, value)
-  } else if (concreteType.kind === 'object') {
-    return unsafeEncodeObject(concreteType, value)
-  } else if (concreteType.kind === 'array') {
-    return unsafeEncodeArray(concreteType, value)
-  } else if (concreteType.kind === 'reference') {
-    return unsafeEncodeReference(concreteType, value)
-  } else if (concreteType.kind === 'custom') {
-    return concreteType.encode(value, concreteType.options)
-  } else {
-    assertNever(concreteType, 'Totality check failed when unsafe encoding a value, this should have never happened')
+  switch (concreteType.kind) {
+    case types.Kind.Boolean:
+    case types.Kind.Number:
+    case types.Kind.String:
+    case types.Kind.Enum:
+    case types.Kind.Literal:
+      return value
+    case types.Kind.Optional:
+      return unsafeEncodeOptional(concreteType, value)
+    case types.Kind.Nullable:
+      return unsafeEncodeNullable(concreteType, value)
+    case types.Kind.Union:
+      return unsafeEncodeUnion(concreteType, value)
+    case types.Kind.Object:
+      return unsafeEncodeObject(concreteType, value)
+    case types.Kind.Array:
+      return unsafeEncodeArray(concreteType, value)
+    case types.Kind.Reference:
+      return unsafeEncodeReference(concreteType, value)
+    case types.Kind.Custom:
+      return concreteType.encode(value, concreteType.options)
+    default:
+      assertNever(concreteType, 'Totality check failed when unsafe encoding a value, this should have never happened')
   }
 }
 
@@ -74,8 +71,7 @@ function unsafeEncodeOptional<T extends types.Type>(
   type: types.OptionalType<T>,
   value: any | undefined,
 ): JSONType | undefined {
-  const valueToEncode = value ?? type.defaultValue
-  return valueToEncode === undefined ? undefined : unsafeEncode(type.wrappedType, valueToEncode)
+  return value === undefined ? undefined : unsafeEncode(type.wrappedType, value)
 }
 
 /**

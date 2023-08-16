@@ -283,14 +283,10 @@ export function optionalTypeOptions(): gen.Arbitrary<types.OptionsOf<types.Optio
  */
 export function optional<T extends types.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-  defaultValueGenerator?: gen.Arbitrary<types.Infer<T> | (() => types.Infer<T>)>,
 ): gen.Arbitrary<types.OptionalType<T>> {
-  const actualDefaultValueGenerator = defaultValueGenerator ?? gen.constant(undefined)
   return orUndefined(optionalTypeOptions()).chain((options) => {
-    return orUndefined(actualDefaultValueGenerator).chain((defaultValue) => {
-      return wrappedTypeGenerator.map((wrappedType) => {
-        return types.optional(wrappedType, defaultValue, options)
-      })
+    return wrappedTypeGenerator.map((wrappedType) => {
+      return types.optional(wrappedType, options)
     })
   })
 }
@@ -372,17 +368,28 @@ function literalValue(): gen.Arbitrary<boolean | string | number | null> {
 /**
  * Generator for base types: numbers, strings, booleans, enumerations and literals.
  */
-function baseType(): gen.Arbitrary<types.Type> {
+export function baseType(): gen.Arbitrary<
+  | types.NumberType
+  | types.StringType
+  | types.BooleanType
+  | types.EnumType<[string, ...string[]]>
+  | types.LiteralType<boolean | string | number | null>
+> {
   return gen.oneof(number(), string(), boolean(), enumeration(nonEmptyStringArray()), literal(literalValue()))
 }
 
 /**
  * Generator for wrapper types: reference, optional, nullable and array.
  */
-function wrapperType(maxDepth: number): gen.Arbitrary<types.Type> {
-  const wrappedType = type(maxDepth - 1)
-  // ⚠️ Possible pain point: here we never generate the default for the optional type so it may never cover some
-  // test cases. TODO: We should fin a way to generate that, maybe it's already possible but I haven't lookd into it!
+export function wrapperType(
+  maxDepth: number = 3,
+  wrappedType: gen.Arbitrary<types.Type> = type(maxDepth - 1),
+): gen.Arbitrary<
+  | types.ReferenceType<types.Type>
+  | types.OptionalType<types.Type>
+  | types.NullableType<types.Type>
+  | types.ArrayType<'mutable' | 'immutable', types.Type>
+> {
   return gen.oneof(reference(wrappedType), optional(wrappedType), nullable(wrappedType), array(wrappedType))
 }
 

@@ -1,4 +1,5 @@
-import { projection, types, decoder, validator, path } from '../src'
+import { projection, types, decoder, validator, path, arbitrary } from '../src'
+import { typeAndValue } from '../src/arbitrary/from-type-arbitrary'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
@@ -170,89 +171,78 @@ describe('projection.subProjection', () => {
   })
 })
 
+const wrapperTypeAndValue = arbitrary
+  .wrapperType(3, arbitrary.baseType())
+  .filter(arbitrary.canGenerateValueFrom)
+  .chain((type) => {
+    return arbitrary.fromType(type, {}).map((value) => {
+      return [type, value] as const
+    })
+  })
+
+const baseTypeAndValue = arbitrary
+  .baseType()
+  .filter(arbitrary.canGenerateValueFrom)
+  .chain((type) => {
+    return arbitrary.fromType(type, {}).map((value) => {
+      return [type, value] as const
+    })
+  })
+
 describe('projection.respectsProjection', () => {
-  const variant2 = types.object({
-    field1: types.string(),
-    field2: types.object({ subfield1: types.boolean().optional(), subfield2: types.number() }),
+  test.prop([baseTypeAndValue])('works on base types', ([type, value]) => {
+    assertOk(projection.respectsProjection(type, true, value))
   })
-  const model = types.union({ variant1: types.string(), variant2 })
 
-  describe('checks that the selected fields are present (if not marked as optional)', () => {
-    const p = true as const
+  test.prop([wrapperTypeAndValue])('works on wrapper types', ([type, value]) => {
+    assertOk(projection.respectsProjection(type, true, value))
+  })
 
-    test('ok cases', () => {
-      const values = [
-        { variant2: { field1: 'Mondrian', field2: { subfield1: true, subfield2: 1 } } },
-        { variant2: { field1: 'Mondrian', field2: { subfield1: false, subfield2: 1 } } },
-        { variant2: { field1: 'Mondrian', field2: { subfield2: 1 } } },
+  test.prop([arbitrary.typeAndValue()])('always works on any type, if projection is true', ([type, value]) => {
+    assertOk(projection.respectsProjection(type, true, value))
+  })
+
+  test('fails with an internal error when called on an unhandled type', () => {
+    const unhandledType = { kind: 'not a type' } as unknown as types.Type
+    expect(() => projection.respectsProjection(unhandledType, true, null as never)).toThrow(/\[internal error\]/)
+  })
+
+  describe('reports missing required fields', () => {
+    test('from arrays', () => {
+      const model = types.object({ field1: types.number(), field2: types.string() }).array()
+      const value = [{ field1: 1 }, { field2: 'hello' }, { field1: 2, field2: 'hi' }, {}]
+      const p = { field1: true } as const
+      const result = projection.respectsProjection(model, p, value)
+      const actualError = assertFailure(result)
+      const expectedError = [
+        { missingField: 'field1', path: path.empty().appendIndex(1) },
+        { missingField: 'field1', path: path.empty().appendIndex(3) },
       ]
-      for (const value of values) {
-        assertOk(projection.respectsProjection(model, p, value))
-      }
+      checkErrors(expectedError, actualError)
     })
 
-    describe('error cases', () => {
-      test('correct variant, missing required field', () => {
-        const basePath = path.empty().appendVariant('variant2')
-        const baseError = [
-          { missingField: 'field1', path: basePath },
-          { missingField: 'field2', path: basePath },
-        ]
-        const objectError = [{ missingField: 'subfield2', path: basePath.appendField('field2') }]
+    test('from objects', () => {
+      const model = types.object({ field1: types.number(), field2: types.string() })
+      const result = projection.respectsProjection(model, { field2: true }, {})
+      const actualError = assertFailure(result)
+      const expectedError = [{ missingField: 'field2', path: path.empty() }]
+      checkErrors(expectedError, actualError)
+    })
 
-        const cases = [
-          [{ variant2: {} }, baseError],
-          [{ variant2: { field1: undefined } }, baseError],
-          [{ variant2: { field1: undefined, field2: undefined } }, baseError],
-          [{ variant2: { field1: 'Mondrian' } }, [baseError[1]]],
-          [{ variant2: { field1: 'Mondrian', field2: undefined } }, [baseError[1]]],
-          [{ variant2: { field1: 'Mondrian', field2: {} } }, objectError],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: undefined } } }, objectError],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true } } }, objectError],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: false } } }, objectError],
-        ] as const
-
-        for (const [value, expectedError] of cases) {
-          const error = assertFailure(projection.respectsProjection(model, p, value))
-          checkErrors(expectedError as projection.Error[], error)
-        }
+    test('from unions', () => {
+      const model = types.union({
+        variant1: types.string(),
+        variant2: types.object({
+          field1: types.string(),
+          field2: types.string(),
+        }),
       })
-    })
-  })
-
-  describe('when selecting only some fields', () => {
-    const p = { variant1: true, variant2: { field1: true } } as const
-
-    test('ok values', () => {
-      const values = [
-        { variant1: 'Mondrian' },
-        { variant2: { field1: 'Mondrian' } },
-        { variant2: { field1: 'Mondrian', field2: {} } },
-        { variant2: { field1: 'Mondrian', field2: undefined } },
-        { variant2: { field1: 'Mondrian', field2: { subfield1: true } } },
-      ]
-      for (const value of values) {
-        assertOk(projection.respectsProjection(model, p, value))
-      }
-    })
-
-    test('failing values', () => {
-      const basePath = path.empty().appendVariant('variant2')
-      const baseError = [{ missingField: 'field1', path: basePath }]
-      const cases = [
-        [{ variant2: {} }, baseError],
-        [{ variant2: { field1: undefined } }, baseError],
-        [{ variant2: { field1: undefined, field2: undefined } }, baseError],
-        [{ variant2: { field2: {} } }, baseError],
-        [{ variant2: { field2: { subfield1: undefined } } }, baseError],
-        [{ variant2: { field2: { subfield1: true } } }, baseError],
-        [{ variant2: { field1: undefined, field2: { subfield1: false } } }, baseError],
-      ] as const
-
-      for (const [value, expectedError] of cases) {
-        const error = assertFailure(projection.respectsProjection(model, p, value))
-        checkErrors(expectedError, error)
-      }
+      const value = { variant2: {} }
+      const p = { variant1: true, variant2: { field1: true } } as const
+      const result = projection.respectsProjection(model, p, value)
+      const actualError = assertFailure(result)
+      const expectedError = [{ missingField: 'field1', path: path.empty().appendVariant('variant2') }]
+      checkErrors(expectedError, actualError)
     })
   })
 })

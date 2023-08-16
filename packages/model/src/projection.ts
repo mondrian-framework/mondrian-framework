@@ -240,15 +240,7 @@ function getRequiredFields(fields: types.Types, projection: Projection): [string
     const dropOptionals = (_: string, fieldType: types.Type) => (types.isOptional(fieldType) ? undefined : fieldType)
     return Object.entries(filterMapObject(fields, dropOptionals))
   } else {
-    return Object.entries(
-      filterMapObject(projection, (fieldName, selection) => {
-        const fieldType = fields[fieldName]
-        const isFieldRequiredByProjection = selection !== undefined
-        const isFieldRequiredByType = !types.isOptional(fieldType)
-        const isFieldRequired = isFieldRequiredByProjection && isFieldRequiredByType
-        return isFieldRequired ? fieldType : undefined
-      }),
-    )
+    return Object.entries(filterMapObject(projection, (fieldName, _) => fields[fieldName]))
   }
 }
 

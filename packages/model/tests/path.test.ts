@@ -33,6 +33,22 @@ describe('path.prependField', () => {
   })
 })
 
+describe('path.appendField', () => {
+  test('appends the given field', () => {
+    const fragments = path.empty().appendField('first').appendField('second').toArray()
+    expect(fragments).toEqual([
+      { kind: 'field', fieldName: 'first' },
+      { kind: 'field', fieldName: 'second' },
+    ])
+  })
+
+  test("doesn't change the original path", () => {
+    const p1 = path.empty()
+    const p2 = p1.appendField('field')
+    expect(p1.toArray()).not.toEqual(p2.toArray())
+  })
+})
+
 describe('path.prependIndex', () => {
   test('prepends the given index', () => {
     const fragments = path.empty().prependIndex(2).prependIndex(1).toArray()
@@ -49,8 +65,24 @@ describe('path.prependIndex', () => {
   })
 })
 
+describe('path.appendIndex', () => {
+  test('appends the given index', () => {
+    const fragments = path.empty().appendIndex(1).appendIndex(2).toArray()
+    expect(fragments).toEqual([
+      { kind: 'index', index: 1 },
+      { kind: 'index', index: 2 },
+    ])
+  })
+
+  test("doesn't change the original path", () => {
+    const p1 = path.empty()
+    const p2 = p1.appendIndex(1)
+    expect(p1.toArray()).not.toEqual(p2.toArray())
+  })
+})
+
 describe('path.prependVariant', () => {
-  test('prepends the given index', () => {
+  test('prepends the given variant', () => {
     const fragments = path.empty().prependVariant('second').prependVariant('first').toArray()
     expect(fragments).toEqual([
       { kind: 'variant', variantName: 'first' },
@@ -61,6 +93,22 @@ describe('path.prependVariant', () => {
   test("doesn't change the original path", () => {
     const p1 = path.empty()
     const p2 = p1.prependVariant('variant')
+    expect(p1.toArray()).not.toEqual(p2.toArray())
+  })
+})
+
+describe('path.appendVariant', () => {
+  test('appends the given variant', () => {
+    const fragments = path.empty().appendVariant('first').appendVariant('second').toArray()
+    expect(fragments).toEqual([
+      { kind: 'variant', variantName: 'first' },
+      { kind: 'variant', variantName: 'second' },
+    ])
+  })
+
+  test("doesn't change the original path", () => {
+    const p1 = path.empty()
+    const p2 = p1.appendVariant('variant')
     expect(p1.toArray()).not.toEqual(p2.toArray())
   })
 })

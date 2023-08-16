@@ -13,8 +13,11 @@ export const fromFragments: (fragments: Fragment[]) => Path = (fragments) => new
 
 export interface Path {
   prependField(fieldName: string): Path
+  appendField(fieldName: string): Path
   prependIndex(index: number): Path
+  appendIndex(index: number): Path
   prependVariant(variantName: string): Path
+  appendVariant(variantName: string): Path
   toArray(): Fragment[]
   format(): string
   equals(other: Path): boolean
@@ -28,9 +31,13 @@ class PathImpl implements Path {
   }
 
   prependFragment = (fragment: Fragment) => new PathImpl([fragment, ...this.fragments])
+  appendFragment = (fragment: Fragment) => new PathImpl([...this.fragments, fragment])
   prependField = (fieldName: string) => this.prependFragment({ kind: 'field', fieldName })
+  appendField = (fieldName: string) => this.appendFragment({ kind: 'field', fieldName })
   prependIndex = (index: number) => this.prependFragment({ kind: 'index', index })
+  appendIndex = (index: number) => this.appendFragment({ kind: 'index', index })
   prependVariant = (variantName: string) => this.prependFragment({ kind: 'variant', variantName })
+  appendVariant = (variantName: string) => this.appendFragment({ kind: 'variant', variantName })
   toArray = () => [...this.fragments]
 
   format = () => {

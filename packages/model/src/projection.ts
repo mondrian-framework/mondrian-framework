@@ -1,4 +1,4 @@
-import { projection, result, types } from './index'
+import { path, projection, result, types } from './index'
 import { always, assertNever, filterMapObject, unsafeObjectToTaggedVariant } from './utils'
 
 /**
@@ -142,15 +142,16 @@ export function subProjection<P extends Projection, S extends Selector<P>>(
   return selected
 }
 
-// TODO: add doc and instead of types.Infer it should be InferPartialDeep! For now this is just a mock
-//       in order not to stop development of other modules
-// TODO: this should return a result with the missing fields in the error case
-// tells if value is valid (meaning that it only has the fields allowed by the actual projection)
+export type Error = path.WithPath<{
+  missingField: string
+}>
+
+// TODO: add doc
 export function respectsProjection<T extends types.Type>(
   type: T,
   projection: projection.FromType<T>,
   value: types.InferPartial<T>,
-): result.Result<true, undefined> {
+): result.Result<true, projection.Error[]> {
   const concreteType = types.concretise(type)
   const kind = concreteType.kind
   if (
@@ -162,7 +163,7 @@ export function respectsProjection<T extends types.Type>(
     kind === 'custom'
   ) {
     // The projection for these types is never so it's always right
-    return value === undefined ? result.fail(undefined) : result.ok(true)
+    return result.ok(true)
   } else if (kind === 'reference') {
     return respectsProjection(concreteType.wrappedType, projection as any, value as any)
   } else if (kind === 'nullable') {
@@ -177,25 +178,27 @@ export function respectsProjection<T extends types.Type>(
     const [variantName, variantValue] = unsafeObjectToTaggedVariant(value as Record<string, any>)
     const variantProjection = subProjection(projection, [variantName] as any)
     const variantType = concreteType.variants[variantName]
-    return respectsProjection(variantType, variantProjection, variantValue as any)
+    const result = respectsProjection(variantType, variantProjection, variantValue as any)
+    return result.mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
   } else if (kind === 'object') {
     const requiredFields = getRequiredFields(concreteType, projection)
     const results = Object.entries(requiredFields).map(([fieldName, fieldType]) => {
       const object = value as Record<string, any>
       const fieldValue = object[fieldName]
       if (fieldValue === undefined) {
-        return result.fail(undefined)
+        return result.fail([{ missingField: fieldName, path: path.empty() }])
       } else {
         const fieldProjection = subProjection(projection, [fieldName] as any)
-        return respectsProjection(fieldType, fieldProjection, fieldValue as never)
+        const result = respectsProjection(fieldType, fieldProjection, fieldValue as never)
+        return result.mapError((errors) => errors.map((error) => path.prependField(error, fieldName)))
       }
     })
-    return result.reduce(results, true, undefined, always(true), always(undefined))
+    return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
   } else if (kind === 'array') {
     const wrappedType = concreteType.wrappedType
     const values = value as any[]
     const results = values.map((item) => respectsProjection(wrappedType, projection as any, item))
-    return result.reduce(results, true, undefined, always(true), always(undefined))
+    return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
   } else {
     assertNever(kind, 'Totality check failed when checking a projection, this should have never happened')
   }

@@ -1,4 +1,5 @@
-import { projection, types, decoder, validator } from '../src'
+import { projection, types, decoder, validator, path } from '../src'
+import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expectTypeOf, describe, expect } from 'vitest'
@@ -192,21 +193,28 @@ describe('projection.respectsProjection', () => {
 
     describe('error cases', () => {
       test('correct variant, missing required field', () => {
+        const basePath = path.empty().appendVariant('variant2')
+        const baseError = [
+          { missingField: 'field1', path: basePath },
+          { missingField: 'field2', path: basePath },
+        ]
+        const objectError = [{ missingField: 'subfield2', path: basePath.appendField('field2') }]
+
         const cases = [
-          [{ variant2: {} }, undefined],
-          [{ variant2: { field1: undefined } }, undefined],
-          [{ variant2: { field1: undefined, field2: undefined } }, undefined],
-          [{ variant2: { field1: 'Mondrian' } }, undefined],
-          [{ variant2: { field1: 'Mondrian', field2: undefined } }, undefined],
-          [{ variant2: { field1: 'Mondrian', field2: {} } }, undefined],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: undefined } } }, undefined],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true } } }, undefined],
-          [{ variant2: { field1: 'Mondrian', field2: { subfield1: false } } }, undefined],
+          [{ variant2: {} }, baseError],
+          [{ variant2: { field1: undefined } }, baseError],
+          [{ variant2: { field1: undefined, field2: undefined } }, baseError],
+          [{ variant2: { field1: 'Mondrian' } }, [baseError[1]]],
+          [{ variant2: { field1: 'Mondrian', field2: undefined } }, [baseError[1]]],
+          [{ variant2: { field1: 'Mondrian', field2: {} } }, objectError],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: undefined } } }, objectError],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: true } } }, objectError],
+          [{ variant2: { field1: 'Mondrian', field2: { subfield1: false } } }, objectError],
         ] as const
 
         for (const [value, expectedError] of cases) {
           const error = assertFailure(projection.respectsProjection(model, p, value))
-          expect(error).toBe(expectedError)
+          checkErrors(expectedError as projection.Error[], error)
         }
       })
     })
@@ -229,23 +237,32 @@ describe('projection.respectsProjection', () => {
     })
 
     test('failing values', () => {
+      const basePath = path.empty().appendVariant('variant2')
+      const baseError = [{ missingField: 'field1', path: basePath }]
       const cases = [
-        [{ variant2: {} }, undefined],
-        [{ variant2: { field1: undefined } }, undefined],
-        [{ variant2: { field1: undefined, field2: undefined } }, undefined],
-        [{ variant2: { field2: {} } }, undefined],
-        [{ variant2: { field2: { subfield1: undefined } } }, undefined],
-        [{ variant2: { field2: { subfield1: true } } }, undefined],
-        [{ variant2: { field1: undefined, field2: { subfield1: false } } }, undefined],
+        [{ variant2: {} }, baseError],
+        [{ variant2: { field1: undefined } }, baseError],
+        [{ variant2: { field1: undefined, field2: undefined } }, baseError],
+        [{ variant2: { field2: {} } }, baseError],
+        [{ variant2: { field2: { subfield1: undefined } } }, baseError],
+        [{ variant2: { field2: { subfield1: true } } }, baseError],
+        [{ variant2: { field1: undefined, field2: { subfield1: false } } }, baseError],
       ] as const
 
       for (const [value, expectedError] of cases) {
         const error = assertFailure(projection.respectsProjection(model, p, value))
-        expect(error).toBe(expectedError)
+        checkErrors(expectedError, error)
       }
     })
   })
 })
+
+function checkErrors(actual: projection.Error[], expected: projection.Error[]) {
+  const compareProjectionErrors = (one: projection.Error, other: projection.Error) => {
+    return one.missingField === other.missingField && one.path.equals(other.path)
+  }
+  expect(areSameArray(actual, expected, compareProjectionErrors)).toBe(true)
+}
 
 //describe('projection.FromType', () => {
 //

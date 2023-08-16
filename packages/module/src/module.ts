@@ -1,4 +1,4 @@
-import { func } from '.'
+import { func, middleware } from '.'
 import { AfterMiddleware, BeforeMiddleware, Function, Functions } from './function'
 import { Logger } from './log'
 import { projection, types } from '@mondrian-framework/model'
@@ -113,48 +113,23 @@ class ModuleBuilder {
     module: Module<Fs, ContextInput>,
   ): Module<Fs, ContextInput> {
     assertUniqueNames(module.functions)
-    const outputTypeCheck = module.options?.checks?.output ?? 'throw'
-    const maxProjectionDepth = module.options?.checks?.maxProjectionDepth
-    const maxDepthMiddleware: BeforeMiddleware<types.Type, types.Type, {}> = {
-      name: 'Check max projection depth',
-      apply: ({ args }) => {
-        if (maxProjectionDepth != null) {
-          const depth = projection.depth(args.projection ?? true)
-          if (depth > maxProjectionDepth) {
-            throw new Error(
-              `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxProjectionDepth}.`,
-            )
-          }
-        }
-        return args
-      },
-    }
-    const outputCheckMiddleware: AfterMiddleware<types.Type, types.Type, {}> = {
-      name: 'Check output type',
-      apply: ({ args, thisFunction, result }) => {
-        const projectionRespectedResult = projection.respectsProjection(
-          thisFunction.output,
-          args.projection ?? true,
-          result,
-        )
-        if (!projectionRespectedResult.isOk) {
-          //TODO: prettify error?
-          const m = JSON.stringify({ projection: args.projection, errors: projectionRespectedResult.error })
-          if (outputTypeCheck === 'log') {
-            args.log(`Invalid output: ${m}`, 'error')
-          } else {
-            throw new Error(`Invalid output: ${m}`)
-          }
-        }
-        return result
-      },
-    }
+    const maxProjectionDepthMiddleware = module.options?.checks?.maxProjectionDepth
+      ? middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)
+      : null
+    const checkOutputTypeMiddleware =
+      module.options?.checks?.output && module.options.checks.output !== 'ignore'
+        ? middleware.checkOutputType(module.options.checks.output)
+        : null
     const wrappedFunctions = Object.fromEntries(
       Object.entries(module.functions).map(([functionName, functionBody]) => {
         const wrappedFunction = func.build({
           ...functionBody,
-          before: [maxDepthMiddleware],
-          after: [outputCheckMiddleware],
+          before: maxProjectionDepthMiddleware
+            ? [maxProjectionDepthMiddleware, ...(functionBody.before ?? [])]
+            : functionBody.before,
+          after: checkOutputTypeMiddleware
+            ? [...(functionBody.after ?? []), checkOutputTypeMiddleware]
+            : functionBody.after,
         })
         return [functionName, wrappedFunction]
       }),

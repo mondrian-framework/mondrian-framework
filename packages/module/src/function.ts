@@ -8,7 +8,24 @@ export type Function<I extends types.Type, O extends types.Type, Context extends
   input: I
   output: O
   apply: (args: FunctionArguments<I, O, Context>) => Promise<types.InferPartial<O>>
+  before?: BeforeMiddleware<I, O, Context>[]
+  after?: AfterMiddleware<I, O, Context>[]
   options?: { namespace?: string; description?: string }
+}
+
+export async function call<
+  const I extends types.Type,
+  const O extends types.Type,
+  const Context extends Record<string, unknown>,
+>(func: Function<I, O, Context>, args: FunctionArguments<I, O, Context>): Promise<types.InferPartial<O>> {
+  for (const middleware of func.before ?? []) {
+    args = await middleware.apply({ args, thisFunction: func })
+  }
+  let result = await func.apply(args)
+  for (const middleware of func.after ?? []) {
+    result = await middleware.apply({ args, result, thisFunction: func })
+  }
+  return result
 }
 
 /**
@@ -72,27 +89,10 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
    * Builds a Mondrian function.
    * @returns A Mondrian function with the applied middlewares.
    */
-  public build<const I extends types.Type, const O extends types.Type>({
-    before,
-    after,
-    ...func
-  }: Function<I, O, Context> & {
-    before?: BeforeMiddleware<I, O, Context>[]
-    after?: AfterMiddleware<I, O, Context>[]
-  }): Function<I, O, Context> {
-    return {
-      ...func,
-      apply: async (args) => {
-        for (const middleware of before ?? []) {
-          args = await middleware.apply({ args, thisFunction: func })
-        }
-        let result = await func.apply(args)
-        for (const middleware of after ?? []) {
-          result = await middleware.apply({ args, result, thisFunction: func })
-        }
-        return result
-      },
-    }
+  public build<const I extends types.Type, const O extends types.Type>(
+    func: Function<I, O, Context>,
+  ): Function<I, O, Context> {
+    return func
   }
 }
 

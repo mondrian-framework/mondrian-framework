@@ -1,5 +1,5 @@
 import { logger } from '.'
-import { Functions } from './function'
+import { Functions, call } from './function'
 import { Module } from './module'
 import { randomOperationId } from './utils'
 import { projection, types } from '@mondrian-framework/model'
@@ -54,7 +54,7 @@ class SdkBuilder<const Metadata> {
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this._metadata })
             const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
-            const result = await functionBody.apply({
+            const result = await call(functionBody, {
               input: input as never, //TODO: types.Infer<types.Type> should infer unknown
               projection: options?.projection as never, //TODO: projection.FromType<types.Type> should infer Projection
               context: ctx,

@@ -196,23 +196,21 @@ export type BaseOptions = {
   readonly description?: string
 }
 
-interface TypeMethods<T extends Type, Options> {
-  optional(): OptionalType<T>
-  nullable(): NullableType<T>
-  array(): ArrayType<'immutable', T>
-  reference(): ReferenceType<T>
-  setOptions(options: Options): T
-  updateOptions(options: Options): T
-  setName(name: string): T
-}
-
 /**
  * The model of a `string` in the Mondrian framework.
  */
 export type StringType = {
   readonly kind: Kind.String
   readonly options?: StringTypeOptions
-} & TypeMethods<StringType, StringTypeOptions>
+
+  optional(): OptionalType<StringType>
+  nullable(): NullableType<StringType>
+  array(): ArrayType<'immutable', StringType>
+  reference(): ReferenceType<StringType>
+  setOptions(options: StringTypeOptions): StringType
+  updateOptions(options: StringTypeOptions): StringType
+  setName(name: string): StringType
+}
 
 /**
  * The options that can be used to define a `StringType`.
@@ -229,7 +227,15 @@ export type StringTypeOptions = BaseOptions & {
 export type NumberType = {
   readonly kind: Kind.Number
   readonly options?: NumberTypeOptions
-} & TypeMethods<NumberType, NumberTypeOptions>
+
+  optional(): OptionalType<NumberType>
+  nullable(): NullableType<NumberType>
+  array(): ArrayType<'immutable', NumberType>
+  reference(): ReferenceType<NumberType>
+  setOptions(options: NumberTypeOptions): NumberType
+  updateOptions(options: NumberTypeOptions): NumberType
+  setName(name: string): NumberType
+}
 
 /**
  * The options that can be used to define a {@link NumberType `NumberType`}.
@@ -248,7 +254,15 @@ export type NumberTypeOptions = BaseOptions & {
 export type BooleanType = {
   readonly kind: Kind.Boolean
   readonly options?: BooleanTypeOptions
-} & TypeMethods<BooleanType, BooleanTypeOptions>
+
+  optional(): OptionalType<BooleanType>
+  nullable(): NullableType<BooleanType>
+  array(): ArrayType<'immutable', BooleanType>
+  reference(): ReferenceType<BooleanType>
+  setOptions(options: BooleanTypeOptions): BooleanType
+  updateOptions(options: BooleanTypeOptions): BooleanType
+  setName(name: string): BooleanType
+}
 
 /**
  * The options that can be used to define a {@link BooleanType `BooleanType`}.
@@ -262,7 +276,15 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
   readonly kind: Kind.Enum
   readonly variants: Vs
   readonly options?: EnumTypeOptions
-} & TypeMethods<EnumType<Vs>, EnumTypeOptions>
+
+  optional(): OptionalType<EnumType<Vs>>
+  nullable(): NullableType<EnumType<Vs>>
+  array(): ArrayType<'immutable', EnumType<Vs>>
+  reference(): ReferenceType<EnumType<Vs>>
+  setOptions(options: EnumTypeOptions): EnumType<Vs>
+  updateOptions(options: EnumTypeOptions): EnumType<Vs>
+  setName(name: string): EnumType<Vs>
+}
 
 /**
  * The options that can be used to define an {@link EnumType `EnumType`}.
@@ -276,7 +298,15 @@ export type LiteralType<L extends number | string | boolean | null> = {
   readonly kind: Kind.Literal
   readonly literalValue: L
   readonly options?: LiteralTypeOptions
-} & TypeMethods<LiteralType<L>, LiteralTypeOptions>
+
+  optional(): OptionalType<LiteralType<L>>
+  nullable(): NullableType<LiteralType<L>>
+  array(): ArrayType<'immutable', LiteralType<L>>
+  reference(): ReferenceType<LiteralType<L>>
+  setOptions(options: LiteralTypeOptions): LiteralType<L>
+  updateOptions(options: LiteralTypeOptions): LiteralType<L>
+  setName(name: string): LiteralType<L>
+}
 
 /**
  * The options that can be used to define a {@link LiteralType `LiteralType`}.
@@ -291,7 +321,15 @@ export type UnionType<Ts extends Types> = {
   readonly kind: Kind.Union
   readonly variants: Ts
   readonly options?: UnionTypeOptions
-} & TypeMethods<UnionType<Ts>, UnionTypeOptions>
+
+  optional(): OptionalType<UnionType<Ts>>
+  nullable(): NullableType<UnionType<Ts>>
+  array(): ArrayType<'immutable', UnionType<Ts>>
+  reference(): ReferenceType<UnionType<Ts>>
+  setOptions(options: UnionTypeOptions): UnionType<Ts>
+  updateOptions(options: UnionTypeOptions): UnionType<Ts>
+  setName(name: string): UnionType<Ts>
+}
 
 /**
  * The options that can be used to define a {@link UnionType `UnionType`}.
@@ -309,7 +347,14 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
 
   immutable(): ObjectType<'immutable', Ts>
   mutable(): ObjectType<'mutable', Ts>
-} & TypeMethods<ObjectType<M, Ts>, ObjectTypeOptions>
+  optional(): OptionalType<ObjectType<M, Ts>>
+  nullable(): NullableType<ObjectType<M, Ts>>
+  array(): ArrayType<'immutable', ObjectType<M, Ts>>
+  reference(): ReferenceType<ObjectType<M, Ts>>
+  setOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
+  updateOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
+  setName(name: string): ObjectType<M, Ts>
+}
 
 /**
  * The options that can be used to define an {@link ObjectType `ObjectType`}.
@@ -327,7 +372,14 @@ export type ArrayType<M extends Mutability, T extends Type> = {
 
   immutable(): ArrayType<'immutable', T>
   mutable(): ArrayType<'mutable', T>
-} & TypeMethods<ArrayType<M, T>, ArrayTypeOptions>
+  optional(): OptionalType<ArrayType<M, T>>
+  nullable(): NullableType<ArrayType<M, T>>
+  array(): ArrayType<'immutable', ArrayType<M, T>>
+  reference(): ReferenceType<ArrayType<M, T>>
+  setOptions(options: ArrayTypeOptions): ArrayType<M, T>
+  updateOptions(options: ArrayTypeOptions): ArrayType<M, T>
+  setName(name: string): ArrayType<M, T>
+}
 
 /**
  * The options that can be used to define an {@link ArrayType `ArrayType`}.
@@ -344,7 +396,14 @@ export type OptionalType<T extends Type> = {
   readonly kind: Kind.Optional
   readonly wrappedType: T
   readonly options?: OptionalTypeOptions
-} & TypeMethods<OptionalType<T>, OptionalTypeOptions>
+
+  nullable(): NullableType<OptionalType<T>>
+  array(): ArrayType<'immutable', OptionalType<T>>
+  reference(): ReferenceType<OptionalType<T>>
+  setOptions(options: OptionalTypeOptions): OptionalType<T>
+  updateOptions(options: OptionalTypeOptions): OptionalType<T>
+  setName(name: string): OptionalType<T>
+}
 
 /**
  * The options that can be used to define an {@link OptionalType `OptionalType`}.
@@ -358,7 +417,14 @@ export type NullableType<T extends Type> = {
   readonly kind: Kind.Nullable
   readonly wrappedType: T
   readonly options?: NullableTypeOptions
-} & TypeMethods<NullableType<T>, NullableTypeOptions>
+
+  optional(): OptionalType<NullableType<T>>
+  array(): ArrayType<'immutable', NullableType<T>>
+  reference(): ReferenceType<NullableType<T>>
+  setOptions(options: NullableTypeOptions): NullableType<T>
+  updateOptions(options: NullableTypeOptions): NullableType<T>
+  setName(name: string): NullableType<T>
+}
 
 /**
  * The options that can be used to define a {@link NullableType `NullableType`}.
@@ -372,7 +438,14 @@ export type ReferenceType<T extends Type> = {
   readonly kind: Kind.Reference
   readonly wrappedType: T
   readonly options?: ReferenceTypeOptions
-} & TypeMethods<ReferenceType<T>, ReferenceTypeOptions>
+
+  optional(): OptionalType<ReferenceType<T>>
+  nullable(): NullableType<ReferenceType<T>>
+  array(): ArrayType<'immutable', ReferenceType<T>>
+  setOptions(options: ReferenceTypeOptions): ReferenceType<T>
+  updateOptions(options: ReferenceTypeOptions): ReferenceType<T>
+  setName(name: string): ReferenceType<T>
+}
 
 /**
  * The options used to define a {@link ReferenceType `ReferenceType`}.
@@ -398,7 +471,15 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
     validationOptions: validator.Options,
     options?: CustomTypeOptions<Options>,
   ): validator.Result
-} & TypeMethods<CustomType<Name, Options, InferredAs>, Options>
+
+  optional(): OptionalType<CustomType<Name, Options, InferredAs>>
+  nullable(): NullableType<CustomType<Name, Options, InferredAs>>
+  array(): ArrayType<'immutable', CustomType<Name, Options, InferredAs>>
+  reference(): ReferenceType<CustomType<Name, Options, InferredAs>>
+  setOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
+  updateOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
+  setName(name: string): CustomType<Name, Options, InferredAs>
+}
 
 /**
  * The options used to define a {@link CustomTypeOptions `CustomTypeOptions`}.
@@ -1161,9 +1242,6 @@ export function optional<const T extends Type>(wrappedType: T, options?: Options
     kind: Kind.Optional,
     wrappedType,
     options,
-    optional() {
-      return optional(this)
-    },
     nullable() {
       return nullable(this)
     },
@@ -1204,9 +1282,6 @@ export function nullable<T extends Type>(wrappedType: T, options?: OptionsOf<Nul
     options,
     optional() {
       return optional(this)
-    },
-    nullable() {
-      return nullable(this)
     },
     array() {
       return array(this)
@@ -1253,9 +1328,6 @@ export function reference<T extends Type>(wrappedType: T, options?: OptionsOf<Re
     },
     setName(name) {
       return setName(this, name)
-    },
-    reference() {
-      return reference(this)
     },
   }
 }

@@ -283,14 +283,10 @@ export function optionalTypeOptions(): gen.Arbitrary<types.OptionsOf<types.Optio
  */
 export function optional<T extends types.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-  defaultValueGenerator?: gen.Arbitrary<types.Infer<T> | (() => types.Infer<T>)>,
 ): gen.Arbitrary<types.OptionalType<T>> {
-  const actualDefaultValueGenerator = defaultValueGenerator ?? gen.constant(undefined)
   return orUndefined(optionalTypeOptions()).chain((options) => {
-    return orUndefined(actualDefaultValueGenerator).chain((defaultValue) => {
-      return wrappedTypeGenerator.map((wrappedType) => {
-        return types.optional(wrappedType, defaultValue, options)
-      })
+    return wrappedTypeGenerator.map((wrappedType) => {
+      return types.optional(wrappedType, options)
     })
   })
 }
@@ -394,8 +390,6 @@ export function wrapperType(
   | types.NullableType<types.Type>
   | types.ArrayType<'mutable' | 'immutable', types.Type>
 > {
-  // ⚠️ Possible pain point: here we never generate the default for the optional type so it may never cover some
-  // test cases. TODO: We should fin a way to generate that, maybe it's already possible but I haven't lookd into it!
   return gen.oneof(reference(wrappedType), optional(wrappedType), nullable(wrappedType), array(wrappedType))
 }
 

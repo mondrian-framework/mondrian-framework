@@ -74,8 +74,7 @@ function unsafeEncodeOptional<T extends types.Type>(
   type: types.OptionalType<T>,
   value: any | undefined,
 ): JSONType | undefined {
-  const valueToEncode = value ?? type.defaultValue
-  return valueToEncode === undefined ? undefined : unsafeEncode(type.wrappedType, valueToEncode)
+  return value === undefined ? undefined : unsafeEncode(type.wrappedType, value)
 }
 
 /**

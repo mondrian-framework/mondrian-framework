@@ -380,7 +380,6 @@ export type ArrayTypeOptions = BaseOptions & {
 export type OptionalType<T extends Type> = {
   readonly kind: 'optional'
   readonly wrappedType: T
-  readonly defaultValue?: Infer<T> | (() => Infer<T>)
   readonly options?: OptionalTypeOptions
 
   nullable(): NullableType<OptionalType<T>>
@@ -389,7 +388,6 @@ export type OptionalType<T extends Type> = {
   setOptions(options: OptionalTypeOptions): OptionalType<T>
   updateOptions(options: OptionalTypeOptions): OptionalType<T>
   setName(name: string): OptionalType<T>
-  withDefault(value: Infer<T> | (() => Infer<T>)): OptionalType<T>
 }
 
 /**
@@ -1224,15 +1222,10 @@ export function mutableArray<T extends Type>(
  *          const examplePresent: OptionalNumber = 42
  *          ```
  */
-export function optional<const T extends Type>(
-  wrappedType: T,
-  defaultValue?: Infer<T> | (() => Infer<T>),
-  options?: OptionsOf<OptionalType<T>>,
-): OptionalType<T> {
+export function optional<const T extends Type>(wrappedType: T, options?: OptionsOf<OptionalType<T>>): OptionalType<T> {
   return {
     kind: 'optional',
     wrappedType,
-    defaultValue,
     options,
     nullable() {
       return nullable(this)
@@ -1251,9 +1244,6 @@ export function optional<const T extends Type>(
     },
     setName(name) {
       return setName(this, name)
-    },
-    withDefault(defaultValue) {
-      return optional(wrappedType, defaultValue, options)
     },
   }
 }

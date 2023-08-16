@@ -162,61 +162,108 @@ export function respectsProjection<T extends types.Type>(
     kind === 'string' ||
     kind === 'custom'
   ) {
-    // The projection for these types is never so it's always right
     return result.ok(true)
   } else if (kind === 'reference') {
     return respectsProjection(concreteType.wrappedType, projection as any, value as any)
   } else if (kind === 'nullable') {
-    return value === null
-      ? result.ok(true)
-      : respectsProjection(concreteType.wrappedType, projection as any, value as any)
+    return validateNullable(concreteType.wrappedType, projection, value)
   } else if (kind === 'optional') {
-    return value === undefined
-      ? result.ok(true)
-      : respectsProjection(concreteType.wrappedType, projection as any, value as any)
+    return validateOptional(concreteType.wrappedType, projection, value)
   } else if (kind === 'union') {
-    const [variantName, variantValue] = unsafeObjectToTaggedVariant(value as Record<string, any>)
-    const variantProjection = subProjection(projection, [variantName] as any)
-    const variantType = concreteType.variants[variantName]
-    const result = respectsProjection(variantType, variantProjection, variantValue as any)
-    return result.mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
+    return validateUnion(concreteType.variants, projection, value)
   } else if (kind === 'object') {
-    const requiredFields = getRequiredFields(concreteType, projection)
-    const results = Object.entries(requiredFields).map(([fieldName, fieldType]) => {
-      const object = value as Record<string, any>
-      const fieldValue = object[fieldName]
-      if (fieldValue === undefined) {
-        return result.fail([{ missingField: fieldName, path: path.empty() }])
-      } else {
-        const fieldProjection = subProjection(projection, [fieldName] as any)
-        const result = respectsProjection(fieldType, fieldProjection, fieldValue as never)
-        return result.mapError((errors) => errors.map((error) => path.prependField(error, fieldName)))
-      }
-    })
-    return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
+    return validateObject(concreteType.fields, projection, value as Record<string, any>)
   } else if (kind === 'array') {
-    const wrappedType = concreteType.wrappedType
-    const values = value as any[]
-    const results = values.map((item) => respectsProjection(wrappedType, projection as any, item))
-    return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
+    return validateArray(concreteType.wrappedType, projection, value as any[])
   } else {
     assertNever(kind, 'Totality check failed when checking a projection, this should have never happened')
   }
 }
 
-function getRequiredFields(type: types.ObjectType<any, types.Types>, projection: Projection): types.Types {
+function validateOptional(
+  type: types.Type,
+  projection: Projection,
+  value: any,
+): result.Result<true, projection.Error[]> {
+  return value === undefined ? result.ok(true) : respectsProjection(type, projection as any, value as never)
+}
+
+function validateNullable(
+  type: types.Type,
+  projection: Projection,
+  value: any,
+): result.Result<true, projection.Error[]> {
+  return value === null ? result.ok(true) : respectsProjection(type, projection as any, value as never)
+}
+
+function validateUnion(
+  variants: types.Types,
+  projection: Projection,
+  value: any,
+): result.Result<true, projection.Error[]> {
+  const [variantName, variantValue] = unsafeObjectToTaggedVariant(value as Record<string, any>)
+  const variantProjection = subProjection(projection, [variantName] as never)
+  const variantType = variants[variantName]
+  const result = respectsProjection(variantType, variantProjection, variantValue as never)
+  return result.mapError((errors) => errors.map((error) => path.prependVariant(error, variantName)))
+}
+
+function validateObject(
+  fields: types.Types,
+  projection: Projection,
+  object: Record<string, any>,
+): result.Result<true, projection.Error[]> {
+  const results = getRequiredFields(fields, projection).map(([fieldName, fieldType]) =>
+    validateRequiredField(fieldName, fieldType, projection, object),
+  )
+  return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
+}
+
+function validateRequiredField(
+  fieldName: string,
+  fieldType: types.Type,
+  projection: Projection,
+  object: Record<string, any>,
+): result.Result<true, projection.Error[]> {
+  const fieldValue = object[fieldName]
+  if (fieldValue === undefined) {
+    return result.fail([{ missingField: fieldName, path: path.empty() }])
+  } else {
+    const fieldProjection = subProjection(projection, [fieldName] as never)
+    const result = respectsProjection(fieldType, fieldProjection, fieldValue as never)
+    return result.mapError((errors) => errors.map((error) => path.prependField(error, fieldName)))
+  }
+}
+
+function getRequiredFields(fields: types.Types, projection: Projection): [string, types.Type][] {
   if (projection === true) {
     const dropOptionals = (_: string, fieldType: types.Type) => (types.isOptional(fieldType) ? undefined : fieldType)
-    return filterMapObject(type.fields, dropOptionals)
+    return Object.entries(filterMapObject(fields, dropOptionals))
   } else {
-    return filterMapObject(projection, (fieldName, selection) => {
-      const fieldType = type.fields[fieldName]
-      const isFieldRequiredByProjection = selection !== undefined
-      const isFieldRequiredByType = !types.isOptional(fieldType)
-      const isFieldRequired = isFieldRequiredByProjection && isFieldRequiredByType
-      return isFieldRequired ? fieldType : undefined
-    })
+    return Object.entries(
+      filterMapObject(projection, (fieldName, selection) => {
+        const fieldType = fields[fieldName]
+        const isFieldRequiredByProjection = selection !== undefined
+        const isFieldRequiredByType = !types.isOptional(fieldType)
+        const isFieldRequired = isFieldRequiredByProjection && isFieldRequiredByType
+        return isFieldRequired ? fieldType : undefined
+      }),
+    )
   }
+}
+
+function validateArray(
+  type: types.Type,
+  projection: Projection,
+  array: any[],
+): result.Result<true, projection.Error[]> {
+  const validateArrayItem = (item: any, index: number) =>
+    respectsProjection(type, projection as any, item as never).mapError((errors) =>
+      errors.map((error) => path.prependIndex(error, index)),
+    )
+
+  const results = array.map(validateArrayItem)
+  return result.reduce(results, true, [] as projection.Error[], always(true), (acc, error) => [...acc, ...error])
 }
 
 /*

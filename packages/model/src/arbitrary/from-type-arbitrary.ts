@@ -50,41 +50,43 @@ export function fromType<T extends types.Type>(
   maxDepth = 5,
 ): gen.Arbitrary<types.Infer<T>> {
   const concreteType = types.concretise(type)
-  const kind = concreteType.kind
-  if (kind === 'boolean') {
-    return gen.boolean() as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'number') {
-    return numberMatchingOptions(concreteType.options) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'string') {
-    return stringMatchingOptions(concreteType.options) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'literal') {
-    return gen.constant(concreteType.literalValue) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'enum') {
-    return gen.constantFrom(...concreteType.variants) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'optional') {
-    return wrapInOptional(maxDepth, concreteType.wrappedType, customArbitraries) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'nullable') {
-    return wrapInNullable(maxDepth, concreteType.wrappedType, customArbitraries) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'union') {
-    return unionFromVariants(maxDepth, concreteType.variants, customArbitraries) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'object') {
-    return objectFromFields(maxDepth, concreteType.fields, customArbitraries) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'array') {
-    return arrayFromOptions(
-      maxDepth,
-      concreteType.wrappedType,
-      concreteType.options,
-      customArbitraries,
-    ) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'reference') {
-    return fromType(concreteType.wrappedType, customArbitraries, maxDepth - 1) as gen.Arbitrary<types.Infer<T>>
-  } else if (kind === 'custom') {
-    return generatorFromArbitrariesMap(concreteType.typeName, concreteType.options, customArbitraries) as gen.Arbitrary<
-      types.Infer<T>
-    >
-  } else {
-    const message = `\`fromType\` was called with a type kind (${kind}) that it cannot handle but this call should have been made impossible by the type system's checks`
-    assertNever(kind, message)
+  switch (concreteType.kind) {
+    case types.Kind.Boolean:
+      return gen.boolean() as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Number:
+      return numberMatchingOptions(concreteType.options) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.String:
+      return stringMatchingOptions(concreteType.options) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Literal:
+      return gen.constant(concreteType.literalValue) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Enum:
+      return gen.constantFrom(...concreteType.variants) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Optional:
+      return wrapInOptional(maxDepth, concreteType.wrappedType, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Nullable:
+      return wrapInNullable(maxDepth, concreteType.wrappedType, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Union:
+      return unionFromVariants(maxDepth, concreteType.variants, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Object:
+      return objectFromFields(maxDepth, concreteType.fields, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Array:
+      return arrayFromOptions(
+        maxDepth,
+        concreteType.wrappedType,
+        concreteType.options,
+        customArbitraries,
+      ) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Reference:
+      return fromType(concreteType.wrappedType, customArbitraries, maxDepth - 1) as gen.Arbitrary<types.Infer<T>>
+    case types.Kind.Custom:
+      return generatorFromArbitrariesMap(
+        concreteType.typeName,
+        concreteType.options,
+        customArbitraries,
+      ) as gen.Arbitrary<types.Infer<T>>
+    default:
+      const message = `\`fromType\` was called with a type kind that it cannot handle but this call should have been made impossible by the type system's checks`
+      assertNever(concreteType, message)
   }
 }
 

@@ -101,33 +101,33 @@ export const fail = <A>(expected: string, got: unknown): decoder.Result<A> =>
 
 function unsafeDecode(type: types.Type, value: unknown, options: Options): decoder.Result<unknown> {
   const concreteType = types.concretise(type)
-
-  if (concreteType.kind === 'boolean') {
-    return decodeBoolean(value, options)
-  } else if (concreteType.kind === 'number') {
-    return decodeNumber(value, options)
-  } else if (concreteType.kind === 'string') {
-    return decodeString(value, options)
-  } else if (concreteType.kind === 'literal') {
-    return decodeLiteral(concreteType, value, options)
-  } else if (concreteType.kind === 'enum') {
-    return decodeEnum(concreteType, value)
-  } else if (concreteType.kind === 'optional') {
-    return decodeOptional(concreteType, value, options)
-  } else if (concreteType.kind === 'nullable') {
-    return decodeNullable(concreteType, value, options)
-  } else if (concreteType.kind === 'union') {
-    return decodeUnion(concreteType, value, options)
-  } else if (concreteType.kind === 'object') {
-    return decodeObject(concreteType, value, options)
-  } else if (concreteType.kind === 'array') {
-    return decodeArray(concreteType, value, options)
-  } else if (concreteType.kind === 'reference') {
-    return decodeReference(concreteType, value, options)
-  } else if (concreteType.kind === 'custom') {
-    return concreteType.decode(value, options, concreteType.options)
-  } else {
-    assertNever(concreteType, 'Totality check failed when unsafe decoding a value, this should have never happened')
+  switch (concreteType.kind) {
+    case types.Kind.Boolean:
+      return decodeBoolean(value, options)
+    case types.Kind.Number:
+      return decodeNumber(value, options)
+    case types.Kind.String:
+      return decodeString(value, options)
+    case types.Kind.Literal:
+      return decodeLiteral(concreteType, value, options)
+    case types.Kind.Enum:
+      return decodeEnum(concreteType, value)
+    case types.Kind.Optional:
+      return decodeOptional(concreteType, value, options)
+    case types.Kind.Nullable:
+      return decodeNullable(concreteType, value, options)
+    case types.Kind.Union:
+      return decodeUnion(concreteType, value, options)
+    case types.Kind.Object:
+      return decodeObject(concreteType, value, options)
+    case types.Kind.Array:
+      return decodeArray(concreteType, value, options)
+    case types.Kind.Reference:
+      return decodeReference(concreteType, value, options)
+    case types.Kind.Custom:
+      return concreteType.decode(value, options, concreteType.options)
+    default:
+      assertNever(concreteType, 'Totality check failed when unsafe decoding a value, this should have never happened')
   }
 }
 

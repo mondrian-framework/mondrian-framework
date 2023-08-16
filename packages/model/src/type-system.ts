@@ -2,6 +2,21 @@ import { decoder, validator } from './index'
 import { filterMapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
+export enum Kind {
+  Number,
+  String,
+  Boolean,
+  Enum,
+  Literal,
+  Union,
+  Object,
+  Array,
+  Optional,
+  Nullable,
+  Reference,
+  Custom,
+}
+
 /**
  * A type that can be defined with the Mondrian framework.
  *
@@ -185,7 +200,7 @@ export type BaseOptions = {
  * The model of a `string` in the Mondrian framework.
  */
 export type StringType = {
-  readonly kind: 'string'
+  readonly kind: Kind.String
   readonly options?: StringTypeOptions
 
   optional(): OptionalType<StringType>
@@ -210,7 +225,7 @@ export type StringTypeOptions = BaseOptions & {
  * The model of a `number` in the Mondrian framework.
  */
 export type NumberType = {
-  readonly kind: 'number'
+  readonly kind: Kind.Number
   readonly options?: NumberTypeOptions
 
   optional(): OptionalType<NumberType>
@@ -237,7 +252,7 @@ export type NumberTypeOptions = BaseOptions & {
  * The model of a `boolean` in the Mondrian framework.
  */
 export type BooleanType = {
-  readonly kind: 'boolean'
+  readonly kind: Kind.Boolean
   readonly options?: BooleanTypeOptions
 
   optional(): OptionalType<BooleanType>
@@ -258,7 +273,7 @@ export type BooleanTypeOptions = BaseOptions
  * The model of an enumeration in the Mondrian framework.
  */
 export type EnumType<Vs extends readonly [string, ...string[]]> = {
-  readonly kind: 'enum'
+  readonly kind: Kind.Enum
   readonly variants: Vs
   readonly options?: EnumTypeOptions
 
@@ -280,7 +295,7 @@ export type EnumTypeOptions = BaseOptions
  * The model of a literal type in the Mondrian framework.
  */
 export type LiteralType<L extends number | string | boolean | null> = {
-  readonly kind: 'literal'
+  readonly kind: Kind.Literal
   readonly literalValue: L
   readonly options?: LiteralTypeOptions
 
@@ -303,7 +318,7 @@ export type LiteralTypeOptions = BaseOptions
  * TODO: add examples (e.g. result/optional/list)
  */
 export type UnionType<Ts extends Types> = {
-  readonly kind: 'union'
+  readonly kind: Kind.Union
   readonly variants: Ts
   readonly options?: UnionTypeOptions
 
@@ -325,7 +340,7 @@ export type UnionTypeOptions = BaseOptions
  * The model of an object in the Mondrian framework.
  */
 export type ObjectType<M extends Mutability, Ts extends Types> = {
-  readonly kind: 'object'
+  readonly kind: Kind.Object
   readonly mutability: M
   readonly fields: Ts
   readonly options?: ObjectTypeOptions
@@ -350,7 +365,7 @@ export type ObjectTypeOptions = BaseOptions
  * The model of a sequence of elements in the Mondrian framework.
  */
 export type ArrayType<M extends Mutability, T extends Type> = {
-  readonly kind: 'array'
+  readonly kind: Kind.Array
   readonly mutability: M
   readonly wrappedType: T
   readonly options?: ArrayTypeOptions
@@ -378,7 +393,7 @@ export type ArrayTypeOptions = BaseOptions & {
  * The model of a possibly-missing element in the Mondrian framework.
  */
 export type OptionalType<T extends Type> = {
-  readonly kind: 'optional'
+  readonly kind: Kind.Optional
   readonly wrappedType: T
   readonly options?: OptionalTypeOptions
 
@@ -399,7 +414,7 @@ export type OptionalTypeOptions = BaseOptions
  * The model of a possibly-null element in the Mondrian framework.
  */
 export type NullableType<T extends Type> = {
-  readonly kind: 'nullable'
+  readonly kind: Kind.Nullable
   readonly wrappedType: T
   readonly options?: NullableTypeOptions
 
@@ -420,7 +435,7 @@ export type NullableTypeOptions = BaseOptions
  * The model for a {@link Type `Type`} that is a reference to another type.
  */
 export type ReferenceType<T extends Type> = {
-  readonly kind: 'reference'
+  readonly kind: Kind.Reference
   readonly wrappedType: T
   readonly options?: ReferenceTypeOptions
 
@@ -441,7 +456,7 @@ export type ReferenceTypeOptions = BaseOptions
  * The model for a custom-defined type.
  */
 export type CustomType<Name extends string, Options extends Record<string, any>, InferredAs> = {
-  kind: 'custom'
+  kind: Kind.Custom
   typeName: Name
   options?: CustomTypeOptions<Options>
 
@@ -508,7 +523,7 @@ export function number(options?: OptionsOf<NumberType>): NumberType {
   }
 
   return {
-    kind: 'number',
+    kind: Kind.Number,
     options,
     optional() {
       return optional(this)
@@ -590,7 +605,7 @@ export function string(options?: OptionsOf<StringType>): StringType {
   }
 
   return {
-    kind: 'string',
+    kind: Kind.String,
     options,
     optional() {
       return optional(this)
@@ -634,7 +649,7 @@ export function string(options?: OptionsOf<StringType>): StringType {
  */
 export function boolean(options?: OptionsOf<BooleanType>): BooleanType {
   return {
-    kind: 'boolean',
+    kind: Kind.Boolean,
     options,
     optional() {
       return optional(this)
@@ -682,7 +697,7 @@ export function enumeration<const Vs extends readonly [string, ...string[]]>(
   options?: OptionsOf<EnumType<Vs>>,
 ): EnumType<Vs> {
   return {
-    kind: 'enum',
+    kind: Kind.Enum,
     variants,
     options,
     optional() {
@@ -732,7 +747,7 @@ export function literal<const L extends number | string | boolean | null>(
   options?: OptionsOf<LiteralType<L>>,
 ): LiteralType<L> {
   return {
-    kind: 'literal',
+    kind: Kind.Literal,
     literalValue,
     options,
     optional() {
@@ -768,7 +783,7 @@ export function literal<const L extends number | string | boolean | null>(
  */
 export function union<Ts extends Types>(variants: Ts, options?: OptionsOf<UnionType<Ts>>): UnionType<Ts> {
   return {
-    kind: 'union',
+    kind: Kind.Union,
     variants,
     options,
     optional() {
@@ -829,7 +844,7 @@ export function object<Ts extends Types>(
   options?: OptionsOf<ObjectType<'immutable', Ts>>,
 ): ObjectType<'immutable', Ts> {
   return {
-    kind: 'object',
+    kind: Kind.Object,
     mutability: 'immutable',
     fields,
     options,
@@ -876,7 +891,7 @@ export function mutableObject<Ts extends Types>(
   options?: OptionsOf<ObjectType<'mutable', Ts>>,
 ): ObjectType<'mutable', Ts> {
   return {
-    kind: 'object',
+    kind: Kind.Object,
     mutability: 'mutable',
     fields,
     options,
@@ -1058,7 +1073,7 @@ export function omitReferences<const Ts extends Types, M extends Mutability = 'i
   if (typeof obj === 'function') {
     return () => omitReferences(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
-  const pickedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, 'reference') ? undefined : t))
+  const pickedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Reference) ? undefined : t))
   const constructor = mutable === 'mutable' ? mutableObject : object
   return () => constructor(pickedFields, options) as ObjectType<M, OmitReferenceObjectFields<Ts>>
 }
@@ -1091,7 +1106,7 @@ export function partial<const Ts extends Types, M extends Mutability = 'immutabl
   if (typeof obj === 'function') {
     return () => partial(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
-  const mappedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, 'optional') ? t : optional(t)))
+  const mappedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Optional) ? t : optional(t)))
   const constructor = mutable === 'mutable' ? mutableObject : object
   return () => constructor(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
 }
@@ -1130,7 +1145,7 @@ export function array<T extends Type>(
     throw new Error(`The maximum number of items (${maxItems}) cannot be negative`)
   }
   return {
-    kind: 'array',
+    kind: Kind.Array,
     mutability: 'immutable',
     wrappedType,
     options,
@@ -1176,7 +1191,7 @@ export function mutableArray<T extends Type>(
   options?: OptionsOf<ArrayType<'mutable', T>>,
 ): ArrayType<'mutable', T> {
   return {
-    kind: 'array',
+    kind: Kind.Array,
     mutability: 'mutable',
     wrappedType,
     options,
@@ -1224,7 +1239,7 @@ export function mutableArray<T extends Type>(
  */
 export function optional<const T extends Type>(wrappedType: T, options?: OptionsOf<OptionalType<T>>): OptionalType<T> {
   return {
-    kind: 'optional',
+    kind: Kind.Optional,
     wrappedType,
     options,
     nullable() {
@@ -1262,7 +1277,7 @@ export function optional<const T extends Type>(wrappedType: T, options?: Options
  */
 export function nullable<T extends Type>(wrappedType: T, options?: OptionsOf<NullableType<T>>): NullableType<T> {
   return {
-    kind: 'nullable',
+    kind: Kind.Nullable,
     wrappedType,
     options,
     optional() {
@@ -1293,7 +1308,7 @@ export function nullable<T extends Type>(wrappedType: T, options?: OptionsOf<Nul
  */
 export function reference<T extends Type>(wrappedType: T, options?: OptionsOf<ReferenceType<T>>): ReferenceType<T> {
   return {
-    kind: 'reference',
+    kind: Kind.Reference,
     wrappedType,
     options,
     optional() {
@@ -1336,7 +1351,7 @@ export function custom<Name extends string, Options extends Record<string, any>,
   options?: OptionsOf<CustomType<Name, Options, InferredAs>>,
 ): CustomType<Name, Options, InferredAs> {
   return {
-    kind: 'custom',
+    kind: Kind.Custom,
     typeName,
     options,
     encode,
@@ -1452,18 +1467,18 @@ export function areEqual<T extends Type>(one: T, other: T): boolean {
 
   // prettier-ignore
   return (
-       type1.kind === 'number' && sameKindAndOptions(type1, type2)
-    || type1.kind === 'boolean' && sameKindAndOptions(type1, type2)
-    || type1.kind === 'string' && sameKindAndOptions(type1, type2)
-    || (type1.kind === 'literal' && type1.kind === type2.kind && type1.options === type2.options && type1.literalValue === type2.literalValue)
-    || (type1.kind === 'enum' && type1.kind === type2.kind && type1.options === type2.options && arraysHaveSameElements(type1.variants, type2.variants))
-    || (type1.kind === 'custom' && type1.kind === type2.kind && type1.options === type2.options && type1.typeName === type2.typeName)
-    || (type1.kind === 'array' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'nullable' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'optional' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'reference' && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === 'object' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.fields, type2.fields))
-    || (type1.kind === 'union' && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
+       type1.kind === Kind.Number && sameKindAndOptions(type1, type2)
+    || type1.kind === Kind.Boolean && sameKindAndOptions(type1, type2)
+    || type1.kind === Kind.String && sameKindAndOptions(type1, type2)
+    || (type1.kind === Kind.Literal && type1.kind === type2.kind && type1.options === type2.options && type1.literalValue === type2.literalValue)
+    || (type1.kind === Kind.Enum && type1.kind === type2.kind && type1.options === type2.options && arraysHaveSameElements(type1.variants, type2.variants))
+    || (type1.kind === Kind.Custom && type1.kind === type2.kind && type1.options === type2.options && type1.typeName === type2.typeName)
+    || (type1.kind === Kind.Array && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === Kind.Nullable && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === Kind.Optional && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === Kind.Reference && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
+    || (type1.kind === Kind.Object && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.fields, type2.fields))
+    || (type1.kind === Kind.Union && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
   )
 }
 
@@ -1507,10 +1522,10 @@ export function assertType<T extends Type>(
 }
 
 //TODO: export?
-function hasWrapper(type: Type, kind: 'optional' | 'nullable' | 'reference'): boolean {
+function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Reference): boolean {
   const concreteType = concretise(type)
   const typeKind = concreteType.kind
-  const isWrapperType = typeKind === 'optional' || typeKind === 'nullable' || typeKind === 'reference'
+  const isWrapperType = typeKind === Kind.Optional || typeKind === Kind.Nullable || typeKind === Kind.Reference
   return typeKind === kind || (isWrapperType && hasWrapper(concreteType.wrappedType, kind))
 }
 
@@ -1519,5 +1534,5 @@ function hasWrapper(type: Type, kind: 'optional' | 'nullable' | 'reference'): bo
  * @returns true if the type is an optional type
  */
 export function isOptional(type: Type): type is Lazy<OptionalType<Type>> {
-  return hasWrapper(type, 'optional')
+  return hasWrapper(type, Kind.Optional)
 }

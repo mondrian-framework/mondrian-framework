@@ -64,33 +64,31 @@ function internalValidate<T extends types.Type>(
   options: validator.Options,
 ): validator.Result {
   const concreteType = types.concretise(type)
-
-  if (concreteType.kind === 'boolean') {
-    return validator.succeed()
-  } else if (concreteType.kind === 'enum') {
-    return validator.succeed()
-  } else if (concreteType.kind === 'literal') {
-    return validator.succeed()
-  } else if (concreteType.kind === 'number') {
-    return validateNumber(concreteType, value as any)
-  } else if (concreteType.kind === 'string') {
-    return validateString(concreteType, value as any)
-  } else if (concreteType.kind === 'optional') {
-    return validateOptional(concreteType, value as any, options)
-  } else if (concreteType.kind === 'nullable') {
-    return validateNullable(concreteType, value as any, options)
-  } else if (concreteType.kind === 'object') {
-    return validateObject(concreteType, value as any, options)
-  } else if (concreteType.kind === 'union') {
-    return validateUnion(concreteType, value as any, options)
-  } else if (concreteType.kind === 'array') {
-    return validateArray(concreteType, value as any, options)
-  } else if (concreteType.kind === 'reference') {
-    return validateReference(concreteType, value as any, options)
-  } else if (concreteType.kind === 'custom') {
-    return concreteType.validate(value, options, concreteType.options)
-  } else {
-    assertNever(concreteType, 'Totality check failed when validating a value, this should have never happened')
+  switch (concreteType.kind) {
+    case types.Kind.Boolean:
+    case types.Kind.Enum:
+    case types.Kind.Literal:
+      return validator.succeed()
+    case types.Kind.Number:
+      return validateNumber(concreteType, value as any)
+    case types.Kind.String:
+      return validateString(concreteType, value as any)
+    case types.Kind.Optional:
+      return validateOptional(concreteType, value as any, options)
+    case types.Kind.Nullable:
+      return validateNullable(concreteType, value as any, options)
+    case types.Kind.Object:
+      return validateObject(concreteType, value as any, options)
+    case types.Kind.Union:
+      return validateUnion(concreteType, value as any, options)
+    case types.Kind.Array:
+      return validateArray(concreteType, value as any, options)
+    case types.Kind.Reference:
+      return validateReference(concreteType, value as any, options)
+    case types.Kind.Custom:
+      return concreteType.validate(value, options, concreteType.options)
+    default:
+      assertNever(concreteType, 'Totality check failed when validating a value, this should have never happened')
   }
 }
 

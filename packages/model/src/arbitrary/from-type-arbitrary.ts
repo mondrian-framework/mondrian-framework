@@ -1,7 +1,6 @@
 import { arbitrary, types } from '../index'
-import { failWithInternalError } from '../utils'
+import { assertNever, failWithInternalError } from '../utils'
 import gen from 'fast-check'
-import { match } from 'ts-pattern'
 
 // TODO: Missing doc
 export type CustomMap<T extends types.Type> = CustomMapInternal<T, []>
@@ -45,27 +44,48 @@ type CustomMapArgument<T extends types.Type>
 /**
  * Build an Arbitrary that generates values that respect the given type T.
  */
-// TODO: refactor move things out of the pattern matching branches to make
-//       it easier to reason about each step
 export function fromType<T extends types.Type>(
   type: T,
   customArbitraries: CustomMapArgument<T>,
   maxDepth = 5,
 ): gen.Arbitrary<types.Infer<T>> {
-  return match(types.concretise(type))
-    .with({ kind: 'boolean' }, (_type) => gen.boolean())
-    .with({ kind: 'number' }, (type) => numberMatchingOptions(type.options))
-    .with({ kind: 'string' }, (type) => stringMatchingOptions(type.options))
-    .with({ kind: 'literal' }, (type) => gen.constant(type.literalValue))
-    .with({ kind: 'enum' }, (type) => gen.constantFrom(...type.variants))
-    .with({ kind: 'optional' }, (type) => wrapInOptional(maxDepth, type.wrappedType, customArbitraries))
-    .with({ kind: 'nullable' }, (type) => wrapInNullable(maxDepth, type.wrappedType, customArbitraries))
-    .with({ kind: 'union' }, (type) => unionFromVariants(maxDepth, type.variants, customArbitraries))
-    .with({ kind: 'object' }, (type) => objectFromFields(maxDepth, type.fields, customArbitraries))
-    .with({ kind: 'array' }, (type) => arrayFromOptions(maxDepth, type.wrappedType, type.options, customArbitraries))
-    .with({ kind: 'reference' }, (type) => fromType(type.wrappedType, customArbitraries, maxDepth - 1))
-    .with({ kind: 'custom' }, (type) => generatorFromArbitrariesMap(type.typeName, type.options, customArbitraries))
-    .exhaustive() as gen.Arbitrary<types.Infer<T>>
+  const concreteType = types.concretise(type)
+  const kind = concreteType.kind
+  if (kind === 'boolean') {
+    return gen.boolean() as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'number') {
+    return numberMatchingOptions(concreteType.options) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'string') {
+    return stringMatchingOptions(concreteType.options) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'literal') {
+    return gen.constant(concreteType.literalValue) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'enum') {
+    return gen.constantFrom(...concreteType.variants) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'optional') {
+    return wrapInOptional(maxDepth, concreteType.wrappedType, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'nullable') {
+    return wrapInNullable(maxDepth, concreteType.wrappedType, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'union') {
+    return unionFromVariants(maxDepth, concreteType.variants, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'object') {
+    return objectFromFields(maxDepth, concreteType.fields, customArbitraries) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'array') {
+    return arrayFromOptions(
+      maxDepth,
+      concreteType.wrappedType,
+      concreteType.options,
+      customArbitraries,
+    ) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'reference') {
+    return fromType(concreteType.wrappedType, customArbitraries, maxDepth - 1) as gen.Arbitrary<types.Infer<T>>
+  } else if (kind === 'custom') {
+    return generatorFromArbitrariesMap(concreteType.typeName, concreteType.options, customArbitraries) as gen.Arbitrary<
+      types.Infer<T>
+    >
+  } else {
+    const message = `\`fromType\` was called with a type kind (${kind}) that it cannot handle but this call should have been made impossible by the type system's checks`
+    assertNever(kind, message)
+  }
 }
 
 export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[types.Type, never]> {

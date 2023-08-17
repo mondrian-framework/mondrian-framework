@@ -1,5 +1,4 @@
 import { projection, types, decoder, validator, path, arbitrary } from '../src'
-import { typeAndValue } from '../src/arbitrary/from-type-arbitrary'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
@@ -191,20 +190,22 @@ const baseTypeAndValue = arbitrary
 
 describe('projection.respectsProjection', () => {
   test.prop([baseTypeAndValue])('works on base types', ([type, value]) => {
-    assertOk(projection.respectsProjection(type, true, value))
+    assertOk(projection.respectsProjection(type, true as never, value))
   })
 
   test.prop([wrapperTypeAndValue])('works on wrapper types', ([type, value]) => {
-    assertOk(projection.respectsProjection(type, true, value))
+    assertOk(projection.respectsProjection(type, true as never, value))
   })
 
   test.prop([arbitrary.typeAndValue()])('always works on any type, if projection is true', ([type, value]) => {
-    assertOk(projection.respectsProjection(type, true, value))
+    assertOk(projection.respectsProjection(type, true as never, value))
   })
 
   test('fails with an internal error when called on an unhandled type', () => {
     const unhandledType = { kind: 'not a type' } as unknown as types.Type
-    expect(() => projection.respectsProjection(unhandledType, true, null as never)).toThrow(/\[internal error\]/)
+    expect(() => projection.respectsProjection(unhandledType, true as never, null as never)).toThrow(
+      /\[internal error\]/,
+    )
   })
 
   describe('reports missing required fields', () => {

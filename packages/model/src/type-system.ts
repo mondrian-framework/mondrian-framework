@@ -83,7 +83,7 @@ export type Infer<T extends Type>
   : [T] extends [EnumType<infer Vs>] ? Vs[number]
   : [T] extends [LiteralType<infer L>] ? L
   : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
-  : [T] extends [ObjectType<"immutable", infer Ts>] ? Readonly<{ [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }>
+  : [T] extends [ObjectType<"immutable", infer Ts>] ? { readonly [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { readonly [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
   : [T] extends [ArrayType<"mutable", infer T1>] ? Infer<T1>[]

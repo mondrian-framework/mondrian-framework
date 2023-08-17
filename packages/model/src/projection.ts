@@ -24,21 +24,21 @@ export type Projection = true | { readonly [field: string]: Projection | undefin
  *          ```
  */
 // prettier-ignore
-export type FromType<T extends types.Type> = true | (
-  [T] extends [types.NumberType] ? never
-: [T] extends [types.StringType] ? never
-: [T] extends [types.BooleanType] ? never
-: [T] extends [types.EnumType<any>] ? never
-: [T] extends [types.LiteralType<any>] ? never
-: [T] extends [types.CustomType<any, any, any>] ? never
-: [T] extends [types.ArrayType<any, infer T1>] ? projection.FromType<T1>
-: [T] extends [types.OptionalType<infer T1>] ? projection.FromType<T1>
-: [T] extends [types.NullableType<infer T1>] ? projection.FromType<T1>
-: [T] extends [types.ReferenceType<infer T1>] ? projection.FromType<T1>
-: [T] extends [(() => infer T1 extends types.Type)] ? projection.FromType<T1>
-: [T] extends [types.UnionType<infer Ts>] ? { readonly [Key in keyof Ts]: projection.FromType<Ts[Key]> }
-: [T] extends [types.ObjectType<any, infer Ts>] ? { readonly [Key in keyof Ts]?: projection.FromType<Ts[Key]> }
-: never)
+export type FromType<T extends types.Type> = 
+  [T] extends [types.NumberType] ? true
+: [T] extends [types.StringType] ? true
+: [T] extends [types.BooleanType] ? true
+: [T] extends [types.EnumType<any>] ? true
+: [T] extends [types.LiteralType<any>] ? true
+: [T] extends [types.CustomType<any, any, any>] ? true
+: [T] extends [types.ArrayType<any, infer T1>] ? true | FromType<T1>
+: [T] extends [types.OptionalType<infer T1>] ? true | FromType<T1>
+: [T] extends [types.NullableType<infer T1>] ? true | FromType<T1>
+: [T] extends [types.ReferenceType<infer T1>] ? true | FromType<T1>
+: [T] extends [(() => infer T1 extends types.Type)] ? true | FromType<T1>
+: [T] extends [types.UnionType<infer Ts>] ? true | { readonly [Key in keyof Ts]: true | FromType<Ts[Key]> }
+: [T] extends [types.ObjectType<any, infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<Ts[Key]> }
+: never
 
 /**
  * @param projection the projection whose depth is returned
@@ -183,7 +183,7 @@ function validateOptional(
   projection: Projection,
   value: any,
 ): result.Result<true, projection.Error[]> {
-  return value === undefined ? result.ok(true) : respectsProjection(type, projection as any, value as never)
+  return value === undefined ? result.ok(true) : respectsProjection(type, projection as never, value as never)
 }
 
 function validateNullable(
@@ -191,7 +191,7 @@ function validateNullable(
   projection: Projection,
   value: any,
 ): result.Result<true, projection.Error[]> {
-  return value === null ? result.ok(true) : respectsProjection(type, projection as any, value as never)
+  return value === null ? result.ok(true) : respectsProjection(type, projection as never, value as never)
 }
 
 function validateUnion(
@@ -248,7 +248,7 @@ function validateArray(
   array: any[],
 ): result.Result<true, projection.Error[]> {
   const validateItem = (item: any, index: number) =>
-    respectsProjection(type, projection as any, item as never).mapError((errors) =>
+    respectsProjection(type, projection as never, item as never).mapError((errors) =>
       path.prependIndexToAll(errors, index),
     )
 

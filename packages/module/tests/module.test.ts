@@ -10,6 +10,7 @@ test('Whole module', async () => {
       password: types.string(),
       firstname: types.string().optional(),
       lastname: types.string().optional(),
+      friend: types.optional(User).reference()
     })
   type User = types.Infer<typeof User>
   const LoginInput = types.pick(User, { email: true, password: true }, 'immutable', { name: 'LoginInput' })
@@ -133,7 +134,7 @@ test('Whole module', async () => {
   expect(failedRegisterResult).toBeNull()
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult).toBeNull()
-  const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
+  const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' }, { projection: { jwt: true }})
   expect(loginResult).toEqual({ user: { email: 'admin@domain.com', password: '****' }, jwt: 'admin@domain.com' })
   await expect(
     async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),

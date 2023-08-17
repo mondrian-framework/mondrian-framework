@@ -11,4 +11,3 @@ export {
 export { builder as logger, Logger } from './log'
 export { builder as sdk, Sdk } from './sdk'
 export * as utils from './utils'
-export * as middleware from './middleware'

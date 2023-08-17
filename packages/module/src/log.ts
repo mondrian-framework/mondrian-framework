@@ -22,7 +22,7 @@ class LoggerBuilder {
     this._context = context
   }
 
-  public context(context: LoggerContext): LoggerBuilder {
+  public withContext(context: LoggerContext): LoggerBuilder {
     return new LoggerBuilder({ ...this._context, ...context })
   }
 

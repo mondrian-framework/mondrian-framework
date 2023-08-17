@@ -1,6 +1,7 @@
-import { func, middleware } from '.'
-import { AfterMiddleware, BeforeMiddleware, Function, Functions } from './function'
+import { func } from '.'
+import { Function, Functions } from './function'
 import { Logger } from './log'
+import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
 
 /**

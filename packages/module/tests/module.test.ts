@@ -10,7 +10,7 @@ test('Whole module', async () => {
       password: types.string(),
       firstname: types.string().optional(),
       lastname: types.string().optional(),
-      friend: types.optional(User).reference()
+      friend: types.optional(User).reference(),
     })
   type User = types.Infer<typeof User>
   const LoginInput = types.pick(User, { email: true, password: true }, 'immutable', { name: 'LoginInput' })
@@ -134,11 +134,14 @@ test('Whole module', async () => {
   expect(failedRegisterResult).toBeNull()
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult).toBeNull()
-  const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' }, { projection: { jwt: true }})
+  const loginResult = await client.functions.login(
+    { email: 'admin@domain.com', password: '1234' },
+    { projection: { jwt: true } },
+  )
   expect(loginResult).toEqual({ user: { email: 'admin@domain.com', password: '****' }, jwt: 'admin@domain.com' })
   await expect(
     async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),
-  ).rejects.toThrow()
+  ).rejects.toThrowError("Unauthorized")
   expect(
     async () =>
       await client.functions.completeProfile(
@@ -179,5 +182,48 @@ describe('Unique type name', () => {
         context: async () => ({}),
       }),
     ).toThrowError(`Duplicated type name "Input"`)
+  })
+})
+
+describe('Default middlewares', () => {
+  test('Testing maximum projection depth and output type', async () => {
+    const type = () => types.object({ type, value: types.string() }).optional()
+    const dummy = functions.build({
+      input: type,
+      output: type,
+      apply: async ({ input }) => {
+        if (input?.value === 'wrong') {
+          return {} //projection not respected sometimes!
+        }
+        return input
+      },
+    })
+    const m = module.build({
+      name: 'test',
+      version: '1.0.0',
+      functions: { dummy },
+      options: {
+        checks: { maxProjectionDepth: 2, output: 'throw' },
+      },
+      context: async () => ({}),
+    })
+
+    const client = sdk.build({
+      module: m,
+      async context() {
+        return {}
+      },
+    })
+
+    const result1 = await client.functions.dummy({ value: '123' })
+    expect(result1).toEqual({ value: '123' })
+    const result2 = await client.functions.dummy({ value: '123' }, { projection: { type: { type: true } } })
+    expect(result2).toEqual({ value: '123' })
+    expect(
+      async () => await client.functions.dummy({ value: '123' }, { projection: { type: { type: { type: true } } } }),
+    ).rejects.toThrowError('Max projection depth reached: requested projection have a depth of 3. The maximum is 2.')
+    expect(async () => await client.functions.dummy({ value: 'wrong' })).rejects.toThrowError(
+      'Invalid output: {"errors":[{"missingField":"value","path":{"fragments":[]}}]}',
+    )
   })
 })

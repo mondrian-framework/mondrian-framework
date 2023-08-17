@@ -820,7 +820,7 @@ export function unwrap(
 }
 
 /**
- * Checks if the type is a scalar type.
+ * Checks if the {@link unwrap}ped type is a scalar type.
  * @param type the type to check
  * @returns false only for {@link ObjectType}, {@link UnionType}, {@link ArrayType}
  */

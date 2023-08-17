@@ -1,10 +1,10 @@
-import { Functions, Logger } from '@mondrian-framework/module'
+import { functions, logger } from '@mondrian-framework/module'
 import { OpenAPIV3_1 } from 'openapi-types'
 
-export type ErrorHandler<F extends Functions, RestContext> = (
+export type ErrorHandler<F extends functions.Functions, RestContext> = (
   args: {
     error: unknown
-    log: Logger
+    log: logger.Logger
     functionName: keyof F
     context: unknown
     operationId: string
@@ -40,7 +40,7 @@ type NullableOperationObject = {
   [K in keyof OpenAPIV3_1.OperationObject]: OpenAPIV3_1.OperationObject[K] | null
 }
 
-export type RestApi<F extends Functions> = {
+export type RestApi<F extends functions.Functions> = {
   functions: {
     [K in keyof F]?: RestFunctionSpecs | RestFunctionSpecs[]
   }

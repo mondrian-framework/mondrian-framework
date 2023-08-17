@@ -1521,12 +1521,11 @@ export function assertType<T extends Type>(
   )
 }
 
-//TODO: export?
-function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Reference): boolean {
+function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Reference | Kind.Array): boolean {
   const concreteType = concretise(type)
   const typeKind = concreteType.kind
-  const isWrapperType = typeKind === Kind.Optional || typeKind === Kind.Nullable || typeKind === Kind.Reference
-  return typeKind === kind || (isWrapperType && hasWrapper(concreteType.wrappedType, kind))
+  const isWrapperType = 'wrappedType' in concreteType
+  return typeKind === kind || (isWrapperType && typeKind !== Kind.Array && hasWrapper(concreteType.wrappedType, kind))
 }
 
 /**
@@ -1535,4 +1534,60 @@ function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Refer
  */
 export function isOptional(type: Type): type is Lazy<OptionalType<Type>> {
   return hasWrapper(type, Kind.Optional)
+}
+
+/**
+ * @param type the type to check
+ * @returns true if the type is a nullable type
+ */
+export function isNullable(type: Type): type is Lazy<NullableType<Type>> {
+  return hasWrapper(type, Kind.Nullable)
+}
+
+/**
+ * @param type the type to check
+ * @returns true if the type is a reference type
+ */
+export function isReference(type: Type): type is Lazy<ReferenceType<Type>> {
+  return hasWrapper(type, Kind.Reference)
+}
+
+/**
+ * @param type the type to check
+ * @returns true if the type is an array type
+ */
+export function isArray(type: Type): type is Lazy<ArrayType<Mutability, Type>> {
+  return hasWrapper(type, Kind.Array)
+}
+
+/**
+ * Unwraps all wrappers around a {@link Type}.
+ * The wrappers are: {@link OptionalType}, {@link NullableType}, {@link ReferenceType}, {@link ArrayType}
+ * @param type the type to unwrap.
+ * @returns the unwrapped type.
+ */
+export function unwrap(
+  type: Type,
+):
+  | NumberType
+  | StringType
+  | EnumType<any>
+  | BooleanType
+  | CustomType<string, {}, unknown>
+  | LiteralType<any>
+  | ObjectType<Mutability, Types>
+  | UnionType<Types> {
+  const concreteType = concretise(type)
+  return 'wrappedType' in concreteType ? unwrap(concreteType.wrappedType) : concreteType
+}
+
+/**
+ * Checks if the type is a scalar type.
+ * @param type the type to check
+ * @returns false only for {@link ObjectType}, {@link UnionType}, {@link ArrayType}
+ */
+export function isScalar(type: Type): boolean {
+  const unwrapped = unwrap(type)
+  const notUnionOrObject = unwrapped.kind !== Kind.Union && unwrapped.kind !== Kind.Object
+  return !isArray(type) && notUnionOrObject
 }

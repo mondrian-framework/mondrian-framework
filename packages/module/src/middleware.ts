@@ -1,11 +1,11 @@
-import { AfterMiddleware, BeforeMiddleware } from './function'
+import { functions } from '.'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
  * This middleware checks if the requested projection does not exceed the maximum given depth.
  * @param maxDepth the maximum depth.
  */
-export function checkMaxProjectionDepth(maxDepth: number): BeforeMiddleware<types.Type, types.Type, {}> {
+export function checkMaxProjectionDepth(maxDepth: number): functions.BeforeMiddleware<types.Type, types.Type, {}> {
   return {
     name: 'Check max projection depth',
     apply: ({ args }) => {
@@ -25,7 +25,7 @@ export function checkMaxProjectionDepth(maxDepth: number): BeforeMiddleware<type
  * Returning more fields than requested are allowed. //TODO: but it could be trimmed
  * @param onFailure the action to take on failure.
  */
-export function checkOutputType(onFailure: 'log' | 'throw'): AfterMiddleware<types.Type, types.Type, {}> {
+export function checkOutputType(onFailure: 'log' | 'throw'): functions.AfterMiddleware<types.Type, types.Type, {}> {
   return {
     name: 'Check output type',
     apply: async ({ args, thisFunction, result }) => {

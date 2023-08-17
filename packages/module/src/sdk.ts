@@ -1,9 +1,12 @@
 import { logger } from '.'
-import { Functions, call } from './function'
+import { Functions, apply } from './function'
 import { Module } from './module'
 import { randomOperationId } from './utils'
 import { projection, types } from '@mondrian-framework/model'
 
+/**
+ * Local SDK type.
+ */
 export type Sdk<F extends Functions, Metadata> = {
   functions: SdkFunctions<F, Metadata>
   withMetadata: (metadata: Metadata) => Sdk<F, Metadata>
@@ -38,7 +41,7 @@ class SdkBuilder<const Metadata> {
   }): Sdk<Fs, Metadata> {
     const defaultLogger = logger.withContext({ moduleName: module.name, server: 'LOCAL' })
     const functions = Object.fromEntries(
-      Object.entries(module.functions).map(([functionName, functionBody]) => {
+      Object.entries(module.functions).map(([functionName, func]) => {
         const wrapper = async (
           input: any,
           options?: {
@@ -51,7 +54,7 @@ class SdkBuilder<const Metadata> {
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this._metadata })
             const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
-            const result = await call(functionBody, {
+            const result = await apply(func, {
               input: input as never, //TODO: types.Infer<types.Type> should infer unknown?
               projection: options?.projection as never, //TODO: projection.FromType<types.Type> should infer Projection?
               context: ctx,
@@ -120,9 +123,6 @@ type OptionalKeysNoReferences<T extends types.Types> = {
 }[keyof T]
 type NonOptionalKeysNoReferences<T extends types.Types> = {
   [K in keyof T]: IsReference<T[K]> extends true ? never : IsOptional<T[K]> extends true ? never : K
-}[keyof T]
-type NonReferenceKeys<T extends types.Types> = {
-  [K in keyof T]: IsReference<T[K]> extends true ? never : K
 }[keyof T]
 
 //prettier-ignore

@@ -13,21 +13,6 @@ export type Function<I extends types.Type, O extends types.Type, Context extends
   options?: { namespace?: string; description?: string }
 }
 
-export async function call<
-  const I extends types.Type,
-  const O extends types.Type,
-  const Context extends Record<string, unknown>,
->(func: Function<I, O, Context>, args: FunctionArguments<I, O, Context>): Promise<types.InferPartial<O>> {
-  for (const middleware of func.before ?? []) {
-    args = await middleware.apply({ args, thisFunction: func })
-  }
-  let result = await func.apply(args)
-  for (const middleware of func.after ?? []) {
-    result = await middleware.apply({ args, result, thisFunction: func })
-  }
-  return result
-}
-
 /**
  * Arguments of a function call.
  */
@@ -69,6 +54,27 @@ export type AfterMiddleware<I extends types.Type, O extends types.Type, Context 
  */
 export type Functions<Contexts extends Record<string, Record<string, unknown>> = Record<string, any>> = {
   [K in keyof Contexts]: Function<types.Type, types.Type, Contexts[K]>
+}
+
+/**
+ * Executes a Mondrian function with the given arguments. It's executes also the before and after middlewares.
+ * @param func the function to execute.
+ * @param args the function arguments.
+ * @returns the function result.
+ */
+export async function apply<
+  const I extends types.Type,
+  const O extends types.Type,
+  const Context extends Record<string, unknown>,
+>(func: Function<I, O, Context>, args: FunctionArguments<I, O, Context>): Promise<types.InferPartial<O>> {
+  for (const middleware of func.before ?? []) {
+    args = await middleware.apply({ args, thisFunction: func })
+  }
+  let result = await func.apply(args)
+  for (const middleware of func.after ?? []) {
+    result = await middleware.apply({ args, result, thisFunction: func })
+  }
+  return result
 }
 
 /**

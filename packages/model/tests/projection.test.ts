@@ -231,10 +231,10 @@ describe('projection.respectsProjection', () => {
     })
 
     test('from objects with optional field', () => {
-      const model = types.object({ field1: types.number(), field2: types.string(), field3: types.string().optional() })
-      const result = projection.respectsProjection(model, { field2: true }, {})
+      const model = types.object({ field1: types.number(), field2: types.string().optional(), field3: types.string() })
+      const result = projection.respectsProjection(model, { field2: true, field3: true }, {})
       const actualError = assertFailure(result)
-      const expectedError = [{ missingField: 'field2', path: path.empty() }]
+      const expectedError = [{ missingField: 'field3', path: path.empty() }]
       checkErrors(expectedError, actualError)
     })
 

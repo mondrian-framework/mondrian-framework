@@ -47,9 +47,6 @@
       "path": "packages/model"
     },
     {
-      "path": "packages/arbitrary"
-    },
-    {
       "path": "packages/advanced-types"
     },
     {

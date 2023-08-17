@@ -371,8 +371,8 @@ function decodeObjectProperties(
   object: Record<string, unknown>,
   options: Options,
 ): decoder.Result<any> {
-  const addDecodedEntry = (accumulator: { [key: string]: unknown }, [fieldName, value]: readonly [string, unknown]) => {
-    accumulator[fieldName] = value
+  const addDecodedEntry = (accumulator: [string, unknown][], [fieldName, value]: readonly [string, unknown]) => {
+    accumulator.push([fieldName, value])
     return accumulator
   }
   const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
@@ -381,7 +381,9 @@ function decodeObjectProperties(
       .mapError((errors) => path.prependFieldToAll(errors, fieldName))
 
   const entries = Object.entries(type.fields) as [string, types.Type][]
-  return options.errorReportingStrategy === 'stopAtFirstError'
-    ? result.tryEachFailFast(entries, {}, addDecodedEntry, decodeEntry)
-    : result.tryEach(entries, {}, addDecodedEntry, [] as decoder.Error[], mergeArrays, decodeEntry)
+  const decodedEntries =
+    options.errorReportingStrategy === 'stopAtFirstError'
+      ? result.tryEachFailFast(entries, [], addDecodedEntry, decodeEntry)
+      : result.tryEach(entries, [], addDecodedEntry, [] as decoder.Error[], mergeArrays, decodeEntry)
+  return decodedEntries.map(Object.fromEntries)
 }

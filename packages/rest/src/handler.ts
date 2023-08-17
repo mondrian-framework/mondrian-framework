@@ -1,7 +1,7 @@
 import { ErrorHandler, RestFunctionSpecs, RestRequest } from './api'
 import { getInputExtractor } from './openapi'
-import { decoder, projection } from '@mondrian-framework/model'
-import { Functions, GenericFunction, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { decoder, encoder, projection, types } from '@mondrian-framework/model'
+import { functions, logger, module, utils } from '@mondrian-framework/module'
 
 export function generateRestRequestHandler<ServerContext, ContextInput>({
   functionName,
@@ -13,12 +13,12 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
   error,
 }: {
   functionName: string
-  module: GenericModule
-  functionBody: GenericFunction
+  module: module.Module
+  functionBody: functions.Function
   specification: RestFunctionSpecs
   context: (serverContext: ServerContext) => Promise<ContextInput>
   globalMaxVersion: number
-  error?: ErrorHandler<Functions, ServerContext>
+  error?: ErrorHandler<functions.Functions, ServerContext>
 }): (args: {
   request: RestRequest
   serverContext: ServerContext
@@ -26,19 +26,17 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
   const inputExtractor = getInputExtractor({ functionBody, module, specification })
-  const projectionType = projection.fromType(functionBody.output)
+  const projectionType = types.unknown() //TODO: projection.fromType(functionBody.output)
 
   return async ({ request, serverContext }) => {
-    const startDate = new Date()
-    const operationId = randomOperationId()
-    const log = buildLogger(
-      module.name,
+    const operationId = utils.randomOperationId()
+    const log = logger.build({
+      moduleName: module.name,
       operationId,
-      specification.method.toUpperCase(),
-      functionName,
-      'REST',
-      startDate,
-    )
+      operationName: functionName,
+      operationType: specification.method.toUpperCase(),
+      server: 'REST',
+    })
     const headers = { 'operation-id': operationId }
     const input = inputExtractor(request)
     const v = (request.params as Record<string, string>).v
@@ -62,37 +60,29 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
       log('Bad request.')
       return { status: 400, body: { errors: decoded.error }, headers }
     }
-    const projection =
-      projectionObject != null ? decode(projectionType, projectionObject, { cast: true, strict: true }) : undefined
-    if (projection && !projection.success) {
+    const givenProjection = decoder.decode(projectionType, projectionObject != null ? projectionObject : undefined, {
+      typeCastingStrategy: 'tryCasting',
+    })
+    if (!givenProjection.isOk) {
       log('Bad request. (projection)')
-      return { status: 400, body: { errors: projection.errors, message: "On 'projection' header" }, headers }
+      return { status: 400, body: { errors: givenProjection.error, message: "On 'projection' header" }, headers }
     }
-    const requiredProction =
-      projection != null ? getRequiredProjection(functionBody.output, projection.value as GenericProjection) : undefined
-    const finalProjection =
-      projection != null && requiredProction != null
-        ? mergeProjections(projection.value as GenericProjection, requiredProction)
-        : projection != null
-        ? projection.value
-        : undefined
     const contextInput = await context(serverContext)
-    const moduleCtx = await module.context(contextInput, {
-      projection: finalProjection as GenericProjection,
+    const moduleContext = await module.context(contextInput, {
+      projection: givenProjection.value as projection.Projection,
       input: decoded.value,
       operationId,
       log,
     })
     try {
       const result = await functionBody.apply({
-        projection: finalProjection,
-        context: moduleCtx,
+        projection: givenProjection.value as projection.FromType<types.Type>,
+        context: moduleContext,
         input: decoded.value,
         operationId,
         log,
       })
-      const projectedType = getProjectedType(functionBody.output, finalProjection as GenericProjection)
-      const encoded = encode(projectedType, result)
+      const encoded = encoder.encode(functionBody.output, result) //TODO: encodePartial
       log('Completed.')
       return { status: 200, body: encoded, headers }
     } catch (e) {
@@ -103,9 +93,9 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
           log,
           functionName,
           operationId,
-          context: moduleCtx,
+          context: moduleContext,
           functionArgs: {
-            projection: finalProjection,
+            projection: givenProjection.value,
             input: decoded.value,
           },
           ...serverContext,

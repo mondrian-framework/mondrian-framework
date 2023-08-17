@@ -5,7 +5,7 @@ import { projection, types } from '@mondrian-framework/model'
 /**
  * The Mondrian module type.
  */
-export type Module<Fs extends functions.Functions, ContextInput = unknown> = {
+export type Module<Fs extends functions.Functions = functions.Functions, ContextInput = unknown> = {
   name: string
   version: string
   functions: Fs

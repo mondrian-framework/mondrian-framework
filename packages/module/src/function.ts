@@ -4,7 +4,7 @@ import { projection, types } from '@mondrian-framework/model'
 /**
  * Mondrian function type.
  */
-export type Function<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
+export type Function<I extends types.Type = types.Type, O extends types.Type = types.Type, Context extends Record<string, unknown> = Record<string, unknown>> = {
   input: I
   output: O
   apply: (args: FunctionArguments<I, O, Context>) => Promise<types.InferPartial<O>>

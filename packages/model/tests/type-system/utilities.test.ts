@@ -55,3 +55,51 @@ describe('partial', () => {
     expect(result.isOk).toBe(true)
   })
 })
+
+
+describe('Utilities', () => {
+  test('isArray', () => {
+    expect(types.isArray(types.string().array())).toBe(true)
+    expect(types.isArray(types.string().array().optional())).toBe(true)
+    expect(types.isArray(types.string().array().nullable())).toBe(true)
+    expect(types.isArray(types.string().array())).toBe(true)
+    expect(types.isArray(types.string().optional().array().array())).toBe(true)
+    expect(types.isArray(types.string().optional())).toBe(false)
+  })
+  test('isOptional', () => {
+    expect(types.isOptional(types.string().array().optional())).toBe(true)
+    expect(types.isOptional(types.string().optional())).toBe(true)
+    expect(types.isOptional(types.string().optional().nullable())).toBe(true)
+    expect(types.isOptional(types.string().optional().reference())).toBe(true)
+    expect(types.isOptional(types.string().optional().array())).toBe(false)
+    expect(types.isOptional(types.string().optional().array().optional)).toBe(true)
+  })
+  test('isReference', () => {
+    expect(types.isReference(types.string().array().reference())).toBe(true)
+    expect(types.isReference(types.string().reference())).toBe(true)
+    expect(types.isReference(types.string().reference().nullable())).toBe(true)
+    expect(types.isReference(types.string().reference().optional())).toBe(true)
+    expect(types.isReference(types.string().reference().array())).toBe(false)
+    expect(types.isReference(types.string().reference().array().reference)).toBe(true)
+  })
+  test('isNullable', () => {
+    expect(types.isNullable(types.string().array().nullable())).toBe(true)
+    expect(types.isNullable(types.string().nullable())).toBe(true)
+    expect(types.isNullable(types.string().nullable().reference())).toBe(true)
+    expect(types.isNullable(types.string().nullable().optional())).toBe(true)
+    expect(types.isNullable(types.string().nullable().array())).toBe(false)
+    expect(types.isNullable(types.string().nullable().array().nullable)).toBe(true)
+  })
+
+  test('isNullable', () => {
+    expect(types.unwrap(types.string().array().nullable()).kind).toBe(types.Kind.String)
+    expect(types.unwrap(types.string().nullable()).kind).toBe(types.Kind.String)
+  })
+
+  test('isScalar', () => {
+    expect(types.isScalar(types.string().array().nullable())).toBe(false)
+    expect(types.isScalar(types.object({}))).toBe(false)
+    expect(types.isScalar(types.union({}))).toBe(false)
+    expect(types.isScalar(types.string().nullable())).toBe(true)
+  })
+})

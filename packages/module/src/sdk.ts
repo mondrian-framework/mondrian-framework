@@ -21,10 +21,10 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type, Me
 ) => Promise<Project<OutputType, P>>
 
 class SdkBuilder<const Metadata> {
-  private _metadata?: Metadata
+  private metadata?: Metadata
 
   constructor(metadata?: Metadata) {
-    this._metadata = metadata
+    this.metadata = metadata
   }
 
   public build<const Fs extends functions.Functions, ContextInput>({
@@ -47,7 +47,7 @@ class SdkBuilder<const Metadata> {
           const operationId = utils.randomOperationId()
           const log = defaultLogger.build({ operationId, operationName: functionName })
           try {
-            const contextInput = await context({ metadata: options?.metadata ?? this._metadata })
+            const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
             const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
             const result = await functions.apply(func, {
               input: input as never, //TODO: types.Infer<types.Type> should infer unknown?

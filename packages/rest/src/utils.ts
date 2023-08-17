@@ -1,5 +1,5 @@
 import { RestApi, RestFunctionSpecs } from './api'
-import { Functions } from '@mondrian-framework/module'
+import { functions } from '@mondrian-framework/module'
 import { JSONType, isArray, setTraversingValue } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
@@ -54,7 +54,7 @@ export function pathFromSpecification(functionName: string, spec: RestFunctionSp
   return `${prefix}/:v${spec.path ?? `/${functionName}`}`
 }
 
-export function getMaxVersion(api: RestApi<Functions>): number {
+export function getMaxVersion(api: RestApi<functions.Functions>): number {
   return Object.values(api.functions)
     .flatMap((v) => (v ? (isArray(v) ? v : [v]) : []))
     .map((v) => Math.max(v.version?.max ?? 0, v.version?.min ?? 0))

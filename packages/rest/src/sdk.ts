@@ -1,50 +1,55 @@
 import { RestApi } from './api'
 import { encodeQueryObject } from './utils'
-import { Infer, InferProjection, LazyType, Project, Types, decodeAndValidate, encode } from '@mondrian-framework/model'
-import { Functions, Module } from '@mondrian-framework/module'
+import { decoder, encoder, projection, types } from '@mondrian-framework/model'
+import { functions, module, sdk } from '@mondrian-framework/module'
 
-type SDK<F extends Functions, API extends RestApi<F>> = {
-  [K in keyof F & keyof API['functions']]: Infer<F[K]['input']> extends infer Input
-    ? InferProjection<F[K]['output']> extends infer Projection
-      ? SdkResolver<Input, Projection, F[K]['output']>
-      : never
-    : never
+export type Sdk<F extends functions.Functions> = {
+  functions: SdkFunctions<F>
+  withHeaders: (headers: Record<string, string | string[] | undefined>) => Sdk<F>
 }
 
-type SdkResolver<Input, Projection, OutputType extends LazyType> = <const F extends Projection>(args: {
-  input: Input
-  headers?: Record<string, string | string[] | undefined>
-  projection?: F
-}) => Promise<Project<F, OutputType>>
+type SdkFunctions<F extends functions.Functions> = {
+  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output']>
+}
 
-export function createRestSdk<const F extends Functions, const API extends RestApi<F>>({
+type SdkFunction<InputType extends types.Type, OutputType extends types.Type> = <
+  const P extends projection.FromType<OutputType>,
+>(
+  input: types.Infer<InputType>,
+  options?: { projection?: P; headers?: Record<string, string | string[] | undefined> },
+) => Promise<sdk.Project<OutputType, P>>
+
+export function build<const Fs extends functions.Functions, const API extends RestApi<Fs>>({
   module,
-  defaultHeaders,
   api,
   endpoint,
+  headers,
 }: {
-  module: Module<F, any>
+  module: module.Module
   api: API
-  defaultHeaders?: Record<string, string>
   endpoint: string
-}): SDK<F, API> {
+  headers?: Record<string, string | string[] | undefined>
+}): Sdk<Pick<Fs, keyof API['functions'] & keyof Fs>> {
   const functions = Object.fromEntries(
-    Object.entries(module.functions.definitions).flatMap(([functionName, functionBody]) => {
+    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
       const specs = api.functions[functionName]
       const specification = Array.isArray(specs) ? specs[0] : specs
       if (!specification) {
         return []
       }
-      const resolver = async ({ input, projection, headers }: { input: any; headers?: any; projection: any }) => {
+      const resolver = async ({ input, options }: { input: any; options?: { headers?: any; projection: any } }) => {
         const url = `${endpoint}/api${specification.path ?? `/${functionName}`}`
-        const encodedInput = encode(functionBody.input, input)
+        const encodedInput = encoder.encode(functionBody.input, input as never)
+        if (!encodedInput.isOk) {
+          throw new Error(`Error while econding input ${JSON.stringify(encodedInput.error)}`)
+        }
         const realUrl =
           specification.method === 'get' || specification.method === 'delete'
-            ? `${url}?${encodeQueryObject(encodedInput, specification.inputName ?? 'input')}`
+            ? `${url}?${encodeQueryObject(encodedInput.value, specification.inputName ?? 'input')}`
             : url
         const projectionHeader = projection != null ? { projection: JSON.stringify(projection) } : {}
         const response = await fetch(realUrl, {
-          headers: { 'content-type': 'application/json', ...defaultHeaders, ...headers, ...projectionHeader },
+          headers: { 'content-type': 'application/json', ...headers, ...options?.headers, ...projectionHeader },
           method: specification.method,
           body:
             specification.method !== 'get' && specification.method !== 'delete'
@@ -54,11 +59,11 @@ export function createRestSdk<const F extends Functions, const API extends RestA
         const operationId = response.headers.get('operation-id')
         if (response.status === 200) {
           const json = await response.json()
-          const result = decodeAndValidate(functionBody.output, json)
-          if (!result.success) {
-            throw new Error(JSON.stringify(result.errors))
+          const result = decoder.decode(functionBody.output, json)
+          if (!result.isOk) {
+            throw new Error(JSON.stringify(result.error))
           }
-          return result.value
+          return result.value as any
         }
         console.log(`Operation failed: ${operationId}`)
         throw new Error(await response.text())
@@ -67,5 +72,8 @@ export function createRestSdk<const F extends Functions, const API extends RestA
     }),
   )
 
-  return functions as SDK<F, API>
+  return {
+    functions: functions as unknown as SdkFunctions<Fs>,
+    withHeaders: (headers: Record<string, string | string[] | undefined>) => build({ api, endpoint, module, headers }),
+  }
 }

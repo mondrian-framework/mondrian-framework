@@ -1,5 +1,5 @@
 import { DefaultMethods } from './base'
-import { types } from 'src'
+import { types } from '../../'
 
 /**
  * @param types an object where each field is itself a {@link Type `Type`}, used to determine the structure of the

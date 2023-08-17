@@ -230,6 +230,14 @@ describe('projection.respectsProjection', () => {
       checkErrors(expectedError, actualError)
     })
 
+    test('from objects with optional field', () => {
+      const model = types.object({ field1: types.number(), field2: types.string(), field3: types.string().optional() })
+      const result = projection.respectsProjection(model, { field2: true }, {})
+      const actualError = assertFailure(result)
+      const expectedError = [{ missingField: 'field2', path: path.empty() }]
+      checkErrors(expectedError, actualError)
+    })
+
     test('from unions', () => {
       const model = types.union({
         variant1: types.string(),

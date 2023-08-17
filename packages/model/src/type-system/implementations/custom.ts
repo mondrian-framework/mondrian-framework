@@ -1,6 +1,6 @@
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
-import { decoder, types, validator } from 'src'
+import { decoder, types, validator } from '../../'
 
 type CustomEncoder<Name extends string, Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,

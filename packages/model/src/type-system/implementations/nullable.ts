@@ -1,5 +1,5 @@
 import { DefaultMethods } from './base'
-import { types } from 'src'
+import { types } from '../../'
 
 /**
  * @param wrappedType the {@link Type `Type`} describing the item held by the new `NullableType`

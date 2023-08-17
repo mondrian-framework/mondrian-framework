@@ -1,5 +1,5 @@
 import { DefaultMethods } from './base'
-import { types } from 'src'
+import { types } from '../../'
 
 /**
  * @param options the {@link NumberTypeOptions options} used to define the new `NumberType`

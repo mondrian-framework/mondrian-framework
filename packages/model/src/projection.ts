@@ -224,7 +224,7 @@ function validateRequiredField(
   object: Record<string, any>,
 ): result.Result<true, projection.Error[]> {
   const fieldValue = object[fieldName]
-  if (fieldValue === undefined) {
+  if (fieldValue === undefined && !types.isOptional(fieldType)) {
     return result.fail([{ missingField: fieldName, path: path.empty() }])
   } else {
     const fieldProjection = subProjection(projection, [fieldName] as never)

@@ -31,7 +31,7 @@ export function checkOutputType(onFailure: 'log' | 'throw'): functions.AfterMidd
     apply: async ({ args, thisFunction, result }) => {
       const projectionRespectedResult = projection.respectsProjection(
         thisFunction.output,
-        args.projection ?? true,
+        args.projection ?? true as never,
         result,
       )
       if (!projectionRespectedResult.isOk) {

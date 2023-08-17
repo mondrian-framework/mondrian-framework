@@ -124,8 +124,8 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
     ? middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)
     : null
   const checkOutputTypeMiddleware =
-    module.options?.checks?.output && module.options.checks.output !== 'ignore'
-      ? middleware.checkOutputType(module.options.checks.output)
+    module.options?.checks?.output == null || module.options?.checks?.output !== 'ignore'
+      ? middleware.checkOutputType(module.options?.checks?.output ?? 'throw')
       : null
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {

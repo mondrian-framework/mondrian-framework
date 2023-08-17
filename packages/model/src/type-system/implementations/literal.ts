@@ -1,5 +1,5 @@
 import { DefaultMethods } from './base'
-import { types } from 'src'
+import { types } from '../../'
 
 /**
  * @param value the literal value held by the new `LiteralType`

@@ -1,5 +1,5 @@
 import { DefaultMethods } from './base'
-import { types } from 'src'
+import { types } from '../../'
 
 /**
  * @param wrappedType the {@link types.Type `Type`} describing the items held by the new `ArrayType`

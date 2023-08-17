@@ -1,4 +1,4 @@
-import { types } from 'src'
+import { types } from '../../'
 
 export abstract class DefaultMethods<T extends types.Type> {
   readonly options?: types.OptionsOf<T>

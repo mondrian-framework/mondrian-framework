@@ -1,4 +1,4 @@
-import { module, func, sdk } from '../src'
+import { module, functions, sdk } from '../src'
 import { types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
@@ -24,7 +24,7 @@ test('Whole module', async () => {
     }
   }
 
-  const login = func.withContext<SharedContext & { from?: string }>().build({
+  const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
     apply: async ({ input, context: { db }, log }) => {
@@ -49,7 +49,7 @@ test('Whole module', async () => {
     ],
     options: { namespace: 'authentication' },
   })
-  const register = func.withContext<SharedContext & { from?: string }>().build({
+  const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: types.nullable(User),
     apply: async ({ input, context: { db }, log }) => {
@@ -75,7 +75,7 @@ test('Whole module', async () => {
     options: { namespace: 'authentication' },
   })
 
-  const completeProfile = func.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
+  const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
     input: types.object({ firstname: types.string(), lastname: types.string() }),
     output: User,
     apply: async ({ input, context: { db, authenticatedUser } }) => {
@@ -164,7 +164,7 @@ describe('Unique type name', () => {
     const input = types.number().setName('Input')
     const output = types.union({ n, v: input.setName('V') })
 
-    const f = func.build({
+    const f = functions.build({
       input,
       output,
       apply: () => {

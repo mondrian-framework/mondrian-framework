@@ -1,13 +1,11 @@
-import { func } from '.'
-import { Function, Functions } from './function'
-import { Logger } from './log'
+import { functions, logger } from '.'
 import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
  * The Mondrian module type.
  */
-export type Module<Fs extends Functions, ContextInput = unknown> = {
+export type Module<Fs extends functions.Functions, ContextInput = unknown> = {
   name: string
   version: string
   functions: Fs
@@ -19,7 +17,7 @@ export type Module<Fs extends Functions, ContextInput = unknown> = {
       input: unknown
       projection: projection.Projection | undefined
       operationId: string
-      log: Logger
+      log: logger.Logger
     },
   ) => Promise<ContextType<Fs>>
   options?: ModuleOptions
@@ -50,9 +48,9 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
 /**
  * Intersection of all function's Contexts.
  */
-type ContextType<F extends Functions> = UnionToIntersection<
+type ContextType<F extends functions.Functions> = UnionToIntersection<
   {
-    [K in keyof F]: F[K] extends Function<any, any, infer Context> ? Context : never
+    [K in keyof F]: F[K] extends functions.Function<any, any, infer Context> ? Context : never
   }[keyof F]
 >
 
@@ -64,7 +62,7 @@ type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 /**
  * Checks for name collisions.
  */
-function assertUniqueNames(functions: Functions) {
+function assertUniqueNames(functions: functions.Functions) {
   function gatherTypes(ts: types.Type[], explored?: Set<types.Type>): types.Type[] {
     explored = explored ?? new Set<types.Type>()
     for (const type of ts) {
@@ -101,45 +99,6 @@ function assertUniqueNames(functions: Functions) {
 }
 
 /**
- * Module builder.
- */
-class ModuleBuilder {
-  constructor() {}
-
-  /**
-   * Builds a mondrian module
-   * @returns The builded mondrian Module.
-   */
-  public build<const Fs extends Functions, const ContextInput>(
-    module: Module<Fs, ContextInput>,
-  ): Module<Fs, ContextInput> {
-    assertUniqueNames(module.functions)
-    const maxProjectionDepthMiddleware = module.options?.checks?.maxProjectionDepth
-      ? middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)
-      : null
-    const checkOutputTypeMiddleware =
-      module.options?.checks?.output && module.options.checks.output !== 'ignore'
-        ? middleware.checkOutputType(module.options.checks.output)
-        : null
-    const wrappedFunctions = Object.fromEntries(
-      Object.entries(module.functions).map(([functionName, functionBody]) => {
-        const wrappedFunction = func.build({
-          ...functionBody,
-          before: maxProjectionDepthMiddleware
-            ? [maxProjectionDepthMiddleware, ...(functionBody.before ?? [])]
-            : functionBody.before,
-          after: checkOutputTypeMiddleware
-            ? [...(functionBody.after ?? []), checkOutputTypeMiddleware]
-            : functionBody.after,
-        })
-        return [functionName, wrappedFunction]
-      }),
-    ) as Fs
-    return { ...module, functions: wrappedFunctions }
-  }
-}
-
-/**
  * The module builder singleton. It's used to build any Mondrian module.
  *
  * Example:
@@ -157,4 +116,30 @@ class ModuleBuilder {
  *   })
  * ```
  */
-export const builder: ModuleBuilder = new ModuleBuilder()
+export function build<const Fs extends functions.Functions, const ContextInput>(
+  module: Module<Fs, ContextInput>,
+): Module<Fs, ContextInput> {
+  assertUniqueNames(module.functions)
+  const maxProjectionDepthMiddleware = module.options?.checks?.maxProjectionDepth
+    ? middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)
+    : null
+  const checkOutputTypeMiddleware =
+    module.options?.checks?.output && module.options.checks.output !== 'ignore'
+      ? middleware.checkOutputType(module.options.checks.output)
+      : null
+  const wrappedFunctions = Object.fromEntries(
+    Object.entries(module.functions).map(([functionName, functionBody]) => {
+      const wrappedFunction = functions.build({
+        ...functionBody,
+        before: maxProjectionDepthMiddleware
+          ? [maxProjectionDepthMiddleware, ...(functionBody.before ?? [])]
+          : functionBody.before,
+        after: checkOutputTypeMiddleware
+          ? [...(functionBody.after ?? []), checkOutputTypeMiddleware]
+          : functionBody.after,
+      })
+      return [functionName, wrappedFunction]
+    }),
+  ) as Fs
+  return { ...module, functions: wrappedFunctions }
+}

@@ -1,4 +1,4 @@
-import { Logger } from './log'
+import { logger } from '.'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
@@ -21,7 +21,7 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
   projection: projection.FromType<O> | undefined
   operationId: string
   context: Context
-  log: Logger
+  log: logger.Logger
 }
 
 /**
@@ -78,19 +78,57 @@ export async function apply<
 }
 
 /**
+ * Builds a Mondrian function.
+ *
+ * Example:
+ * ```typescript
+ * import { types } from '@mondrian-framework/model'
+ * import { functions } from '@mondrian-framework/module'
+ *
+ * const loginFunction = functions
+ *   .build({
+ *     input: type.object({ username: types.stirng(), password: types.string() }),
+ *     output: types.string(),
+ *     body: async ({ input: { username, password } }) => {
+ *       return 'TODO'
+ *     }
+ *   })
+ * ```
+ */
+export function build<const I extends types.Type, const O extends types.Type>(
+  func: Function<I, O, {}>,
+): Function<I, O, {}> {
+  return withContext().build(func)
+}
+
+/**
+ * Builds a Mondrian function with a given Context type.
+ *
+ * Example:
+ * ```typescript
+ * import { types } from '@mondrian-framework/model'
+ * import { functions } from '@mondrian-framework/module'
+ *
+ * const loginFunction = functions
+ *   .withContext<{ db: Db }>()
+ *   .build({
+ *     input: type.object({ username: types.stirng(), password: types.string() }),
+ *     output: types.string(),
+ *     body: async ({ input: { username, password }, context: { db } }) => {
+ *       return 'TODO'
+ *     }
+ *   })
+ * ```
+ */
+export function withContext<const Context extends Record<string, unknown>>(): FunctionBuilder<Context> {
+  return new FunctionBuilder()
+}
+
+/**
  * Function builder.
  */
 class FunctionBuilder<const Context extends Record<string, unknown>> {
   constructor() {}
-
-  /**
-   * Assigns the Context type of the function that are being building.
-   * @returns
-   */
-  public withContext<const Context extends Record<string, unknown>>(): FunctionBuilder<Context> {
-    return new FunctionBuilder()
-  }
-
   /**
    * Builds a Mondrian function.
    * @returns A Mondrian function with the applied middlewares.
@@ -101,23 +139,3 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
     return func
   }
 }
-
-/**
- * The function builder singleton. It's used to build any Mondrian function.
- *
- * Example:
- * ```typescript
- * import { types } from '@mondrian-framework/model'
- * import { func } from '@mondrian-framework/module'
- *
- * const loginFunction = func
- *   .build({
- *     input: type.object({ username: types.stirng(), password: types.string() }),
- *     output: types.string(),
- *     body: async ({ input: { username, password } }) => {
- *       return 'TODO'
- *     }
- *   })
- * ```
- */
-export const builder: FunctionBuilder<{}> = new FunctionBuilder()

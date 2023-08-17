@@ -77,10 +77,25 @@ class SdkBuilder<const Metadata> {
 
 export const builder: SdkBuilder<unknown> = new SdkBuilder()
 
+type T = types.ObjectType<'mutable', { a: types.NumberType }>
+type A = Project<T, projection.FromType<T>>
+type C = Project<T, true>
+type B = Project<T, {}>
+type D = Project<T, projection.Projection>
+
+type Asd = keyof Exclude<projection.FromType<T>, true >
+/**
+ * TODO: doc
+ */
 // prettier-ignore
 export type Project<T extends types.Type, P extends projection.Projection> 
+  = [projection.Projection] extends [P] ? 
+    [keyof Exclude<P, true>] extends [never] ? ProjectInternal<T, P> : InferExcludingReferences<T>
+  : ProjectInternal<T, P>
+
+// prettier-ignore
+export type ProjectInternal<T extends types.Type, P extends projection.Projection> 
   = [P] extends [true] ? InferExcludingReferences<T>
-  //: [projection.Projection] extends [P] ? InferExcludingReferences<T>
   : [T] extends [types.OptionalType<infer T1>] ? undefined | Project<T1, P>
   : [T] extends [types.NullableType<infer T1>] ? null | Project<T1, P>
   : [T] extends [types.ReferenceType<infer T1>] ? Project<T1, P>

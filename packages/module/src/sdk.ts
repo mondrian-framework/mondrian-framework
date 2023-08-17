@@ -77,15 +77,9 @@ class SdkBuilder<const Metadata> {
 
 export const builder: SdkBuilder<unknown> = new SdkBuilder()
 
-type T = types.ObjectType<'mutable', { a: types.NumberType }>
-type A = Project<T, projection.FromType<T>>
-type C = Project<T, true>
-type B = Project<T, {}>
-type D = Project<T, projection.Projection>
-
-type Asd = keyof Exclude<projection.FromType<T>, true >
 /**
- * TODO: doc
+ * Infer a subset of a Mondrian type `T` based on a projection `P`
+ * If not explicitly required all {@link types.ReferenceType} fields are ignored.
  */
 // prettier-ignore
 export type Project<T extends types.Type, P extends projection.Projection> 
@@ -109,7 +103,7 @@ export type ProjectInternal<T extends types.Type, P extends projection.Projectio
 
 // prettier-ignore
 type InferExcludingReferences<T extends types.Type>
-  = [T] extends [types.UnionType<infer Ts>] ? { [Key in NonReferenceKeys<Ts>]: { readonly [P in Key]: InferExcludingReferences<Ts[Key]> } }[NonReferenceKeys<Ts>]
+  = [T] extends [types.UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: InferExcludingReferences<Ts[Key]> } }[keyof Ts]
   : [T] extends [types.ObjectType<"immutable", infer Ts>] ? Readonly<{ [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }>
   : [T] extends [types.ObjectType<"mutable", infer Ts>] ? { [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }
   : [T] extends [types.ArrayType<"immutable", infer T1>] ? readonly InferExcludingReferences<T1>[]

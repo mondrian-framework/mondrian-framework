@@ -87,7 +87,7 @@ describe('Project', () => {
     expectTypeOf<G>().toEqualTypeOf<number>()
     expectTypeOf<H>().toEqualTypeOf<number>()
 
-    type T2 = types.UnionType<{ a: types.NumberType; b: T }>
+    type T2 = types.UnionType<{ a: types.NumberType; b: types.ReferenceType<T> }>
     type I = Project<T2, projection.FromType<T>>
     type L = Project<T2, true>
     type M = Project<T2, {}>

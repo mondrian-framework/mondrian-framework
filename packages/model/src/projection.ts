@@ -150,7 +150,7 @@ export type Error = path.WithPath<{
 export function respectsProjection<T extends types.Type>(
   type: T,
   projection: projection.FromType<T>,
-  value: types.InferPartial<T>,
+  value: types.Infer<types.PartialDeep<T>>,
 ): result.Result<true, projection.Error[]> {
   const concreteType = types.concretise(type)
   switch (concreteType.kind) {

@@ -74,14 +74,15 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
       log,
     })
     try {
-      const result = await functionBody.apply({
+      const result = await functions.apply(functionBody, {
         projection: givenProjection.value as projection.FromType<types.Type>,
         context: moduleContext,
         input: decoded.value,
         operationId,
         log,
       })
-      const encoded = encoder.encode(functionBody.output, result) //TODO: encodePartial
+      const partialOutputType = types.partialDeep(functionBody.output)
+      const encoded = encoder.encode(partialOutputType, result)
       log('Completed.')
       return { status: 200, body: encoded, headers }
     } catch (e) {

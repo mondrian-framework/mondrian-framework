@@ -225,7 +225,7 @@ function validateUnion<Ts extends types.Types>(
 ): validator.Result {
   const failureMessage =
     "I tried to validate an object that is not a union's variant. This should have been prevented by the type system"
-  const variantName = Object.keys(variant).at(0)
+  const variantName = Object.keys(variant)[0]
   if (variantName === undefined) {
     failWithInternalError(failureMessage)
   } else {

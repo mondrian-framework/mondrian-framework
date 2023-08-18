@@ -59,9 +59,18 @@ export function build<const Fs extends functions.Functions, const API extends Re
         const operationId = response.headers.get('operation-id')
         if (response.status === 200) {
           const json = await response.json()
-          const result = decoder.decode(functionBody.output, json)
+          const partialOutputType = types.partialDeep(functionBody.output)
+          const result = decoder.decode(partialOutputType, json)
           if (!result.isOk) {
             throw new Error(JSON.stringify(result.error))
+          }
+          const projectionRespected = projection.respectsProjection(
+            functionBody.output,
+            projection as never,
+            result.value,
+          )
+          if (!projectionRespected.isOk) {
+            throw new Error(JSON.stringify(projectionRespected.error))
           }
           return result.value as any
         }

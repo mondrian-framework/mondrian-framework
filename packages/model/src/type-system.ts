@@ -1,5 +1,6 @@
 import { decoder, validator, types } from './index'
-import { filterMapObject } from './utils'
+import { object } from './types-exports'
+import { assertNever, filterMapObject, mapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
 export enum Kind {
@@ -92,25 +93,6 @@ export type Infer<T extends Type>
   : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
   : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
-  : never
-
-// prettier-ignore
-export type InferPartial<T extends Type>
-  = [T] extends [NumberType] ? number
-  : [T] extends [StringType] ? string
-  : [T] extends [BooleanType] ? boolean
-  : [T] extends [EnumType<infer Vs>] ? Vs[number]
-  : [T] extends [LiteralType<infer L>] ? L
-  : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: InferPartial<Ts[Key]> } }[keyof Ts]
-  : [T] extends [ObjectType<"immutable", infer Ts>] ? { readonly [Key in keyof Ts]?: InferPartial<Ts[Key]> }
-  : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in keyof Ts]?: InferPartial<Ts[Key]> }
-  : [T] extends [ArrayType<"immutable", infer T1>] ? readonly InferPartial<T1>[]
-  : [T] extends [ArrayType<"mutable", infer T1>] ? InferPartial<T1>[]
-  : [T] extends [OptionalType<infer T1>] ? undefined | InferPartial<T1>
-  : [T] extends [NullableType<infer T1>] ? null | InferPartial<T1>
-  : [T] extends [ReferenceType<infer T1>] ? InferPartial<T1>
-  : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
-  : [T] extends [(() => infer T1 extends Type)] ? InferPartial<T1>
   : never
 
 /**
@@ -674,6 +656,55 @@ export function partial<const Ts extends Types, M extends Mutability = 'immutabl
 
 type PartialObjectFields<Ts extends Types> = {
   [K in keyof Ts]: IsReference<Ts[K]> extends true ? Ts[K] : OptionalType<Ts[K]>
+}
+
+/**
+ * TODO: doc
+ */
+//prettier-ignore
+export type PartialDeep<T extends Type> 
+  = [T] extends [UnionType<infer Ts>] ? UnionType<{ [Key in keyof Ts]: PartialDeep<Ts[Key]> }>
+  : [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<Ts[Key]>> }>
+  : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
+  : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
+  : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>
+  : [T] extends [ReferenceType<infer T1>] ? ReferenceType<PartialDeep<T1>>
+  : [T] extends [(() => infer T1 extends Type)] ? () => PartialDeep<T1>
+  : T
+
+//TODO: better typing
+/**
+ * TODO: doc
+ * @param type
+ * @returns
+ */
+export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
+  if (typeof type === 'function') {
+    return (() => partialDeep(type())) as PartialDeep<T>
+  }
+  const concreteType = concretise(type)
+  switch (concreteType.kind) {
+    case Kind.Reference:
+      return types.reference(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
+    case Kind.Nullable:
+      return types.nullable(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
+    case Kind.Optional:
+      return types.optional(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
+    case Kind.Array:
+      return types.array(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
+    case Kind.Union:
+      return types.union(
+        mapObject(concreteType.variants as Record<string, Type>, (_, fieldValue) => partialDeep(fieldValue)),
+      ) as PartialDeep<T>
+    case Kind.Object:
+      return types.object(
+        mapObject(concreteType.fields as Record<string, Type>, (_, fieldValue) =>
+          types.optional(partialDeep(fieldValue)),
+        ),
+      ) as PartialDeep<T>
+    default:
+      return type as PartialDeep<T>
+  }
 }
 
 /**

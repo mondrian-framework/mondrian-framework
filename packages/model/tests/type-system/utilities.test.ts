@@ -1,4 +1,6 @@
 import { types, validator } from '../../src'
+import { object } from '../../src/types-exports'
+import { assertOk } from '../testing-utils'
 import { describe, expect, test } from 'vitest'
 
 describe('merge', () => {
@@ -56,7 +58,6 @@ describe('partial', () => {
   })
 })
 
-
 describe('Utilities', () => {
   test('isArray', () => {
     expect(types.isArray(types.string().array())).toBe(true)
@@ -101,5 +102,37 @@ describe('Utilities', () => {
     expect(types.isScalar(types.object({}))).toBe(false)
     expect(types.isScalar(types.union({}))).toBe(false)
     expect(types.isScalar(types.string().nullable())).toBe(true)
+  })
+})
+
+describe('partialDeep', () => {
+  test('validate with scalar', () => {
+    const model = types.string().nullable().reference().optional()
+    const partialmodel = types.partialDeep(model)
+    assertOk(validator.validate(partialmodel, ''))
+    assertOk(validator.validate(partialmodel, null))
+    assertOk(validator.validate(partialmodel, undefined))
+  })
+  test('validate with array', () => {
+    const model = types.string().nullable().array().nullable()
+    const partialmodel = types.partialDeep(model)
+    assertOk(validator.validate(partialmodel, [null, '']))
+    assertOk(validator.validate(partialmodel, null))
+  })
+  test('validate with recursive object', () => {
+    const model = () => object({ field1: types.string(), model })
+    const partialmodel = types.partialDeep(model)
+    assertOk(validator.validate(partialmodel, {}))
+    assertOk(validator.validate(partialmodel, { field1: '' }))
+    assertOk(validator.validate(partialmodel, { model: {} }))
+    assertOk(validator.validate(partialmodel, { model: { field1: '' } }))
+  })
+  test('validate with recursive union', () => {
+    const model = () => types.union({ field1: types.string(), field2: types.string(), model })
+    const partialmodel = types.partialDeep(model)
+    assertOk(validator.validate(partialmodel, { field1: '' }))
+    assertOk(validator.validate(partialmodel, { field2: '' }))
+    assertOk(validator.validate(partialmodel, { model: { field1: '' } }))
+    assertOk(validator.validate(partialmodel, { model: { field2: '' } }))
   })
 })

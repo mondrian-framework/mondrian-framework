@@ -4,10 +4,14 @@ import { projection, types } from '@mondrian-framework/model'
 /**
  * Mondrian function type.
  */
-export type Function<I extends types.Type = types.Type, O extends types.Type = types.Type, Context extends Record<string, unknown> = Record<string, unknown>> = {
+export type Function<
+  I extends types.Type = types.Type,
+  O extends types.Type = types.Type,
+  Context extends Record<string, unknown> = Record<string, unknown>,
+> = {
   input: I
   output: O
-  apply: (args: FunctionArguments<I, O, Context>) => Promise<types.InferPartial<O>>
+  apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
   before?: BeforeMiddleware<I, O, Context>[]
   after?: AfterMiddleware<I, O, Context>[]
   options?: { namespace?: string; description?: string }
@@ -44,9 +48,9 @@ export type AfterMiddleware<I extends types.Type, O extends types.Type, Context 
   name?: string
   apply: (args: {
     args: FunctionArguments<I, O, Context>
-    result: types.InferPartial<O>
+    result: types.Infer<types.PartialDeep<O>>
     thisFunction: Function<I, O, Context>
-  }) => types.InferPartial<O> | Promise<types.InferPartial<O>>
+  }) => types.Infer<types.PartialDeep<O>> | Promise<types.Infer<types.PartialDeep<O>>>
 }
 
 /**
@@ -66,7 +70,7 @@ export async function apply<
   const I extends types.Type,
   const O extends types.Type,
   const Context extends Record<string, unknown>,
->(func: Function<I, O, Context>, args: FunctionArguments<I, O, Context>): Promise<types.InferPartial<O>> {
+>(func: Function<I, O, Context>, args: FunctionArguments<I, O, Context>): Promise<types.Infer<types.PartialDeep<O>>> {
   for (const middleware of func.before ?? []) {
     args = await middleware.apply({ args, thisFunction: func })
   }

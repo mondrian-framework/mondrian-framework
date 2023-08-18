@@ -92,7 +92,7 @@ function unsafeEncodeNullable<T extends types.Type>(
 function unsafeEncodeUnion<Ts extends types.Types>(type: types.UnionType<Ts>, union: any): JSONType | undefined {
   const failureMessage =
     'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system'
-  const variantName = Object.keys(union).at(0)
+  const variantName = Object.keys(union)[0]
   if (variantName === undefined) {
     failWithInternalError(failureMessage)
   } else {

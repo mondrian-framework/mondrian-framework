@@ -255,10 +255,14 @@ describe('projection.respectsProjection', () => {
 
     test('from union with empty object', () => {
       const model = () =>
-        types.union({ field1: types.object({ field4: types.string() }), field2: types.string().optional(), field3: types.string() })
-        assertOk(projection.respectsProjection(model, {}, { field1: { } }))
-        assertOk(projection.respectsProjection(model, {}, { field2: undefined }))
-        assertOk(projection.respectsProjection(model, {}, { field3: "asd" }))
+        types.union({
+          field1: types.object({ field4: types.string() }),
+          field2: types.string().optional(),
+          field3: types.string(),
+        })
+      assertOk(projection.respectsProjection(model, {}, { field1: {} }))
+      assertOk(projection.respectsProjection(model, {}, { field2: undefined }))
+      assertOk(projection.respectsProjection(model, {}, { field3: 'asd' }))
     })
 
     test('from unions', () => {

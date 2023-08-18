@@ -1,5 +1,5 @@
-import { DefaultMethods } from './base'
 import { types } from '../../'
+import { DefaultMethods } from './base'
 
 /**
  * @param wrappedType the {@link Type `Type`} referenced by the resulting `ReferenceType`

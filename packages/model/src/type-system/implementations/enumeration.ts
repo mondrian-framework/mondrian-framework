@@ -1,5 +1,5 @@
-import { DefaultMethods } from './base'
 import { types } from '../../'
+import { DefaultMethods } from './base'
 
 /**
  * @param variants a non empty array of string values used to define the new `EnumType`'s variants

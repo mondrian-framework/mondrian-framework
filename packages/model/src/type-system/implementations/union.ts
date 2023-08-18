@@ -1,5 +1,5 @@
-import { DefaultMethods } from './base'
 import { types } from '../../'
+import { DefaultMethods } from './base'
 
 /**
  * @param variants a record with the different variants, each one paired with a function that can be used to determine

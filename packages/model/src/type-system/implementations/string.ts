@@ -1,5 +1,5 @@
-import { DefaultMethods } from './base'
 import { types } from '../../'
+import { DefaultMethods } from './base'
 
 /**
  * @param options the {@link StringTypeOptions options} used to define the new `StringType`

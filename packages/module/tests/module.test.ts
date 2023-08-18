@@ -141,7 +141,7 @@ test('Whole module', async () => {
   expect(loginResult).toEqual({ user: { email: 'admin@domain.com', password: '****' }, jwt: 'admin@domain.com' })
   await expect(
     async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),
-  ).rejects.toThrowError("Unauthorized")
+  ).rejects.toThrowError('Unauthorized')
   expect(
     async () =>
       await client.functions.completeProfile(
@@ -151,7 +151,10 @@ test('Whole module', async () => {
   ).rejects.toThrow()
   if (loginResult) {
     const authClient = client.withMetadata({ authorization: loginResult.jwt })
-    const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }, { operationId: '123' })
+    const myUser = await authClient.functions.completeProfile(
+      { firstname: 'Pieter', lastname: 'Mondriaan' },
+      { operationId: '123' },
+    )
     expect(myUser).toEqual({
       email: 'admin@domain.com',
       password: '1234',

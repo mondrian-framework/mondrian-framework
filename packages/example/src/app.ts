@@ -1,14 +1,13 @@
-import { CRON_API, GRAPHQL_API, REST_API } from './api'
-import { module } from './module'
+import { CRON_API, REST_API } from './api'
+import { m as module } from './module'
 import cron from '@mondrian-framework/cron'
-import graphql from '@mondrian-framework/graphql-yoga'
-import rest from '@mondrian-framework/rest-fastify'
+import { server as restServer } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
 async function main() {
   const server = fastify()
   const time = new Date().getTime()
-  rest.serve({
+  restServer.start({
     server,
     module,
     api: REST_API,
@@ -25,7 +24,7 @@ async function main() {
       }
     },
   })
-  graphql.serve({
+  /* graphql.serve({
     server,
     module,
     api: GRAPHQL_API,
@@ -38,7 +37,7 @@ async function main() {
         return { message: 'Invalid JWT' }
       }
     },
-  })
+  })*/
   cron.start({
     module,
     api: CRON_API,

@@ -1,0 +1,1 @@
+export { fromModule } from './openapi'

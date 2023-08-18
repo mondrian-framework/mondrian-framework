@@ -1,9 +1,9 @@
 import { ErrorHandler, RestFunctionSpecs, RestRequest } from './api'
-import { getInputExtractor } from './openapi'
+import { generateOpenapiInput } from './openapi'
 import { decoder, encoder, projection, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 
-export function generateRestRequestHandler<ServerContext, ContextInput>({
+export function fromFunction<Fs extends functions.Functions, ServerContext, ContextInput>({
   functionName,
   module,
   specification,
@@ -13,7 +13,7 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
   error,
 }: {
   functionName: string
-  module: module.Module
+  module: module.Module<Fs, ContextInput>
   functionBody: functions.Function
   specification: RestFunctionSpecs
   context: (serverContext: ServerContext) => Promise<ContextInput>
@@ -25,29 +25,31 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
 }) => Promise<{ status: number; body: unknown; headers?: Record<string, string | string[]> }> {
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
-  const inputExtractor = getInputExtractor({ functionBody, module, specification })
+  const inputExtractor = getInputExtractor({ functionBody, specification })
+  const partialOutputType = types.partialDeep(functionBody.output)
+
+  const thisLogger = logger.withContext({
+    moduleName: module.name,
+    operationName: functionName,
+    operationType: specification.method.toUpperCase(),
+    server: 'REST',
+  })
 
   return async ({ request, serverContext }) => {
     const operationId = utils.randomOperationId()
-    const log = logger.build({
-      moduleName: module.name,
-      operationId,
-      operationName: functionName,
-      operationType: specification.method.toUpperCase(),
-      server: 'REST',
-    })
-    const headers = { 'operation-id': operationId }
-    const input = inputExtractor(request)
+    const log = thisLogger.build({ operationId })
+    const responseHeaders = { 'operation-id': operationId }
     const v = (request.params as Record<string, string>).v
     const version = Number(v ? v.replace('v', '') : Number.NaN)
     if (Number.isNaN(version) || version < minVersion || version > maxVersion) {
+      log('Invalid version.')
       return {
         status: 404,
         body: { error: 'Invalid version', minVersion: `v${minVersion}`, maxVersion: `v${maxVersion}` },
+        headers: responseHeaders,
       }
     }
-    const projectionHeader = request.headers['projection']
-    const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
+    const input = inputExtractor(request)
     const decoded = specification.openapi
       ? decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' })
       : decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' }).lazyOr(() =>
@@ -57,34 +59,40 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
         )
     if (!decoded.isOk) {
       log('Bad request.')
-      return { status: 400, body: { errors: decoded.error }, headers }
+      return { status: 400, body: { errors: decoded.error }, headers: responseHeaders }
     }
+    const projectionHeader = request.headers['projection']
+    const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
     const givenProjection = projection.decode(functionBody.output, projectionObject != null ? projectionObject : true, {
       typeCastingStrategy: 'tryCasting',
     })
     if (!givenProjection.isOk) {
       log('Bad request. (projection)')
-      return { status: 400, body: { errors: givenProjection.error, message: "On 'projection' header" }, headers }
+      return {
+        status: 400,
+        body: { errors: givenProjection.error, message: "On 'projection' header" },
+        headers: responseHeaders,
+      }
     }
-    const contextInput = await context(serverContext)
-    const moduleContext = await module.context(contextInput, {
-      projection: givenProjection.value as projection.Projection,
-      input: decoded.value,
-      operationId,
-      log,
-    })
+    let moduleContext
     try {
-      const result = await functions.apply(functionBody, {
-        projection: givenProjection.value as projection.FromType<types.Type>,
-        context: moduleContext,
+      const contextInput = await context(serverContext)
+      moduleContext = await module.context(contextInput, {
+        projection: givenProjection.value as projection.Projection,
         input: decoded.value,
         operationId,
         log,
       })
-      const partialOutputType = types.partialDeep(functionBody.output)
+      const result = await functions.apply(functionBody, {
+        projection: givenProjection.value as projection.FromType<types.Type>,
+        context: moduleContext as Record<string, unknown>,
+        input: decoded.value,
+        operationId,
+        log,
+      })
       const encoded = encoder.encode(partialOutputType, result)
       log('Completed.')
-      return { status: 200, body: encoded, headers }
+      return { status: 200, body: encoded, headers: responseHeaders }
     } catch (e) {
       log('Failed with exception.')
       if (error) {
@@ -101,10 +109,17 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
           ...serverContext,
         })
         if (result !== undefined) {
-          return { ...result, headers: { ...result.headers, ...headers } }
+          return { ...result, headers: { ...result.headers, ...responseHeaders } }
         }
       }
       throw e
     }
   }
+}
+
+function getInputExtractor(args: {
+  specification: RestFunctionSpecs
+  functionBody: functions.Function
+}): (request: RestRequest) => unknown {
+  return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }

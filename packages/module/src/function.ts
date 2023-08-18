@@ -20,7 +20,7 @@ export type Function<
 /**
  * Arguments of a function call.
  */
-export type FunctionArguments<I extends types.Type, O extends types.Type, Context> = {
+export type FunctionArguments<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
   input: types.Infer<I>
   projection: projection.FromType<O> | undefined
   operationId: string

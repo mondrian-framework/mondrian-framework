@@ -5,49 +5,99 @@ import { functions, module } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
-function isInputRequired(type: types.Type): boolean {
-  return !types.isNullable(type) && !types.isOptional(type)
-}
-function generatePathParameters({
-  parameters,
-  type,
-  typeMap,
-  typeRef,
+export function fromModule<Fs extends functions.Functions, ContextInput>({
+  module,
+  api,
+  version,
 }: {
-  parameters: string[]
-  type: types.ObjectType<any, any>
-  typeMap: Record<string, OpenAPIV3_1.SchemaObject>
-  typeRef: Map<Function, string>
-}): OpenAPIV3_1.ParameterObject[] {
-  const result: OpenAPIV3_1.ParameterObject[] = []
-  for (const parameter of parameters) {
-    const subtype = type.fields[parameter]
-    const { schema } = typeToSchemaObject(subtype, typeMap, typeRef, true)
-    result.push({ in: 'path', name: parameter, required: true, schema: schema as any })
+  module: module.Module<Fs, ContextInput>
+  api: RestApi<Fs>
+  version: number
+}): OpenAPIV3_1.Document {
+  const paths: OpenAPIV3_1.PathsObject = {}
+  const { components, typeMap, typeRef } = openapiComponents({ module, version, api })
+  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+    const specifications = api.functions[functionName]
+    if (!specifications) {
+      continue
+    }
+    for (const specification of isArray(specifications) ? specifications : [specifications]) {
+      if (specification.version?.min != null && version < specification.version.min) {
+        continue
+      }
+      if (specification.version?.max != null && version > specification.version.max) {
+        continue
+      }
+      const path = `${specification.path ?? `/${functionName}`}`
+
+      const { parameters, requestBody } = generateOpenapiInput({
+        specification,
+        functionBody,
+        typeMap,
+        typeRef,
+      })
+      const { schema } = typeToSchemaObject(functionBody.output, typeMap, typeRef)
+      const operationObj: OpenAPIV3_1.OperationObject = {
+        ...specification.openapi?.specification.parameters,
+        parameters: parameters
+          ? [...parameters, { name: 'projection', in: 'header', example: true }]
+          : [{ name: 'projection', in: 'header', example: true }],
+        requestBody,
+        responses:
+          specification.openapi?.specification.responses === null
+            ? undefined
+            : specification.openapi?.specification.responses ?? {
+                '200': {
+                  description: 'Success',
+                  content: { 'application/json': { schema } },
+                },
+                '400': {
+                  description: 'Validation error',
+                },
+              },
+        description:
+          specification.openapi?.specification.description === null
+            ? undefined
+            : specification.openapi?.specification.description ?? functionBody.options?.description,
+        tags:
+          specification.openapi?.specification.tags === null
+            ? undefined
+            : specification.openapi?.specification.tags ?? specification.namespace === null
+            ? []
+            : functionBody.options?.namespace ?? specification.namespace
+            ? [functionBody.options?.namespace ?? specification.namespace ?? '']
+            : [],
+        security:
+          specification.openapi?.specification.security === null
+            ? undefined
+            : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),
+      }
+      if (paths[path]) {
+        ;(paths[path] as Record<string, unknown>)[specification.method.toLocaleLowerCase()] = operationObj
+      } else {
+        paths[path] = { [specification.method.toLocaleLowerCase()]: operationObj }
+      }
+    }
   }
-  return result
+  return {
+    openapi: '3.1.0',
+    info: { version: module.version, title: module.name },
+    servers: [{ url: `${`/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
+    paths,
+    components: { ...components, securitySchemes: openapiSecuritySchemes({ module }) },
+  }
 }
 
-export function getInputExtractor(args: {
-  specification: RestFunctionSpecs
-  functionBody: functions.Function
-  module: module.Module
-}): (request: RestRequest) => unknown {
-  return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
-}
-
-function generateOpenapiInput({
+export function generateOpenapiInput({
   specification,
   functionBody,
   typeMap,
   typeRef,
-  module,
 }: {
   specification: RestFunctionSpecs
   functionBody: functions.Function
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
-  module: module.Module
 }): {
   parameters?: (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.ParameterObject)[]
   requestBody?: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.RequestBodyObject
@@ -187,95 +237,34 @@ function generateOpenapiInput({
   throw new Error(`Error while generating openapi input type. Not supported. Path ${specification.path}`)
 }
 
-export function generateOpenapiDocument({
-  module,
-  api,
-  version,
+function isInputRequired(type: types.Type): boolean {
+  return !types.isNullable(type) && !types.isOptional(type)
+}
+function generatePathParameters({
+  parameters,
+  type,
+  typeMap,
+  typeRef,
 }: {
-  module: module.Module
-  api: RestApi<functions.Functions>
-  version: number
-}): OpenAPIV3_1.Document {
-  const paths: OpenAPIV3_1.PathsObject = {}
-  const { components, typeMap, typeRef } = openapiComponents({ module, version, api })
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
-    const specifications = api.functions[functionName]
-    if (!specifications) {
-      continue
-    }
-    for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      if (specification.version?.min != null && version < specification.version.min) {
-        continue
-      }
-      if (specification.version?.max != null && version > specification.version.max) {
-        continue
-      }
-      const path = `${specification.path ?? `/${functionName}`}`
-
-      const { parameters, requestBody } = generateOpenapiInput({
-        specification,
-        functionBody,
-        module,
-        typeMap,
-        typeRef,
-      })
-      const { schema } = typeToSchemaObject(functionBody.output, typeMap, typeRef)
-      const operationObj: OpenAPIV3_1.OperationObject = {
-        ...specification.openapi?.specification.parameters,
-        parameters: parameters
-          ? [...parameters, { name: 'projection', in: 'header', example: true }]
-          : [{ name: 'projection', in: 'header', example: true }],
-        requestBody,
-        responses:
-          specification.openapi?.specification.responses === null
-            ? undefined
-            : specification.openapi?.specification.responses ?? {
-                '200': {
-                  description: 'Success',
-                  content: { 'application/json': { schema } },
-                },
-                '400': {
-                  description: 'Validation error',
-                },
-              },
-        description:
-          specification.openapi?.specification.description === null
-            ? undefined
-            : specification.openapi?.specification.description ?? functionBody.options?.description,
-        tags:
-          specification.openapi?.specification.tags === null
-            ? undefined
-            : specification.openapi?.specification.tags ?? specification.namespace === null
-            ? []
-            : functionBody.options?.namespace ?? specification.namespace
-            ? [functionBody.options?.namespace ?? specification.namespace ?? '']
-            : [],
-        security:
-          specification.openapi?.specification.security === null
-            ? undefined
-            : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),
-      }
-      if (paths[path]) {
-        ;(paths[path] as Record<string, unknown>)[specification.method.toLocaleLowerCase()] = operationObj
-      } else {
-        paths[path] = { [specification.method.toLocaleLowerCase()]: operationObj }
-      }
-    }
+  parameters: string[]
+  type: types.ObjectType<any, any>
+  typeMap: Record<string, OpenAPIV3_1.SchemaObject>
+  typeRef: Map<Function, string>
+}): OpenAPIV3_1.ParameterObject[] {
+  const result: OpenAPIV3_1.ParameterObject[] = []
+  for (const parameter of parameters) {
+    const subtype = type.fields[parameter]
+    const { schema } = typeToSchemaObject(subtype, typeMap, typeRef, true)
+    result.push({ in: 'path', name: parameter, required: true, schema: schema as any })
   }
-  return {
-    openapi: '3.1.0',
-    info: { version: module.version, title: module.name },
-    servers: [{ url: `${`/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
-    paths,
-    components: { ...components, securitySchemes: openapiSecuritySchemes({ module }) },
-  }
+  return result
 }
 
 function openapiSecurityRequirements({
   module,
   functionName,
 }: {
-  module: module.Module
+  module: module.Module<any, any>
   functionName: string
 }): OpenAPIV3_1.SecurityRequirementObject[] | undefined {
   const auth = (module.functinoOptions ?? {})[functionName]?.authentication
@@ -293,7 +282,7 @@ function openapiSecurityRequirements({
 function openapiSecuritySchemes({
   module,
 }: {
-  module: module.Module
+  module: module.Module<any, any>
 }): Record<string, OpenAPIV3_1.SecuritySchemeObject> | undefined {
   const defaultSchema: OpenAPIV3_1.SecuritySchemeObject | undefined = module.authentication
     ? { type: 'http', scheme: module.authentication.type, bearerFormat: module.authentication.format }
@@ -320,14 +309,14 @@ function openapiSecuritySchemes({
   }
 }
 
-function openapiComponents({
+function openapiComponents<Fs extends functions.Functions, ContextInput>({
   module,
   version,
   api,
 }: {
-  module: module.Module
+  module: module.Module<Fs, ContextInput>
   version: number
-  api: RestApi<functions.Functions>
+  api: RestApi<Fs>
 }): {
   components: OpenAPIV3_1.ComponentsObject
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>

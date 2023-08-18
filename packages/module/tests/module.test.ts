@@ -151,7 +151,7 @@ test('Whole module', async () => {
   ).rejects.toThrow()
   if (loginResult) {
     const authClient = client.withMetadata({ authorization: loginResult.jwt })
-    const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
+    const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }, { operationId: '123' })
     expect(myUser).toEqual({
       email: 'admin@domain.com',
       password: '1234',

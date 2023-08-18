@@ -17,7 +17,7 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type, Me
   const P extends projection.FromType<OutputType>,
 >(
   input: types.Infer<InputType>,
-  options?: { projection?: P; metadata?: Metadata },
+  options?: { projection?: P; metadata?: Metadata; operationId?: string },
 ) => Promise<Project<OutputType, P>>
 
 class SdkBuilder<const Metadata> {
@@ -42,9 +42,10 @@ class SdkBuilder<const Metadata> {
           options?: {
             projection?: projection.Projection
             metadata?: Metadata
+            operationId?: string
           },
         ) => {
-          const operationId = utils.randomOperationId()
+          const operationId = options?.operationId ?? utils.randomOperationId()
           const log = defaultLogger.build({ operationId, operationName: functionName })
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })

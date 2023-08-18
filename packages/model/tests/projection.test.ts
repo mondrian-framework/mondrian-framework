@@ -239,6 +239,28 @@ describe('projection.respectsProjection', () => {
       checkErrors(expectedError, actualError)
     })
 
+    test('from objects with reference field', () => {
+      const model = () =>
+        types.object({ field1: types.reference(model), field2: types.string().optional(), field3: types.string() })
+      const result = projection.respectsProjection(model, true, { field3: 'ok' })
+      assertOk(result)
+    })
+
+    test('from union with reference field', () => {
+      const model = () =>
+        types.union({ field1: types.reference(model), field2: types.string().optional(), field3: types.string() })
+      const result = projection.respectsProjection(model, true, { field1: { field3: 'ok' } })
+      assertOk(result)
+    })
+
+    test('from union with empty object', () => {
+      const model = () =>
+        types.union({ field1: types.object({ field4: types.string() }), field2: types.string().optional(), field3: types.string() })
+        assertOk(projection.respectsProjection(model, {}, { field1: { } }))
+        assertOk(projection.respectsProjection(model, {}, { field2: undefined }))
+        assertOk(projection.respectsProjection(model, {}, { field3: "asd" }))
+    })
+
     test('from unions', () => {
       const model = types.union({
         variant1: types.string(),

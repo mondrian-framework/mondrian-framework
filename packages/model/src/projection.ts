@@ -202,7 +202,11 @@ function validateUnion(
   const [variantName, variantValue] = unsafeObjectToTaggedVariant(value as Record<string, any>)
   const variantProjection = subProjection(projection, [variantName] as never)
   const variantType = variants[variantName]
-  const result = respectsProjection(variantType, variantProjection, variantValue as never)
+  const result = respectsProjection(
+    variantType,
+    variantProjection ?? (types.isScalar(variantType) ? true : {}),
+    variantValue as never,
+  )
   return result.mapError((errors) => path.prependVariantToAll(errors, variantName))
 }
 
@@ -224,13 +228,20 @@ function validateRequiredField(
   object: Record<string, any>,
 ): result.Result<true, projection.Error[]> {
   const fieldValue = object[fieldName]
-  if (fieldValue === undefined && !types.isOptional(fieldType)) {
+  if (fieldValue === undefined) {
+    if (types.isOptional(fieldType)) {
+      //optional field
+      return result.ok(true)
+    } else if (projection === true && types.isReference(fieldType)) {
+      //reference field with projection 'true'
+      return result.ok(true)
+    }
     return result.fail([{ missingField: fieldName, path: path.empty() }])
-  } else {
-    const fieldProjection = subProjection(projection, [fieldName] as never)
-    const result = respectsProjection(fieldType, fieldProjection, fieldValue as never)
-    return result.mapError((errors) => path.prependFieldToAll(errors, fieldName))
   }
+
+  const fieldProjection = subProjection(projection, [fieldName] as never)
+  const res = respectsProjection(fieldType, fieldProjection, fieldValue as never)
+  return res.mapError((errors) => path.prependFieldToAll(errors, fieldName))
 }
 
 function getRequiredFields(fields: types.Types, projection: Projection): [string, types.Type][] {

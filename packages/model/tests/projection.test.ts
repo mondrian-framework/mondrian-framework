@@ -1,5 +1,6 @@
 import { projection, types, decoder, validator, path, arbitrary } from '../src'
 import { areSameArray } from '../src/utils'
+import { checkError, checkValue } from './decoder.test'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { expectTypeOf, describe, expect } from 'vitest'
@@ -42,14 +43,14 @@ describe('projection.FromType', () => {
   test('is a correct object for UnionType', () => {
     const model = types.union({ variant1: types.number, variant2: types.string })
     type Inferred = projection.FromType<typeof model>
-    type Expected = true | { readonly variant1: true; readonly variant2: true }
+    type Expected = true | { readonly variant1?: true; readonly variant2?: true }
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
   test('works on nested unions', () => {
     const model = types.union({ variant1: types.number, variant2: types.union({ subvariant1: types.number() }) })
     type Inferred = projection.FromType<typeof model>
-    type Expected = true | { readonly variant1: true; readonly variant2: true | { readonly subvariant1: true } }
+    type Expected = true | { readonly variant1?: true; readonly variant2?: true | { readonly subvariant1?: true } }
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
@@ -262,6 +263,110 @@ function checkErrors(actual: projection.Error[], expected: projection.Error[]) {
   }
   expect(areSameArray(actual, expected, compareProjectionErrors)).toBe(true)
 }
+
+describe('decode', () => {
+  const model = () =>
+    types.object({ field1: types.string(), field2: types.union({ type: model, base: types.literal(null) }) })
+
+  test('works with true', () => {
+    checkValue(projection.decode(model, true), true)
+    checkValue(projection.decode(types.string().nullable(), true), true)
+  })
+
+  test('works with 1 when casting', () => {
+    checkValue(projection.decode(model, 1, { typeCastingStrategy: 'tryCasting' }), true)
+  })
+
+  test('works with "true" when casting', () => {
+    checkValue(projection.decode(model, 'true', { typeCastingStrategy: 'tryCasting' }), true)
+  })
+
+  test('works with empty object', () => {
+    checkValue(projection.decode(model, {}), {})
+  })
+
+  test('works with fields that are not on the model', () => {
+    checkValue(projection.decode(model, { field3: true }), {})
+  })
+
+  test('works with one field only', () => {
+    checkValue(projection.decode(model, { field1: true }), { field1: true })
+  })
+
+  test('works with union', () => {
+    checkValue(projection.decode(model, { field2: { type: { field1: true } } }), { field2: { type: { field1: true } } })
+  })
+
+  test('fails with false', () => {
+    const expectedError = [
+      { expected: 'literal (true)', got: false, path: path.empty() },
+      { expected: 'object', got: false, path: path.empty() },
+    ]
+    const result = projection.decode(model, false)
+    checkError(result, expectedError)
+  })
+
+  test('fails with "true" while not casting', () => {
+    const expectedError = [
+      { expected: 'literal (true)', got: 'true', path: path.empty() },
+      { expected: 'object', got: 'true', path: path.empty() },
+    ]
+    const result = projection.decode(model, 'true')
+    checkError(result, expectedError)
+  })
+
+  test('fails with 1 while not casting', () => {
+    const expectedError = [
+      { expected: 'literal (true)', got: 1, path: path.empty() },
+      { expected: 'object', got: 1, path: path.empty() },
+    ]
+    const result = projection.decode(model, 1)
+    checkError(result, expectedError)
+  })
+
+  test('fails with 0 and casting', () => {
+    const expectedError = [
+      { expected: 'literal (true)', got: 0, path: path.empty() },
+      { expected: 'object', got: 0, path: path.empty() },
+    ]
+    const result = projection.decode(model, 0, { typeCastingStrategy: 'tryCasting' })
+    checkError(result, expectedError)
+  })
+
+  test('fails with "false" and casting', () => {
+    const expectedError = [
+      { expected: 'literal (true)', got: 'false', path: path.empty() },
+      { expected: 'object', got: 'false', path: path.empty() },
+    ]
+    const result = projection.decode(model, 'false', { typeCastingStrategy: 'tryCasting' })
+    checkError(result, expectedError)
+  })
+
+  test('fails with false in fields', () => {
+    const expectedError = [{ expected: 'literal (true)', got: false, path: path.empty().prependField('field1') }]
+    const result = projection.decode(model, { field1: false, field2: false })
+    checkError(result, expectedError)
+  })
+
+  test('fails with false in fields with exaustive errors', () => {
+    const expectedError = [
+      { expected: 'literal (true)', got: false, path: path.empty().prependField('field1') },
+      { expected: 'literal (true)', got: false, path: path.empty().prependField('field2') },
+      { expected: 'object', got: false, path: path.empty().prependField('field2') },
+    ]
+    const result = projection.decode(model, { field1: false, field2: false }, { errorReportingStrategy: 'allErrors' })
+    checkError(result, expectedError)
+  })
+
+  test('fails with false in a field that could be true or object', () => {
+    const expectedError = [
+      { expected: 'literal (true)', got: false, path: path.empty().prependField('field2') },
+      { expected: 'object', got: false, path: path.empty().prependField('field2') },
+    ]
+    const result = projection.decode(model, { field2: false })
+    checkError(result, expectedError)
+  })
+})
 
 //describe('projection.FromType', () => {
 //

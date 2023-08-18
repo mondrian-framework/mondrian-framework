@@ -1,4 +1,4 @@
-import { path, projection, result, types } from './index'
+import { decoder, path, projection, result, types } from './index'
 import { always, assertNever, filterMapObject, mergeArrays, unsafeObjectToTaggedVariant } from './utils'
 
 /**
@@ -36,7 +36,7 @@ export type FromType<T extends types.Type> =
 : [T] extends [types.NullableType<infer T1>] ? true | FromType<T1>
 : [T] extends [types.ReferenceType<infer T1>] ? true | FromType<T1>
 : [T] extends [(() => infer T1 extends types.Type)] ? true | FromType<T1>
-: [T] extends [types.UnionType<infer Ts>] ? true | { readonly [Key in keyof Ts]: true | FromType<Ts[Key]> }
+: [T] extends [types.UnionType<infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<Ts[Key]> }
 : [T] extends [types.ObjectType<any, infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<Ts[Key]> }
 : never
 
@@ -255,380 +255,51 @@ function validateArray(
   return result.tryEach(array, true, always(true), [] as projection.Error[], mergeArrays, validateItem)
 }
 
-/*
-
-
-
-
-
-
-
-  TODO: this code is either useless or should be moved elsewhere, if we want to keep the 
-        transformation from mondrian type to mondrian type of its projection it should be in another module.
-
-
-
-
-
-
-
+/**
+ * TODO: add docs
+ * @param type
+ * @param value
+ * @param options
+ * @returns
  */
-///**
-// * A record of {@link Projection `Projection`s}.
-// */
-//type Projections = Record<string, types.OptionalType<Projection>>
-
-///**
-// * Given a Mondrian {@link Type type}, returns the Mondrian type describing its {@link Projection projection}.
-// * You can read {@link here TODO:} to learn more about what projections are and how they can be used.
-// *
-// * @example ```ts
-// *          const model = object({ field1: number, field2: string })
-// *          type Projection = InferProjection<typeof model>
-// *          Infer<Projection>
-// *          // -> true | { field1?: true, field2?: true }
-// *          ```
-// */
-//export type FromType<T extends types.Type>
-//  = [T] extends [types.NumberType] ? types.LiteralType<true>
-//  : [T] extends [types.StringType] ? types.LiteralType<true>
-//  : [T] extends [types.BooleanType] ? types.LiteralType<true>
-//  : [T] extends [types.EnumType<infer _>] ? types.LiteralType<true>
-//  : [T] extends [types.LiteralType<infer _>] ? types.LiteralType<true>
-//  : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? types.LiteralType<true>
-//  : [T] extends [types.ArrayType<infer _, infer T1>] ? projection.FromType<T1>
-//  : [T] extends [types.OptionalType<infer T1>] ? projection.FromType<T1>
-//  : [T] extends [types.NullableType<infer T1>] ? projection.FromType<T1>
-//  : [T] extends [types.ReferenceType<infer T1>] ? projection.FromType<T1>
-//  : [T] extends [(() => infer T1 extends types.Type)] ? projection.FromType<T1>
-//  : [T] extends [types.UnionType<infer Ts>] ? types.UnionType<{
-//      all: types.LiteralType<true>,
-//      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<projection.FromType<Ts[Key]>> }>
-//    }>
-//  : [T] extends [types.ObjectType<infer _, infer Ts>] ? types.UnionType<{
-//      all: types.LiteralType<true>,
-//      partial: types.ObjectType<"immutable", { [Key in keyof Ts]: types.OptionalType<projection.FromType<Ts[Key]>> }>
-//    }>
-//  : never
-
-///**
-// * @param type the type whose projection model is returned
-// * @returns the Mondrian model describing the type of valid projections for the given type
-// * @example ```ts
-// *          const model = object({ field1: number, field2: string })
-// *          projectionFromType(model)
-// *          // -> union({
-// *          //   all: literal(true)
-// *          //   partial: object({
-// *          //     field1: literal(true).optional()
-// *          //     field2: literal(true).optional()
-// *          //   })
-// *          // })
-// *          ```
-// */
-//export function fromType<T extends types.Type>(type: T): projection.FromType<T> {
-//  const actualType = types.concretise(type)
-//  switch (actualType.kind) {
-//    case 'boolean':
-//    case 'custom':
-//    case 'literal':
-//    case 'string':
-//    case 'enum':
-//    case 'number':
-//      return types.literal(true) as projection.FromType<T>
-//    case 'array':
-//    case 'nullable':
-//    case 'optional':
-//    case 'reference':
-//      return projection.fromType(actualType.wrappedType) as projection.FromType<T>
-//    case 'object':
-//      return projectTypesOrLiteralTrue(actualType.types) as projection.FromType<T>
-//    case 'union':
-//      return projectTypesOrLiteralTrue(actualType.variants) as projection.FromType<T>
-//  }
-//}
-
-///**
-// * Given a record of types, returns a projection type that is either the literal `true` or an object
-// * with the projections of the given `types`.
-// */
-//function projectTypesOrLiteralTrue(ts: types.Types): Projection {
-//  const projectedTypes = filterMapObject(ts, (_, fieldType: any) => projection.fromType(fieldType).optional())
-//  return types.union({ all: types.literal(true), partial: types.object(projectedTypes) })
-//}
-
-///**
-// * TODO: add doc
-// */
-//export type ProjectedType<T extends types.Type, P extends projection.Infer<T>>
-//  = [P] extends [true] ? T
-//  // If P is an object but we have primitive types we cannot perform the projection
-//  : [T] extends [types.NumberType] ? never
-//  : [T] extends [types.StringType] ? never
-//  : [T] extends [types.BooleanType] ? never
-//  : [T] extends [types.LiteralType<infer _L>] ? never
-//  : [T] extends [types.EnumType<infer _Vs>] ? never
-//  : [T] extends [types.CustomType<infer _Name, infer _Options, infer _InferredAs>] ? never
-//  // If P is an object and we have a wrapper type we perform the projection on the inner type
-//  : [T] extends [types.ArrayType<infer M, infer T1>] ? [P] extends [projection.Infer<T1>]
-//      ? types.ArrayType<M, ProjectedType<T1, P>> : never
-//  : [T] extends [types.OptionalType<infer T1>] ? [P] extends [projection.Infer<T1>]
-//      ? types.OptionalType<ProjectedType<T1, P>> : never
-//  : [T] extends [types.NullableType<infer T1>] ? [P] extends [projection.Infer<T1>]
-//      ? types.NullableType<ProjectedType<T1, P>> : never
-//  : [T] extends [(() => infer T1 extends types.Type)] ? [P] extends [projection.Infer<T1>]
-//      ? ProjectedType<T1, P> : never
-//  : [T] extends [types.ReferenceType<infer T1>] ? [P] extends [projection.Infer<T1>]
-//      ? ProjectedType<T1, P> : never
-//  // If P is an object and we have an object-like type we perform the projection picking the selected fields
-//  : [T] extends [types.UnionType<infer Ts>] ? [keyof P] extends [keyof Ts]
-//    ? types.UnionType<{ [K in keyof P]: P extends Record<K, projection.Infer<Ts[K]>> ? ProjectedType<Ts[K], P[K]> : never }> : never
-//  : [T] extends [types.ObjectType<infer _, infer Ts>] ? [keyof P] extends [keyof Ts]
-//    ? types.ObjectType<"immutable", { [K in keyof P]: P extends Record<K, projection.Infer<Ts[K]>> ? ProjectedType<Ts[K], P[K]> : never }> : never
-//  : never
-
-///**
-// * TODO: add doc
-// */
-//export function projectedType<T extends types.Type, P extends projection.Infer<T>>(
-//  type: T,
-//  projection: P,
-//): ProjectedType<T, P> {
-//  return unsafeProjectedType(type, projection)
-//}
-//
-//function unsafeProjectedType(type: any, projection: any): any {
-//  if (projection === true) {
-//    return type
-//  }
-//
-//  const concreteType = types.concretise(type)
-//  switch (concreteType.kind) {
-//    case 'number':
-//    case 'string':
-//    case 'boolean':
-//    case 'literal':
-//    case 'enum':
-//    case 'custom':
-//      failWithInternalError(
-//        'It appears that `projectedType` was called with a simple type and a projection different from `true`. This should not be allowed by the type system and could be an internal error',
-//      )
-//    case 'array':
-//      return unsafeProjectedType(concreteType.wrappedType, projection).array()
-//    case 'nullable':
-//      return unsafeProjectedType(concreteType.wrappedType, projection).nullable()
-//    case 'optional':
-//      return unsafeProjectedType(concreteType.wrappedType, projection).optional()
-//    case 'reference':
-//      return unsafeProjectedType(concreteType.wrappedType, projection)
-//    case 'object':
-//      return types.object(unsafeProjectFields(concreteType.types, projection))
-//    case 'union':
-//      return types.union(unsafeProjectFields(concreteType.variants, projection))
-//  }
-//}
-//
-//function unsafeProjectFields(types: types.Types, projection: any): Record<string, any> {
-//  return filterMapObject(projection, (fieldName, subProjection) => unsafeProjectedType(types[fieldName], subProjection))
-//}
-
-/*
-export function getProjectedType(type: LazyType, projection: GenericProjection | undefined): LazyType {
-  if (projection === undefined || projection === true) {
-    return ignoreRelations(type)
+export function decode<T extends types.Type>(
+  type: T,
+  value: unknown,
+  options?: Partial<decoder.Options>,
+): decoder.Result<FromType<T>> {
+  const trueResult = (
+    options?.typeCastingStrategy === 'tryCasting'
+      ? decoder
+          .decode(types.literal('true'), value, options)
+          .map(() => true)
+          .lazyOr(() => decoder.decode(types.literal(1), value, options).map(() => true))
+          .lazyOr(() => decoder.decode(types.literal(true), value, options))
+      : decoder.decode(types.literal(true), value, options)
+  ) as decoder.Result<FromType<T>>
+  if (trueResult.isOk) {
+    return trueResult
   }
-  if (typeof type === 'function') {
-    return () => lazyToType(getProjectedType(lazyToType(type), projection))
-  }
-  const t = lazyToType(type)
-  if (
-    t.kind === 'boolean' ||
-    t.kind === 'string' ||
-    t.kind === 'number' ||
-    t.kind === 'enum' ||
-    t.kind === 'custom' ||
-    t.kind === 'literal'
-  ) {
-    return type
-  }
-  if (t.kind === 'array-decorator') {
-    return array(getProjectedType(t.type, projection))
-  }
-  if (t.kind === 'optional-decorator') {
-    return optional(getProjectedType(t.type, projection))
-  }
-  if (t.kind === 'nullable-decorator') {
-    return nullable(getProjectedType(t.type, projection))
-  }
-  if (t.kind === 'default-decorator') {
-    return getProjectedType(t.type, projection)
-  }
-  if (t.kind === 'relation-decorator') {
-    return getProjectedType(t.type, projection)
-  }
-  if (t.kind === 'union-operator') {
-    return union(
-      Object.fromEntries(
-        Object.entries(projection).map(([k, v]) => {
-          return [k, getProjectedType(t.types[k], v)]
-        }),
-      ),
-    )
-  }
-  if (t.kind === 'object') {
-    return object(
-      Object.fromEntries(
-        Object.entries(projection).map(([k, v]) => {
-          return [k, getProjectedType(t.type[k], v)]
-        }),
-      ),
-    )
-  }
-  assertNever(t)
-}
-
-function ignoreRelations(type: LazyType): LazyType {
-  if (typeof type === 'function') {
-    return () => lazyToType(ignoreRelations(lazyToType(type)))
-  }
-  const t = lazyToType(type)
-  if (
-    t.kind === 'boolean' ||
-    t.kind === 'string' ||
-    t.kind === 'number' ||
-    t.kind === 'enum' ||
-    t.kind === 'custom' ||
-    t.kind === 'literal'
-  ) {
-    return type
-  }
-  if (t.kind === 'array-decorator') {
-    return array(ignoreRelations(t.type))
-  }
-  if (t.kind === 'optional-decorator') {
-    return optional(ignoreRelations(t.type))
-  }
-  if (t.kind === 'nullable-decorator') {
-    return nullable(ignoreRelations(t.type))
-  }
-  if (t.kind === 'default-decorator') {
-    return ignoreRelations(t.type)
-  }
-  if (t.kind === 'relation-decorator') {
-    return optional(ignoreRelations(t.type))
-  }
-  if (t.kind === 'union-operator') {
-    return union(Object.fromEntries(Object.entries(t.types).map(([k, t]) => [k, ignoreRelations(t)])))
-  }
-  if (t.kind === 'object') {
-    return object(
-      Object.fromEntries(
-        Object.entries(t.type).map(([k, lt]) => {
-          return [k, ignoreRelations(lt)]
-        }),
-      ),
-      t.opts,
-    )
-  }
-  assertNever(t)
-}
-
-export type MergeGenericProjection<T1 extends GenericProjection, T2 extends GenericProjection> = [T1] extends [true]
-  ? T1
-  : [T2] extends [true]
-  ? T2
-  : {
-      [K in keyof T1 | keyof T2]: [T1] extends [Record<K, GenericProjection>]
-        ? [T2] extends [Record<K, GenericProjection>]
-          ? MergeGenericProjection<T1[K], T2[K]>
-          : T1[K]
-        : [T2] extends [Record<K, GenericProjection>]
-        ? T2[K]
-        : never
+  const unwrapped = types.unwrap(type)
+  if (unwrapped.kind === types.Kind.Object || unwrapped.kind === types.Kind.Union) {
+    if (typeof value !== 'object' || value == null) {
+      return decoder.fail<FromType<T>>('object', value).mapError((error) => [...trueResult.error, ...error])
     }
-
-export function mergeProjections<const P1 extends GenericProjection, const P2 extends GenericProjection>(
-  p1: P1,
-  p2: P2,
-): MergeGenericProjection<P1, P2> {
-  if (p1 === true || p2 === true) return true as MergeGenericProjection<P1, P2>
-  if (p1 === null || p1 === undefined) return p2 as MergeGenericProjection<P1, P2>
-  if (p2 === null || p2 === undefined) return p1 as MergeGenericProjection<P1, P2>
-  const p1k = Object.keys(p1)
-  const p2k = Object.keys(p2)
-  const keySet = new Set([...p1k, ...p2k])
-  const res: Record<string, GenericProjection> = {}
-  for (const key of keySet.values()) {
-    res[key] = mergeProjections(p1[key] as GenericProjection, p2[key] as GenericProjection)
-  }
-  return res as MergeGenericProjection<P1, P2>
-}
-
-const a = true
-const b = { field1: { sub1: true }, field3: true } as const
-const c = mergeProjections(a, b)
-
-export function getRequiredProjection(type: LazyType, projection: GenericProjection): GenericProjection | null {
-  if (projection === true) {
-    return null
-  }
-  const t = lazyToType(type)
-  if (
-    t.kind === 'boolean' ||
-    t.kind === 'string' ||
-    t.kind === 'number' ||
-    t.kind === 'enum' ||
-    t.kind === 'custom' ||
-    t.kind === 'literal'
-  ) {
-    return null
-  }
-  if (
-    t.kind === 'array-decorator' ||
-    t.kind === 'optional-decorator' ||
-    t.kind === 'nullable-decorator' ||
-    t.kind === 'default-decorator' ||
-    t.kind === 'relation-decorator'
-  ) {
-    return getRequiredProjection(t.type, projection)
-  }
-  if (t.kind === 'object') {
-    const p = Object.fromEntries(
-      Object.entries(t.type).flatMap(([k, type]) => {
-        const subF = projection[k]
-        if (!subF) {
-          return []
-        }
-        const subP = getRequiredProjection(type, subF)
-        return subP != null ? [[k, subP]] : []
-      }),
-    )
-    if (Object.keys(p).length > 0) {
-      return p
+    const addDecodedEntry = (accumulator: [string, unknown][], [fieldName, value]: readonly [string, unknown]) => {
+      accumulator.push([fieldName, value])
+      return accumulator
     }
-    return null
+    const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
+      decode(fieldType, (value as Record<string, unknown>)[fieldName], options)
+        .map((value) => [fieldName, value] as const)
+        .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+    const entries = Object.entries(unwrapped.kind === types.Kind.Object ? unwrapped.fields : unwrapped.variants).filter(
+      ([fieldName, _]) => (value as Record<string, unknown>)[fieldName] !== undefined,
+    ) as [string, types.Type][]
+    const decodedEntries =
+      options?.errorReportingStrategy === 'allErrors'
+        ? result.tryEach(entries, [], addDecodedEntry, [] as decoder.Error[], mergeArrays, decodeEntry)
+        : result.tryEachFailFast(entries, [], addDecodedEntry, decodeEntry)
+    return decodedEntries.map(Object.fromEntries)
   }
-  if (t.kind === 'union-operator') {
-    const p = Object.fromEntries(
-      Object.entries(t.types).flatMap(([k, type]) => {
-        const subF = projection[k]
-        if (!subF && !t.opts?.requiredProjection) {
-          return []
-        }
-        const subP = subF ? getRequiredProjection(type, subF) : null
-        const reqP =
-          t.opts?.requiredProjection && t.opts.requiredProjection[k]
-            ? (t.opts.requiredProjection[k] as GenericProjection)
-            : null
-        const res = subP && reqP ? mergeProjections(reqP, subP) : reqP
-        return res != null ? [[k, res]] : []
-      }),
-    )
-    if (Object.keys(p).length > 0) {
-      return p
-    }
-    return null
-  }
-  assertNever(t)
+  return trueResult
 }
-*/

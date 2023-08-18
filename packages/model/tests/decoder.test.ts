@@ -22,13 +22,13 @@ const nonNull = gen.anything().filter((value) => value !== null)
 const nonArray = gen.anything().filter((value) => !(value instanceof Array))
 const nonObject = gen.anything().filter((value) => !(typeof value === 'object'))
 
-function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
+export function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
   const error = assertFailure(result)
   const isExpectedError = compareDecoderErrors(error, expectedError)
   expect(isExpectedError).toBe(true)
 }
 
-function checkValue<A>(result: result.Result<A, any>, expectedValue: A): void {
+export function checkValue<A>(result: result.Result<A, any>, expectedValue: A): void {
   const value = assertOk(result)
   expect(value).toEqual(expectedValue)
 }
@@ -445,6 +445,11 @@ describe('decoder.decodeWithoutValidation', () => {
     test('works when non required field is missing', () => {
       const object = { field1: 1 }
       checkValue(decoder.decodeWithoutValidation(model, object), object)
+    })
+
+    test('works with more than needed fields', () => {
+      const object = { field1: 1, field3: 1 }
+      checkValue(decoder.decodeWithoutValidation(model, object), { field1: 1 })
     })
 
     test('stops at first error by default', () => {

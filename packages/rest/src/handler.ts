@@ -26,7 +26,6 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
   const inputExtractor = getInputExtractor({ functionBody, module, specification })
-  const projectionType = types.unknown() //TODO: projection.fromType(functionBody.output)
 
   return async ({ request, serverContext }) => {
     const operationId = utils.randomOperationId()
@@ -60,7 +59,7 @@ export function generateRestRequestHandler<ServerContext, ContextInput>({
       log('Bad request.')
       return { status: 400, body: { errors: decoded.error }, headers }
     }
-    const givenProjection = decoder.decode(projectionType, projectionObject != null ? projectionObject : undefined, {
+    const givenProjection = projection.decode(functionBody.output, projectionObject != null ? projectionObject : true, {
       typeCastingStrategy: 'tryCasting',
     })
     if (!givenProjection.isOk) {

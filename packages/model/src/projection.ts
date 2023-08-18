@@ -151,7 +151,7 @@ export function respectsProjection<T extends types.Type>(
   type: T,
   projection: projection.FromType<T>,
   value: types.Infer<types.PartialDeep<T>>,
-): result.Result<true, projection.Error[]> {
+): result.Result<types.Infer<types.PartialDeep<T>>, projection.Error[]> {
   const concreteType = types.concretise(type)
   switch (concreteType.kind) {
     case types.Kind.Boolean:
@@ -160,9 +160,9 @@ export function respectsProjection<T extends types.Type>(
     case types.Kind.Number:
     case types.Kind.String:
     case types.Kind.Custom:
-      return result.ok(true)
+      return result.ok(value)
     case types.Kind.Reference:
-      return respectsProjection(concreteType.wrappedType, projection as any, value as any)
+      return respectsProjection(concreteType.wrappedType as T, projection, value)
     case types.Kind.Nullable:
       return validateNullable(concreteType.wrappedType, projection, value)
     case types.Kind.Optional:
@@ -182,23 +182,23 @@ function validateOptional(
   type: types.Type,
   projection: Projection,
   value: any,
-): result.Result<true, projection.Error[]> {
-  return value === undefined ? result.ok(true) : respectsProjection(type, projection as never, value as never)
+): result.Result<any, projection.Error[]> {
+  return value === undefined ? result.ok(value) : respectsProjection(type, projection as never, value as never)
 }
 
 function validateNullable(
   type: types.Type,
   projection: Projection,
   value: any,
-): result.Result<true, projection.Error[]> {
-  return value === null ? result.ok(true) : respectsProjection(type, projection as never, value as never)
+): result.Result<any, projection.Error[]> {
+  return value === null ? result.ok(value) : respectsProjection(type, projection as never, value as never)
 }
 
 function validateUnion(
   variants: types.Types,
   projection: Projection,
   value: any,
-): result.Result<true, projection.Error[]> {
+): result.Result<any, projection.Error[]> {
   const [variantName, variantValue] = unsafeObjectToTaggedVariant(value as Record<string, any>)
   const variantProjection = subProjection(projection, [variantName] as never)
   const variantType = variants[variantName]
@@ -214,11 +214,20 @@ function validateObject(
   fields: types.Types,
   projection: Projection,
   object: Record<string, any>,
-): result.Result<true, projection.Error[]> {
+): result.Result<any, projection.Error[]> {
   const requiredFields = getRequiredFields(fields, projection)
   const validateField = ([fieldName, fieldType]: [string, types.Type]) =>
     validateRequiredField(fieldName, fieldType, projection, object)
-  return result.tryEach(requiredFields, true, always(true), [] as projection.Error[], mergeArrays, validateField)
+  return result
+    .tryEach(
+      requiredFields,
+      [] as [string, any][],
+      (p: [string, any][], c: [string, any][]) => [...p, ...c],
+      [] as projection.Error[],
+      mergeArrays,
+      validateField,
+    )
+    .map(Object.fromEntries)
 }
 
 function validateRequiredField(
@@ -226,22 +235,24 @@ function validateRequiredField(
   fieldType: types.Type,
   projection: Projection,
   object: Record<string, any>,
-): result.Result<true, projection.Error[]> {
+): result.Result<[string, any][], projection.Error[]> {
   const fieldValue = object[fieldName]
   if (fieldValue === undefined) {
     if (types.isOptional(fieldType)) {
       //optional field
-      return result.ok(true)
+      return result.ok([])
     } else if (projection === true && types.isReference(fieldType)) {
       //reference field with projection 'true'
-      return result.ok(true)
+      return result.ok([])
     }
     return result.fail([{ missingField: fieldName, path: path.empty() }])
   }
 
   const fieldProjection = subProjection(projection, [fieldName] as never)
   const res = respectsProjection(fieldType, fieldProjection, fieldValue as never)
-  return res.mapError((errors) => path.prependFieldToAll(errors, fieldName))
+  return res
+    .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+    .map((fieldValue) => [[fieldName, fieldValue]])
 }
 
 function getRequiredFields(fields: types.Types, projection: Projection): [string, types.Type][] {
@@ -253,17 +264,13 @@ function getRequiredFields(fields: types.Types, projection: Projection): [string
   }
 }
 
-function validateArray(
-  type: types.Type,
-  projection: Projection,
-  array: any[],
-): result.Result<true, projection.Error[]> {
+function validateArray(type: types.Type, projection: Projection, array: any[]): result.Result<any, projection.Error[]> {
   const validateItem = (item: any, index: number) =>
     respectsProjection(type, projection as never, item as never).mapError((errors) =>
       path.prependIndexToAll(errors, index),
     )
 
-  return result.tryEach(array, true, always(true), [] as projection.Error[], mergeArrays, validateItem)
+  return result.tryEach(array, true, always(array), [] as projection.Error[], mergeArrays, validateItem)
 }
 
 /**

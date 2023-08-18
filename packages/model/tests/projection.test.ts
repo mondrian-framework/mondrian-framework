@@ -281,6 +281,17 @@ describe('projection.respectsProjection', () => {
       checkErrors(expectedError, actualError)
     })
   })
+
+  describe('trim not requested fields', () => {
+    test('from object', () => {
+      const model = types.object({ field1: types.number(), field2: types.string().optional() })
+      checkValue(projection.respectsProjection(model, {}, { field1: 1, field2: '' }), {})
+      checkValue(projection.respectsProjection(model, { field1: true }, { field1: 1, field2: '' }), { field1: 1 })
+      checkValue(projection.respectsProjection(model, { field2: true }, { field1: 1, field2: undefined }), {
+        field2: undefined,
+      })
+    })
+  })
 })
 
 function checkErrors(actual: projection.Error[], expected: projection.Error[]) {

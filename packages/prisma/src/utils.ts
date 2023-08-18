@@ -1,9 +1,9 @@
-import { GenericProjection, LazyType, getFirstConcreteType, hasDecorator, lazyToType } from '@mondrian-framework/model'
+import { types, projection } from '@mondrian-framework/model'
 import { deepMerge } from '@mondrian-framework/utils'
 
 export function projectionToSelection<T extends Record<string, unknown>>(
-  type: LazyType,
-  projection: GenericProjection | undefined,
+  type: types.Type,
+  projection: projection.Projection | undefined,
   overrides?: T,
 ): T {
   const select = projectionToSelectionInternal<T>(type, projection)
@@ -13,15 +13,15 @@ export function projectionToSelection<T extends Record<string, unknown>>(
   return select.select as T
 }
 function projectionToSelectionInternal<T extends Record<string, unknown>>(
-  type: LazyType,
-  projection: GenericProjection | undefined,
+  type: types.Type,
+  projection: projection.Projection | undefined,
 ): T {
-  const t = lazyToType(type)
-  if (t.kind === 'object') {
+  const t = types.concretise(type)
+  if (t.kind === types.Kind.Object) {
     if (projection === true || projection == null) {
       const selection = Object.fromEntries(
-        Object.entries(t.type).flatMap(([k, t]) => {
-          if (hasDecorator(t, 'relation-decorator')) {
+        Object.entries(t.fields).flatMap(([k, t]) => {
+          if (types.isReference(t as types.Type)) {
             return []
           }
           return [[k, true]]
@@ -30,14 +30,14 @@ function projectionToSelectionInternal<T extends Record<string, unknown>>(
       return { select: selection } as any
     }
     const selection = Object.fromEntries(
-      Object.entries(t.type).flatMap(([k, t]) => {
-        const concreteType = getFirstConcreteType(t)
-        if (concreteType.kind === 'union-operator') {
+      Object.entries(t.fields).flatMap(([k, t]) => {
+        const concreteType = types.unwrap(t as types.Type)
+        if (concreteType.kind === types.Kind.Union) {
           return []
         }
         if (projection[k]) {
-          const subSelection = projectionToSelectionInternal(t, projection[k])
-          if (concreteType.kind === 'object' || hasDecorator(t, 'relation-decorator')) {
+          const subSelection = projectionToSelectionInternal(t as types.Type, projection[k])
+          if (concreteType.kind === types.Kind.Object || types.isReference(t as types.Type)) {
             return [[k, subSelection]]
           }
           return [[k, subSelection.select]]
@@ -47,16 +47,10 @@ function projectionToSelectionInternal<T extends Record<string, unknown>>(
     )
     return { select: selection } as any
   }
-  if (
-    t.kind === 'array-decorator' ||
-    t.kind === 'default-decorator' ||
-    t.kind === 'optional-decorator' ||
-    t.kind === 'nullable-decorator' ||
-    t.kind === 'relation-decorator'
-  ) {
-    return projectionToSelectionInternal(t.type, projection)
+  if ('wapperdType' in t) {
+    return projectionToSelectionInternal(t.wapperdType as types.Type, projection)
   }
-  if (t.kind === 'union-operator') {
+  if (t.kind === types.Kind.Union) {
     throw new Error('PrismaUtils does not support union type')
   }
   return { select: true } as any

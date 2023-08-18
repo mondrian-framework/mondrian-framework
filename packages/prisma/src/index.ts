@@ -1,1 +1,1 @@
-export * as PrismaUtils from './utils'
+export * as utils from './utils'

@@ -1,7 +1,7 @@
 import { attachRestMethods } from './methods'
 import { fastifyStatic } from '@fastify/static'
 import { functions, module } from '@mondrian-framework/module'
-import { rest } from '@mondrian-framework/rest'
+import { rest, utils } from '@mondrian-framework/rest'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { FastifyInstance } from 'fastify'
 import fs from 'fs'
@@ -24,7 +24,7 @@ export function start<const F extends functions.Functions, CI>({
   error?: rest.ErrorHandler<F, Context>
 }): void {
   const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
-  const globalMaxVersion = rest.utils.getMaxApiVersion(api)
+  const globalMaxVersion = utils.getMaxApiVersion(api)
   if (api.options?.introspection) {
     server.register(fastifyStatic, {
       root: getAbsoluteFSPath(),

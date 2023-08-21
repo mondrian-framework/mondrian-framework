@@ -1,6 +1,6 @@
 import { attachRestMethods } from './methods'
 import { functions, module } from '@mondrian-framework/module'
-import { rest } from '@mondrian-framework/rest'
+import { rest, utils } from '@mondrian-framework/rest'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import fs from 'fs'
 import lambdaApi, { Request, Response } from 'lambda-api'
@@ -22,7 +22,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 }): APIGatewayProxyHandlerV2 {
   const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
   const server = lambdaApi({ base: pathPrefix })
-  const globalMaxVersion = rest.utils.getMaxApiVersion(api)
+  const globalMaxVersion = utils.getMaxApiVersion(api)
   if (api.options?.introspection) {
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))

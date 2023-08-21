@@ -1,6 +1,6 @@
 import { Context } from './handler'
 import { functions, module } from '@mondrian-framework/module'
-import { rest } from '@mondrian-framework/rest'
+import { rest, utils } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
 import { API, HandlerFunction, METHODS } from 'lambda-api'
 
@@ -17,14 +17,14 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): void {
-  const maxVersion = rest.utils.getMaxApiVersion(api)
+  const maxVersion = utils.getMaxApiVersion(api)
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = rest.utils.getPathFromSpecification(functionName, specification, '')
+      const path = utils.getPathFromSpecification(functionName, specification, '')
       const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
         module,
         context,

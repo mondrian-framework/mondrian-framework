@@ -1,6 +1,5 @@
 import { decoder, validator, types } from './index'
-import { object } from './types-exports'
-import { assertNever, filterMapObject, mapObject } from './utils'
+import { filterMapObject, mapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
 export enum Kind {
@@ -12,6 +11,7 @@ export enum Kind {
   Union,
   Object,
   Array,
+  Tuple,
   Optional,
   Nullable,
   Reference,
@@ -30,8 +30,9 @@ export type Type = Lazy<
   | EnumType<any>
   | LiteralType<any>
   | UnionType<any>
-  | ObjectType<any, any>
-  | ArrayType<any, any>
+  | ObjectType<Mutability, any>
+  | ArrayType<Mutability, any>
+  | TupleType<Mutability, any>
   | OptionalType<any>
   | NullableType<any>
   | ReferenceType<any>
@@ -88,12 +89,18 @@ export type Infer<T extends Type>
   : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
   : [T] extends [ArrayType<"mutable", infer T1>] ? Infer<T1>[]
+  : [T] extends [TupleType<"immutable", infer T1>] ?  Readonly<InferTuple<T1>>
+  : [T] extends [TupleType<"mutable", infer T1>] ?  InferTuple<T1>
   : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
   : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
   : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
   : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
+
+type InferTuple<T extends Type[]> = T extends [infer T1 extends Type, ...infer Ts extends Type[]]
+  ? [Infer<T1>, ...InferTuple<Ts>]
+  : []
 
 /**
  * TODO: Add doc
@@ -145,6 +152,7 @@ export type OptionsOf<T extends Type>
   : [T] extends [UnionType<infer Ts>] ? NonNullable<UnionType<Ts>['options']>
   : [T] extends [ObjectType<infer Ts, infer Mutable>] ? NonNullable<ObjectType<Ts, Mutable>['options']>
   : [T] extends [ArrayType<infer M, infer T1>] ? NonNullable<ArrayType<M, T1>['options']>
+  : [T] extends [TupleType<infer M, infer T1>] ? NonNullable<TupleType<M, T1>['options']>
   : [T] extends [OptionalType<infer T1>] ? NonNullable<OptionalType<T1>['options']>
   : [T] extends [NullableType<infer T1>] ? NonNullable<NullableType<T1>['options']>
   : [T] extends [ReferenceType<infer T1>] ? NonNullable<ReferenceType<T1>['options']>
@@ -370,6 +378,31 @@ export type ArrayTypeOptions = BaseOptions & {
   readonly maxItems?: number
   readonly minItems?: number
 }
+
+/**
+ * The model of a sequence of elements in the Mondrian framework.
+ */
+export type TupleType<M extends Mutability, T extends [Type, ...Type[]]> = {
+  readonly kind: Kind.Tuple
+  readonly elements: T
+  readonly mutability: M
+  readonly options?: TupleTypeOptions
+
+  immutable(): TupleType<'immutable', T>
+  mutable(): TupleType<'mutable', T>
+  optional(): OptionalType<TupleType<M, T>>
+  nullable(): NullableType<TupleType<M, T>>
+  array(): ArrayType<'immutable', TupleType<M, T>>
+  reference(): ReferenceType<TupleType<M, T>>
+  setOptions(options: TupleTypeOptions): TupleType<M, T>
+  updateOptions(options: TupleTypeOptions): TupleType<M, T>
+  setName(name: string): TupleType<M, T>
+}
+
+/**
+ * The options that can be used to define an {@link TupleType `TupleType`}.
+ */
+export type TupleTypeOptions = BaseOptions
 
 /**
  * The model of a possibly-missing element in the Mondrian framework.
@@ -844,6 +877,7 @@ export function unwrap(
   | BooleanType
   | CustomType<string, {}, unknown>
   | LiteralType<any>
+  | TupleType<Mutability, any>
   | ObjectType<Mutability, Types>
   | UnionType<Types> {
   const concreteType = concretise(type)

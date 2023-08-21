@@ -23,7 +23,7 @@ export function array<T extends types.Type>(
 }
 
 /**
- * The same as the {@link array `array`} function, but the inferred array is `readonly`.
+ * The same as the {@link array `array`} function, but the inferred array is not `readonly`.
  *
  * @param wrappedType the {@link types.Type `Type`} describing the items held by the new `ArrayType`
  * @param options the {@link types.ArrayTypeOptions options} used to define the new `ArrayType`

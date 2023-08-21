@@ -1,27 +1,28 @@
 import { attachRestMethods } from './methods'
-import { ServerContext } from './utils'
-import { Functions, Module } from '@mondrian-framework/module'
-import { ErrorHandler, RestApi, generateOpenapiDocument, getMaxVersion } from '@mondrian-framework/rest'
+import { functions, module } from '@mondrian-framework/module'
+import { api, utils, openapi } from '@mondrian-framework/rest'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import fs from 'fs'
 import lambdaApi, { Request, Response } from 'lambda-api'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
-export function handler<const F extends Functions, CI>({
+export type Context = { lambdaApi: { request: Request; response: Response } }
+
+export function build<const Fs extends functions.Functions, const ContextInput>({
   module,
   api,
   context,
   error,
 }: {
-  module: Module<F, CI>
-  api: RestApi<F>
-  context: (serverContext: ServerContext) => Promise<CI>
-  error?: ErrorHandler<F, ServerContext>
+  module: module.Module<Fs, ContextInput>
+  api: api.RestApi<Fs>
+  context: (serverContext: Context) => Promise<ContextInput>
+  error?: api.ErrorHandler<Fs, Context>
 }): APIGatewayProxyHandlerV2 {
   const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
   const server = lambdaApi({ base: pathPrefix })
-  const globalMaxVersion = getMaxVersion(api)
+  const globalMaxVersion = utils.getMaxApiVersion(api)
   if (api.options?.introspection) {
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
@@ -38,7 +39,7 @@ export function handler<const F extends Functions, CI>({
         res.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${globalMaxVersion}` }
       }
-      return generateOpenapiDocument({ module, api, version })
+      return openapi.fromModule({ module, api, version })
     })
     server.get(`/doc/*`, (req: Request, res: Response) => {
       const file = `${getAbsoluteFSPath()}/${req.path}`

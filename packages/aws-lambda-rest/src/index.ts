@@ -1,5 +1,1 @@
-import * as m from './listener'
-
-export default m
-
-export { handler } from './listener'
+export * as handler from './handler'

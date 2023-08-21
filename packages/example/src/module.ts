@@ -1,20 +1,18 @@
 import { Functions, functions } from './functions'
 import { AuthInfo } from './functions/functions.commons'
-import m from '@mondrian-framework/module'
+import { module } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
 const prisma = new PrismaClient()
 
-export const module = m.module<Functions, { jwt?: string }>({
+export const m = module.build<Functions, { jwt?: string }>({
   name: 'reddit',
   version: '5.0.1',
-  functions: {
-    definitions: functions,
-    options: {
-      login: { authentication: 'NONE' },
-      checkPost: { authentication: 'NONE' },
-    },
+  functions,
+  functinoOptions: {
+    login: { authentication: 'NONE' },
+    checkPost: { authentication: 'NONE' },
   },
   options: {
     checks: {

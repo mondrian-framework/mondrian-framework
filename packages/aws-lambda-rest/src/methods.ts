@@ -1,38 +1,31 @@
-import { ServerContext } from './utils'
-import { Functions, GenericModule } from '@mondrian-framework/module'
-import {
-  ErrorHandler,
-  RestApi,
-  RestMethod,
-  getMaxVersion,
-  generateRestRequestHandler,
-  pathFromSpecification,
-} from '@mondrian-framework/rest'
+import { Context } from './handler'
+import { functions, module } from '@mondrian-framework/module'
+import { rest, utils } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
 import { API, HandlerFunction, METHODS } from 'lambda-api'
 
-export function attachRestMethods<ContextInput>({
+export function attachRestMethods<const Fs extends functions.Functions, const ContextInput>({
   module,
   server,
   api,
   context,
   error,
 }: {
-  module: GenericModule
+  module: module.Module<Fs, ContextInput>
   server: API
-  api: RestApi<Functions>
-  context: (serverContext: ServerContext) => Promise<ContextInput>
-  error?: ErrorHandler<Functions, ServerContext>
+  api: rest.Api<Fs>
+  context: (serverContext: Context) => Promise<ContextInput>
+  error?: rest.ErrorHandler<Fs, Context>
 }): void {
-  const maxVersion = getMaxVersion(api)
-  for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
+  const maxVersion = utils.getMaxApiVersion(api)
+  for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = pathFromSpecification(functionName, specification, '')
-      const restHandler = generateRestRequestHandler<ServerContext, ContextInput>({
+      const path = utils.getPathFromSpecification(functionName, specification, '')
+      const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
         module,
         context,
         specification,
@@ -41,13 +34,13 @@ export function attachRestMethods<ContextInput>({
         globalMaxVersion: maxVersion,
         error,
       })
-      const handler: HandlerFunction = async (request, response) => {
+      const lambdaApiHandler: HandlerFunction = async (request, response) => {
         const result = await restHandler({
           serverContext: { lambdaApi: { request, response } },
           request: {
             body: request.body as string,
             headers: request.headers,
-            method: request.method.toLowerCase() as RestMethod,
+            method: request.method.toLowerCase() as rest.Method,
             params: request.params as Record<string, string>,
             query: request.query as Record<string, string>,
           },
@@ -60,7 +53,7 @@ export function attachRestMethods<ContextInput>({
         }
         return result.body
       }
-      server.METHOD(specification.method.toUpperCase() as METHODS, path, handler)
+      server.METHOD(specification.method.toUpperCase() as METHODS, path, lambdaApiHandler)
     }
   }
 }

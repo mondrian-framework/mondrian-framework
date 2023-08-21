@@ -1,33 +1,14 @@
 import { randomBytes } from 'crypto'
 
+/**
+ * Generates a random operation id.
+ * It consist in 12 hex digits representing the current unix timestamp, concatenated to 12 random hex digits.
+ *
+ * Example: "0189f65bc15c-f5eb23da9a29"
+ *
+ * @returns new random operation id.
+ */
 export function randomOperationId() {
-  //same length until Tue, 02 Aug 10889 05:31:50 GMT
+  //Same length until Tue, 02 Aug 10889 05:31:50 GMT.
   return `${new Date().getTime().toString(16).padStart(12, '0')}-${randomBytes(6).toString('hex')}`
-}
-
-export type Logger = (message: string, level?: 'log' | 'warn' | 'error') => void | Promise<void>
-export function buildLogger(
-  moduleName: string,
-  operationId: string | null,
-  operationType: string | null, //QUERY, MUTATION, GET, POST, SQS-URL ...
-  operationName: string | null,
-  server: string, //REST, GRAPHQL, LOCAL, ...
-  start: Date,
-): Logger {
-  function l(message: string, level?: 'log' | 'warn' | 'error') {
-    const op =
-      operationType && operationName
-        ? `${operationType} / ${operationName}`
-        : operationName
-        ? operationName
-        : operationType
-        ? operationType
-        : null
-    console[level ?? 'log'](
-      `${operationId ? `[${operationId}] ` : ''}[${moduleName}${op ? ` / ${op}` : ''} / ${server}]: ${message} (${
-        new Date().getTime() - start.getTime()
-      } ms)`,
-    )
-  }
-  return l
 }

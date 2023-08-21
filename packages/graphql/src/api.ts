@@ -1,16 +1,16 @@
-import { Functions, Logger } from '@mondrian-framework/module'
+import { functions, logger } from '@mondrian-framework/module'
 import { GraphQLErrorOptions } from 'graphql'
 
-export type GraphqlFunctionSpecs = {
+type FunctionSpecifications = {
   type: 'query' | 'mutation'
   name?: string
   inputName?: string
   namespace?: string | null
 }
 
-export type GraphqlApi<F extends Functions> = {
+export type Api<Fs extends functions.Functions> = {
   functions: {
-    [K in keyof F]?: GraphqlFunctionSpecs | readonly GraphqlFunctionSpecs[]
+    [K in keyof Fs]?: FunctionSpecifications | readonly FunctionSpecifications[]
   }
   options?: {
     introspection?: boolean
@@ -18,10 +18,10 @@ export type GraphqlApi<F extends Functions> = {
   }
 }
 
-export type ErrorHandler<F extends Functions, ContextInput> = (
+export type ErrorHandler<F extends functions.Functions, ContextInput> = (
   args: {
     error: unknown
-    log: Logger
+    log: logger.Logger
     functionName: keyof F
     context: unknown
     operationId: string

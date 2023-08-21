@@ -1,27 +1,39 @@
 import { m } from '../../src/index'
-import { decode, encode } from '@mondrian-framework/model'
-import { test, expect } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { fc as gen } from '@fast-check/vitest'
+import { describe } from 'vitest'
 
-const URLType = m.URL()
+const validValues = gen.webUrl().map((urlString) => ({ raw: urlString, expected: new URL(urlString) }))
+const knownValidValues = [
+  { raw: 'http://www.google.com', expected: new URL('http://www.google.com') },
+  { raw: 'https://www.google.com', expected: new URL('https://www.google.com') },
+]
 
-test('URL - encode', async () => {
-  expect(encode(URLType, new URL('https://www.google.com'))).toBe('https://www.google.com/')
-})
+const knownInvalidValues = [
+  'www.google.com',
+  'google.com',
+  'google',
+  'http://',
+  -200,
+  2000000,
+  10.1,
+  null,
+  undefined,
+  { field: 42 },
+  NaN,
+]
 
-test('URL - decode', async () => {
-  expect(decode(URLType, 'http://www.google.com')).toEqual({ success: true, value: new URL('http://www.google.com') })
-  expect(decode(URLType, 'https://www.google.com')).toEqual({ success: true, value: new URL('https://www.google.com') })
-  expect(decode(URLType, '').success).toBe(false)
-  expect(decode(URLType, 'www.google.com').success).toBe(false)
-  expect(decode(URLType, 'google.com').success).toBe(false)
-  expect(decode(URLType, 'google').success).toBe(false)
-  expect(decode(URLType, 'http://').success).toBe(false)
-  expect(decode(URLType, 10).success).toBe(false)
-  expect(decode(URLType, true).success).toBe(false)
-  expect(decode(URLType, null).success).toBe(false)
-  expect(decode(URLType, undefined).success).toBe(false)
-})
-
-test('URL - valid', async () => {})
-
-test('URL - invalid', async () => {})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(
+    m.url,
+    {
+      validValues,
+      knownValidValues,
+      knownInvalidValues,
+    },
+    {
+      skipInverseCheck: true,
+    },
+  ),
+)

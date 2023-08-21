@@ -1,27 +1,27 @@
-import { m, CustomTypeOpts, Result } from '@mondrian-framework/model'
+import { decoder, m, validator } from '@mondrian-framework/model'
 
-export function URLType(opts?: CustomTypeOpts) {
+export type URLType = m.CustomType<'URL', {}, URL>
+
+export function url(options?: m.BaseOptions): URLType {
   return m.custom(
-    {
-      name: 'URL',
-      encodedType: m.string(),
-      decode: (input, opts, decodeOpts) => {
-        try {
-          return Result.success(new URL(input))
-        } catch (e) {
-          return Result.error('Invalid URL format (RFC 3986)', input)
-        }
-      },
-      encode: (input, opts) => {
-        return input.toString()
-      },
-      validate(input) {
-        if (!(input instanceof URL)) {
-          return Result.error('URL expected', input)
-        }
-        return Result.success(input)
-      },
-    },
-    opts,
+    'URL',
+    (value) => value.toString(),
+    decodeUrl,
+    (_url) => validator.succeed(),
+    options,
   )
+}
+
+function decodeUrl(value: unknown): decoder.Result<URL> {
+  return typeof value === 'string' || value instanceof URL
+    ? makeUrl(value)
+    : decoder.fail('Invalid URL format (RFC 3986)', value)
+}
+
+function makeUrl(value: string | URL): decoder.Result<URL> {
+  try {
+    return decoder.succeed(new URL(value))
+  } catch (_) {
+    return decoder.fail('Invalid URL format (RFC 3986)', value)
+  }
 }

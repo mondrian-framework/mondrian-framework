@@ -1,35 +1,27 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
-import { test, expect } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { describe } from 'vitest'
 
-const phoneNumber = m.phoneNumber()
+const knownValidValues = ['+393283456888', '+393283456']
+const knownInvalidValues = [
+  '',
+  '+3932834AABBB',
+  '393283456888',
+  '+39926',
+  '+83791287382178937213',
+  '+39 328 3456888',
+  '+39-328-3456888',
+  null,
+  10,
+  true,
+  undefined,
+  393283456888,
+]
 
-test('PhoneNumber - encode', async () => {
-  expect(encode(phoneNumber, 'any-string')).toBe('any-string')
-})
-
-test('PhoneNumber - decode', async () => {
-  expect(decode(phoneNumber, 'any-string')).toEqual({ success: true, value: 'any-string' })
-  expect(decode(phoneNumber, 10).success).toBe(false)
-  expect(decode(phoneNumber, true).success).toBe(false)
-  expect(decode(phoneNumber, null).success).toBe(false)
-  expect(decode(phoneNumber, undefined).success).toBe(false)
-})
-
-test('PhoneNumber - valid', async () => {
-  const values = ['+393283456888', '+393283456']
-  values.forEach((value) => expect(validate(phoneNumber, value)).toStrictEqual({ success: true, value }))
-})
-
-test('PhoneNumber - invalid', async () => {
-  const values = [
-    '',
-    '+3932834AABBB',
-    '393283456888',
-    '+39926',
-    '+83791287382178937213',
-    '+39 328 3456888',
-    '+39-328-3456888',
-  ]
-  values.forEach((value) => expect(validate(phoneNumber, value).success).toBe(false))
-})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(m.phoneNumber, {
+    knownInvalidValues,
+    knownValidValues,
+  }),
+)

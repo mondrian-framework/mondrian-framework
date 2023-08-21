@@ -1,27 +1,17 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
-import { test, expect } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { fc as gen } from '@fast-check/vitest'
+import { describe } from 'vitest'
 
-const locale = m.locale()
+const knownValidValues: readonly string[] = m.locale().variants
+const knownInvalidValues = [10, true, null, undefined, '', 'It ', 'IT', 'iT', 'it ', 'Italian', 'en-us', 'en-US']
+const invalidValues = gen.string().filter((value) => !knownValidValues.includes(value))
 
-test('Locale - encode', async () => {
-  expect(encode(locale, 'any-string')).toBe('any-string')
-})
-
-test('Locale - decode', async () => {
-  expect(decode(locale, 'any-string')).toEqual({ success: true, value: 'any-string' })
-  expect(decode(locale, 10).success).toBe(false)
-  expect(decode(locale, true).success).toBe(false)
-  expect(decode(locale, null).success).toBe(false)
-  expect(decode(locale, undefined).success).toBe(false)
-})
-
-test('Locale - valid', async () => {
-  const values = ['it', 'en', 'es']
-  values.forEach((value) => expect(validate(locale, value)).toStrictEqual({ success: true, value }))
-})
-
-test('Locale - invalid', async () => {
-  const values = ['', 'It ', 'IT', 'iT', 'it ', 'Italian', 'en-us', 'en-US']
-  values.forEach((value) => expect(validate(locale, value).success).toBe(false))
-})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(m.locale, {
+    knownValidValues,
+    knownInvalidValues,
+    invalidValues,
+  }),
+)

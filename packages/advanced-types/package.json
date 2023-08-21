@@ -8,10 +8,14 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "keywords": [],
   "peerDependencies": {
     "@mondrian-framework/model": "^1.0.7"
+  },
+  "dependencies": {
+    "bignumber.js": "^9.1.1"
   }
 }

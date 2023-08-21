@@ -1,33 +1,26 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
-import { expect, test } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { fc as gen } from '@fast-check/vitest'
+import { describe } from 'vitest'
 
-const email = m.email()
+const knownInvalidValues = [
+  '',
+  'testest.com',
+  'tesksajhdjkshdkjhsakjdhkjashdjksahkdhksahdjkshadjksahdjkhaskjaskjhdkjsahkdhskjhdkjsahkdhsakhdkashjksadh@test.com',
+  'test@sakjhdkjashdkhakjshdjashkdhasjkdhkjashdjhjksahdjksahjdhsahdsahdkshakjdhskajdhkjsahdkjhsakjdhkjsahdkjhsakjdhkjsahdkjhsakjdhksajhdksahdkjsahjkdhsakjhdkjashkdjhaskjdhakhdjksahdkjashkjdhasjkhdkashdkjsahdkjsahkjdhaksjhdkash.com',
+  'tes@testcom',
+  { email: 'foo@bar.com' },
+  null,
+  true,
+  undefined,
+  10,
+  10.2,
+]
 
-test('Email - encode', async () => {
-  expect(encode(email, 'any-string')).toBe('any-string')
-})
-
-test('Email - decode', async () => {
-  expect(decode(email, 'any-string')).toStrictEqual({ success: true, value: 'any-string' })
-  expect(decode(email, 10).success).toBe(false)
-  expect(decode(email, true).success).toBe(false)
-  expect(decode(email, null).success).toBe(false)
-  expect(decode(email, undefined).success).toBe(false)
-})
-
-test('Email - valid', async () => {
-  const values = ['test@test.com']
-  values.forEach((value) => expect(validate(email, value)).toStrictEqual({ success: true, value }))
-})
-
-test('Email - invalid', async () => {
-  const values = [
-    '',
-    'testest.com',
-    'tesksajhdjkshdkjhsakjdhkjashdjksahkdhksahdjkshadjksahdjkhaskjaskjhdkjsahkdhskjhdkjsahkdhsakhdkashjksadh@test.com',
-    'test@sakjhdkjashdkhakjshdjashkdhasjkdhkjashdjhjksahdjksahjdhsahdsahdkshakjdhskajdhkjsahdkjhsakjdhkjsahdkjhsakjdhkjsahdkjhsakjdhksajhdksahdkjsahjkdhsakjhdkjashkdjhaskjdhakhdjksahdkjashkjdhasjkhdkashdkjsahdkjsahkjdhaksjhdkash.com',
-    'tes@testcom',
-  ]
-  values.forEach((value) => expect(validate(email, value).success).toBe(false))
-})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(m.email, {
+    validValues: gen.emailAddress(),
+    knownInvalidValues,
+  }),
+)

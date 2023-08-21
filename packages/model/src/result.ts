@@ -1,97 +1,196 @@
-export type Error = { path?: string; error: string; value: unknown; unionElement?: string }
-export type Success<T> = { success: true; value: T }
-export type Failure = {
-  success: false
-  errors: Error[]
-}
-export type Result<T> = Success<T> | Failure
+/**
+ * Either an {@link Ok} or a {@link Failure}
+ */
+export type Result<A, E> = Ok<A, E> | Failure<A, E>
 
-export function success<T>(value: T): { success: true; value: T } {
-  return { success: true, value }
+/**
+ * A succesfull result.
+ */
+export type Ok<A, E> = {
+  /**
+   * {@link Result} discriminant. Always true.
+   */
+  readonly isOk: true
+
+  /**
+   * The result value.
+   */
+  readonly value: A
+} & ResultUtility<A, E>
+
+/**
+ * A failure result.
+ */
+export type Failure<A, E> = {
+  /**
+   *  {@link Result} discriminant. Always false.
+   */
+  readonly isOk: false
+
+  /**
+   * The error value.
+   */
+  readonly error: E
+} & ResultUtility<A, E>
+
+/**
+ * Creates an {@link Ok} result.
+ * @param value the result value.
+ * @returns the {@link Ok} result.
+ */
+export function ok<A, E>(value: A): Ok<A, E> {
+  return new OkImpl(value)
 }
 
-export function error(error: string, value: unknown): Failure {
-  return errors([{ error, value }])
+/**
+ * Creates a {@link Failure} result.
+ * @param error the error value.
+ * @returns the {@link Failure} result.
+ */
+export function fail<A, E>(error: E): Failure<A, E> {
+  return new FailureImpl(error)
 }
 
-export function errors(errors: Error[]): Failure {
-  return { success: false, errors }
+type ResultUtility<A, E> = {
+  /**
+   * @param f a continuation function to update the value held by an `Ok` result
+   * @returns a failing result if it is called on a failing result, otherwise
+   *          the result of applying the given function `f` to the value held by
+   *          the `Ok` result
+   * @example ```ts
+   *          ok(1).chain((n) => ok(n + 1)) // -> ok(2)
+   *          ok(1).chain((n) => error("fail")) // -> error("fail")
+   *          error("fail").chain((n) => ok(n + 1)) // -> error("fail")
+   *          error("fail").chain((n) => error("fail again")) // -> error("fail")
+   *          ```
+   */
+  chain<B>(f: (value: A) => Result<B, E>): Result<B, E>
+
+  /**
+   * @param value the new value
+   * @returns replaces the value held by an `Ok` result with the given one
+   */
+  replace<B>(value: B): Result<B, E>
+
+  /**
+   * Maps the result value if is {@link Ok} otherwise returns the actual {@link Failure}.
+   * @param f the mapper function.
+   * @returns the mapped {@link Result}.
+   */
+  map<B>(f: (value: A) => B): Result<B, E>
+
+  /**
+   * Maps the error value if is {@link Failure} otherwise returns the actual {@link Ok}.
+   * @param f the mapper function.
+   * @returns the mapped {@link Result}.
+   */
+  mapError<E1>(f: (error: E) => E1): Result<A, E1>
+
+  /**
+   * Returns the {@link Ok} value otherwise call the recover function and returns it's result.
+   * @param fromError the recover function.
+   * @returns the {@link Ok} value or the receovered value.
+   */
+  recover(fromError: (error: E) => A): A
+
+  /**
+   * Returns this if is {@link Ok} otherwise the other result.
+   * @param other the other {@link Result}.
+   * @returns this if is {@link Ok} otherwise other other result.
+   */
+  or(other: Result<A, E>): Result<A, E>
+
+  /**
+   * Returns this if is {@link Ok} otherwise the other result.
+   * @param other the other {@link Result} getter.
+   * @returns this if is {@link Ok} otherwise other other result.
+   */
+  lazyOr(other: (error: E) => Result<A, E>): Result<A, E>
+
+  /**
+   * Match this {@link Result}.
+   * @param onOk called when is {@link Ok} passing the resutl value.
+   * @param onFailure called when is {@link Failure} passing the error value.
+   * @returns the match return value.
+   */
+  match<B>(onOk: (value: A) => B, onFailure: (error: E) => B): B
 }
 
-export function richError(error: string, value: unknown, prefixes: string | number): Error {
-  return { error, value, path: buildPath([prefixes]) }
-}
-
-export function enrichErrors<T>(result: Result<T>, prefixes?: (string | number)[]): Result<T> {
-  if (!result.success) {
-    if (prefixes == null || prefixes.length === 0) {
-      return result
-    }
-    return errors(
-      result.errors.map((e) => {
-        const oldElements = e.path != null ? unbuildPath(e.path) : []
-        const elements = [...prefixes, ...oldElements]
-        return {
-          ...e,
-          path: buildPath(elements),
-        }
-      }),
-    )
+class OkImpl<A, E> implements Ok<A, E> {
+  readonly value: A
+  readonly isOk: true = true
+  constructor(value: A) {
+    this.value = value
   }
-  return result
+
+  chain = <B>(f: (value: A) => Result<B, E>): Result<B, E> => f(this.value)
+  replace = <B>(value: B): Result<B, E> => ok(value)
+  map = <B>(f: (value: A) => B): Result<B, E> => ok(f(this.value))
+  mapError = <E1>(_f: (error: E) => E1): Result<A, E1> => ok(this.value)
+  recover = (_fromError: (error: E) => A): A => this.value
+  or = (_other: Result<A, E>): Result<A, E> => this
+  lazyOr = (_other: (error: E) => Result<A, E>): Result<A, E> => this
+  match = <B>(onOk: (value: A) => B, _onFailure: (error: E) => B): B => onOk(this.value)
 }
-function buildPath(root: (string | number)[]): string {
-  let s = ''
-  for (const v of root) {
-    if (typeof v === 'number') {
-      s = `${s}[${v}]`
-    }
-    if (typeof v === 'string') {
-      s = `${s}.${v}`
-    }
+
+class FailureImpl<A, E> implements Failure<A, E> {
+  readonly error: E
+  readonly isOk: false = false
+  constructor(error: E) {
+    this.error = error
   }
-  return s
+
+  chain = <B>(_f: (value: A) => Result<B, E>): Result<B, E> => fail(this.error)
+  replace = <B>(_value: B): Result<B, E> => fail(this.error)
+  map = <B>(_f: (value: A) => B): Result<B, E> => fail(this.error)
+  mapError = <E1>(f: (error: E) => E1): Result<A, E1> => fail(f(this.error))
+  recover = (fromError: (error: E) => A): A => fromError(this.error)
+  or = (other: Result<A, E>): Result<A, E> => other
+  lazyOr = (other: (error: E) => Result<A, E>): Result<A, E> => other(this.error)
+  match = <B>(_onOk: (value: A) => B, onFailure: (error: E) => B): B => onFailure(this.error)
 }
-function unbuildPath(root: string): (string | number)[] {
-  if (root === '') {
-    return []
-  }
-  const e: (string | number)[] = []
-  let start = 0
-  for (let i = 0; i < root.length; i++) {
-    if (root[i] === '.' || root[i] === '[') {
-      if (start !== 0) {
-        const ss = root.substring(start, i)
-        e.push(ss)
+
+export function tryEach<A, R, R1, E, E1>(
+  values: readonly A[],
+  initialValue: R1,
+  combineValues: (previous: R1, current: R) => R1,
+  initialError: E1,
+  combineErrors: (previous: E1, current: E) => E1,
+  action: (currentValue: A, index: number) => Result<R, E>,
+): Result<R1, E1> {
+  let valuesAccumulator = initialValue
+  let errorsAccumulator = initialError
+  let encounteredError = false
+  for (let index = 0; index < values.length; index++) {
+    const result = action(values[index], index)
+    if (result.isOk) {
+      if (encounteredError) {
+        continue
+      } else {
+        valuesAccumulator = combineValues(valuesAccumulator, result.value)
       }
-      start = i + 1
-    }
-    if (root[i] === ']') {
-      const ss = root.substring(start, i)
-      e.push(Number(ss))
-      start = 0
+    } else {
+      encounteredError = true
+      errorsAccumulator = combineErrors(errorsAccumulator, result.error)
     }
   }
-  const ss = root.substring(start, root.length)
-  e.push(ss)
-  return e
+  return encounteredError ? fail(errorsAccumulator) : ok(valuesAccumulator)
 }
 
-export function concat2<V1, V2>(v1: Result<V1>, f1: (v: V1) => Result<V2>): Result<V2> {
-  if (!v1.success) {
-    return v1
-  }
-  const v2 = f1(v1.value)
-  return v2
-}
-
-export function firstOf2<V>(f1: () => Result<V>, f2: () => Result<V>): Result<V> {
-  const v1 = f1()
-  if (!v1.success) {
-    const v2 = f2()
-    if (v2.success) {
-      return v2
+export function tryEachFailFast<A, R, R1, E>(
+  values: readonly A[],
+  initialValue: R1,
+  combineValues: (previous: R1, current: R) => R1,
+  action: (currentValue: A, index: number) => Result<R, E>,
+): Result<R1, E> {
+  let valuesAccumulator = initialValue
+  for (let index = 0; index < values.length; index++) {
+    const result = action(values[index], index)
+    if (result.isOk) {
+      valuesAccumulator = combineValues(valuesAccumulator, result.value)
+    } else {
+      return fail(result.error)
     }
   }
-  return v1
+  return ok(valuesAccumulator)
 }

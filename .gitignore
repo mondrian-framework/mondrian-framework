@@ -16,3 +16,5 @@ packages/api/.env-stage
 packages/api/.env-stage-test
 **/.secrets.json
 **/tsconfig.tsbuildinfo
+
+**/.DS_Store

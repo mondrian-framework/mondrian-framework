@@ -1,5 +1,2 @@
-export { RestApi, RestMethod, RestFunctionSpecs, ErrorHandler } from './api'
-export { createRestSdk } from './sdk'
-export { decodeQueryObject, encodeQueryObject, pathFromSpecification, getMaxVersion } from './utils'
-export { generateOpenapiDocument } from './openapi'
-export { generateRestRequestHandler } from './handler'
+export * as rest from './exports'
+export * as utils from './utils'

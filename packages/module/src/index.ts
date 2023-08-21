@@ -1,7 +1,5 @@
-import * as m from './exports'
-
-export default m
-
-export * from './exports'
-export { randomOperationId, buildLogger, Logger } from './utils'
-export { createLocalSdk } from './sdk'
+export * as module from './module'
+export * as functions from './function'
+export * as logger from './logger'
+export * as sdk from './sdk'
+export * as utils from './utils'

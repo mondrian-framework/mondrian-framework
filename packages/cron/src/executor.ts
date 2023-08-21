@@ -1,30 +1,33 @@
-import { Infer } from '@mondrian-framework/model'
-import { Functions, Logger, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { types } from '@mondrian-framework/model'
+import { functions, utils, module, logger } from '@mondrian-framework/module'
 import { ScheduledTask } from 'node-cron'
 import { schedule, validate } from 'node-cron'
 
-export type CronFunctionSpecs<Input> = ([Input] extends [void] ? {} : { input: () => Promise<Input> }) & {
-  cron: string
-  runAtStart?: boolean
-  timezone?: string
-}
-export type CronApi<F extends Functions> = {
+export type Api<F extends functions.Functions> = {
   functions: {
-    [K in keyof F]?: CronFunctionSpecs<Infer<F[K]['input']>>
+    [K in keyof F]?: FunctionSPecifications<types.Infer<F[K]['input']>>
   }
 }
 
-export function start<const F extends Functions, CI>({
+type FunctionSPecifications<Input> = {
+  cron: string
+  runAtStart?: boolean
+  timezone?: string
+  input: () => Promise<Input>
+}
+
+export function start<const F extends functions.Functions, CI>({
   module,
   api,
   context,
 }: {
-  module: Module<F, CI>
-  api: CronApi<F>
+  module: module.Module<F, CI>
+  api: Api<F>
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
-  const scheduledTasks: { task: ScheduledTask; logger: () => Logger }[] = []
-  for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
+  const baseLogger = logger.withContext({ moduleName: module.name, server: 'CRON' })
+  const scheduledTasks: { task: ScheduledTask; log: logger.Logger }[] = []
+  for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const options = api.functions[functionName]
     if (!options) {
       continue
@@ -35,20 +38,20 @@ export function start<const F extends Functions, CI>({
     const task = schedule(
       options.cron,
       async () => {
-        const operationId = randomOperationId()
-        const log = buildLogger(module.name, operationId, options.cron, functionName, 'CRON', new Date())
+        const operationId = utils.randomOperationId()
+        const log = baseLogger.build({ operationId, operationType: options.cron, operationName: functionName })
         try {
-          const input = 'input' in options ? await options.input() : null
+          const input = (await options.input()) as never
           const contextInput = await context({ cron: options.cron })
           const ctx = await module.context(contextInput, { input, projection: undefined, operationId, log })
-          await functionBody.apply({ input, projection: undefined, operationId, log, context: ctx })
+          await functions.apply(functionBody, { input, projection: undefined, operationId, log, context: ctx })
         } catch (error) {
           if (error instanceof Error) {
-            log(error.message, 'error')
+            await log(error.message, 'error')
           }
-          log('Unknown error', 'error')
+          await log('Unknown error', 'error')
         }
-        log('Done.')
+        await log('Done.')
       },
       {
         runOnInit: options.runAtStart ?? false,
@@ -59,16 +62,16 @@ export function start<const F extends Functions, CI>({
     task.start()
     scheduledTasks.push({
       task,
-      logger: () => buildLogger(module.name, null, options.cron, functionName, 'CRON', new Date()),
+      log: baseLogger.build({ operationType: options.cron, operationName: functionName }),
     })
   }
 
   return {
     async close() {
-      buildLogger(module.name, null, null, null, 'CRON', new Date())('Stopping jobs...')
-      for (const { task, logger } of scheduledTasks) {
+      baseLogger.build()('Stopping jobs...')
+      for (const { task, log } of scheduledTasks) {
         task.stop()
-        logger()('Stopped.')
+        await log('Stopped.')
       }
     },
   }

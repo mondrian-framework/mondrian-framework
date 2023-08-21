@@ -1,28 +1,30 @@
 import { attachRestMethods } from './methods'
-import { ServerContext } from './utils'
 import { fastifyStatic } from '@fastify/static'
-import { Functions, Module } from '@mondrian-framework/module'
-import { ErrorHandler, RestApi, generateOpenapiDocument, getMaxVersion } from '@mondrian-framework/rest'
+import { functions, module } from '@mondrian-framework/module'
+import { rest, utils } from '@mondrian-framework/rest'
+import { FastifyReply, FastifyRequest } from 'fastify'
 import { FastifyInstance } from 'fastify'
 import fs from 'fs'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
-export function serve<const F extends Functions, CI>({
+export type Context = { fastify: { request: FastifyRequest; reply: FastifyReply } }
+
+export function start<const F extends functions.Functions, CI>({
   module,
   api,
   server,
   context,
   error,
 }: {
-  module: Module<F, CI>
-  api: RestApi<F>
+  module: module.Module<F, CI>
+  api: rest.Api<F>
   server: FastifyInstance
-  context: (serverContext: ServerContext) => Promise<CI>
-  error?: ErrorHandler<F, ServerContext>
+  context: (serverContext: Context) => Promise<CI>
+  error?: rest.ErrorHandler<F, Context>
 }): void {
   const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
-  const globalMaxVersion = getMaxVersion(api)
+  const globalMaxVersion = utils.getMaxApiVersion(api)
   if (api.options?.introspection) {
     server.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
@@ -43,7 +45,7 @@ export function serve<const F extends Functions, CI>({
         reply.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${globalMaxVersion}` }
       }
-      return generateOpenapiDocument({ module, api, version })
+      return rest.openapi.fromModule({ module, api, version })
     })
   }
   attachRestMethods({ module, api, server, context, pathPrefix, error })

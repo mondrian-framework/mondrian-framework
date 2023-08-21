@@ -1,9 +1,18 @@
-import { decodeAndValidate } from '@mondrian-framework/model'
-import { Functions, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { decoder } from '@mondrian-framework/model'
+import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
 
-export type SqsFunctionSpecs = {
+/**
+ * TODO: doc
+ */
+export type Api<Fs extends functions.Functions> = {
+  functions: {
+    [K in keyof Fs]?: FunctionSpecifications | readonly FunctionSpecifications[]
+  }
+}
+
+type FunctionSpecifications = {
   malformedMessagePolicy?: 'ignore' | 'delete'
   reportBatchItemFailures?: boolean
 } & (
@@ -12,18 +21,17 @@ export type SqsFunctionSpecs = {
     }
   | { anyQueue: true }
 )
-export type SqsApi<F extends Functions> = {
-  functions: {
-    [K in keyof F]?: SqsFunctionSpecs | readonly SqsFunctionSpecs[]
-  }
-}
-export function handler<const F extends Functions, CI>({
+
+/**
+ * TODO: doc
+ */
+export function build<const Fs extends functions.Functions, CI>({
   module,
   api,
   context,
 }: {
-  module: Module<F, CI>
-  api: SqsApi<F>
+  module: module.Module<Fs, CI>
+  api: Api<Fs>
   context: (args: { event: SQSEvent; context: Context; recordIndex: number }) => Promise<CI>
 }): SQSHandler {
   const specifications = Object.entries(api.functions).flatMap(([functionName, specifications]) => {
@@ -37,29 +45,30 @@ export function handler<const F extends Functions, CI>({
   })
 
   return async (event, fContext) => {
-    const eventLog = buildLogger(module.name, fContext.awsRequestId, null, null, 'LAMBDA-SQS', new Date())
-    eventLog(`Received ${event.Records.length} messages.`)
+    const baseLogger = logger.withContext({ moduleName: module.name, server: 'LAMBDA-SQS' })
+    const eventLog = logger.build({ operationId: fContext.awsRequestId })
+    await eventLog(`Received ${event.Records.length} messages.`)
     const batchItemFailures: SQSBatchItemFailure[] = []
-    let spec: SqsFunctionSpecs | undefined = undefined
+    let spec: FunctionSpecifications | undefined = undefined
     for (let i = 0; i < event.Records.length; i++) {
       const m = event.Records[i]
       const url = getQueueUrl(m.eventSourceARN)
       const [functionName, specification] =
         specifications.find(([_, s]) => 'anyQueue' in s || s.queueUrl === url) ?? ([null, null] as const)
       if (!specification || !functionName) {
-        eventLog(`Message ${i} ignored! source: ${url}`, 'warn')
+        await eventLog(`Message ${i} ignored! source: ${url}`, 'warn')
         continue
       }
-      const functionBody = module.functions.definitions[functionName]
+      const functionBody = module.functions[functionName]
       spec = specification
-      const operationId = randomOperationId()
-      const log = buildLogger(module.name, operationId, url, functionName, 'LAMBDA-SQS', new Date())
+      const operationId = utils.randomOperationId()
+      const log = baseLogger.build({ operationId, operationType: url, operationName: functionName })
       try {
         let body: unknown
         try {
           body = m.body === undefined ? undefined : JSON.parse(m.body)
         } catch {
-          log(`Bad message: not a valid json ${m.body}`)
+          await log(`Bad message: not a valid json ${m.body}`)
           if (specification.malformedMessagePolicy === 'delete') {
             continue
           }
@@ -68,14 +77,15 @@ export function handler<const F extends Functions, CI>({
           }
           batchItemFailures.push({ itemIdentifier: m.messageId })
         }
-        const decoded = decodeAndValidate(functionBody.input, body, { inputUnion: true })
-        if (!decoded.success) {
-          log(`Bad message: ${JSON.stringify(decoded.errors)}`)
+
+        const decoded = decoder.decode(functionBody.input, body, { typeCastingStrategy: 'expectExactTypes' })
+        if (!decoded.isOk) {
+          await log(`Bad message: ${JSON.stringify(decoded.error)}`)
           if (specification.malformedMessagePolicy === 'delete') {
             continue
           }
           if (!specification.reportBatchItemFailures) {
-            throw new Error(`Bad message: ${JSON.stringify(decoded.errors)}`)
+            throw new Error(`Bad message: ${JSON.stringify(decoded.error)}`)
           }
           batchItemFailures.push({ itemIdentifier: m.messageId })
           continue
@@ -87,14 +97,14 @@ export function handler<const F extends Functions, CI>({
           operationId,
           log,
         })
-        await functionBody.apply({
+        await functions.apply(functionBody, {
           input: decoded.value,
           projection: undefined,
           operationId,
           context: ctx,
           log,
         })
-        log(`Completed.`)
+        await log(`Completed.`)
       } catch (error) {
         if (!specification.reportBatchItemFailures) {
           throw new Error(`Bad message: not a valid json ${m.body}`)

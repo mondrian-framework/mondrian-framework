@@ -1,17 +1,10 @@
-import { ServerContext } from './utils'
-import { Functions, GenericModule } from '@mondrian-framework/module'
-import {
-  ErrorHandler,
-  RestApi,
-  RestMethod,
-  getMaxVersion,
-  generateRestRequestHandler,
-  pathFromSpecification,
-} from '@mondrian-framework/rest'
+import { server } from '.'
+import { functions, module } from '@mondrian-framework/module'
+import { rest, utils } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
 import { FastifyInstance } from 'fastify'
 
-export function attachRestMethods<ContextInput>({
+export function attachRestMethods<Fs extends functions.Functions, ContextInput>({
   module,
   server,
   api,
@@ -19,22 +12,22 @@ export function attachRestMethods<ContextInput>({
   pathPrefix,
   error,
 }: {
-  module: GenericModule
+  module: module.Module<Fs, ContextInput>
   server: FastifyInstance
-  api: RestApi<Functions>
-  context: (serverContext: ServerContext) => Promise<ContextInput>
+  api: rest.Api<Fs>
+  context: (serverContext: server.Context) => Promise<ContextInput>
   pathPrefix: string
-  error?: ErrorHandler<Functions, ServerContext>
+  error?: rest.ErrorHandler<Fs, server.Context>
 }): void {
-  const maxVersion = getMaxVersion(api)
-  for (const [functionName, functionBody] of Object.entries(module.functions.definitions)) {
+  const maxVersion = utils.getMaxApiVersion(api)
+  for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = pathFromSpecification(functionName, specification, pathPrefix).replace(/{(.*?)}/g, ':$1')
-      const handler = generateRestRequestHandler<ServerContext, ContextInput>({
+      const path = utils.getPathFromSpecification(functionName, specification, pathPrefix).replace(/{(.*?)}/g, ':$1')
+      const generateHandler = rest.handler.fromFunction<Fs, server.Context, ContextInput>({
         module,
         context,
         specification,
@@ -44,12 +37,12 @@ export function attachRestMethods<ContextInput>({
         error,
       })
       server[specification.method](path, async (request, reply) => {
-        const result = await handler({
+        const result = await generateHandler({
           serverContext: { fastify: { request, reply } },
           request: {
             body: request.body as string,
             headers: request.headers,
-            method: request.method.toLowerCase() as RestMethod,
+            method: request.method.toLowerCase() as rest.Method,
             params: request.params as Record<string, string>,
             query: request.query as Record<string, string>,
           },

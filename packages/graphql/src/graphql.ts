@@ -1,67 +1,24 @@
-import { ErrorHandler, GraphqlApi } from './api'
-import { graphqlInfoToProjection } from './utils'
+import { ErrorHandler, Api } from './api'
+import { infoToProjection } from './utils'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { createGraphQLError } from '@graphql-tools/utils'
-import {
-  GenericProjection,
-  LazyType,
-  RootCustomType,
-  decode,
-  decodeAndValidate,
-  encode,
-  getProjectedType,
-  getProjectionType,
-  isVoidType,
-  lazyToType,
-} from '@mondrian-framework/model'
-import { Functions, GenericModule, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { decoder, encoder, projection, types, validator } from '@mondrian-framework/model'
+import { module, utils, functions, logger } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
 
-/*
-"""
-****
-"""
-scalar Id
-
-"""
-****
-"""
-type User {
-  """
-  ****
-  """
-  id: Id!
-  posts: [Post!]!
-  referrer: User
-}
-
-type Post {
-  id: Id!
-  value: String!
-}
-
-"""
-****
-"""
-union Asd = Post | User
-
-input PostInput {
-  value: String!
-}
-*/
-
 type GraphqlType =
-  | { type: 'scalar'; description?: string; impl: RootCustomType }
-  | { type: 'type' | 'input' | 'enum'; definition?: string; description: string }
+  | { type: 'scalar'; description?: string; impl: types.CustomType<string, {}, any> }
+  | { type: 'type' | 'input' | 'enum'; definition?: string; description?: string }
   | {
       type: 'union'
       definition: string
       description?: string
       is?: Record<string, undefined | ((v: unknown) => boolean)>
     }
+
 function typeToGqlType(
-  t: LazyType,
+  t: types.Type,
   typeMap: Record<string, GraphqlType>, //id -> definition
   typeRef: Map<Function, string>, // function -> id
   isInput: boolean,
@@ -69,20 +26,20 @@ function typeToGqlType(
   suggestedName?: string,
 ): string {
   const isRequired = isOptional ? '' : '!'
-  const mt = lazyToType(t)
+  const mt = types.concretise(t)
   if (typeof t === 'function') {
     const id = typeRef.get(t)
     if (id) {
       return `${isInput ? 'I' : ''}${id}${isRequired}`
     }
-    if (mt.opts?.name) {
-      typeRef.set(t, mt.opts.name)
+    if (mt.options?.name) {
+      typeRef.set(t, mt.options.name)
     }
   }
   return typeToGqlTypeInternal(t, typeMap, typeRef, isInput, isOptional, suggestedName)
 }
 function typeToGqlTypeInternal(
-  t: LazyType,
+  t: types.Type,
   typeMap: Record<string, GraphqlType>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
   isInput: boolean,
@@ -90,45 +47,42 @@ function typeToGqlTypeInternal(
   suggestedName?: string,
 ): string {
   const isRequired = isOptional ? '' : '!'
-  const type = lazyToType(t)
-  let name: string | undefined = type.opts?.name ?? suggestedName
-  const description = type.opts && 'description' in type.opts ? type.opts.description : undefined
+  const type = types.concretise(t)
+  let name: string | undefined = type.options?.name ?? suggestedName
+  const description = type.options && 'description' in type.options ? type.options.description : undefined
 
-  if (type.kind === 'string') {
+  if (type.kind === types.Kind.String) {
     return `String${isRequired}`
   }
-  if (type.kind === 'custom') {
+  if (type.kind === types.Kind.Custom) {
     const gqlType: GraphqlType = { type: 'scalar', description, impl: type }
-    typeMap[type.opts?.name ?? type.name] = gqlType
-    return type.name === 'void' ? type.opts?.name ?? type.name : `${type.opts?.name ?? type.name}${isRequired}`
+    typeMap[type.typeName] = gqlType
+    return `${type.typeName}${isRequired}`
   }
-  if (type.kind === 'boolean') {
+  if (type.kind === types.Kind.Boolean) {
     return `Boolean${isRequired}`
   }
-  if (type.kind === 'number') {
-    if (type.opts?.multipleOf != null && type.opts.multipleOf % 1 === 0) {
+  if (type.kind === types.Kind.Number) {
+    if (type.options?.isInteger) {
       return `Int${isRequired}`
     }
     return `Float${isRequired}`
   }
-  if (type.kind === 'array-decorator') {
-    return `[${typeToGqlType(type.type, typeMap, typeRef, isInput, false, name)}]${isRequired}`
+  if (type.kind === types.Kind.Array) {
+    return `[${typeToGqlType(type.wrappedType, typeMap, typeRef, isInput, false, name)}]${isRequired}`
   }
-  if (type.kind === 'optional-decorator' || type.kind === 'nullable-decorator') {
-    return typeToGqlType(type.type, typeMap, typeRef, isInput, true, name)
+  if (type.kind === types.Kind.Optional || type.kind === types.Kind.Nullable) {
+    return typeToGqlType(type.wrappedType, typeMap, typeRef, isInput, true, name)
   }
-  if (type.kind === 'default-decorator') {
-    return typeToGqlType(type.type, typeMap, typeRef, isInput, isInput, name)
+  if (type.kind === types.Kind.Reference) {
+    return typeToGqlType(type.wrappedType, typeMap, typeRef, isInput, isOptional, name)
   }
-  if (type.kind === 'relation-decorator') {
-    return typeToGqlType(type.type, typeMap, typeRef, isInput, isOptional, name)
-  }
-  if (type.kind === 'object') {
+  if (type.kind === types.Kind.Object) {
     name = name ?? 'NAME_NEEDED'
-    const fields = Object.entries(type.type).map(([fieldName, fieldT]) => {
-      const fieldMType = lazyToType(fieldT)
-      const fieldType = typeToGqlType(fieldT, typeMap, typeRef, isInput, false, `${name}_${fieldName}`)
-      const desc = fieldMType.opts?.description ? `"""${fieldMType.opts.description}"""\n` : ''
+    const fields = Object.entries(type.fields).map(([fieldName, fieldT]) => {
+      const fieldMType = types.concretise(fieldT as types.Type)
+      const fieldType = typeToGqlType(fieldT as types.Type, typeMap, typeRef, isInput, false, `${name}_${fieldName}`)
+      const desc = fieldMType.options?.description ? `"""${fieldMType.options.description}"""\n` : ''
       return `${desc}${fieldName}: ${fieldType}`
     })
     if (isInput) {
@@ -151,24 +105,24 @@ function typeToGqlTypeInternal(
 
     return `${isInput ? 'I' : ''}${name}${isRequired}`
   }
-  if (type.kind === 'enum') {
+  if (type.kind === types.Kind.Enum) {
     name = name ?? 'NAME_NEEDED'
     typeMap[name] = {
       type: 'enum',
       description,
       definition: `enum ${name} {
-      ${type.values.join('\n        ')}
+      ${type.variants.join('\n        ')}
     }`,
     }
     return `${name}${isRequired}`
   }
-  if (type.kind === 'union-operator') {
+  if (type.kind === types.Kind.Union) {
     name = name ?? 'NAME_NEEDED'
-    const ts = Object.entries(type.types)
+    const ts = Object.entries(type.variants)
     //If input use @oneOf https://github.com/graphql/graphql-spec/pull/825
     if (isInput) {
       const fields = ts.flatMap(([unionName, fieldT]) => {
-        const fieldType = typeToGqlType(fieldT, typeMap, typeRef, isInput, false, unionName)
+        const fieldType = typeToGqlType(fieldT as types.Type, typeMap, typeRef, isInput, false, unionName)
         const realType =
           fieldType.charAt(fieldType.length - 1) === '!' ? fieldType.substring(0, fieldType.length - 1) : fieldType
         return [`${unionName}: ${realType}`]
@@ -187,45 +141,29 @@ function typeToGqlTypeInternal(
       type: 'union',
       description,
       definition: `union ${name} = ${ts
-        .map(([k, t], i) => typeToGqlType(t, typeMap, typeRef, isInput, true, k))
+        .map(([k, t], i) => typeToGqlType(t as types.Type, typeMap, typeRef, isInput, true, k))
         .join(' | ')}`,
-      is: Object.fromEntries(
-        ts.map(([k]) => [
-          k,
-          type.opts?.is
-            ? (v) => {
-                return type.opts!.is![k](v)
-              }
-            : undefined,
-        ]),
-      ),
+      is: Object.fromEntries(ts.map(([k]) => [k, (v) => (v as Record<string, unknown>)[`__variant_${k}`] === true])),
     }
     return `${name}${isRequired}`
   }
-  if (type.kind === 'literal') {
-    const t = typeof type.value
+  if (type.kind === types.Kind.Literal) {
+    const t = typeof type.literalValue
     const tp = t === 'boolean' ? 'Boolean' : t === 'number' ? 'Float' : t === 'string' ? 'String' : null
-    if (type.value === null) {
+    if (type.literalValue === null) {
       typeMap['Null'] = {
         type: 'scalar',
-        impl: {
-          name: 'Null',
-          kind: 'custom',
-          decode() {
-            return { success: true, value: null }
-          },
-          encode() {
-            return null
-          },
-          encodedType: type,
-          type: null,
-          validate(input, options) {
+        impl: types.custom(
+          'null',
+          () => null,
+          () => decoder.succeed(null),
+          (input) => {
             if (input === null) {
-              return { success: true, value: null }
+              return validator.succeed()
             }
-            return { success: false, errors: [{ value: input, error: `Null expected` }] }
+            return validator.fail('Expected null', input)
           },
-        },
+        ),
       }
       return 'Null'
     }
@@ -237,14 +175,14 @@ function typeToGqlTypeInternal(
   return assertNever(type)
 }
 
-function generateTypes({ module }: { module: GenericModule }): {
+function generateTypes({ module }: { module: module.Module<functions.Functions, any> }): {
   typeMap: Record<string, GraphqlType>
   inputTypeMap: Record<string, GraphqlType>
 } {
   const typeMap: Record<string, GraphqlType> = {}
   const typeRef: Map<Function, string> = new Map()
-  const usedTypes: LazyType[] = []
-  for (const functionBody of Object.values(module.functions.definitions)) {
+  const usedTypes: types.Type[] = []
+  for (const functionBody of Object.values(module.functions)) {
     usedTypes.push(functionBody.output)
   }
   for (const type of usedTypes) {
@@ -252,8 +190,8 @@ function generateTypes({ module }: { module: GenericModule }): {
   }
   const inputTypeMap: Record<string, GraphqlType> = {}
   const inputTypeRef: Map<Function, string> = new Map()
-  const usedInputs: LazyType[] = []
-  for (const functionBody of Object.values(module.functions.definitions)) {
+  const usedInputs: types.Type[] = []
+  for (const functionBody of Object.values(module.functions)) {
     usedInputs.push(functionBody.input)
   }
   for (const type of usedInputs) {
@@ -290,7 +228,7 @@ function generateScalars({ typeMap }: { typeMap: Record<string, GraphqlType> }) 
   return { scalarDefs, scalarResolvers }
 }
 
-function generateQueryOrMutation<ServerContext, ContextInput>({
+function generateQueryOrMutation<const ServerContext, const Fs extends functions.Functions, const ContextInput>({
   module,
   type,
   api,
@@ -299,14 +237,15 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
   error,
 }: {
   type: 'query' | 'mutation'
-  module: GenericModule
-  api: GraphqlApi<Functions>
+  module: module.Module<Fs, ContextInput>
+  api: Api<Fs>
   context: (server: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   setHeader: (server: ServerContext, name: string, value: string) => void
-  error?: ErrorHandler<Functions, ServerContext>
+  error?: ErrorHandler<Fs, ServerContext>
 }) {
   const resolvers = Object.fromEntries(
-    Object.entries(module.functions.definitions).flatMap(([functionName, functionBody]) => {
+    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
+      const partialOutputType = types.partialDeep(functionBody.output)
       const specifications = api.functions[functionName]
       if (!specifications) {
         return []
@@ -329,49 +268,46 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
           serverContext: ServerContext,
           info: GraphQLResolveInfo,
         ) => {
-          const operationId = randomOperationId()
-          const log = buildLogger(
-            module.name,
+          const operationId = utils.randomOperationId()
+          const log = logger.build({
+            moduleName: module.name,
             operationId,
-            specification.type,
-            specification.name ?? functionName,
-            'GQL',
-            new Date(),
-          )
-          setHeader(serverContext, 'operation-id', operationId)
-          const decoded = decodeAndValidate(functionBody.input, input[gqlInputTypeName], {
-            cast: true,
-            inputUnion: true,
+            operationType: specification.type,
+            operationName: specification.name ?? functionName,
+            server: 'GQL',
           })
-          if (!decoded.success) {
+          setHeader(serverContext, 'operation-id', operationId)
+          const decoded = decoder.decode(functionBody.input, input[gqlInputTypeName], {
+            typeCastingStrategy: 'tryCasting',
+          })
+          if (!decoded.isOk) {
             log('Bad request.')
-            throw createGraphQLError(`Invalid input.`, { extensions: decoded.errors })
+            throw createGraphQLError(`Invalid input.`, { extensions: decoded.error })
           }
-          const projectionType = () => getProjectionType(functionBody.output)
-          const gqlProjection = graphqlInfoToProjection(info, functionBody.output)
-          const projection = decode(projectionType(), gqlProjection, { cast: true, strict: true })
-          if (!projection.success) {
+          const gqlProjection = infoToProjection(info, functionBody.output)
+          const proj = projection.decode(functionBody.output, gqlProjection, { typeCastingStrategy: 'tryCasting' })
+          if (!proj.isOk) {
             log('Bad request. (projection)')
-            throw createGraphQLError(`Invalid input.`, { extensions: projection.errors })
+            throw createGraphQLError(`Invalid input.`, { extensions: proj.error })
           }
 
           const contextInput = await context(serverContext, info)
           const moduleCtx = await module.context(contextInput, {
-            projection: projection.value as GenericProjection,
+            projection: proj.value,
             input: decoded.value,
             operationId,
             log,
           })
           try {
-            const result = await functionBody.apply({
+            const result = await functions.apply(functionBody, {
               context: moduleCtx,
-              projection: projection.value,
+              projection: proj.value,
               input: decoded.value,
               operationId,
               log,
             })
-            const projectedType = getProjectedType(functionBody.output, projection.value as GenericProjection)
-            const encoded = encode(projectedType, result)
+            const encoded = encoder.encode(partialOutputType, result)
+            //TODO: if union remove tag and set `__variant_${tag}`: true
             log('Completed.')
             return encoded
           } catch (e) {
@@ -384,7 +320,7 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
                 operationId,
                 context: moduleCtx,
                 functionArgs: {
-                  projection: projection.value,
+                  projection: proj.value,
                   input: decoded.value,
                 },
                 ...serverContext,
@@ -402,7 +338,7 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
   )
 
   const namespaces: Record<string, string[]> = {}
-  const defs = Object.entries(module.functions.definitions)
+  const defs = Object.entries(module.functions)
     .flatMap(([functionName, functionBody]) => {
       const specifications = api.functions[functionName]
       if (!specifications) {
@@ -415,7 +351,8 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
         return []
       }
       return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {
-        const namespace = specification.namespace !== null ? functionBody.namespace ?? specification.namespace : null
+        const namespace =
+          specification.namespace !== null ? functionBody.options?.namespace ?? specification.namespace : null
         if (namespace) {
           if (namespaces[namespace]) {
             namespaces[namespace].push(specification.name ?? functionName)
@@ -423,10 +360,10 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
             namespaces[namespace] = [specification.name ?? functionName]
           }
         }
-        const inputIsVoid = isVoidType(functionBody.input)
+        const inputIsVoid = false
         const gqlInputType = inputIsVoid ? null : typeToGqlType(functionBody.input, {}, new Map(), true, false)
         const gqlOutputType = typeToGqlType(functionBody.output, {}, new Map(), false, false)
-        const description = functionBody.opts?.description ? `"""${functionBody.opts?.description}"""\n` : null
+        const description = functionBody.options?.description ? `"""${functionBody.options?.description}"""\n` : null
         const def = inputIsVoid
           ? `${specification.name ?? functionName}: ${gqlOutputType}`
           : `${specification.name ?? functionName}(${
@@ -466,18 +403,18 @@ function generateQueryOrMutation<ServerContext, ContextInput>({
   return { defs, resolvers: { ...resolvers, ...otherResolvers }, namespacesResolvers }
 }
 
-export function generateGraphqlSchema<ServerContext, ContextInput>({
+export function fromModule<const ServerContext, const Fs extends functions.Functions, const ContextInput>({
   module,
   api,
   context,
   setHeader,
   error,
 }: {
-  module: GenericModule
-  api: GraphqlApi<Functions>
+  module: module.Module<Fs, ContextInput>
+  api: Api<Fs>
   context: (server: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   setHeader: (server: ServerContext, name: string, value: string) => void
-  error?: ErrorHandler<Functions, ServerContext>
+  error?: ErrorHandler<Fs, ServerContext>
 }): GraphQLSchema {
   const {
     defs: queryDefs,

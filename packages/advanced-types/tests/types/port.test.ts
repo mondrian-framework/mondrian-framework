@@ -1,27 +1,22 @@
 import { m } from '../../src/index'
-import { decode, encode, validate } from '@mondrian-framework/model'
-import { test, expect } from 'vitest'
+import { testTypeEncodingAndDecoding } from './property-helper'
+import { fc as gen } from '@fast-check/vitest'
+import { describe } from 'vitest'
 
-const port = m.port()
+const min = 1
+const max = 65535
+const constraints = { min, max }
+const isPort = (n: number) => min <= n && n <= max && Number.isInteger(n)
 
-test('Port - encode', async () => {
-  expect(encode(port, 8080)).toBe(8080)
-})
+const validValues = gen.integer(constraints)
+const invalidValues = gen.oneof(gen.integer(), gen.float()).filter((n) => !isPort(n))
+const knownInvalidValues = [-200, 2000000, 10.1, null, undefined, { field: 42 }, NaN]
 
-test('Port - decode', async () => {
-  expect(decode(port, 8080)).toEqual({ success: true, value: 8080 })
-  expect(decode(port, 'any-string').success).toBe(false)
-  expect(decode(port, true).success).toBe(false)
-  expect(decode(port, null).success).toBe(false)
-  expect(decode(port, undefined).success).toBe(false)
-})
-
-test('Port - valid', async () => {
-  const values = [8080, 3000, 65535]
-  values.forEach((value) => expect(validate(port, value)).toStrictEqual({ success: true, value }))
-})
-
-test('Port - invalid', async () => {
-  const values = [0, 8080.01, -3000, 65536, 1000000]
-  values.forEach((value) => expect(validate(port, value).success).toBe(false))
-})
+describe(
+  'standard property based tests',
+  testTypeEncodingAndDecoding(m.port, {
+    validValues,
+    invalidValues,
+    knownInvalidValues,
+  }),
+)

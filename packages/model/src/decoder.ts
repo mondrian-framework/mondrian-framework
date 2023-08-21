@@ -1,269 +1,389 @@
-import { decodeAndValidate } from './converter'
-import { Error, Result, concat2, enrichErrors, error, errors, richError, success } from './result'
-import { ArrayDecorator, Infer, LazyType, ObjectType, boolean, number, string, union } from './type-system'
-import { lazyToType } from './utils'
-import { assertNever } from '@mondrian-framework/utils'
+import { types, decoder, result, validator, path } from './index'
+import { assertNever, mergeArrays } from './utils'
 
-//cast default is false
-//strict default is true
-//errors default is 'minimum'
-export type DecodeOptions = {
-  cast?: boolean
-  strict?: boolean
-  errors?: 'exhaustive' | 'minimum'
-  inputUnion?: boolean
-}
-export function decode<const T extends LazyType>(type: T, value: unknown, opts?: DecodeOptions): Result<unknown> {
-  const result = decodeInternal(type, value, opts)
-  return enrichErrors(result)
+/**
+ * The options that can be used when decoding a type.
+ */
+export type Options = {
+  typeCastingStrategy: 'tryCasting' | 'expectExactTypes'
+  errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
+  // TODO: object strictness?
 }
 
-function decodeInternal(type: LazyType, value: unknown, opts: DecodeOptions | undefined): Result<unknown> {
-  const t = lazyToType(type)
-  if (t.kind === 'string') {
-    return assertString(value, opts)
-  } else if (t.kind === 'number') {
-    return assertNumber(value, opts)
-  } else if (t.kind === 'boolean') {
-    return assertBoolean(value, opts)
-  } else if (t.kind === 'literal') {
-    if (value === t.value) {
-      return success(value)
-    }
-    if (opts?.cast) {
-      const castedValue = decodeInternal(union({ n: number(), b: boolean(), s: string() }), value, opts)
-      if (castedValue.success) {
-        if (t.value === castedValue.value) {
-          return success(t.value)
-        }
-      }
-      if (t.value === null && value === 'null') {
-        return success(null)
-      }
-    }
-    return error(`Literal ${t.value} expected`, value)
-  } else if (t.kind === 'optional-decorator') {
-    if (value === undefined) {
-      return success(value)
-    }
-    if (opts?.cast && value === null) {
-      return success(undefined)
-    }
-    const result = decodeInternal(t.type, value, opts)
-    if (!result.success) {
-      return result.errors.length > 0 ? result : error(`Undefined expected`, value)
-    }
-    return result
-  } else if (t.kind === 'nullable-decorator') {
-    if (value === null) {
-      return success(null)
-    }
-    if (opts?.cast && value === undefined) {
-      return success(null)
-    }
-    const result = decodeInternal(t.type, value, opts)
-    if (!result.success) {
-      return result.errors.length > 0 ? result : error(`Null expected`, value)
-    }
-    return result
-  } else if (t.kind === 'default-decorator') {
-    const result = decodeInternal(t.type, value, opts)
-    if (result.success) {
-      return result
-    }
-    if (value === undefined || (opts?.cast && value === null)) {
-      if (typeof t.defaultValue === 'function') {
-        return success(t.defaultValue())
-      }
-      return success(t.defaultValue)
-    }
-    return result
-  } else if (t.kind === 'relation-decorator') {
-    return decodeInternal(t.type, value, opts)
-  } else if (t.kind === 'union-operator') {
-    if (opts?.inputUnion) {
-      const ts = Object.entries(t.types)
-      if (typeof value === 'object' && value) {
-        const keys = Object.keys(value)
-        const key = keys[0]
-        if (keys.length === 1 && ts.some((k) => k[0] === key)) {
-          return decodeInternal(t.types[key], (value as Record<string, unknown>)[key], opts)
-        }
-      }
-      return error(`Expect exactly one of this property ${ts.map((v) => `'${v[0]}'`).join(', ')}`, value)
-    } else {
-      const errs: Error[] = []
-      for (const [key, u] of Object.entries(t.types)) {
-        const result = decodeInternal(u, value, opts)
-        if (result.success) {
-          return result
-        }
-        errs.push(...result.errors.map((e) => ({ ...e, unionElement: key })))
-      }
-      return errors(errs)
-    }
-  } else if (t.kind === 'object') {
-    return concat2(assertObject(value, opts), (value) => decodeObjectProperties(value, t, opts))
-  } else if (t.kind === 'array-decorator') {
-    return concat2(assertArray(value, opts), (value) => decodeArrayElements(value, t, opts))
-  } else if (t.kind === 'enum') {
-    if (typeof value !== 'string' || !t.values.includes(value)) {
-      return error(`Enumerator expected (${t.values.map((v) => `"${v}"`).join(' | ')})`, value)
-    }
-    return success(value)
-  } else if (t.kind === 'custom') {
-    const preDecoded = decodeAndValidate(t.encodedType, value, opts)
-    if (!preDecoded.success) {
-      return preDecoded
-    }
-    const result = t.decode(preDecoded.value, t.opts, opts)
-    if (!result.success) {
-      return result
-    }
-    return result
+/**
+ * The default recommended options to be used in the decoding process.
+ */
+export const defaultOptions: Options = {
+  typeCastingStrategy: 'expectExactTypes',
+  errorReportingStrategy: 'stopAtFirstError',
+}
+
+/**
+ * The result of the process of decoding: it can either hold a value or an array of decoding errors.
+ */
+export type Result<A> = result.Result<A, decoder.Error[]>
+
+/**
+ * TODO: add doc
+ * @param type
+ * @param value
+ * @param decodingOptions
+ * @param validationOptions
+ * @returns
+ */
+export function decode<T extends types.Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: Partial<Options>,
+  validationOptions?: Partial<validator.Options>,
+): result.Result<types.Infer<T>, validator.Error[] | decoder.Error[]> {
+  return decodeWithoutValidation(type, value, decodingOptions)
+    .mapError((errors) => errors as validator.Error[] | decoder.Error[])
+    .chain((decodedValue) => {
+      return validator.validate<T>(type, decodedValue, validationOptions).replace(decodedValue)
+    })
+}
+
+/**
+ * TODO: add doc and make sure that it makes clear that this should be used for custom decoders only
+ * @param type
+ * @param value
+ * @param decodingOptions
+ * @returns
+ */
+export function decodeWithoutValidation<T extends types.Type>(
+  type: T,
+  value: unknown,
+  decodingOptions?: Partial<Options>,
+): decoder.Result<types.Infer<T>> {
+  const actualOptions = { ...defaultOptions, ...decodingOptions }
+  return unsafeDecode(type, value, actualOptions) as decoder.Result<types.Infer<T>>
+}
+
+/**
+ * TODO: add doc
+ */
+export type Error = path.WithPath<{
+  expected: string
+  got: unknown
+}>
+
+/**
+ * Utility function to add a new expected type to the `expected` field of a `decoder.Error`.
+ */
+function addExpected(otherExpected: string): (error: decoder.Error) => decoder.Error {
+  return (error: decoder.Error) => ({
+    ...error,
+    expected: `${error.expected} or ${otherExpected}`,
+  })
+}
+
+/**
+ * @param value the value the decoding result will return
+ * @returns a `decoder.Result` that succeeds with the given value
+ */
+export const succeed = <A>(value: A): decoder.Result<A> => result.ok(value)
+
+/**
+ * @param errors the errors that made the decoding process fail
+ * @returns a `decoder.Result` that fails with the given array of errors
+ */
+export const failWithErrors = <A>(errors: decoder.Error[]): decoder.Result<A> => result.fail(errors)
+
+/**
+ * @param expected the expected value
+ * @param got the actual value that couldn't be decoded
+ * @returns a `decoder.Result` that fails with a single error with an empty path and the provided
+ *          `expected` and `got` values
+ */
+export const fail = <A>(expected: string, got: unknown): decoder.Result<A> =>
+  decoder.failWithErrors([{ expected, got, path: path.empty() }])
+
+function unsafeDecode(type: types.Type, value: unknown, options: Options): decoder.Result<unknown> {
+  const concreteType = types.concretise(type)
+  switch (concreteType.kind) {
+    case types.Kind.Boolean:
+      return decodeBoolean(value, options)
+    case types.Kind.Number:
+      return decodeNumber(value, options)
+    case types.Kind.String:
+      return decodeString(value, options)
+    case types.Kind.Literal:
+      return decodeLiteral(concreteType, value, options)
+    case types.Kind.Enum:
+      return decodeEnum(concreteType, value)
+    case types.Kind.Optional:
+      return decodeOptional(concreteType, value, options)
+    case types.Kind.Nullable:
+      return decodeNullable(concreteType, value, options)
+    case types.Kind.Union:
+      return decodeUnion(concreteType, value, options)
+    case types.Kind.Object:
+      return decodeObject(concreteType, value, options)
+    case types.Kind.Array:
+      return decodeArray(concreteType, value, options)
+    case types.Kind.Reference:
+      return decodeReference(concreteType, value, options)
+    case types.Kind.Custom:
+      return concreteType.decode(value, options, concreteType.options)
+    default:
+      assertNever(concreteType, 'Totality check failed when unsafe decoding a value, this should have never happened')
   }
-  assertNever(t)
 }
 
-function assertString(value: unknown, opts: DecodeOptions | undefined): Result<string> {
+/**
+ * Tries to decode a boolean value.
+ */
+function decodeBoolean(value: unknown, options: Options): decoder.Result<boolean> {
+  if (value === true || value === false) {
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value === 'true') {
+    return decoder.succeed(true)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value === 'false') {
+    return decoder.succeed(false)
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+    return decoder.succeed(value !== 0)
+  } else {
+    return decoder.fail('boolean', value)
+  }
+}
+
+/**
+ * Tries to decode a number value.
+ */
+function decodeNumber(value: unknown, options: Options): decoder.Result<number> {
+  if (typeof value === 'number') {
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
+    return numberFromString(value)
+  } else {
+    return decoder.fail('number', value)
+  }
+}
+
+function numberFromString(string: string): decoder.Result<number> {
+  const number = Number(string)
+  if (Number.isNaN(number)) {
+    return fail<number>('number', string)
+  } else {
+    return decoder.succeed(number)
+  }
+}
+
+/**
+ * Tries to decode a string value.
+ */
+function decodeString(value: unknown, options: Options): decoder.Result<string> {
   if (typeof value === 'string') {
-    return success(value)
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+    return decoder.succeed(value.toString())
+  } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'boolean') {
+    return decoder.succeed(value.toString())
+  } else {
+    return decoder.fail('string', value)
   }
-  if (opts?.cast) {
-    if (typeof value === 'number') {
-      return success(value.toString())
-    }
-    if (typeof value === 'boolean') {
-      return success(value ? 'true' : 'false')
-    }
-  }
-  return error(`String expected`, value)
 }
 
-function assertObject(value: unknown, opts: DecodeOptions | undefined): Result<Record<string, unknown>> {
-  if (typeof value !== 'object' || !value) {
-    return error(`Object expected`, value)
+/**
+ * Tries to decode a literal value.
+ */
+function decodeLiteral(type: types.LiteralType<any>, value: unknown, options: Options): decoder.Result<any> {
+  if (value === type.literalValue) {
+    return decoder.succeed(value)
+  } else if (options.typeCastingStrategy === 'tryCasting' && type.literalValue === null && value === 'null') {
+    return decoder.succeed(null)
+  } else {
+    return decoder.fail(`literal (${type.literalValue})`, value)
   }
-  return success(value as Record<string, unknown>)
+}
+
+/**
+ * Tries to decode a value as a memeber of an enum: the decoding is successfull if the value is one of the variants of
+ * the enum.
+ */
+function decodeEnum(type: types.EnumType<any>, value: unknown): decoder.Result<any> {
+  return type.variants.includes(value)
+    ? decoder.succeed(value)
+    : decoder.fail(`enum (${type.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
+}
+
+/**
+ * Tries to decode an optional value: if it gets an `undefined` it succeeds, otherwise it tries to decode `value` as a
+ * value of the wrapped type.
+ */
+function decodeOptional(type: types.OptionalType<any>, value: unknown, options: Options): decoder.Result<any> {
+  if (value === undefined || value === null) {
+    return decoder.succeed(undefined)
+  } else {
+    return unsafeDecode(type.wrappedType, value, options).mapError((errors) => errors.map(addExpected('undefined')))
+  }
+}
+
+/**
+ * Tries to decode a nullable value: if it gets a `null` it succeeds, otherwise it tries to decode `value` as a value
+ * of the wrapped type.
+ */
+function decodeNullable<T extends types.Type>(
+  type: types.NullableType<T>,
+  value: unknown,
+  options: Options,
+): decoder.Result<T | null> {
+  if (value === null) {
+    return decoder.succeed(null)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value === undefined) {
+    return decoder.succeed(null)
+  } else {
+    return unsafeDecode(type.wrappedType, value, options).mapError((errors) =>
+      errors.map(addExpected('null')),
+    ) as decoder.Result<T | null>
+  }
+}
+
+/**
+ * Tries to decode a reference value by decoding `value` as a value of the wrapped type.
+ */
+function decodeReference(type: types.ReferenceType<any>, value: unknown, options: Options): decoder.Result<any> {
+  return unsafeDecode(type.wrappedType, value, options)
+}
+
+/**
+ * Tries to decode an array by decoding each of its values as a value of the wrapped type.
+ */
+function decodeArray(type: types.ArrayType<any, any>, value: unknown, options: Options): decoder.Result<any> {
+  if (value instanceof Array) {
+    return decodeArrayValues(type, value, options)
+  } else if (options.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
+    return decodeObjectAsArray(type, value, options)
+  } else {
+    return decoder.fail('array', value)
+  }
+}
+
+/**
+ * Decodes the values of an array returning an array of decoded values if successful.
+ */
+function decodeArrayValues(type: types.ArrayType<any, any>, array: unknown[], options: Options): decoder.Result<any> {
+  const addDecodedItem = (accumulator: any[], item: any) => {
+    accumulator.push(item)
+    return accumulator
+  }
+  const decodeItem = (item: unknown, index: number) =>
+    unsafeDecode(type.wrappedType, item, options).mapError((errors) => path.prependIndexToAll(errors, index))
+
+  return options.errorReportingStrategy === 'stopAtFirstError'
+    ? result.tryEachFailFast(array, [] as unknown[], addDecodedItem, decodeItem)
+    : result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoder.Error[], mergeArrays, decodeItem)
+}
+
+/**
+ * Tries to decode an object as an array.
+ */
+function decodeObjectAsArray(type: types.ArrayType<any, any>, object: Object, options: Options): decoder.Result<any> {
+  return objectToArray(object).chain((object) => decodeArrayValues(type, Object.values(object), options))
+}
+
+/**
+ * @param object an object to check for array-castability
+ * @returns the values of the object sorted by their key, if the given object is castable as an array: that is, if all
+ *          its keys are consecutive numbers from `0` up to a given `n`
+ */
+function objectToArray(object: Object): decoder.Result<any[]> {
+  const keys = keysAsConsecutiveNumbers(object)
+  return keys === undefined
+    ? decoder.fail('array', object)
+    : decoder.succeed(keys.map((i) => object[i as keyof object]))
+}
+
+/**
+ * @param object the object whose keys will be converted to an array of sorted numbers
+ * @returns an array of sorted numbers if all the keys of `object` are numbers (starting from 0) and consecutive, that
+ *          is, the object is in the form `{0: "a", 1: "b", 2: "c", ...}`
+ */
+function keysAsConsecutiveNumbers(object: Object): number[] | undefined {
+  const keys = Object.keys(object).map(Number).sort()
+  const startsAtZero = keys.at(0) === 0
+  return startsAtZero && allConsecutive(keys) ? keys : undefined
+}
+
+/**
+ * @param numbers a _non empty_ array of numbers
+ * @returns `true` if all numbers in the array are consecutive in ascending order, that is the array is in the form
+ *          `[n, n+1, n+2, ...]`
+ */
+function allConsecutive(numbers: number[]): boolean {
+  let [previousNumber, ...rest] = numbers
+  for (const number of rest) {
+    const isConsecutive = previousNumber + 1 === number
+    if (!isConsecutive) {
+      return false
+    } else {
+      previousNumber = number
+    }
+  }
+  return true
+}
+
+/**
+ * Tries to decode a value belonging to a union as described by `type`.
+ */
+function decodeUnion(type: types.UnionType<any>, value: unknown, options: Options): decoder.Result<any> {
+  if (typeof value === 'object' && value) {
+    const object = value as Record<string, any>
+    const variantName = singleKeyFromObject(object)
+    if (variantName !== undefined && Object.keys(type.variants).includes(variantName)) {
+      const decodingResult = unsafeDecode(type.variants[variantName], object[variantName], options)
+      return decodingResult
+        .map((value) => Object.fromEntries([[variantName, value]]))
+        .mapError((errors) => path.prependVariantToAll(errors, variantName))
+    }
+  }
+  const prettyVariants = Object.keys(type.variants).join(' | ')
+  return decoder.fail(`union (${prettyVariants})`, value)
+}
+
+/**
+ * @param object the object from which to extract a single key
+ * @returns the key of the object if it has exactly one key; otherwise, it returns `undefined`
+ */
+function singleKeyFromObject(object: object): string | undefined {
+  const keys = Object.keys(object)
+  return keys.length === 1 ? keys[0] : undefined
+}
+
+function decodeObject(type: types.ObjectType<any, any>, value: unknown, options: Options): decoder.Result<any> {
+  return castToObject(value, options).chain((object) => decodeObjectProperties(type, object, options))
+}
+
+function castToObject(value: unknown, options: Options): decoder.Result<Record<string, unknown>> {
+  if (typeof value === 'object') {
+    if (value === null && options.typeCastingStrategy === 'expectExactTypes') {
+      return decoder.fail('object', null)
+    }
+    return decoder.succeed((value ?? {}) as Record<string, unknown>)
+  } else {
+    return decoder.fail('object', value)
+  }
 }
 
 function decodeObjectProperties(
-  value: Record<string, unknown>,
-  type: ObjectType,
-  opts: DecodeOptions | undefined,
-): Result<Record<string, unknown>> {
-  const strict = opts?.strict ?? true
-  const cast = opts?.cast ?? false
-  const errorLevel = opts?.errors ?? 'minimum'
-  const errs: Error[] = []
-  if (!cast && strict) {
-    const typeKeys = new Set(Object.keys(type.type))
-    for (const [key, subvalue] of Object.entries(value)) {
-      if (!typeKeys.has(key) && subvalue !== undefined) {
-        errs.push(richError(`Value not expected`, subvalue, key))
-        if (errorLevel === 'minimum') {
-          break
-        }
-      }
-    }
+  type: types.ObjectType<any, any>,
+  object: Record<string, unknown>,
+  options: Options,
+): decoder.Result<any> {
+  const addDecodedEntry = (accumulator: [string, unknown][], [fieldName, value]: readonly [string, unknown]) => {
+    accumulator.push([fieldName, value])
+    return accumulator
   }
-  if (errorLevel === 'minimum' && errs.length > 0) {
-    return errors(errs)
-  }
-  const accumulator: Record<string, unknown> = strict ? {} : { ...value }
-  for (const [key, subtype] of Object.entries(type.type)) {
-    const result = decodeInternal(subtype as LazyType, value[key], opts)
-    const enrichedResult = enrichErrors(result, [key])
-    if (!enrichedResult.success) {
-      errs.push(...enrichedResult.errors)
-      if (errorLevel === 'minimum') {
-        break
-      }
-    } else if (enrichedResult.value !== undefined) {
-      accumulator[key] = enrichedResult.value
-    }
-  }
-  if (errs.length > 0) {
-    return errors(errs)
-  }
-  return success(accumulator)
-}
+  const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
+    unsafeDecode(fieldType, object[fieldName], options)
+      .map((value) => [fieldName, value] as const)
+      .mapError((errors) => path.prependFieldToAll(errors, fieldName))
 
-function assertArray(value: unknown, opts: DecodeOptions | undefined): Result<unknown[]> {
-  if (Array.isArray(value)) {
-    return success(value)
-  }
-  if (opts?.cast && typeof value === 'object' && value) {
-    // { 0: "a", 1: "b" } -> ["a", "b"]
-    const keys = Object.keys(value)
-    if (keys.some((v) => Number.isNaN(Number(v)))) {
-      return error(`Array expected`, value)
-    }
-    const array: unknown[] = []
-    for (let i = 0; i < keys.length; i++) {
-      const index = Number(keys[i])
-      if (index !== i) {
-        return error(`Array expected`, value)
-      }
-      array.push((value as Record<string, unknown>)[keys[i]])
-    }
-    if (array.length === keys.length) {
-      return success(array)
-    }
-  }
-  return error(`Array expected`, value)
-}
-
-function decodeArrayElements(
-  value: unknown[],
-  type: ArrayDecorator,
-  opts: DecodeOptions | undefined,
-): Result<unknown[]> {
-  const errs: Error[] = []
-  const errorLevel = opts?.errors ?? 'minimum'
-  const values: unknown[] = []
-  for (let i = 0; i < value.length; i++) {
-    const result = decodeInternal(type.type, value[i], opts)
-    const enrichedResult = enrichErrors(result, [i])
-    if (!enrichedResult.success) {
-      errs.push(...enrichedResult.errors)
-      if (errorLevel === 'minimum') {
-        break
-      }
-    } else {
-      values.push(enrichedResult.value)
-    }
-  }
-  if (errs.length > 0) {
-    return errors(errs)
-  }
-  return success(values)
-}
-
-function assertNumber(value: unknown, opts: DecodeOptions | undefined): Result<number> {
-  if (typeof value === 'number') {
-    return success(value)
-  }
-  if (opts?.cast) {
-    const v = Number(value)
-    if (!Number.isNaN(v)) {
-      return success(v)
-    }
-  }
-  return error(`Number expected`, value)
-}
-
-function assertBoolean(value: unknown, opts: DecodeOptions | undefined): Result<boolean> {
-  if (typeof value === 'boolean') {
-    return success(value)
-  }
-  if (opts?.cast) {
-    if (typeof value === 'number') {
-      return success(value !== 0)
-    }
-    if (value === 'true' || value === 'false') {
-      return success(value === 'true')
-    }
-  }
-  return error(`Boolean expected`, value)
+  const entries = Object.entries(type.fields) as [string, types.Type][]
+  const decodedEntries =
+    options.errorReportingStrategy === 'stopAtFirstError'
+      ? result.tryEachFailFast(entries, [], addDecodedEntry, decodeEntry)
+      : result.tryEach(entries, [], addDecodedEntry, [] as decoder.Error[], mergeArrays, decodeEntry)
+  return decodedEntries.map(Object.fromEntries)
 }

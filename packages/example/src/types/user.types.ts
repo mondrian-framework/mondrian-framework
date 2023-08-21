@@ -8,21 +8,21 @@ export const User = () =>
       id: Id,
       email: a.email(),
       name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
-      posts: t.relation(t.array(Post)),
+      posts: t.reference(t.array(Post)),
       audit: Audit,
     })
-    .named('User')
+    .setName('User')
 export type User = t.Infer<typeof User>
 
 export const Audit = () =>
   t
     .object({
-      createdAt: t.datetime(),
+      createdAt: t.dateTime(),
     })
-    .named('Audit')
+    .setName('Audit')
 export type Audit = t.Infer<typeof Audit>
 
-const M = t.datetime().named('Asd')
+const M = t.dateTime().setName('Asd')
 
 export const Post = () =>
   t
@@ -31,16 +31,16 @@ export const Post = () =>
       title: t.string({ minLength: 1, maxLength: 200 }),
       content: t.string({ maxLength: 5000 }).nullable(),
       published: t.boolean(),
-      author: t.relation(User),
+      author: t.reference(User),
     })
-    .named('Post')
+    .setName('Post')
 export type Post = t.Infer<typeof Post>
 
 export const UserFilter = t
   .object({
     id: Id.optional(),
   })
-  .named('UserFilter')
+  .setName('UserFilter')
 export type UserFilter = t.Infer<typeof UserFilter>
 
 export const LoginInput = t
@@ -48,39 +48,42 @@ export const LoginInput = t
     email: a.email(),
     password: t.string({ minLength: 1, maxLength: 100 }),
   })
-  .named('LoginInput')
+  .setName('LoginInput')
 export type LoginInput = t.Infer<typeof LoginInput>
 
-export const RegisterInput = t
-  .merge(
-    t.select(User, {
-      email: true,
-      name: true,
-    }),
-    t.object({
-      password: t.string({ minLength: 5, maxLength: 100 }),
-      audit: Audit,
-    }),
-  )
-  .named('RegisterInput')
+export const RegisterInput = t.merge(
+  t.pick(User, {
+    email: true,
+    name: true,
+  }),
+  t.object({
+    password: t.string({ minLength: 5, maxLength: 100 }),
+    audit: Audit,
+  }),
+  'immutable',
+  { name: 'RegisterInput' },
+)
 export type RegisterInput = t.Infer<typeof RegisterInput>
 
-export const PostInput = t
-  .select(Post, {
+export const PostInput = t.pick(
+  Post,
+  {
     title: true,
     content: true,
-    author: { name: true, posts: { title: true } },
-  })
-  .named('PostInput')
+  },
+  'immutable',
+  { name: 'PostInput' },
+)
+
 export type PostInput = t.Infer<typeof PostInput>
 
-export const Posts = t.array(Post).named('Posts')
+export const Posts = t.array(Post).setName('Posts')
 
 export const BasicFilter = t
   .object({
-    skip: t.integer({ minimum: 0 }).default(0),
-    take: t.integer({ minimum: 0, maximum: 20 }).default(20),
+    skip: t.integer({ minimum: 0 }),
+    take: t.integer({ minimum: 0, maximum: 20 }),
   })
-  .named('BasicFilter')
+  .setName('BasicFilter')
 
 export type BasicFilter = t.Infer<typeof BasicFilter>

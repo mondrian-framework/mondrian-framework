@@ -49,14 +49,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         headers: responseHeaders,
       }
     }
-    const input = inputExtractor(request)
-    const decoded = specification.openapi
-      ? decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' })
-      : decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' }).lazyOr(() =>
-          decoder.decode(functionBody.input, request.query[specification.inputName ?? 'input'], {
-            typeCastingStrategy: 'tryCasting',
-          }),
-        )
+    const input = specification.openapi ? specification.openapi.input(request) : inputExtractor(request)
+    const decoded = decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' })
     if (!decoded.isOk) {
       log('Bad request.')
       return { status: 400, body: { errors: decoded.error }, headers: responseHeaders }

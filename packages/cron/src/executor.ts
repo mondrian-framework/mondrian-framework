@@ -9,10 +9,11 @@ export type Api<F extends functions.Functions> = {
   }
 }
 
-type FunctionSPecifications<Input> = ([Input] extends [void] ? {} : { input: () => Promise<Input> }) & {
+type FunctionSPecifications<Input> = {
   cron: string
   runAtStart?: boolean
   timezone?: string
+  input: () => Promise<Input>
 }
 
 export function start<const F extends functions.Functions, CI>({
@@ -40,7 +41,7 @@ export function start<const F extends functions.Functions, CI>({
         const operationId = utils.randomOperationId()
         const log = baseLogger.build({ operationId, operationType: options.cron, operationName: functionName })
         try {
-          const input = ('input' in options ? await options.input() : null) as never
+          const input = (await options.input()) as never
           const contextInput = await context({ cron: options.cron })
           const ctx = await module.context(contextInput, { input, projection: undefined, operationId, log })
           await functions.apply(functionBody, { input, projection: undefined, operationId, log, context: ctx })

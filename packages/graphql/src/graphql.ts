@@ -56,8 +56,8 @@ function typeToGqlTypeInternal(
   }
   if (type.kind === types.Kind.Custom) {
     const gqlType: GraphqlType = { type: 'scalar', description, impl: type }
-    typeMap[type.options?.name ?? ''] = gqlType
-    return `${type.options?.name ?? ''}${isRequired}`
+    typeMap[type.typeName] = gqlType
+    return `${type.typeName}${isRequired}`
   }
   if (type.kind === types.Kind.Boolean) {
     return `Boolean${isRequired}`

@@ -1,6 +1,6 @@
 import { CRON_API, REST_API } from './api'
 import { m as module } from './module'
-import cron from '@mondrian-framework/cron'
+import { cron } from '@mondrian-framework/cron'
 import { server as restServer } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 

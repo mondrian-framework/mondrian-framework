@@ -13,7 +13,7 @@ export const register = func.build({
   input: RegisterInput,
   output: t.object({ user: User, jwt: t.string() }).setName('RegisterOutput'),
   async apply({ input, context, projection: p }) {
-    const userSelect = projection.subProjection(p ?? true, ['user'])
+    const userSelect = (projection.subProjection as any)(p ?? true, ['user']) //TODO: #49
     const select = utils.projectionToSelection<Prisma.UserSelect>(User, userSelect)
     const user = await context.prisma.user.create({ data: input, select })
     return { user, jwt: jwt.sign({ userId: user.id }, 'shhhhh') }
@@ -25,7 +25,7 @@ export const login = func.build({
   input: LoginInput,
   output: t.object({ user: User, jwt: t.string() }).nullable().setName('LoginOutput'),
   async apply({ input, context, projection: p }) {
-    const userSelect = projection.subProjection(p ?? true, ['user'])
+    const userSelect = (projection.subProjection as any)(p ?? true, ['user']) //TODO: #49
     const select = utils.projectionToSelection<Prisma.UserSelect>(User, userSelect, {
       posts: { take: 1, select: { id: true } },
       id: true,

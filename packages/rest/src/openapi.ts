@@ -358,7 +358,7 @@ function typeToSchemaObject(
   ignoreFirstLevelOptionality?: boolean,
 ): { name: string | undefined; schema: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } {
   const type = types.concretise(t)
-  if (type.kind === types.Kind.Custom && type.options?.name === 'unknown') {
+  if (type.kind === types.Kind.Custom && type.typeName === 'unknown') {
     return { name: 'unknown', schema: {} }
   }
   if (typeof t === 'function') {
@@ -402,7 +402,7 @@ function typeToSchemaObjectInternal(
   if (type.kind === types.Kind.Custom) {
     const t = typeToSchemaObject(types.unknown(), typeMap, typeRef) //TODO: type.encodedAs or this conversion require a custom Map CustomType -> OpenAPIV3_1.SchemaObject
     return {
-      name: name ?? type.options?.name,
+      name: name ?? type.typeName,
       schema: { ...t, description: type.options?.description ?? type.options?.name }, //format: type.format?
     }
   }

@@ -18,7 +18,7 @@ export function start<const F extends functions.Functions, CI>({
   error,
 }: {
   module: module.Module<F, CI>
-  api: api.RestApi<F>
+  api: api.Api<F>
   server: FastifyInstance
   context: (serverContext: Context) => Promise<CI>
   error?: api.ErrorHandler<F, Context>

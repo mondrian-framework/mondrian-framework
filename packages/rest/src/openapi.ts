@@ -1,4 +1,4 @@
-import { RestApi, RestFunctionSpecs, RestRequest } from './api'
+import { Api, FunctionSpecifications, Request } from './api'
 import { decodeQueryObject } from './utils'
 import { types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
@@ -11,7 +11,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
   version,
 }: {
   module: module.Module<Fs, ContextInput>
-  api: RestApi<Fs>
+  api: Api<Fs>
   version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
@@ -94,14 +94,14 @@ export function generateOpenapiInput({
   typeMap,
   typeRef,
 }: {
-  specification: RestFunctionSpecs
+  specification: FunctionSpecifications
   functionBody: functions.Function
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): {
   parameters?: (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.ParameterObject)[]
   requestBody?: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.RequestBodyObject
-  input: (request: RestRequest) => unknown
+  input: (request: Request) => unknown
 } {
   if (specification.openapi) {
     return {
@@ -198,7 +198,7 @@ export function generateOpenapiInput({
             schema: schema as any,
           },
         ],
-        input: (request: RestRequest) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
+        input: (request: Request) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
       }
     }
   } else {
@@ -316,7 +316,7 @@ function openapiComponents<Fs extends functions.Functions, ContextInput>({
 }: {
   module: module.Module<Fs, ContextInput>
   version: number
-  api: RestApi<Fs>
+  api: Api<Fs>
 }): {
   components: OpenAPIV3_1.ComponentsObject
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>

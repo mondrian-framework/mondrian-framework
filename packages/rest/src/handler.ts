@@ -1,4 +1,4 @@
-import { ErrorHandler, RestFunctionSpecs, RestRequest } from './api'
+import { ErrorHandler, FunctionSpecifications, Request } from './api'
 import { generateOpenapiInput } from './openapi'
 import { decoder, encoder, projection, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
@@ -15,12 +15,12 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   functionName: string
   module: module.Module<Fs, ContextInput>
   functionBody: functions.Function
-  specification: RestFunctionSpecs
+  specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   globalMaxVersion: number
   error?: ErrorHandler<functions.Functions, ServerContext>
 }): (args: {
-  request: RestRequest
+  request: Request
   serverContext: ServerContext
 }) => Promise<{ status: number; body: unknown; headers?: Record<string, string | string[]> }> {
   const minVersion = specification.version?.min ?? 1
@@ -118,8 +118,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }
 
 function getInputExtractor(args: {
-  specification: RestFunctionSpecs
+  specification: FunctionSpecifications
   functionBody: functions.Function
-}): (request: RestRequest) => unknown {
+}): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }

@@ -1,8 +1,8 @@
+import { Context } from './handler'
 import { functions, module } from '@mondrian-framework/module'
-import { handler, api, utils } from '@mondrian-framework/rest'
+import { rest } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
 import { API, HandlerFunction, METHODS } from 'lambda-api'
-import { Context } from './handler'
 
 export function attachRestMethods<const Fs extends functions.Functions, const ContextInput>({
   module,
@@ -13,19 +13,19 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
 }: {
   module: module.Module<Fs, ContextInput>
   server: API
-  api: api.RestApi<Fs>
+  api: rest.Api<Fs>
   context: (serverContext: Context) => Promise<ContextInput>
-  error?: api.ErrorHandler<Fs, Context>
+  error?: rest.ErrorHandler<Fs, Context>
 }): void {
-  const maxVersion = utils.getMaxApiVersion(api)
+  const maxVersion = rest.utils.getMaxApiVersion(api)
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = utils.getPathFromSpecification(functionName, specification, '')
-      const restHandler = handler.fromFunction<Fs, Context, ContextInput>({
+      const path = rest.utils.getPathFromSpecification(functionName, specification, '')
+      const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
         module,
         context,
         specification,
@@ -40,7 +40,7 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
           request: {
             body: request.body as string,
             headers: request.headers,
-            method: request.method.toLowerCase() as api.RestMethod,
+            method: request.method.toLowerCase() as rest.Method,
             params: request.params as Record<string, string>,
             query: request.query as Record<string, string>,
           },

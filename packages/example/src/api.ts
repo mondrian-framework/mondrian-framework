@@ -8,7 +8,7 @@ import { api } from '@mondrian-framework/rest'
 //create a genetaror that writes a sdk.ts with only the required information
 export const MODULE = module
 
-export const REST_API: api.RestApi<Functions> = {
+export const REST_API: api.Api<Functions> = {
   version: 100,
   functions: {
     register: [

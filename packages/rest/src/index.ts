@@ -1,5 +1,1 @@
-export * as sdk from './sdk'
-export * as utils from './utils'
-export * as api from './api'
-export * as openapi from './openapi-exports'
-export * as handler from './handler'
+export * as rest from './exports'

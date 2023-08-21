@@ -1,4 +1,4 @@
-import { RestApi } from './api'
+import { Api } from './api'
 import { encodeQueryObject } from './utils'
 import { decoder, encoder, projection, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
@@ -19,7 +19,7 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type> = 
   options?: { projection?: P; headers?: Record<string, string | string[] | undefined> },
 ) => Promise<sdk.Project<OutputType, P>>
 
-export function build<const Fs extends functions.Functions, const API extends RestApi<Fs>>({
+export function build<const Fs extends functions.Functions, const API extends Api<Fs>>({
   module,
   api,
   endpoint,

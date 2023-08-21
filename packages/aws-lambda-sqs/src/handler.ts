@@ -3,7 +3,16 @@ import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
 
-export type SqsFunctionSpecs = {
+/**
+ * TODO: doc
+ */
+export type Api<Fs extends functions.Functions> = {
+  functions: {
+    [K in keyof Fs]?: FunctionSpecifications | readonly FunctionSpecifications[]
+  }
+}
+
+type FunctionSpecifications = {
   malformedMessagePolicy?: 'ignore' | 'delete'
   reportBatchItemFailures?: boolean
 } & (
@@ -12,18 +21,17 @@ export type SqsFunctionSpecs = {
     }
   | { anyQueue: true }
 )
-export type SqsApi<Fs extends functions.Functions> = {
-  functions: {
-    [K in keyof Fs]?: SqsFunctionSpecs | readonly SqsFunctionSpecs[]
-  }
-}
+
+/**
+ * TODO: doc
+ */
 export function build<const Fs extends functions.Functions, CI>({
   module,
   api,
   context,
 }: {
   module: module.Module<Fs, CI>
-  api: SqsApi<Fs>
+  api: Api<Fs>
   context: (args: { event: SQSEvent; context: Context; recordIndex: number }) => Promise<CI>
 }): SQSHandler {
   const specifications = Object.entries(api.functions).flatMap(([functionName, specifications]) => {
@@ -41,7 +49,7 @@ export function build<const Fs extends functions.Functions, CI>({
     const eventLog = logger.build({ operationId: fContext.awsRequestId })
     await eventLog(`Received ${event.Records.length} messages.`)
     const batchItemFailures: SQSBatchItemFailure[] = []
-    let spec: SqsFunctionSpecs | undefined = undefined
+    let spec: FunctionSpecifications | undefined = undefined
     for (let i = 0; i < event.Records.length; i++) {
       const m = event.Records[i]
       const url = getQueueUrl(m.eventSourceARN)

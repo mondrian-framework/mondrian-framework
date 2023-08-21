@@ -3,15 +3,12 @@ import { decoder } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
-export type SqsFunctionSpecs = {
-  queueUrl: string
-  malformedMessagePolicy?: 'ignore' | 'delete'
-  maxConcurrency?: number
-}
-
-export type SqsApi<Fs extends functions.Functions> = {
+/**
+ * TODO: doc
+ */
+export type Api<Fs extends functions.Functions> = {
   functions: {
-    [K in keyof Fs]?: SqsFunctionSpecs
+    [K in keyof Fs]?: FunctionSpecifications
   }
   options?: {
     config?: AWS.SQSClientConfig
@@ -19,13 +16,22 @@ export type SqsApi<Fs extends functions.Functions> = {
   }
 }
 
+type FunctionSpecifications = {
+  queueUrl: string
+  malformedMessagePolicy?: 'ignore' | 'delete'
+  maxConcurrency?: number
+}
+
+/**
+ * TODO: doc
+ */
 export function start<const Fs extends functions.Functions, const CI>({
   module,
   api,
   context,
 }: {
   module: module.Module<Fs, CI>
-  api: SqsApi<Fs>
+  api: Api<Fs>
   context: (args: { message: AWS.Message }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
@@ -79,7 +85,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
   module: module.Module<Fs, CI>
   functionName: string
   context: (args: { message: AWS.Message }) => Promise<CI>
-  specifications: SqsFunctionSpecs
+  specifications: FunctionSpecifications
   concurrency: number
 }) {
   const functionBody = module.functions[functionName]

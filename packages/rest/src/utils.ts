@@ -1,4 +1,4 @@
-import { RestApi, RestFunctionSpecs } from './api'
+import { Api, FunctionSpecifications } from './api'
 import { functions } from '@mondrian-framework/module'
 import { JSONType, isArray, setTraversingValue } from '@mondrian-framework/utils'
 
@@ -50,11 +50,11 @@ export function decodeQueryObject(input: Record<string, unknown>, prefix: string
   return output
 }
 
-export function getPathFromSpecification(functionName: string, spec: RestFunctionSpecs, prefix: string): string {
+export function getPathFromSpecification(functionName: string, spec: FunctionSpecifications, prefix: string): string {
   return `${prefix}/:v${spec.path ?? `/${functionName}`}`
 }
 
-export function getMaxApiVersion(api: RestApi<functions.Functions>): number {
+export function getMaxApiVersion(api: Api<functions.Functions>): number {
   return Object.values(api.functions)
     .flatMap((v) => (v ? (isArray(v) ? v : [v]) : []))
     .map((v) => Math.max(v.version?.max ?? 0, v.version?.min ?? 0))

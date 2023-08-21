@@ -1,4 +1,4 @@
-import { ServerContext } from './server'
+import { server } from '.'
 import { functions, module } from '@mondrian-framework/module'
 import { api, handler, utils } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
@@ -15,9 +15,9 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
   module: module.Module<Fs, ContextInput>
   server: FastifyInstance
   api: api.RestApi<Fs>
-  context: (serverContext: ServerContext) => Promise<ContextInput>
+  context: (serverContext: server.Context) => Promise<ContextInput>
   pathPrefix: string
-  error?: api.ErrorHandler<Fs, ServerContext>
+  error?: api.ErrorHandler<Fs, server.Context>
 }): void {
   const maxVersion = utils.getMaxApiVersion(api)
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
@@ -27,7 +27,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
       const path = utils.getPathFromSpecification(functionName, specification, pathPrefix).replace(/{(.*?)}/g, ':$1')
-      const generateHandler = handler.fromFunction<Fs, ServerContext, ContextInput>({
+      const generateHandler = handler.fromFunction<Fs, server.Context, ContextInput>({
         module,
         context,
         specification,

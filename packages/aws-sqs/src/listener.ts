@@ -1,25 +1,31 @@
 import * as AWS from '@aws-sdk/client-sqs'
-import { decode } from '@mondrian-framework/model'
-import { Functions, GenericModule, Module, buildLogger, randomOperationId } from '@mondrian-framework/module'
+import { decoder } from '@mondrian-framework/model'
+import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
-export type SqsFunctionSpecs = { queueUrl: string; malformedMessagePolicy?: 'ignore' | 'delete' }
-export type SqsApi<F extends Functions> = {
+export type SqsFunctionSpecs = {
+  queueUrl: string
+  malformedMessagePolicy?: 'ignore' | 'delete'
+  maxConcurrency?: number
+}
+
+export type SqsApi<Fs extends functions.Functions> = {
   functions: {
-    [K in keyof F]?: SqsFunctionSpecs
+    [K in keyof Fs]?: SqsFunctionSpecs
   }
   options?: {
     config?: AWS.SQSClientConfig
+    maxConcurrency?: number
   }
 }
 
-export function listen<const F extends Functions, CI>({
+export function start<const Fs extends functions.Functions, const CI>({
   module,
   api,
   context,
 }: {
-  module: Module<F, CI>
-  api: SqsApi<F>
+  module: module.Module<Fs, CI>
+  api: SqsApi<Fs>
   context: (args: { message: AWS.Message }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
@@ -31,6 +37,10 @@ export function listen<const F extends Functions, CI>({
     if (!specifications) {
       continue
     }
+    const concurrency = specifications.maxConcurrency ?? api.options?.maxConcurrency ?? 1
+    if (!Number.isInteger(concurrency) || concurrency <= 0) {
+      throw new Error('Concurrency must be a positive integer')
+    }
     const p = listenForMessage({
       queueUrl: specifications.queueUrl,
       alive,
@@ -39,6 +49,7 @@ export function listen<const F extends Functions, CI>({
       functionName,
       context,
       specifications,
+      concurrency,
     })
     promises.push(p)
   }
@@ -46,13 +57,13 @@ export function listen<const F extends Functions, CI>({
   return {
     async close() {
       alive.yes = false
-      buildLogger(module.name, null, null, null, 'SQS', new Date())('Closing listeners...')
+      await logger.build({ moduleName: module.name, server: 'SQS' })('Closing listeners...')
       await Promise.all(promises)
     },
   }
 }
 
-async function listenForMessage({
+async function listenForMessage<const Fs extends functions.Functions, const CI>({
   alive,
   queueUrl,
   client,
@@ -60,27 +71,36 @@ async function listenForMessage({
   functionName,
   context,
   specifications,
+  concurrency,
 }: {
   queueUrl: string
   alive: { yes: boolean }
   client: AWS.SQS
-  module: GenericModule
+  module: module.Module<Fs, CI>
   functionName: string
-  context: (args: { message: AWS.Message }) => Promise<unknown>
+  context: (args: { message: AWS.Message }) => Promise<CI>
   specifications: SqsFunctionSpecs
+  concurrency: number
 }) {
-  const functionBody = module.functions.definitions[functionName]
-  const listenerLog = buildLogger(module.name, null, queueUrl, functionName, 'SQS', new Date())
-  listenerLog('Started.')
+  const functionBody = module.functions[functionName]
+  const baseLogger = logger.withContext({
+    moduleName: module.name,
+    operationType: queueUrl,
+    operationName: functionName,
+    server: 'SQS',
+  })
+  const listenerLog = baseLogger.build()
+  await listenerLog('Started.')
   while (alive.yes) {
-    const operationId = randomOperationId()
     try {
       const message = await client.receiveMessage({ QueueUrl: queueUrl, MaxNumberOfMessages: 1, WaitTimeSeconds: 20 })
       if (!message.Messages || message.Messages.length !== 1) {
         continue
       }
+      //TODO: execute in a separate handler (concurrency)
+      const operationId = utils.randomOperationId()
       const m = message.Messages[0]
-      const log = buildLogger(module.name, operationId, queueUrl, functionName, 'SQS', new Date())
+      const log = baseLogger.build({ operationId })
       let body: unknown
       try {
         body = m.Body === undefined ? undefined : JSON.parse(m.Body)
@@ -88,15 +108,15 @@ async function listenForMessage({
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
         }
-        log(`Bad message: not a valid json ${m.Body}`)
+        await log(`Bad message: not a valid json ${m.Body}`)
         continue
       }
-      const decoded = decode(functionBody.input, body, { unionDecodingStrategy: 'taggedUnions' })
-      if (!decoded.success) {
+      const decoded = decoder.decode(functionBody.input, body, { typeCastingStrategy: 'expectExactTypes' })
+      if (!decoded.isOk) {
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
         }
-        log(`Bad message: ${JSON.stringify(decoded.errors)}`)
+        await log(`Bad message: ${JSON.stringify(decoded.error)}`)
         continue
       }
       const contextInput = await context({ message: m })
@@ -106,7 +126,7 @@ async function listenForMessage({
         operationId,
         log,
       })
-      await functionBody.apply({
+      await functions.apply(functionBody, {
         input: decoded.value,
         projection: undefined,
         operationId,
@@ -114,7 +134,7 @@ async function listenForMessage({
         log,
       })
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
-      log(`Completed.`)
+      await log(`Completed.`)
     } catch (error) {
       if (error instanceof Error) {
         listenerLog(error.message, 'error')

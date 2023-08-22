@@ -1,5 +1,7 @@
 import { types } from '../../'
+import { filterMapObject } from '../../utils'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param types an object where each field is itself a {@link Type `Type`}, used to determine the structure of the
@@ -63,5 +65,16 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
     super(options)
     this.mutability = mutability
     this.fields = fields
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.ObjectType<M, Ts>>): JSONType {
+    const object = value as Record<string, types.Type>
+    return filterMapObject(this.fields, (fieldName, fieldType) => {
+      const concreteFieldType = types.concretise(fieldType)
+      const fieldIsOptional = types.isOptional(concreteFieldType)
+      const rawField = object[fieldName]
+      const encodedField = concreteFieldType.encodeWithoutValidation(rawField as never)
+      return fieldIsOptional && encodedField === null ? undefined : encodedField
+    })
   }
 }

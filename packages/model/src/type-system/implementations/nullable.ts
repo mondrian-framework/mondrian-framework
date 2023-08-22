@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param wrappedType the {@link Type `Type`} describing the item held by the new `NullableType`
@@ -33,5 +34,9 @@ class NullableTypeImpl<T extends types.Type>
   constructor(wrappedType: T, options?: types.OptionsOf<types.NullableType<T>>) {
     super(options)
     this.wrappedType = wrappedType
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.NullableType<T>>): JSONType {
+    return value === null ? null : types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 }

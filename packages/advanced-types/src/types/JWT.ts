@@ -1,4 +1,4 @@
-import { m, encoder, validator, types, decoder } from '@mondrian-framework/model'
+import { m, validator, types, decoder } from '@mondrian-framework/model'
 import jsonwebtoken from 'jsonwebtoken'
 
 type JwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
@@ -23,7 +23,7 @@ export function jwt<T extends types.ObjectType<any, any>, Name extends string>(
   return m.custom(
     `${name}-jwt`,
     (payload) => {
-      const encoded = encoder.encodeWithoutValidation(payloadType, payload)
+      const encoded = payloadType.encodeWithoutValidation(payload as any)
       const result = jsonwebtoken.sign(encoded as object, secret, {
         algorithm: options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM,
       })

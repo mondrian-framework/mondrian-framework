@@ -1,4 +1,4 @@
-import { encoder, arbitrary, types, validator } from '../src'
+import { arbitrary, types, validator } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import gen from 'fast-check'
@@ -21,70 +21,70 @@ const literalValue: gen.Arbitrary<boolean | string | number | null> = gen.oneof(
 
 describe('encoder.encodeWithoutValidation', () => {
   test.prop([arbitrary.number(), number])('encodes a number value as itself', (model, number) => {
-    expect(encoder.encodeWithoutValidation(model, number)).toEqual(number)
+    expect(model.encodeWithoutValidation(number)).toEqual(number)
   })
 
   test.prop([arbitrary.boolean(), gen.boolean()])('encodes a boolean value as itself', (model, boolean) => {
-    expect(encoder.encodeWithoutValidation(model, boolean)).toEqual(boolean)
+    expect(model.encodeWithoutValidation(boolean)).toEqual(boolean)
   })
 
   test.prop([arbitrary.string(), gen.string()])('encodes a string value as itself', (model, string) => {
-    expect(encoder.encodeWithoutValidation(model, string)).toEqual(string)
+    expect(model.encodeWithoutValidation(string)).toEqual(string)
   })
 
   test.prop([arbitrary.enumeration(nonEmptyStringArray)])("encodes an enum's variant as a string", (model) => {
-    model.variants.forEach((variant) => expect(encoder.encodeWithoutValidation(model, variant)).toEqual(variant))
+    model.variants.forEach((variant) => expect(model.encodeWithoutValidation(variant)).toEqual(variant))
   })
 
   test.prop([arbitrary.literal(literalValue)])('encodes a literal value as itself', (model) => {
-    expect(encoder.encodeWithoutValidation(model, model.literalValue)).toEqual(model.literalValue)
+    expect(model.encodeWithoutValidation(model.literalValue)).toEqual(model.literalValue)
   })
 
   test.prop([arbitrary.nullable(arbitrary.number()), number])('encodes a nullable value as itself', (model, number) => {
-    expect(encoder.encodeWithoutValidation(model, number)).toEqual(number)
+    expect(model.encodeWithoutValidation(number)).toEqual(number)
   })
 
   test.prop([arbitrary.nullable(arbitrary.number())])('encodes a nullable null value as null', (model) => {
-    expect(encoder.encodeWithoutValidation(model, null)).toEqual(null)
+    expect(model.encodeWithoutValidation(null)).toEqual(null)
   })
 
   test.prop([arbitrary.optional(arbitrary.number()), number])(
     'encodes an optional value as itself',
     (model, number) => {
-      expect(encoder.encodeWithoutValidation(model, number)).toEqual(number)
+      expect(model.encodeWithoutValidation(number)).toEqual(number)
     },
   )
 
   test.prop([arbitrary.optional(arbitrary.number())])('encodes an optional missing value as null', (model) => {
-    expect(encoder.encodeWithoutValidation(model, undefined)).toEqual(null)
+    expect(model.encodeWithoutValidation(undefined)).toEqual(null)
   })
 
   test.prop([arbitrary.reference(arbitrary.number()), number])(
     'encodes a reference value as itself',
     (model, number) => {
-      expect(encoder.encodeWithoutValidation(model, number)).toEqual(number)
+      expect(model.encodeWithoutValidation(number)).toEqual(number)
     },
   )
 
   const objectModel = arbitrary.object({ age: arbitrary.number(), name: arbitrary.optional(arbitrary.string()) })
   const objectGenerator = gen.record({ age: number, name: gen.string() })
   test.prop([objectModel, objectGenerator])('encodes the fields of an object', (model, object) => {
-    expect(encoder.encodeWithoutValidation(model.immutable(), object)).toEqual(object)
-    expect(encoder.encodeWithoutValidation(model.mutable(), object)).toEqual(object)
+    expect(model.immutable().encodeWithoutValidation(object)).toEqual(object)
+    expect(model.mutable().encodeWithoutValidation(object)).toEqual(object)
   })
 
   test.prop([objectModel])('drops undefined fields when encoding object', (model) => {
-    expect(encoder.encodeWithoutValidation(model.mutable(), { age: 1 })).toEqual({ age: 1 })
-    expect(encoder.encodeWithoutValidation(model.immutable(), { age: 1 })).toEqual({ age: 1 })
-    expect(encoder.encodeWithoutValidation(model.mutable(), { age: 1, name: undefined })).toEqual({ age: 1 })
-    expect(encoder.encodeWithoutValidation(model.immutable(), { age: 1, name: undefined })).toEqual({ age: 1 })
+    expect(model.mutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
+    expect(model.immutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
+    expect(model.mutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
+    expect(model.immutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
   })
 
   test.prop([arbitrary.array(arbitrary.number()), gen.array(number)])(
     'encodes the elements of an array',
     (model, array) => {
-      expect(encoder.encodeWithoutValidation(model.mutable(), array)).toEqual(array)
-      expect(encoder.encodeWithoutValidation(model.immutable(), array)).toEqual(array)
+      expect(model.mutable().encodeWithoutValidation(array)).toEqual(array)
+      expect(model.immutable().encodeWithoutValidation(array)).toEqual(array)
     },
   )
 
@@ -96,22 +96,22 @@ describe('encoder.encodeWithoutValidation', () => {
 
     test.prop([unionModel, gen.double()])('encodes a variant', (model, number) => {
       const variant = { variant1: number }
-      expect(encoder.encodeWithoutValidation(model, variant)).toEqual(variant)
+      expect(model.encodeWithoutValidation(variant)).toEqual(variant)
     })
 
     test.prop([unionModel, gen.string()])('encodes the other variant', (model, string) => {
       const variant = { variant2: string }
-      expect(encoder.encodeWithoutValidation(model, variant)).toEqual(variant)
+      expect(model.encodeWithoutValidation(variant)).toEqual(variant)
     })
 
     test.prop([unionModel])('encodes a variant with only optional undefined field', (model) => {
       const variant = { variant2: undefined }
-      expect(encoder.encodeWithoutValidation(model, variant)).toEqual({ variant2: null })
+      expect(model.encodeWithoutValidation(variant)).toEqual({ variant2: null })
     })
 
     test.prop([unionModel])('fails if called with unhandled variant', (model) => {
-      expect(() => encoder.encodeWithoutValidation(model, { notVariant: 1 } as any)).toThrowError(/^\[internal error\]/)
-      expect(() => encoder.encodeWithoutValidation(model, {} as any)).toThrowError(/^\[internal error\]/)
+      expect(() => model.encodeWithoutValidation({ notVariant: 1 } as any)).toThrowError(/^\[internal error\]/)
+      expect(() => model.encodeWithoutValidation({} as any)).toThrowError(/^\[internal error\]/)
     })
   })
 
@@ -132,14 +132,8 @@ describe('encoder.encodeWithoutValidation', () => {
 
     const encodeSpy = vi.spyOn(mocks, 'encode')
     const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, customOptions)
-    expect(encoder.encodeWithoutValidation(model, value)).toEqual(value)
+    expect(model.encodeWithoutValidation(value)).toEqual(value)
     expect(encodeSpy).toHaveBeenCalledTimes(1)
-  })
-
-  test('fails with internal error on unhandled type kind', () => {
-    expect(() => encoder.encodeWithoutValidation({ kind: 'not a type' } as any, 1)).toThrowError(
-      /.*\[internal error\].*/,
-    )
   })
 })
 
@@ -165,12 +159,8 @@ describe('encoder.encode', () => {
     const validateSpy = vi.spyOn(mocks, 'validate')
     const encodeSpy = vi.spyOn(mocks, 'encode')
     const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
-    assertOk(encoder.encode(model, value, validationOptions))
+    assertOk(model.encode(value, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
     expect(encodeSpy).toBeCalledTimes(1)
-  })
-
-  test('fails with internal error on unhandled type kind', () => {
-    expect(() => encoder.encode({ kind: 'not a type' } as any, 1)).toThrowError(/.*\[internal error\].*/)
   })
 })

@@ -1,6 +1,6 @@
 import { Api } from './api'
 import { encodeQueryObject } from './utils'
-import { decoder, encoder, projection, types } from '@mondrian-framework/model'
+import { decoder, projection, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 
 export type Sdk<F extends functions.Functions> = {
@@ -39,7 +39,7 @@ export function build<const Fs extends functions.Functions, const API extends Ap
       }
       const resolver = async ({ input, options }: { input: any; options?: { headers?: any; projection: any } }) => {
         const url = `${endpoint}/api${specification.path ?? `/${functionName}`}`
-        const encodedInput = encoder.encode(functionBody.input, input as never)
+        const encodedInput = types.concretise(functionBody.input).encode(input as never)
         if (!encodedInput.isOk) {
           throw new Error(`Error while econding input ${JSON.stringify(encodedInput.error)}`)
         }

@@ -1,6 +1,6 @@
 import { ErrorHandler, FunctionSpecifications, Request } from './api'
 import { generateOpenapiInput } from './openapi'
-import { decoder, encoder, projection, types } from '@mondrian-framework/model'
+import { decoder, projection, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 
 export function fromFunction<Fs extends functions.Functions, ServerContext, ContextInput>({
@@ -84,7 +84,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         operationId,
         log,
       })
-      const encoded = encoder.encode(partialOutputType, result)
+      const encoded = types.concretise(partialOutputType).encode(result)
       log('Completed.')
       return { status: 200, body: encoded, headers: responseHeaders }
     } catch (e) {

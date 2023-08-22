@@ -1,4 +1,4 @@
-import { result, types, decoder, validator } from '../index'
+import { result, types, decoder, validation } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -40,8 +40,8 @@ function decodeUnknown(
 
 function validateUnknown(
   _value: unknown,
-  _validationOptions: validator.Options,
+  _validationOptions?: validation.Options,
   _options?: types.OptionsOf<UnknownType>,
-): validator.Result {
-  return validator.succeed()
+): validation.Result {
+  return validation.succeed()
 }

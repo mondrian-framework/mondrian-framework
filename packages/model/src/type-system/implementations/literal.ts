@@ -1,4 +1,4 @@
-import { types } from '../../'
+import { types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -44,5 +44,9 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
 
   encodeWithoutValidation(value: types.Infer<types.LiteralType<L>>): JSONType {
     return value
+  }
+
+  validate(_value: L, _validationOptions?: validation.Options): validation.Result {
+    return validation.succeed()
   }
 }

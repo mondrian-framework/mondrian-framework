@@ -1,4 +1,4 @@
-import { arbitrary, decoder, types, validator } from '../src'
+import { arbitrary, decoder, types } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
@@ -31,6 +31,6 @@ describe('encoding', () => {
 
 describe('validation', () => {
   test.prop([arbitrary.typeAndValue()])('always succeeds on generated valid values', ([type, value]) => {
-    assertOk(validator.validate(type, value))
+    assertOk(types.concretise(type).validate(value))
   })
 })

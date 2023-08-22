@@ -1,4 +1,4 @@
-import { types } from '../../'
+import { types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -43,5 +43,9 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
 
   encodeWithoutValidation(value: types.Infer<types.EnumType<Vs>>): JSONType {
     return value
+  }
+
+  validate(_value: types.Infer<types.EnumType<Vs>>, _validationOptions?: validation.Options): validation.Result {
+    return validation.succeed()
   }
 }

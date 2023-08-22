@@ -1,4 +1,4 @@
-import { decoder, types, path, validator, result } from '../src'
+import { decoder, types, path, validation, result } from '../src'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
@@ -544,7 +544,7 @@ describe('decoder.decodeWithoutValidation', () => {
         'custom',
         () => null,
         decoderFunction.decode,
-        () => validator.fail('test', 'test'),
+        () => validation.fail('test', 'test'),
       )
       checkValue(decoder.decodeWithoutValidation(model, value, options), 1)
       expect(decoderSpy).toHaveBeenCalledTimes(1)
@@ -571,7 +571,7 @@ describe('decoder.decode', () => {
         expect(innerValue).toEqual('decoded successfully')
         expect(innerValidationOptions).toEqual(validationOptions)
         expect(innerOptions).toEqual(options)
-        return validator.succeed()
+        return validation.succeed()
       },
     }
     const validateSpy = vi.spyOn(mocks, 'validate')

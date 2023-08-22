@@ -1,4 +1,4 @@
-import { types } from '../../'
+import { types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -34,5 +34,9 @@ class BooleanTypeImpl extends DefaultMethods<types.BooleanType> implements types
 
   encodeWithoutValidation(value: types.Infer<types.BooleanType>): JSONType {
     return value
+  }
+
+  validate(_value: types.Infer<types.BooleanType>, _validationOptions?: validation.Options): validation.Result {
+    return validation.succeed()
   }
 }

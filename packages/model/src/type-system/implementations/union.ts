@@ -1,4 +1,4 @@
-import { types } from '../../'
+import { path, types, validation } from '../../'
 import { failWithInternalError } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -44,6 +44,23 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
         const rawVariantValue = value[variantName]
         const encoded = concreteVariantType.encodeWithoutValidation(rawVariantValue as never)
         return Object.fromEntries([[variantName, encoded]])
+      }
+    }
+  }
+
+  validate(value: types.Infer<types.UnionType<Ts>>, validationOptions?: validation.Options): validation.Result {
+    const failureMessage =
+      "I tried to validate an object that is not a union's variant. This should have been prevented by the type system"
+    const variantName = Object.keys(value)[0]
+    if (variantName === undefined) {
+      failWithInternalError(failureMessage)
+    } else {
+      const variantType = this.variants[variantName]
+      if (variantType === undefined) {
+        failWithInternalError(failureMessage)
+      } else {
+        const result = types.concretise(variantType).validate(value[variantName] as never, validationOptions)
+        return result.mapError((errors) => path.prependVariantToAll(errors, variantName))
       }
     }
   }

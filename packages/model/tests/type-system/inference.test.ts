@@ -1,4 +1,4 @@
-import { types, decoder, validator } from '../../src'
+import { types, decoder, validation } from '../../src'
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe } from 'vitest'
 
@@ -253,7 +253,7 @@ describe('Infer', () => {
       'myCustomType',
       () => null,
       () => decoder.fail('test', 'test'),
-      () => validator.fail('test', 'test'),
+      () => validation.fail('test', 'test'),
     )
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

@@ -1,6 +1,5 @@
 import { decoder, validator, types } from './index'
-import { object } from './types-exports'
-import { assertNever, filterMapObject, mapObject } from './utils'
+import { filterMapObject, mapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
 export enum Kind {

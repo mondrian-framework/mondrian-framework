@@ -1,5 +1,5 @@
 import { fc as gen, test } from '@fast-check/vitest'
-import { decoder, encoder, m, types } from '@mondrian-framework/model'
+import { decoder, m, types } from '@mondrian-framework/model'
 import { JSONType } from '@mondrian-framework/utils'
 import { SuiteFactory, expect } from 'vitest'
 
@@ -57,7 +57,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
       const decoded = decoder.decode(type, raw)
       if (decoded.isOk) {
-        expect(encoder.encodeWithoutValidation(type, decoded.value)).toEqual(raw)
+        expect(types.concretise(type).encodeWithoutValidation(decoded.value as never)).toEqual(raw)
       } else {
         // If the decoding fails I fail the test, it doesn't make sense to check for inverse in that case
         return expect.fail(
@@ -78,7 +78,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       } else {
         // If we got a valid value `Infer<T>` we check that by encoding and decoding we get back the same result
         const validValue = decodingResult.value
-        const encodedValue = encoder.encodeWithoutValidation(type, validValue)
+        const encodedValue = types.concretise(type).encodeWithoutValidation(validValue as never)
 
         const decoded = decoder.decode(type, encodedValue)
         expect(decoded.isOk).toBe(true)
@@ -156,7 +156,7 @@ export function testTypeDecodingAndEncoding<T extends m.Type>(
       }))
     test('encoding works for valid values', () =>
       validValues.forEach(({ decoded, encoded }) => {
-        const result = encoder.encode(type, decoded as any)
+        const result = types.concretise(type).encode(decoded as never)
         if (result.isOk) {
           expect(result.value).toEqual(encoded)
         } else {

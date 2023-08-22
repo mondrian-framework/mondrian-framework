@@ -1,5 +1,4 @@
 import { m, decoder, validator } from '@mondrian-framework/model'
-import { result } from '@mondrian-framework/model'
 
 export function fromRegexes<Name extends string, Options extends Record<string, any>>(
   typeName: Name,

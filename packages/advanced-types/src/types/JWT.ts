@@ -14,7 +14,7 @@ export type JWTType<T extends types.ObjectType<any, any>, Name extends string> =
   types.Infer<T>
 >
 
-export function jwt<T extends types.ObjectType<'mutable' | 'immutable', types.Types>, Name extends string>(
+export function jwt<T extends types.ObjectType<any, any>, Name extends string>(
   name: Name,
   payloadType: T,
   secret: string,

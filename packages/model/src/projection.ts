@@ -217,7 +217,7 @@ function validateObject(
 ): result.Result<any, projection.Error[]> {
   const requiredFields = getRequiredFields(fields, projection)
   const validateField = ([fieldName, fieldType]: [string, types.Type]) =>
-    validateRequiredField(fieldName, fieldType, projection, object)
+    validateRequestedField(fieldName, fieldType, projection, object)
   return result
     .tryEach(
       requiredFields,
@@ -230,7 +230,7 @@ function validateObject(
     .map(Object.fromEntries)
 }
 
-function validateRequiredField(
+function validateRequestedField(
   fieldName: string,
   fieldType: types.Type,
   projection: Projection,
@@ -257,8 +257,7 @@ function validateRequiredField(
 
 function getRequiredFields(fields: types.Types, projection: Projection): [string, types.Type][] {
   if (projection === true) {
-    const dropOptionals = (_: string, fieldType: types.Type) => (types.isOptional(fieldType) ? undefined : fieldType)
-    return Object.entries(filterMapObject(fields, dropOptionals))
+    return Object.entries(fields)
   } else {
     return Object.entries(filterMapObject(projection, (fieldName, _) => fields[fieldName]))
   }

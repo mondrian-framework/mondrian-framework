@@ -1,4 +1,4 @@
-import { decoder, m, validator } from '@mondrian-framework/model'
+import { decoder, m, validation } from '@mondrian-framework/model'
 
 const MIN_LAT = -90.0
 const MAX_LAT = 90.0
@@ -16,12 +16,12 @@ export function latitude(options?: m.BaseOptions): LatitudeType {
   )
 }
 
-function validateLatitude(value: number): validator.Result {
+function validateLatitude(value: number): validation.Result {
   if (value < MIN_LAT || value > MAX_LAT) {
-    return validator.fail(`Invalid latitude number (must be between ${MIN_LAT} and ${MAX_LAT})`, value)
+    return validation.fail(`Invalid latitude number (must be between ${MIN_LAT} and ${MAX_LAT})`, value)
   } else if (value !== Number.parseFloat(value.toFixed(MAX_PRECISION))) {
-    return validator.fail(`Invalid latitude number (max precision must be ${MAX_PRECISION})`, value)
+    return validation.fail(`Invalid latitude number (max precision must be ${MAX_PRECISION})`, value)
   } else {
-    return validator.succeed()
+    return validation.succeed()
   }
 }

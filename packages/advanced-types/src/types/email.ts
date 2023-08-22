@@ -1,4 +1,4 @@
-import { decoder, m, validator } from '@mondrian-framework/model'
+import { decoder, m, validation } from '@mondrian-framework/model'
 
 export type EmailType = m.CustomType<'email', {}, string>
 
@@ -15,22 +15,22 @@ export function email(options?: m.BaseOptions): EmailType {
 const EMAIL_REGEX =
   /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
 
-function validateEmail(value: string): validator.Result {
+function validateEmail(value: string): validation.Result {
   //thanks to https://github.com/manishsaraan/email-validator
   const emailParts = value.split('@')
   if (emailParts.length !== 2) {
-    return validator.fail('Invalid email (no @ present)', value)
+    return validation.fail('Invalid email (no @ present)', value)
   }
   const account = emailParts[0]
   const address = emailParts[1]
   if (account.length > 64) {
-    return validator.fail('Invalid email (account is longer than 63 characters)', value)
+    return validation.fail('Invalid email (account is longer than 63 characters)', value)
   } else if (address.length > 255) {
-    return validator.fail('Invalid email (domain is longer than 254 characters)', value)
+    return validation.fail('Invalid email (domain is longer than 254 characters)', value)
   }
   const domainParts = address.split('.')
   if (domainParts.some((part) => part.length > 63) || !EMAIL_REGEX.test(value)) {
-    return validator.fail('Invalid email', value)
+    return validation.fail('Invalid email', value)
   }
-  return validator.succeed()
+  return validation.succeed()
 }

@@ -1,4 +1,4 @@
-import { m, validator, types, decoder } from '@mondrian-framework/model'
+import { m, types, decoder } from '@mondrian-framework/model'
 import jsonwebtoken from 'jsonwebtoken'
 
 type JwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
@@ -30,7 +30,7 @@ export function jwt<T extends types.ObjectType<any, any>, Name extends string>(
       return result
     },
     (value) => decodeJwt(value, payloadType, secret, options),
-    (payload, options) => validator.validate(payloadType, payload, options),
+    (payload, options) => payloadType.validate(payload as never, options),
     options,
   )
 }

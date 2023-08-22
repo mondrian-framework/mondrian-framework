@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param options the {@link StringTypeOptions options} used to define the new `StringType`
@@ -45,5 +46,9 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
     } else if (maxLength && maxLength < 0) {
       throw new Error(`The maximum length (${maxLength}) cannot be negative`)
     }
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.StringType>): JSONType {
+    return value
   }
 }

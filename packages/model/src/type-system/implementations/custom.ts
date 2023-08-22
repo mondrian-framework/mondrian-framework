@@ -24,12 +24,12 @@ type CustomValidator<Name extends string, Options extends Record<string, any>, I
  */
 export function custom<Name extends string, Options extends Record<string, any>, InferredAs>(
   typeName: Name,
-  encode: CustomEncoder<Name, Options, InferredAs>,
+  encodeWithoutValidation: CustomEncoder<Name, Options, InferredAs>,
   decode: CustomDecoder<Name, Options, InferredAs>,
   validate: CustomValidator<Name, Options, InferredAs>,
   options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
 ): types.CustomType<Name, Options, InferredAs> {
-  return new CustomTypeImpl(typeName, encode, decode, validate, options)
+  return new CustomTypeImpl(typeName, encodeWithoutValidation, decode, validate, options)
 }
 
 class CustomTypeImpl<Name extends string, Options extends Record<string, any>, InferredAs>
@@ -38,25 +38,29 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
 {
   readonly kind = types.Kind.Custom
   readonly typeName: Name
-  readonly encode: CustomEncoder<Name, Options, InferredAs>
+  readonly encoder: CustomEncoder<Name, Options, InferredAs>
   readonly decode: CustomDecoder<Name, Options, InferredAs>
   readonly validate: CustomValidator<Name, Options, InferredAs>
 
   getThis = () => this
   fromOptions = (options: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>) =>
-    custom(this.typeName, this.encode, this.decode, this.validate, options)
+    custom(this.typeName, this.encodeWithoutValidation, this.decode, this.validate, options)
 
   constructor(
     typeName: Name,
-    encode: CustomEncoder<Name, Options, InferredAs>,
+    encoder: CustomEncoder<Name, Options, InferredAs>,
     decode: CustomDecoder<Name, Options, InferredAs>,
     validate: CustomValidator<Name, Options, InferredAs>,
     options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
   ) {
     super(options)
     this.typeName = typeName
-    this.encode = encode
+    this.encoder = encoder
     this.decode = decode
     this.validate = validate
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.CustomType<Name, Options, InferredAs>>): JSONType {
+    return this.encoder(value, this.options)
   }
 }

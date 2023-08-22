@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param options the {@link BooleanTypeOptions options} used to define the new `BooleanType`
@@ -29,5 +30,9 @@ class BooleanTypeImpl extends DefaultMethods<types.BooleanType> implements types
 
   constructor(options?: types.OptionsOf<types.NumberType>) {
     super(options)
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.BooleanType>): JSONType {
+    return value
   }
 }

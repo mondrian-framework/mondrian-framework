@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param options the {@link NumberTypeOptions options} used to define the new `NumberType`
@@ -70,5 +71,9 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
         throw new Error(`Lower bound (${lowerBound}) must be lower or equal to the upper bound (${upperBound})`)
       }
     }
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.NumberType>): JSONType {
+    return value
   }
 }

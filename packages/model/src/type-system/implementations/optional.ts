@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param wrappedType the {@link Type `Type`} describing the item held by the new `OptionalType`
@@ -33,5 +34,9 @@ class OptionalTypeImpl<T extends types.Type>
   constructor(wrappedType: T, options?: types.OptionsOf<types.OptionalType<T>>) {
     super(options)
     this.wrappedType = wrappedType
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.OptionalType<T>>): JSONType {
+    return value === undefined ? null : types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 }

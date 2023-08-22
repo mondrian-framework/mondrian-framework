@@ -1,20 +1,20 @@
-import { arbitrary, decoder, encoder, validator } from '../src'
+import { arbitrary, decoder, types, validator } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
 
 describe('encoding', () => {
   test.prop([arbitrary.typeAndValue()])('can always encode a type and a valid value', ([type, value]) => {
-    assertOk(encoder.encode(type, value))
+    assertOk(types.concretise(type).encode(value))
   })
 
   test.prop([arbitrary.typeAndValue(3, 1)])('can always encode a type and a valid (shallow) value', ([type, value]) => {
-    assertOk(encoder.encode(type, value))
+    assertOk(types.concretise(type).encode(value))
   })
 
   const typeAndEncodedValue = arbitrary
     .typeAndValue()
-    .map(([type, value]) => [type, encoder.encodeWithoutValidation(type, value)] as const)
+    .map(([type, value]) => [type, types.concretise(type).encodeWithoutValidation(value)] as const)
 
   // A note on why the inverse is not true (that is `∃x. decoding(encoding(x)) !== x`)
   // Consider the following type: number().nullable().optional(): a valid value might be
@@ -24,7 +24,7 @@ describe('encoding', () => {
   test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded]) => {
     //encoding(decoding(x)) = x
     const decoded = assertOk(decoder.decode(type, encoded))
-    const encodedAgain = assertOk(encoder.encode(type, decoded))
+    const encodedAgain = assertOk(types.concretise(type).encode(decoded))
     expect(encodedAgain).toEqual(encoded)
   })
 })

@@ -1,5 +1,7 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
+import { failWithInternalError } from 'src/utils'
 
 /**
  * @param variants a record with the different variants, each one paired with a function that can be used to determine
@@ -25,5 +27,24 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
   constructor(variants: Ts, options?: types.OptionsOf<types.UnionType<Ts>>) {
     super(options)
     this.variants = variants
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.UnionType<Ts>>): JSONType {
+    const failureMessage =
+      'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system'
+    const variantName = Object.keys(value)[0]
+    if (variantName === undefined) {
+      failWithInternalError(failureMessage)
+    } else {
+      const variantType = this.variants[variantName]
+      if (variantType === undefined) {
+        failWithInternalError(failureMessage)
+      } else {
+        const concreteVariantType = types.concretise(variantType)
+        const rawVariantValue = value[variantName]
+        const encoded = concreteVariantType.encodeWithoutValidation(rawVariantValue as never)
+        return Object.fromEntries([[variantName, encoded]])
+      }
+    }
   }
 }

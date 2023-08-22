@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param value the literal value held by the new `LiteralType`
@@ -39,5 +40,9 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
   constructor(literalValue: L, options?: types.OptionsOf<types.LiteralType<L>>) {
     super(options)
     this.literalValue = literalValue
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.LiteralType<L>>): JSONType {
+    return value
   }
 }

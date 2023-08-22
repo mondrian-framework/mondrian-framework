@@ -1,5 +1,8 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
+import { Result } from 'src/result'
+import { Options, Error } from 'src/validator'
 
 /**
  * @param wrappedType the {@link types.Type `Type`} describing the items held by the new `ArrayType`
@@ -54,5 +57,10 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
     super(options)
     this.wrappedType = wrappedType
     this.mutability = mutability
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.ArrayType<M, T>>): JSONType {
+    const concreteItemType = types.concretise(this.wrappedType)
+    return value.map((item) => concreteItemType.encodeWithoutValidation(item as never))
   }
 }

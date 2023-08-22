@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param variants a non empty array of string values used to define the new `EnumType`'s variants
@@ -38,5 +39,9 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
   constructor(variants: Vs, options?: types.OptionsOf<types.EnumType<Vs>>) {
     super(options)
     this.variants = variants
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.EnumType<Vs>>): JSONType {
+    return value
   }
 }

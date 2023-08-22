@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
+import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param wrappedType the {@link Type `Type`} referenced by the resulting `ReferenceType`
@@ -26,5 +27,9 @@ class ReferenceTypeImpl<T extends types.Type>
   constructor(wrappedType: T, options?: types.OptionsOf<types.ReferenceType<T>>) {
     super(options)
     this.wrappedType = wrappedType
+  }
+
+  encodeWithoutValidation(value: types.Infer<types.ReferenceType<T>>): JSONType {
+    return types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 }

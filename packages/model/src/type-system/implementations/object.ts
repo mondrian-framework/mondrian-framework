@@ -1,7 +1,7 @@
 import { types } from '../../'
+import { filterMapObject } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
-import { filterMapObject } from 'src/utils'
 
 /**
  * @param types an object where each field is itself a {@link Type `Type`}, used to determine the structure of the

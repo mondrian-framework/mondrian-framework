@@ -1,7 +1,7 @@
 import { types } from '../../'
+import { failWithInternalError } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
-import { failWithInternalError } from 'src/utils'
 
 /**
  * @param variants a record with the different variants, each one paired with a function that can be used to determine

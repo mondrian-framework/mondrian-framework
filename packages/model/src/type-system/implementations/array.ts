@@ -1,8 +1,6 @@
 import { types } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
-import { Result } from 'src/result'
-import { Options, Error } from 'src/validator'
 
 /**
  * @param wrappedType the {@link types.Type `Type`} describing the items held by the new `ArrayType`

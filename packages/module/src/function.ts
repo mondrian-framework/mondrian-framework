@@ -94,7 +94,7 @@ export async function apply<
  *     input: type.object({ username: types.stirng(), password: types.string() }),
  *     output: types.string(),
  *     body: async ({ input: { username, password } }) => {
- *       return 'TODO'
+ *       return 'something'
  *     }
  *   })
  * ```
@@ -119,7 +119,7 @@ export function build<const I extends types.Type, const O extends types.Type>(
  *     input: type.object({ username: types.stirng(), password: types.string() }),
  *     output: types.string(),
  *     body: async ({ input: { username, password }, context: { db } }) => {
- *       return 'TODO'
+ *       return 'something'
  *     }
  *   })
  * ```
@@ -129,13 +129,13 @@ export function withContext<const Context extends Record<string, unknown>>(): Fu
 }
 
 /**
- * Function builder.
+ * Mondrian function builder.
  */
 class FunctionBuilder<const Context extends Record<string, unknown>> {
   constructor() {}
   /**
    * Builds a Mondrian function.
-   * @returns A Mondrian function with the applied middlewares.
+   * @returns A Mondrian function.
    */
   public build<const I extends types.Type, const O extends types.Type>(
     func: Function<I, O, Context>,

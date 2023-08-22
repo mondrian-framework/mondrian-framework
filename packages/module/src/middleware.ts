@@ -22,7 +22,7 @@ export function checkMaxProjectionDepth(maxDepth: number): functions.BeforeMiddl
 
 /**
  * This middleware checks if the result is compatible with the function output type and also if it's respecting the given projection.
- * Returning more fields than requested are allowed. //TODO: but it could be trimmed
+ * Returning more fields than requested are allowed and it will be trimmed out (if it's respects the projection).
  * @param onFailure the action to take on failure.
  */
 export function checkOutputType(onFailure: 'log' | 'throw'): functions.AfterMiddleware<types.Type, types.Type, {}> {
@@ -35,14 +35,16 @@ export function checkOutputType(onFailure: 'log' | 'throw'): functions.AfterMidd
         result,
       )
       if (!projectionRespectedResult.isOk) {
-        const m = JSON.stringify({ projection: args.projection, errors: projectionRespectedResult.error }) //TODO: prettify error?
+        //TODO: prettify error?
+        const m = JSON.stringify({ projection: args.projection, errors: projectionRespectedResult.error })
         if (onFailure === 'log') {
           await args.log(`Invalid output: ${m}`, 'error')
+          return result //return an invalid output is ok in this case
         } else {
           throw new Error(`Invalid output: ${m}`)
         }
       }
-      return result
+      return projectionRespectedResult.value
     },
   }
 }

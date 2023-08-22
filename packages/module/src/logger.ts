@@ -1,4 +1,4 @@
-//TODO: probably need a rework.
+//TODO: probably need a rework (see #51).
 
 /**
  * The Mondrian logger type.

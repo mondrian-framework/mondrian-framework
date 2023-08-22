@@ -38,7 +38,7 @@ class SdkBuilder<const Metadata> {
     const fs = Object.fromEntries(
       Object.entries(module.functions).map(([functionName, func]) => {
         const wrapper = async (
-          input: any,
+          input: unknown,
           options?: {
             projection?: projection.Projection
             metadata?: Metadata
@@ -87,7 +87,7 @@ export function build<const Fs extends functions.Functions, ContextInput>(args: 
 
 /**
  * Infer a subset of a Mondrian type `T` based on a projection `P`
- * If not explicitly required all {@link types.ReferenceType} fields are ignored.
+ * If not explicitly required, all {@link types.ReferenceType} fields are ignored.
  */
 // prettier-ignore
 export type Project<T extends types.Type, P extends projection.Projection> 
@@ -96,7 +96,7 @@ export type Project<T extends types.Type, P extends projection.Projection>
   : ProjectInternal<T, P>
 
 // prettier-ignore
-export type ProjectInternal<T extends types.Type, P extends projection.Projection> 
+type ProjectInternal<T extends types.Type, P extends projection.Projection> 
   = [P] extends [true] ? InferExcludingReferences<T>
   : [T] extends [types.OptionalType<infer T1>] ? undefined | Project<T1, P>
   : [T] extends [types.NullableType<infer T1>] ? null | Project<T1, P>

@@ -2,7 +2,7 @@ import { module, functions, sdk } from '../src'
 import { types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
-test('Whole module', async () => {
+test('Real example', async () => {
   ///Types
   const User = () =>
     types.object({
@@ -134,10 +134,7 @@ test('Whole module', async () => {
   expect(failedRegisterResult).toBeNull()
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult).toBeNull()
-  const loginResult = await client.functions.login(
-    { email: 'admin@domain.com', password: '1234' },
-    { projection: { jwt: true } },
-  )
+  const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
   expect(loginResult).toEqual({ user: { email: 'admin@domain.com', password: '****' }, jwt: 'admin@domain.com' })
   await expect(
     async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),
@@ -221,7 +218,7 @@ describe('Default middlewares', () => {
     const result1 = await client.functions.dummy({ value: '123' })
     expect(result1).toEqual({ value: '123' })
     const result2 = await client.functions.dummy({ value: '123' }, { projection: { type: { type: true } } })
-    expect(result2).toEqual({ value: '123' })
+    expect(result2).toEqual({})
     expect(
       async () => await client.functions.dummy({ value: '123' }, { projection: { type: { type: { type: true } } } }),
     ).rejects.toThrowError('Max projection depth reached: requested projection have a depth of 3. The maximum is 2.')

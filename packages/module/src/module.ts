@@ -55,7 +55,7 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
 >
 
 /**
- * TODO
+ * TODO: understand if this is needed
  */
 type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 

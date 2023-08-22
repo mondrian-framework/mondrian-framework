@@ -1,4 +1,4 @@
-import { result, types, validator } from '../../'
+import { result, types, validation } from '../../'
 import { JSONType } from '@mondrian-framework/utils'
 
 export abstract class DefaultMethods<T extends types.Type> {
@@ -12,12 +12,12 @@ export abstract class DefaultMethods<T extends types.Type> {
   abstract fromOptions(options?: types.OptionsOf<T>): T
   abstract encodeWithoutValidation(value: types.Infer<T>): JSONType
 
-  encode(
-    value: types.Infer<T>,
-    validationOptions?: Partial<validator.Options>,
-  ): result.Result<JSONType, validator.Error[]> {
+  encode(value: types.Infer<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]> {
     // TODO: once we move validator to the interface change this as well
-    return validator.validate(this.getThis(), value, validationOptions).replace(this.encodeWithoutValidation(value))
+    return types
+      .concretise(this.getThis())
+      .validate(value as never, validationOptions)
+      .replace(this.encodeWithoutValidation(value))
   }
 
   optional = () => types.optional(this.getThis())

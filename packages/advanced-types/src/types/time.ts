@@ -1,4 +1,4 @@
-import { validator, m, decoder } from '@mondrian-framework/model'
+import { validation, m, decoder } from '@mondrian-framework/model'
 
 const TIME_REGEX =
   /^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.\d{1,})?(([Z])|([+|-]([01][0-9]|2[0-3]):[0-5][0-9]))$/
@@ -23,6 +23,6 @@ function decodeTime(value: unknown): decoder.Result<Date> {
   return decoder.succeed(new Date(currentDateAtGivenTime))
 }
 
-function validateTime(value: Date, validationOptions: validator.Options, options?: m.BaseOptions): validator.Result {
-  return validator.validate(m.dateTime(options), value, validationOptions)
+function validateTime(value: Date, validationOptions?: validation.Options, options?: m.BaseOptions): validation.Result {
+  return m.dateTime(options).validate(value, validationOptions)
 }

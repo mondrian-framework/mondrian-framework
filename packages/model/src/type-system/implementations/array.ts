@@ -1,4 +1,5 @@
-import { types } from '../../'
+import { path, result, types, validation } from '../../'
+import { always, mergeArrays } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -60,5 +61,57 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
   encodeWithoutValidation(value: types.Infer<types.ArrayType<M, T>>): JSONType {
     const concreteItemType = types.concretise(this.wrappedType)
     return value.map((item) => concreteItemType.encodeWithoutValidation(item as never))
+  }
+
+  validate(value: types.Infer<types.ArrayType<M, T>>, validationOptions?: validation.Options): validation.Result {
+    const { maxItems, minItems } = this.options ?? {}
+    const maxLengthMessage = `array must have at most ${maxItems} items`
+    const minLengthMessage = `array must have at least ${minItems} items`
+    const maxLengthValidation =
+      maxItems && value.length > maxItems ? validation.fail(maxLengthMessage, value) : validation.succeed()
+    const minLengthValidation =
+      minItems && value.length < minItems ? validation.fail(minLengthMessage, value) : validation.succeed()
+
+    const options = { ...validation.defaultOptions, ...validationOptions }
+    // prettier-ignore
+    return and(options, maxLengthValidation,
+    () => and(options, minLengthValidation,
+      () => this.validateArrayElements(value, options),
+    ),
+  )
+  }
+
+  private validateArrayElements(
+    array: types.Infer<types.ArrayType<any, T>>,
+    options: validation.Options,
+  ): validation.Result {
+    const validateItem = (item: types.Infer<T>, index: number) =>
+      types
+        .concretise(this.wrappedType)
+        .validate(item as never, options)
+        .mapError((errors) => path.prependIndexToAll(errors, index))
+    return options.errorReportingStrategy === 'stopAtFirstError'
+      ? result.tryEachFailFast(array, true, always(true), validateItem)
+      : result.tryEach(array, true, always(true), [] as validation.Error[], mergeArrays, validateItem)
+  }
+}
+
+function and(
+  options: validation.Options,
+  result: validation.Result,
+  other: () => validation.Result,
+): validation.Result {
+  if (!result.isOk) {
+    if (options?.errorReportingStrategy === 'stopAtFirstError') {
+      return result
+    } else {
+      const otherErrors = other().match(
+        () => [],
+        (errors) => errors,
+      )
+      return validation.failWithErrors([...result.error, ...otherErrors])
+    }
+  } else {
+    return other()
   }
 }

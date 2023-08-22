@@ -1,5 +1,5 @@
-import { types } from '../../'
-import { filterMapObject } from '../../utils'
+import { path, result, types, validation } from '../../'
+import { always, filterMapObject, mergeArrays } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -76,5 +76,19 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
       const encodedField = concreteFieldType.encodeWithoutValidation(rawField as never)
       return fieldIsOptional && encodedField === null ? undefined : encodedField
     })
+  }
+
+  validate(value: types.Infer<types.ObjectType<M, Ts>>, validationOptions?: validation.Options): validation.Result {
+    const options = { ...validation.defaultOptions, ...validationOptions }
+    const entries = Object.entries(value)
+    const validateEntry = ([fieldName, fieldValue]: [string, unknown]) =>
+      types
+        .concretise(this.fields[fieldName])
+        .validate(fieldValue as never, options)
+        .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+
+    return options.errorReportingStrategy === 'stopAtFirstError'
+      ? result.tryEachFailFast(entries, true, always(true), validateEntry)
+      : result.tryEach(entries, true, always(true), [] as validation.Error[], mergeArrays, validateEntry)
   }
 }

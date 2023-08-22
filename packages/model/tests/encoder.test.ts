@@ -1,4 +1,4 @@
-import { arbitrary, types, validator } from '../src'
+import { arbitrary, types, validation } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import gen from 'fast-check'
@@ -153,7 +153,7 @@ describe('encoder.encode', () => {
         expect(innerValue).toEqual(value)
         expect(innerValidationOptions).toEqual(validationOptions)
         expect(innerOptions).toEqual(options)
-        return validator.succeed()
+        return validation.succeed()
       },
     }
     const validateSpy = vi.spyOn(mocks, 'validate')

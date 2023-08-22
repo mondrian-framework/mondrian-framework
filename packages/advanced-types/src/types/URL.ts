@@ -1,4 +1,4 @@
-import { decoder, m, validator } from '@mondrian-framework/model'
+import { decoder, m, validation } from '@mondrian-framework/model'
 
 export type URLType = m.CustomType<'URL', {}, URL>
 
@@ -7,7 +7,7 @@ export function url(options?: m.BaseOptions): URLType {
     'URL',
     (value) => value.toString(),
     decodeUrl,
-    (_url) => validator.succeed(),
+    (_url) => validation.succeed(),
     options,
   )
 }

@@ -1,4 +1,4 @@
-import { m, decoder, validator } from '@mondrian-framework/model'
+import { m, decoder, validation } from '@mondrian-framework/model'
 
 export function fromRegexes<Name extends string, Options extends Record<string, any>>(
   typeName: Name,
@@ -22,6 +22,6 @@ function decode<Name extends string, Options extends Record<string, any>>(
   return typeof value === 'string' ? decoder.succeed(value) : decoder.fail('Expected a string value', value)
 }
 
-function validate(input: string, errorMessage: string, regexes: RegExp[]): validator.Result {
-  return regexes.some((regex) => regex.test(input)) ? validator.succeed() : validator.fail(errorMessage, input)
+function validate(input: string, errorMessage: string, regexes: RegExp[]): validation.Result {
+  return regexes.some((regex) => regex.test(input)) ? validation.succeed() : validation.fail(errorMessage, input)
 }

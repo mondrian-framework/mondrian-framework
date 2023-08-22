@@ -1,4 +1,4 @@
-import { result, types, decoder, validator } from '../index'
+import { result, types, decoder, validation } from '../index'
 
 /**
  * The type of a datetime, defined as a custom type.
@@ -44,18 +44,18 @@ function tryMakeDate(value: number | string): decoder.Result<Date> {
 
 function validateDateTime(
   date: Date,
-  _validationOptions: validator.Options,
+  _validationOptions?: validation.Options,
   options?: types.OptionsOf<DateTimeType>,
-): validator.Result {
+): validation.Result {
   if (options === undefined) {
-    return validator.succeed()
+    return validation.succeed()
   }
   const { maximum, minimum } = options
   if (maximum && date.getTime() > maximum.getTime()) {
-    return validator.fail(`Datetime must be maximum ${maximum.toISOString()}`, date)
+    return validation.fail(`Datetime must be maximum ${maximum.toISOString()}`, date)
   }
   if (minimum && date.getTime() < minimum.getTime()) {
-    return validator.fail(`Datetime must be minimum ${minimum.toISOString()}`, date)
+    return validation.fail(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
-  return validator.succeed()
+  return validation.succeed()
 }

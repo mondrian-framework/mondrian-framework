@@ -1,4 +1,4 @@
-import { types, decoder, result, validator, path } from './index'
+import { types, decoder, result, validation, path } from './index'
 import { assertNever, mergeArrays } from './utils'
 
 /**
@@ -35,12 +35,15 @@ export function decode<T extends types.Type>(
   type: T,
   value: unknown,
   decodingOptions?: Partial<Options>,
-  validationOptions?: Partial<validator.Options>,
-): result.Result<types.Infer<T>, validator.Error[] | decoder.Error[]> {
+  validationOptions?: validation.Options,
+): result.Result<types.Infer<T>, validation.Error[] | decoder.Error[]> {
   return decodeWithoutValidation(type, value, decodingOptions)
-    .mapError((errors) => errors as validator.Error[] | decoder.Error[])
+    .mapError((errors) => errors as validation.Error[] | decoder.Error[])
     .chain((decodedValue) => {
-      return validator.validate<T>(type, decodedValue, validationOptions).replace(decodedValue)
+      return types
+        .concretise(type)
+        .validate(decodedValue as never, validationOptions)
+        .replace(decodedValue)
     })
 }
 

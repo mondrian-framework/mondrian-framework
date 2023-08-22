@@ -784,7 +784,10 @@ export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
  * @returns true if the two types model the same type
  * TODO: add documentation and tests
  */
-export function areEqual<T extends Type>(one: T, other: T): boolean {
+export function areEqual(one: Type, other: Type): boolean {
+  if (one == other) {
+    return true //same pointer
+  }
   const type1 = concretise(one)
   const type2 = concretise(other)
 

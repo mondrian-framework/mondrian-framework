@@ -1,4 +1,4 @@
-import m, { arbitrary, decoder, encoder, types, validator } from '../../src'
+import m, { arbitrary, decoding, encoder, types, validator } from '../../src'
 import { fc as gen } from '@fast-check/vitest'
 import prand from 'pure-rand'
 import { describe, bench } from 'vitest'
@@ -38,7 +38,7 @@ describe('benchmark', () => {
 
   bench('[ACTUAL] decode', () => {
     for (let i = 0; i < values.length; i++) {
-      decoder.decode(User, encodedValues[i])
+      decoding.decode(User, encodedValues[i])
     }
   })
   bench('[ACTUAL] encode', () => {

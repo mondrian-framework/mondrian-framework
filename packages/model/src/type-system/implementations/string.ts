@@ -1,4 +1,4 @@
-import { types } from '../../'
+import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -50,5 +50,37 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
 
   encodeWithoutValidation(value: types.Infer<types.StringType>): JSONType {
     return value
+  }
+
+  validate(value: types.Infer<types.StringType>, _validationOptions?: validation.Options): validation.Result {
+    if (this.options === undefined) {
+      return validation.succeed()
+    }
+    const { regex, maxLength, minLength } = this.options
+    if (maxLength && value.length > maxLength) {
+      return validation.fail(`string longer than max length (${maxLength})`, value)
+    }
+    if (minLength && value.length < minLength) {
+      return validation.fail(`string shorter than min length (${minLength})`, value)
+    }
+    if (regex && !regex.test(value)) {
+      return validation.fail(`string regex mismatch (${regex.source})`, value)
+    }
+    return validation.succeed()
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.StringType>> {
+    if (typeof value === 'string') {
+      return decoding.succeed(value)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+      return decoding.succeed(value.toString())
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'boolean') {
+      return decoding.succeed(value.toString())
+    } else {
+      return decoding.fail('string', value)
+    }
   }
 }

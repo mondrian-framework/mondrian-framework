@@ -1,5 +1,5 @@
 import { fc as gen, test } from '@fast-check/vitest'
-import { decoder, m, types } from '@mondrian-framework/model'
+import { decoding, m, types } from '@mondrian-framework/model'
 import { JSONType } from '@mondrian-framework/utils'
 import { SuiteFactory, expect } from 'vitest'
 
@@ -40,7 +40,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       // If the decoded value is not the same as the raw value (e.g. in Time where the raw can be a string
       // and the decoded is a Date)
       const { raw, expected } = rawValueAndExpectedValueFromUnknown(rawValue)
-      const decoded = decoder.decode(type, raw)
+      const decoded = types.concretise(type).decode(raw)
       expect(decoded.isOk).toBe(true)
       if (decoded.isOk) {
         expect(decoded.value).toEqual(expected)
@@ -48,14 +48,14 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
     }
 
     const checkIsNotDecoded = (rawValue: unknown) =>
-      decoder.decode(type, rawValue).isOk
+      types.concretise(type).decode(rawValue).isOk
         ? expect.fail(`${rawValue} was decoded but I expected the decoding to fail`)
         : true
 
     // informally, we check that `encode(decode(x)) = x`
     const checkEncodeInverseOfDecode = (rawValue: unknown) => {
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
-      const decoded = decoder.decode(type, raw)
+      const decoded = types.concretise(type).decode(raw)
       if (decoded.isOk) {
         expect(types.concretise(type).encodeWithoutValidation(decoded.value as never)).toEqual(raw)
       } else {
@@ -71,7 +71,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
       // We expect to receive as input only raw valid values. First we decode them expecting the result to be valid
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValidValue)
 
-      const decodingResult = decoder.decode(type, raw)
+      const decodingResult = types.concretise(type).decode(raw)
       if (!decodingResult.isOk) {
         expect.fail(`I was expecting to get only valid raw values as input but got ${rawValidValue}.
         Most likely there is a bug in the \`validValues\` passed as input`)
@@ -80,7 +80,7 @@ export function testTypeEncodingAndDecoding<T extends m.Type>(
         const validValue = decodingResult.value
         const encodedValue = types.concretise(type).encodeWithoutValidation(validValue as never)
 
-        const decoded = decoder.decode(type, encodedValue)
+        const decoded = types.concretise(type).decode(encodedValue)
         expect(decoded.isOk).toBe(true)
         if (decoded.isOk) {
           expect(decoded.value).toEqual(validValue)
@@ -141,12 +141,12 @@ export function testTypeDecodingAndEncoding<T extends m.Type>(
     }[]
     invalidValues: JSONType[]
   },
-  decodingOptions?: Partial<decoder.Options>,
+  decodingOptions?: Partial<decoding.Options>,
 ): SuiteFactory<{}> {
   return () => {
     test('decoding works for valid values', () =>
       validValues.forEach(({ raw, decoded }) => {
-        const result = decoder.decode(type, raw, decodingOptions)
+        const result = types.concretise(type).decode(raw, decodingOptions)
         if (result.isOk) {
           expect(result.value).toEqual(decoded)
         } else {
@@ -166,7 +166,7 @@ export function testTypeDecodingAndEncoding<T extends m.Type>(
       }))
     test('decoding fails for invalid values', () =>
       invalidValues.forEach((v) => {
-        const result = decoder.decode(type, v, decodingOptions)
+        const result = types.concretise(type).decode(v, decodingOptions)
         if (!result.isOk) {
           expect(result.error.length).greaterThan(0)
         } else {

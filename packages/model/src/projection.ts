@@ -1,4 +1,4 @@
-import { decoder, path, projection, result, types } from './index'
+import { decoding, path, projection, result, types } from './index'
 import { always, assertNever, filterMapObject, mergeArrays, unsafeObjectToTaggedVariant } from './utils'
 
 /**
@@ -282,24 +282,30 @@ function validateArray(type: types.Type, projection: Projection, array: any[]): 
 export function decode<T extends types.Type>(
   type: T,
   value: unknown,
-  options?: Partial<decoder.Options>,
-): decoder.Result<FromType<T>> {
+  options?: Partial<decoding.Options>,
+): decoding.Result<FromType<T>> {
   const trueResult = (
     options?.typeCastingStrategy === 'tryCasting'
-      ? decoder
-          .decode(types.literal('true'), value, options)
+      ? types
+          .literal('true')
+          .decode(value, options)
           .map(() => true)
-          .lazyOr(() => decoder.decode(types.literal(1), value, options).map(() => true))
-          .lazyOr(() => decoder.decode(types.literal(true), value, options))
-      : decoder.decode(types.literal(true), value, options)
-  ) as decoder.Result<FromType<T>>
+          .lazyOr(() =>
+            types
+              .literal(1)
+              .decode(value, options)
+              .map(() => true),
+          )
+          .lazyOr(() => types.literal(true).decode(value, options))
+      : types.literal(true).decode(value, options)
+  ) as decoding.Result<FromType<T>>
   if (trueResult.isOk) {
     return trueResult
   }
   const unwrapped = types.unwrap(type)
   if (unwrapped.kind === types.Kind.Object || unwrapped.kind === types.Kind.Union) {
     if (typeof value !== 'object' || value == null) {
-      return decoder.fail<FromType<T>>('object', value).mapError((error) => [...trueResult.error, ...error])
+      return decoding.fail<FromType<T>>('object', value).mapError((error) => [...trueResult.error, ...error])
     }
     const addDecodedEntry = (accumulator: [string, unknown][], [fieldName, value]: readonly [string, unknown]) => {
       accumulator.push([fieldName, value])
@@ -314,7 +320,7 @@ export function decode<T extends types.Type>(
     ) as [string, types.Type][]
     const decodedEntries =
       options?.errorReportingStrategy === 'allErrors'
-        ? result.tryEach(entries, [], addDecodedEntry, [] as decoder.Error[], mergeArrays, decodeEntry)
+        ? result.tryEach(entries, [], addDecodedEntry, [] as decoding.Error[], mergeArrays, decodeEntry)
         : result.tryEachFailFast(entries, [], addDecodedEntry, decodeEntry)
     return decodedEntries.map(Object.fromEntries)
   }

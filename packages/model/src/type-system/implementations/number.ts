@@ -1,4 +1,4 @@
-import { types } from '../../'
+import { types, decoding, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -75,5 +75,47 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
 
   encodeWithoutValidation(value: types.Infer<types.NumberType>): JSONType {
     return value
+  }
+
+  validate(value: types.Infer<types.NumberType>, _validationOptions?: validation.Options): validation.Result {
+    if (this.options === undefined) {
+      return validation.succeed()
+    }
+    const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, isInteger } = this.options
+    if (maximum && !(value <= maximum)) {
+      return validation.fail(`number must be less than or equal to ${maximum}`, value)
+    } else if (exclusiveMaximum && !(value < exclusiveMaximum)) {
+      return validation.fail(`number must be less than to ${exclusiveMaximum}`, value)
+    } else if (minimum && !(value >= minimum)) {
+      return validation.fail(`number must be greater than or equal to ${minimum}`, value)
+    } else if (exclusiveMinimum && !(value > exclusiveMinimum)) {
+      return validation.fail(`number must be greater than ${exclusiveMinimum}`, value)
+    } else if (isInteger && !Number.isInteger(value)) {
+      return validation.fail(`number must be an integer`, value)
+    } else {
+      return validation.succeed()
+    }
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.NumberType>> {
+    if (typeof value === 'number') {
+      return decoding.succeed(value)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
+      return numberFromString(value)
+    } else {
+      return decoding.fail('number', value)
+    }
+  }
+}
+
+function numberFromString(string: string): decoding.Result<number> {
+  const number = Number(string)
+  if (Number.isNaN(number)) {
+    return decoding.fail('number', string)
+  } else {
+    return decoding.succeed(number)
   }
 }

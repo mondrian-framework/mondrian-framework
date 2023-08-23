@@ -12,7 +12,7 @@ const func = functions.withContext<SharedContext>()
 export const register = func.build({
   input: RegisterInput,
   output: t.object({ user: User, jwt: t.string() }).setName('RegisterOutput'),
-  async body({ input, context, projection: p }) {
+  async apply({ input, context, projection: p }) {
     const userSelect = (projection.subProjection as any)(p ?? true, ['user']) //TODO: #49
     const select = utils.projectionToSelection<Prisma.UserSelect>(User, userSelect)
     const user = await context.prisma.user.create({ data: input, select })
@@ -24,7 +24,7 @@ export const register = func.build({
 export const login = func.build({
   input: LoginInput,
   output: t.object({ user: User, jwt: t.string() }).nullable().setName('LoginOutput'),
-  async body({ input, context, projection: p }) {
+  async apply({ input, context, projection: p }) {
     const userSelect = (projection.subProjection as any)(p ?? true, ['user']) //TODO: #49
     const select = utils.projectionToSelection<Prisma.UserSelect>(User, userSelect, {
       posts: { take: 1, select: { id: true } },
@@ -39,7 +39,7 @@ export const login = func.build({
 export const users = func.build({
   input: UserFilter,
   output: t.array(User).setName('Users'),
-  async body({ input, context, projection }) {
+  async apply({ input, context, projection }) {
     const select = utils.projectionToSelection<Prisma.UserSelect>(User, projection)
     const users = await context.prisma.user.findMany({ where: input, select })
     return users

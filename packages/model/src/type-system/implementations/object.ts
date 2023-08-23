@@ -1,5 +1,5 @@
-import { types } from '../../'
-import { filterMapObject } from '../../utils'
+import { decoding, path, result, types, validation } from '../../'
+import { always, filterMapObject, mergeArrays } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -77,4 +77,62 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
       return fieldIsOptional && encodedField === null ? undefined : encodedField
     })
   }
+
+  validate(value: types.Infer<types.ObjectType<M, Ts>>, validationOptions?: validation.Options): validation.Result {
+    const options = { ...validation.defaultOptions, ...validationOptions }
+    const entries = Object.entries(value)
+    const validateEntry = ([fieldName, fieldValue]: [string, unknown]) =>
+      types
+        .concretise(this.fields[fieldName])
+        .validate(fieldValue as never, options)
+        .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+
+    return options.errorReportingStrategy === 'stopAtFirstError'
+      ? result.tryEachFailFast(entries, true, always(true), validateEntry)
+      : result.tryEach(entries, true, always(true), [] as validation.Error[], mergeArrays, validateEntry)
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.ObjectType<M, Ts>>> {
+    return castToObject(value, decodingOptions).chain((object) =>
+      decodeObjectProperties(this.fields, object, decodingOptions),
+    )
+  }
+}
+
+function castToObject(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Record<string, unknown>> {
+  if (typeof value === 'object') {
+    if (value === null && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
+      return decoding.fail('object', null)
+    }
+    return decoding.succeed((value ?? {}) as Record<string, unknown>)
+  } else {
+    return decoding.fail('object', value)
+  }
+}
+
+function decodeObjectProperties(
+  fields: types.Types,
+  object: Record<string, unknown>,
+  decodingOptions?: decoding.Options,
+): decoding.Result<any> {
+  const addDecodedEntry = (accumulator: [string, unknown][], [fieldName, value]: readonly [string, unknown]) => {
+    accumulator.push([fieldName, value])
+    return accumulator
+  }
+  const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
+    types
+      .concretise(fieldType)
+      .decodeWithoutValidation(object[fieldName], decodingOptions)
+      .map((value) => [fieldName, value] as const)
+      .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+
+  const entries = Object.entries(fields)
+  const decodedEntries =
+    decodingOptions?.errorReportingStrategy === 'allErrors'
+      ? result.tryEach(entries, [], addDecodedEntry, [] as decoding.Error[], mergeArrays, decodeEntry)
+      : result.tryEachFailFast(entries, [], addDecodedEntry, decodeEntry)
+  return decodedEntries.map(Object.fromEntries)
 }

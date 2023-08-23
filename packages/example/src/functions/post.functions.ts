@@ -11,7 +11,7 @@ const func = functions.withContext<SharedContext>()
 export const checkPost = func.build({
   input: t.unknown(),
   output: t.object({ passedPosts: Id.array(), blockedPosts: Id.array() }),
-  async body({ input, context, projection, operationId }) {
+  async apply({ input, context, projection, operationId }) {
     return { blockedPosts: [], passedPosts: [] }
   },
   options: { namespace: 'post' },
@@ -20,7 +20,7 @@ export const checkPost = func.build({
 export const publish = func.build({
   input: PostInput,
   output: Post,
-  async body({ input, context, projection, operationId }) {
+  async apply({ input, context, projection, operationId }) {
     if (context.auth?.userId == null) {
       throw new Error('Unauthorized')
     }
@@ -37,7 +37,7 @@ export const publish = func.build({
 export const myPosts = func.build({
   input: BasicFilter,
   output: Posts,
-  async body({ input, context, projection, operationId }) {
+  async apply({ input, context, projection, operationId }) {
     if (context.auth?.userId == null) {
       throw new Error('Unauthorized')
     }

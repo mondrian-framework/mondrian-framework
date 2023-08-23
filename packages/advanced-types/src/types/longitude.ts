@@ -1,4 +1,4 @@
-import { decoder, m, validator } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 
 const MIN_LON = -180.0
 const MAX_LON = 180.0
@@ -11,18 +11,18 @@ export function longitude(options?: m.BaseOptions): m.CustomType<'longitude', {}
     'longitude',
     (number) => number,
     (value) =>
-      typeof value === 'number' ? decoder.succeed(value) : decoder.fail('Expected a longitude number', value),
+      typeof value === 'number' ? decoding.succeed(value) : decoding.fail('Expected a longitude number', value),
     validateLongitude,
     options,
   )
 }
 
-function validateLongitude(value: number): validator.Result {
+function validateLongitude(value: number): validation.Result {
   if (value < MIN_LON || value > MAX_LON) {
-    return validator.fail(`Invalid longitude number (must be between ${MIN_LON} and ${MIN_LON})`, value)
+    return validation.fail(`Invalid longitude number (must be between ${MIN_LON} and ${MIN_LON})`, value)
   } else if (value !== Number.parseFloat(value.toFixed(MAX_PRECISION))) {
-    return validator.fail(`Invalid longitude number (max precision must be ${MAX_PRECISION})`, value)
+    return validation.fail(`Invalid longitude number (max precision must be ${MAX_PRECISION})`, value)
   } else {
-    return validator.succeed()
+    return validation.succeed()
   }
 }

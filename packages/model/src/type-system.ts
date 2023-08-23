@@ -1,4 +1,4 @@
-import { decoder, validator, types, result } from './index'
+import { decoding, validation, types, result } from './index'
 import { filterMapObject, mapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -52,8 +52,7 @@ export type Types = Record<string, Type>
  * This can be useful to use in pair with {@link concretise conretise} to make
  * sure you are dealing with a type that is not lazy.
  */
-// prettier-ignore
-export type Concrete<T extends Type> = Exclude<T, () => any>
+export type Concrete<T extends Type> = [T] extends [() => infer T1 extends Type] ? Concrete<T1> : Exclude<T, () => any>
 
 /**
  * Infers the Typescript type equivalent of a given Mondrian {@link Type `Type`}.
@@ -81,19 +80,32 @@ export type Infer<T extends Type>
   = [T] extends [NumberType] ? number
   : [T] extends [StringType] ? string
   : [T] extends [BooleanType] ? boolean
-  : [T] extends [EnumType<infer Vs>] ? Vs[number]
-  : [T] extends [LiteralType<infer L>] ? L
-  : [T] extends [UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
-  : [T] extends [ObjectType<"immutable", infer Ts>] ? { readonly [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { readonly [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
-  : [T] extends [ObjectType<"mutable", infer Ts>] ? { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
-  : [T] extends [ArrayType<"immutable", infer T1>] ? readonly Infer<T1>[]
-  : [T] extends [ArrayType<"mutable", infer T1>] ? Infer<T1>[]
-  : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
-  : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
-  : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
-  : [T] extends [CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
+  : [T] extends [LiteralType<infer L>] ? InferLiteral<L>
+  : [T] extends [CustomType<any, any, infer InferredAs>] ? InferredAs
+  : [T] extends [EnumType<infer Vs>] ? InferEnum<Vs>
+  : [T] extends [OptionalType<infer T1>] ? InferOptional<T1>
+  : [T] extends [NullableType<infer T1>] ? InferNullable<T1>
+  : [T] extends [ReferenceType<infer T1>] ? InferReference<T1>
+  : [T] extends [ArrayType<infer M, infer T1>] ? InferArray<M, T1>
+  : [T] extends [ObjectType<infer M, infer Ts>] ? InferObject<M, Ts>
+  : [T] extends [UnionType<infer Ts>] ? InferUnion<Ts>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
+
+type InferObject<M, Ts extends Types> = M extends 'mutable' ? InferMutableObject<Ts> : InferImmutableObject<Ts>
+// prettier-ignore
+type InferImmutableObject<Ts extends Types> = { readonly [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { readonly [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
+// prettier-ignore
+type InferMutableObject<Ts extends Types> = { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
+type InferUnion<Ts extends Types> = { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
+type InferEnum<Vs extends readonly [string, ...string[]]> = Vs[number]
+type InferLiteral<L> = L
+type InferArray<M, T extends Type> = M extends 'mutable' ? InferMutableArray<T> : InferImmutableArray<T>
+type InferMutableArray<T extends Type> = Infer<T>[]
+type InferImmutableArray<T extends Type> = readonly Infer<T>[]
+type InferOptional<T extends Type> = undefined | Infer<T>
+type InferNullable<T extends Type> = null | Infer<T>
+type InferReference<T extends Type> = Infer<T>
 
 /**
  * TODO: Add doc
@@ -190,7 +202,14 @@ export type StringType = {
   array(): ArrayType<'immutable', StringType>
   reference(): ReferenceType<StringType>
 
-  encode(value: Infer<StringType>, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<Infer<StringType>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<StringType>>
+  validate(value: Infer<StringType>, validationOptions?: validation.Options): validation.Result
+  encode(value: Infer<StringType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: Infer<StringType>): JSONType
 
   setOptions(options: StringTypeOptions): StringType
@@ -219,7 +238,14 @@ export type NumberType = {
   array(): ArrayType<'immutable', NumberType>
   reference(): ReferenceType<NumberType>
 
-  encode(value: Infer<NumberType>, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<Infer<NumberType>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<NumberType>>
+  validate(value: Infer<NumberType>, validationOptions?: validation.Options): validation.Result
+  encode(value: Infer<NumberType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: Infer<NumberType>): JSONType
 
   setOptions(options: NumberTypeOptions): NumberType
@@ -250,7 +276,14 @@ export type BooleanType = {
   array(): ArrayType<'immutable', BooleanType>
   reference(): ReferenceType<BooleanType>
 
-  encode(value: Infer<BooleanType>, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<Infer<BooleanType>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<BooleanType>>
+  validate(value: Infer<BooleanType>, validationOptions?: validation.Options): validation.Result
+  encode(value: Infer<BooleanType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: Infer<BooleanType>): JSONType
 
   setOptions(options: BooleanTypeOptions): BooleanType
@@ -276,8 +309,15 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
   array(): ArrayType<'immutable', EnumType<Vs>>
   reference(): ReferenceType<EnumType<Vs>>
 
-  encode(value: Infer<EnumType<Vs>>, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: Infer<EnumType<Vs>>): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferEnum<Vs>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferEnum<Vs>>
+  validate(value: InferEnum<Vs>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferEnum<Vs>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferEnum<Vs>): JSONType
 
   setOptions(options: EnumTypeOptions): EnumType<Vs>
   updateOptions(options: EnumTypeOptions): EnumType<Vs>
@@ -302,11 +342,15 @@ export type LiteralType<L extends number | string | boolean | null> = {
   array(): ArrayType<'immutable', LiteralType<L>>
   reference(): ReferenceType<LiteralType<L>>
 
-  // ⚠️ I couldn't use the `Infer<LiteralType<L>>` because for some reason
-  // the compiler doesn't accept that definition, so this is the hand-written
-  // definition for `Infer<LiteralType<L>>`
-  encode(value: L, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: L): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferLiteral<L>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferLiteral<L>>
+  validate(value: InferLiteral<L>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferLiteral<L>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferLiteral<L>): JSONType
 
   setOptions(options: LiteralTypeOptions): LiteralType<L>
   updateOptions(options: LiteralTypeOptions): LiteralType<L>
@@ -332,14 +376,15 @@ export type UnionType<Ts extends Types> = {
   array(): ArrayType<'immutable', UnionType<Ts>>
   reference(): ReferenceType<UnionType<Ts>>
 
-  // ⚠️ I couldn't use the `Infer<UniontType<L>>` because for some reason
-  // the compiler doesn't accept that definition, so this is the hand-written
-  // definition for `Infer<UnionType<L>>`
-  encode(
-    value: { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts],
-    validationOptions?: validator.Options,
-  ): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferUnion<Ts>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferUnion<Ts>>
+  validate(value: InferUnion<Ts>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferUnion<Ts>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferUnion<Ts>): JSONType
 
   setOptions(options: UnionTypeOptions): UnionType<Ts>
   updateOptions(options: UnionTypeOptions): UnionType<Ts>
@@ -367,11 +412,15 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
   array(): ArrayType<'immutable', ObjectType<M, Ts>>
   reference(): ReferenceType<ObjectType<M, Ts>>
 
-  encode(
-    value: Infer<ObjectType<M, Ts>>,
-    validationOptions?: validator.Options,
-  ): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: Infer<ObjectType<M, Ts>>): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferObject<M, Ts>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferObject<M, Ts>>
+  validate(value: InferObject<M, Ts>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferObject<M, Ts>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferObject<M, Ts>): JSONType
 
   setOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   updateOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
@@ -399,11 +448,15 @@ export type ArrayType<M extends Mutability, T extends Type> = {
   array(): ArrayType<'immutable', ArrayType<M, T>>
   reference(): ReferenceType<ArrayType<M, T>>
 
-  encode(
-    value: Infer<ArrayType<M, T>>,
-    validationOptions?: validator.Options,
-  ): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: Infer<ArrayType<M, T>>): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferArray<M, T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferArray<M, T>>
+  validate(value: InferArray<M, T>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferArray<M, T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferArray<M, T>): JSONType
 
   setOptions(options: ArrayTypeOptions): ArrayType<M, T>
   updateOptions(options: ArrayTypeOptions): ArrayType<M, T>
@@ -430,11 +483,15 @@ export type OptionalType<T extends Type> = {
   array(): ArrayType<'immutable', OptionalType<T>>
   reference(): ReferenceType<OptionalType<T>>
 
-  // ⚠️ I couldn't use the `Infer<OptionalType<T>>` because for some reason
-  // the compiler doesn't accept that definition, so this is the hand-written
-  // definition for `Infer<OptionalType<T>>`
-  encode(value: undefined | Infer<T>, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: undefined | Infer<T>): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferOptional<T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferOptional<T>>
+  validate(value: InferOptional<T>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferOptional<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferOptional<T>): JSONType
 
   setOptions(options: OptionalTypeOptions): OptionalType<T>
   updateOptions(options: OptionalTypeOptions): OptionalType<T>
@@ -458,11 +515,15 @@ export type NullableType<T extends Type> = {
   array(): ArrayType<'immutable', NullableType<T>>
   reference(): ReferenceType<NullableType<T>>
 
-  // ⚠️ I couldn't use the `Infer<NullableType<T>>` because for some reason
-  // the compiler doesn't accept that definition, so this is the hand-written
-  // definition for `Infer<NullableType<T>>`
-  encode(value: null | Infer<T>, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: null | Infer<T>): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferNullable<T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferNullable<T>>
+  validate(value: InferNullable<T>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferNullable<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferNullable<T>): JSONType
 
   setOptions(options: NullableTypeOptions): NullableType<T>
   updateOptions(options: NullableTypeOptions): NullableType<T>
@@ -486,11 +547,15 @@ export type ReferenceType<T extends Type> = {
   nullable(): NullableType<ReferenceType<T>>
   array(): ArrayType<'immutable', ReferenceType<T>>
 
-  // ⚠️ I couldn't use the `Infer<ReferenceType<T>>` because for some reason
-  // the compiler doesn't accept that definition, so this is the hand-written
-  // definition for `Infer<ReferenceType<T>>`
-  encode(value: Infer<T>, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
-  encodeWithoutValidation(value: Infer<T>): JSONType
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferReference<T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferReference<T>>
+  validate(value: InferReference<T>, validationOptions?: validation.Options): validation.Result
+  encode(value: InferReference<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encodeWithoutValidation(value: InferReference<T>): JSONType
 
   setOptions(options: ReferenceTypeOptions): ReferenceType<T>
   updateOptions(options: ReferenceTypeOptions): ReferenceType<T>
@@ -510,23 +575,19 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
   typeName: Name
   options?: CustomTypeOptions<Options>
 
-  decode(
-    value: unknown,
-    decodingOptions: decoder.Options,
-    options?: CustomTypeOptions<Options>,
-  ): decoder.Result<Infer<CustomType<Name, Options, InferredAs>>>
-  validate(
-    value: Infer<CustomType<Name, Options, InferredAs>>,
-    validationOptions: validator.Options,
-    options?: CustomTypeOptions<Options>,
-  ): validator.Result
-
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
   nullable(): NullableType<CustomType<Name, Options, InferredAs>>
   array(): ArrayType<'immutable', CustomType<Name, Options, InferredAs>>
   reference(): ReferenceType<CustomType<Name, Options, InferredAs>>
 
-  encode(value: InferredAs, validationOptions?: validator.Options): result.Result<JSONType, validator.Error[]>
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferredAs, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferredAs>
+  validate(value: InferredAs, validationOptions?: validation.Options): validation.Result
+  encode(value: InferredAs, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferredAs): JSONType
 
   setOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
@@ -835,13 +896,16 @@ export function areEqual(one: Type, other: Type): boolean {
 export function isType<T extends Type>(
   type: T,
   value: unknown,
-  decodingOptions?: decoder.Options,
-  validationOptions?: validator.Options,
+  decodingOptions?: decoding.Options,
+  validationOptions?: validation.Options,
 ): value is Infer<T> {
-  return decoder.decode(type, value, decodingOptions, validationOptions).match(
-    (_) => true,
-    (_) => false,
-  )
+  return types
+    .concretise(type)
+    .decode(value, decodingOptions, validationOptions)
+    .match(
+      (_) => true,
+      (_) => false,
+    )
 }
 
 /**
@@ -853,15 +917,18 @@ export function isType<T extends Type>(
 export function assertType<T extends Type>(
   type: T,
   value: unknown,
-  decodingOptions?: decoder.Options,
-  validationOptions?: validator.Options,
+  decodingOptions?: decoding.Options,
+  validationOptions?: validation.Options,
 ): asserts value is Infer<T> {
-  decoder.decode(type, value, decodingOptions, validationOptions).match(
-    (_) => {},
-    (errors) => {
-      throw new Error(`Invalid type: ${JSON.stringify(errors)}`)
-    },
-  )
+  types
+    .concretise(type)
+    .decode(value, decodingOptions, validationOptions)
+    .match(
+      (_) => {},
+      (errors) => {
+        throw new Error(`Invalid type: ${JSON.stringify(errors)}`)
+      },
+    )
 }
 
 function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Reference | Kind.Array): boolean {

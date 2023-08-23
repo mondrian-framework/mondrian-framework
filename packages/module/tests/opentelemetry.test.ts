@@ -37,7 +37,7 @@ describe('Opentelemetry', () => {
       functions: { dummy },
       options: {
         checks: { maxProjectionDepth: 2, output: 'throw' },
-        opentelemetryInstrumentation: true
+        opentelemetryInstrumentation: true,
       },
       context: async () => ({}),
     })

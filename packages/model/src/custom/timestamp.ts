@@ -1,4 +1,4 @@
-import { result, types, decoder, validator } from '../index'
+import { types, decoding, validation } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -25,31 +25,31 @@ function encodeTimestamp(timestamp: Date): JSONType {
 
 function decodeTimestamp(
   value: unknown,
-  _decodingOptions: decoder.Options,
+  _decodingOptions?: decoding.Options,
   _options?: types.OptionsOf<TimestampType>,
-): decoder.Result<Date> {
+): decoding.Result<Date> {
   if (value instanceof Date) {
-    return decoder.succeed(value)
+    return decoding.succeed(value)
   }
   return typeof value === 'number' && -8640000000000000 <= value && value <= 8640000000000000
-    ? decoder.succeed(new Date(value))
-    : decoder.fail(`timestamp`, value)
+    ? decoding.succeed(new Date(value))
+    : decoding.fail(`timestamp`, value)
 }
 
 function validateTimestamp(
   input: Date,
-  _validationOptions: validator.Options,
+  _validationOptions?: validation.Options,
   options?: types.OptionsOf<TimestampType>,
-): validator.Result {
+): validation.Result {
   if (options === undefined) {
-    return validator.succeed()
+    return validation.succeed()
   }
   const { minimum, maximum } = options
   if (maximum && input.getTime() > maximum.getTime()) {
-    return validator.fail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
+    return validation.fail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
   }
   if (minimum && input.getTime() < minimum.getTime()) {
-    return validator.fail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
+    return validation.fail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
   }
-  return validator.succeed()
+  return validation.succeed()
 }

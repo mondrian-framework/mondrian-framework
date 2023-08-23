@@ -1,4 +1,4 @@
-import { decoder, m, validator } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 import { result } from '@mondrian-framework/model'
 import BigNumber from 'bignumber.js'
 
@@ -31,45 +31,45 @@ function encodeDecimal(value: BigNumber, options?: m.OptionsOf<DecimalType>): st
 
 function decodeDecimal(
   value: unknown,
-  decodingOptions: decoder.Options,
+  decodingOptions?: decoding.Options,
   options?: m.OptionsOf<DecimalType>,
-): decoder.Result<BigNumber> {
+): decoding.Result<BigNumber> {
   if (typeof value === 'string' || typeof value === 'number') {
     const decoded = new BigNumber(value, options?.base ?? 10)
     const number = options?.decimals != null ? decoded.decimalPlaces(options?.decimals) : decoded
     if (number.isNaN()) {
-      return decoder.fail(`Invalid decimal. (base ${options?.decimals ?? 10})`, value)
+      return decoding.fail(`Invalid decimal. (base ${options?.decimals ?? 10})`, value)
     }
-    if (decodingOptions.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
-      return decoder.fail(
+    if (decodingOptions?.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
+      return decoding.fail(
         `Invalid decimal places (need exactly ${options?.decimals}). (base ${options?.decimals ?? 10})`,
         value,
       )
     }
     return result.ok(number)
   }
-  return decoder.fail(`Number or string representing a number expected. (base ${options?.decimals ?? 10})`, value)
+  return decoding.fail(`Number or string representing a number expected. (base ${options?.decimals ?? 10})`, value)
 }
 
 function validateDecimal(
   value: BigNumber,
-  _validationOptions: validator.Options,
+  _validationOptions?: validation.Options,
   options?: m.OptionsOf<DecimalType>,
-): validator.Result {
+): validation.Result {
   if (options?.maximum != null && value.gt(options.maximum)) {
-    return validator.fail(`decimal must be less than or equal to ${options.maximum}`, value)
+    return validation.fail(`decimal must be less than or equal to ${options.maximum}`, value)
   }
   if (options?.minimum != null && value.lt(options.minimum)) {
-    return validator.fail(`decimal must be greater than or equal to ${options.minimum}`, value)
+    return validation.fail(`decimal must be greater than or equal to ${options.minimum}`, value)
   }
   if (options?.exclusiveMaximum != null && value.gte(options.exclusiveMaximum)) {
-    return validator.fail(`decimal must be less than ${options.exclusiveMaximum}`, value)
+    return validation.fail(`decimal must be less than ${options.exclusiveMaximum}`, value)
   }
   if (options?.exclusiveMinimum != null && value.lte(options.exclusiveMinimum)) {
-    return validator.fail(`decimal must be greater than ${options.exclusiveMinimum}`, value)
+    return validation.fail(`decimal must be greater than ${options.exclusiveMinimum}`, value)
   }
   if (options?.multipleOf != null && !value.mod(options.multipleOf).eq(0)) {
-    return validator.fail(`decimal must be multiple of ${options.multipleOf}`, value)
+    return validation.fail(`decimal must be multiple of ${options.multipleOf}`, value)
   }
-  return validator.succeed()
+  return validation.succeed()
 }

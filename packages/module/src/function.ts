@@ -123,4 +123,4 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
   ): Function<I, O, Context> {
     return func
   }
-} 
+}

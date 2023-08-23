@@ -1,4 +1,4 @@
-import { result, types, decoder, validator } from '../index'
+import { types, decoding, validation } from '../index'
 
 /**
  * The type of a datetime, defined as a custom type.
@@ -24,38 +24,38 @@ function encodeDateTime(date: Date): string {
 
 function decodeDateTime(
   value: unknown,
-  decodingOptions: decoder.Options,
+  decodingOptions?: decoding.Options,
   _options?: types.OptionsOf<DateTimeType>,
-): decoder.Result<Date> {
+): decoding.Result<Date> {
   if (value instanceof Date) {
-    return decoder.succeed(value)
-  } else if (typeof value === 'string' && decodingOptions.typeCastingStrategy === 'expectExactTypes') {
+    return decoding.succeed(value)
+  } else if (typeof value === 'string' && decodingOptions?.typeCastingStrategy === 'expectExactTypes') {
     return tryMakeDate(value)
-  } else if (typeof value === 'number' && decodingOptions.typeCastingStrategy === 'tryCasting') {
+  } else if (typeof value === 'number' && decodingOptions?.typeCastingStrategy === 'tryCasting') {
     return tryMakeDate(value)
   }
-  return decoder.fail('ISO date', value)
+  return decoding.fail('ISO date', value)
 }
 
-function tryMakeDate(value: number | string): decoder.Result<Date> {
+function tryMakeDate(value: number | string): decoding.Result<Date> {
   const date = new Date(value)
-  return Number.isNaN(date.valueOf()) ? decoder.fail('ISO date', value) : decoder.succeed(date)
+  return Number.isNaN(date.valueOf()) ? decoding.fail('ISO date', value) : decoding.succeed(date)
 }
 
 function validateDateTime(
   date: Date,
-  _validationOptions: validator.Options,
+  _validationOptions?: validation.Options,
   options?: types.OptionsOf<DateTimeType>,
-): validator.Result {
+): validation.Result {
   if (options === undefined) {
-    return validator.succeed()
+    return validation.succeed()
   }
   const { maximum, minimum } = options
   if (maximum && date.getTime() > maximum.getTime()) {
-    return validator.fail(`Datetime must be maximum ${maximum.toISOString()}`, date)
+    return validation.fail(`Datetime must be maximum ${maximum.toISOString()}`, date)
   }
   if (minimum && date.getTime() < minimum.getTime()) {
-    return validator.fail(`Datetime must be minimum ${minimum.toISOString()}`, date)
+    return validation.fail(`Datetime must be minimum ${minimum.toISOString()}`, date)
   }
-  return validator.succeed()
+  return validation.succeed()
 }

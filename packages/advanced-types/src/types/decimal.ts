@@ -1,4 +1,4 @@
-import { decoder, m, validation } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 import { result } from '@mondrian-framework/model'
 import BigNumber from 'bignumber.js'
 
@@ -31,24 +31,24 @@ function encodeDecimal(value: BigNumber, options?: m.OptionsOf<DecimalType>): st
 
 function decodeDecimal(
   value: unknown,
-  decodingOptions: decoder.Options,
+  decodingOptions?: decoding.Options,
   options?: m.OptionsOf<DecimalType>,
-): decoder.Result<BigNumber> {
+): decoding.Result<BigNumber> {
   if (typeof value === 'string' || typeof value === 'number') {
     const decoded = new BigNumber(value, options?.base ?? 10)
     const number = options?.decimals != null ? decoded.decimalPlaces(options?.decimals) : decoded
     if (number.isNaN()) {
-      return decoder.fail(`Invalid decimal. (base ${options?.decimals ?? 10})`, value)
+      return decoding.fail(`Invalid decimal. (base ${options?.decimals ?? 10})`, value)
     }
-    if (decodingOptions.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
-      return decoder.fail(
+    if (decodingOptions?.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
+      return decoding.fail(
         `Invalid decimal places (need exactly ${options?.decimals}). (base ${options?.decimals ?? 10})`,
         value,
       )
     }
     return result.ok(number)
   }
-  return decoder.fail(`Number or string representing a number expected. (base ${options?.decimals ?? 10})`, value)
+  return decoding.fail(`Number or string representing a number expected. (base ${options?.decimals ?? 10})`, value)
 }
 
 function validateDecimal(

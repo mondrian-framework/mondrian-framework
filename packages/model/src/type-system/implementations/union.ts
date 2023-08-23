@@ -1,4 +1,4 @@
-import { path, types, validation } from '../../'
+import { decoding, path, types, validation } from '../../'
 import { failWithInternalError } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -64,4 +64,32 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
       }
     }
   }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.UnionType<Ts>>> {
+    if (typeof value === 'object' && value) {
+      const object = value as Record<string, any>
+      const variantName = singleKeyFromObject(object)
+      if (variantName !== undefined && Object.keys(this.variants).includes(variantName)) {
+        return types
+          .concretise(this.variants[variantName])
+          .decodeWithoutValidation(object[variantName], decodingOptions)
+          .map((value) => Object.fromEntries([[variantName, value]]) as types.Infer<types.UnionType<Ts>>)
+          .mapError((errors) => path.prependVariantToAll(errors, variantName))
+      }
+    }
+    const prettyVariants = Object.keys(this.variants).join(' | ')
+    return decoding.fail(`union (${prettyVariants})`, value)
+  }
+}
+
+/**
+ * @param object the object from which to extract a single key
+ * @returns the key of the object if it has exactly one key; otherwise, it returns `undefined`
+ */
+function singleKeyFromObject(object: object): string | undefined {
+  const keys = Object.keys(object)
+  return keys.length === 1 ? keys[0] : undefined
 }

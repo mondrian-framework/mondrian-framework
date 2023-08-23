@@ -2,7 +2,7 @@ import { ErrorHandler, Api } from './api'
 import { infoToProjection } from './utils'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { createGraphQLError } from '@graphql-tools/utils'
-import { decoder, projection, types, validation } from '@mondrian-framework/model'
+import { decoding, projection, types, validation } from '@mondrian-framework/model'
 import { module, utils, functions, logger } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
@@ -156,7 +156,7 @@ function typeToGqlTypeInternal(
         impl: types.custom(
           'null',
           () => null,
-          () => decoder.succeed(null),
+          () => decoding.succeed(null),
           (input) => {
             if (input === null) {
               return validation.succeed()
@@ -277,7 +277,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
             server: 'GQL',
           })
           setHeader(serverContext, 'operation-id', operationId)
-          const decoded = decoder.decode(functionBody.input, input[gqlInputTypeName], {
+          const decoded = types.concretise(functionBody.input).decode(input[gqlInputTypeName], {
             typeCastingStrategy: 'tryCasting',
           })
           if (!decoded.isOk) {
@@ -302,7 +302,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
             const result = await functions.apply(functionBody, {
               context: moduleCtx,
               projection: proj.value,
-              input: decoded.value,
+              input: decoded.value as never,
               operationId,
               log,
             })

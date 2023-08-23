@@ -1,4 +1,4 @@
-import { decoder, types, validation } from '../../'
+import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -9,9 +9,9 @@ type CustomEncoder<Name extends string, Options extends Record<string, any>, Inf
 
 type CustomDecoder<Name extends string, Options extends Record<string, any>, InferredAs> = (
   value: unknown,
-  decodingOptions: decoder.Options,
+  decodingOptions?: decoding.Options,
   options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
-) => decoder.Result<InferredAs>
+) => decoding.Result<InferredAs>
 
 type CustomValidator<Name extends string, Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
@@ -25,11 +25,11 @@ type CustomValidator<Name extends string, Options extends Record<string, any>, I
 export function custom<Name extends string, Options extends Record<string, any>, InferredAs>(
   typeName: Name,
   encodeWithoutValidation: CustomEncoder<Name, Options, InferredAs>,
-  decode: CustomDecoder<Name, Options, InferredAs>,
+  decoder: CustomDecoder<Name, Options, InferredAs>,
   validator: CustomValidator<Name, Options, InferredAs>,
   options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
 ): types.CustomType<Name, Options, InferredAs> {
-  return new CustomTypeImpl(typeName, encodeWithoutValidation, decode, validator, options)
+  return new CustomTypeImpl(typeName, encodeWithoutValidation, decoder, validator, options)
 }
 
 class CustomTypeImpl<Name extends string, Options extends Record<string, any>, InferredAs>
@@ -39,24 +39,24 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
   readonly kind = types.Kind.Custom
   readonly typeName: Name
   readonly encoder: CustomEncoder<Name, Options, InferredAs>
-  readonly decode: CustomDecoder<Name, Options, InferredAs>
+  readonly decoder: CustomDecoder<Name, Options, InferredAs>
   readonly validator: CustomValidator<Name, Options, InferredAs>
 
   getThis = () => this
   fromOptions = (options: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>) =>
-    custom(this.typeName, this.encodeWithoutValidation, this.decode, this.validator, options)
+    custom(this.typeName, this.encodeWithoutValidation, this.decoder, this.validator, options)
 
   constructor(
     typeName: Name,
     encoder: CustomEncoder<Name, Options, InferredAs>,
-    decode: CustomDecoder<Name, Options, InferredAs>,
+    decoder: CustomDecoder<Name, Options, InferredAs>,
     validator: CustomValidator<Name, Options, InferredAs>,
     options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
   ) {
     super(options)
     this.typeName = typeName
     this.encoder = encoder
-    this.decode = decode
+    this.decoder = decoder
     this.validator = validator
   }
 
@@ -69,5 +69,9 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     options?: validation.Options,
   ): validation.Result {
     return this.validator(value, options, this.options)
+  }
+
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options | undefined): decoding.Result<InferredAs> {
+    return this.decoder(value, decodingOptions, this.options)
   }
 }

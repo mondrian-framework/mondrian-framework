@@ -1,4 +1,4 @@
-import { arbitrary, decoder, types } from '../src'
+import { arbitrary, types } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
@@ -23,8 +23,8 @@ describe('encoding', () => {
   // the decoded result would be undefined (and not the original null)
   test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded]) => {
     //encoding(decoding(x)) = x
-    const decoded = assertOk(decoder.decode(type, encoded))
-    const encodedAgain = assertOk(types.concretise(type).encode(decoded))
+    const decoded = assertOk(types.concretise(type).decode(encoded))
+    const encodedAgain = assertOk(types.concretise(type).encode(decoded as never))
     expect(encodedAgain).toEqual(encoded)
   })
 })

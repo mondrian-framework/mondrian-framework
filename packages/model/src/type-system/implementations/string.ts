@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -67,5 +67,20 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
       return validation.fail(`string regex mismatch (${regex.source})`, value)
     }
     return validation.succeed()
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.StringType>> {
+    if (typeof value === 'string') {
+      return decoding.succeed(value)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+      return decoding.succeed(value.toString())
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'boolean') {
+      return decoding.succeed(value.toString())
+    } else {
+      return decoding.fail('string', value)
+    }
   }
 }

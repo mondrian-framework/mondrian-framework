@@ -1,4 +1,4 @@
-import { path, result, types, validation } from '../../'
+import { decoding, path, result, types, validation } from '../../'
 import { always, mergeArrays } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -94,6 +94,86 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
       ? result.tryEachFailFast(array, true, always(true), validateItem)
       : result.tryEach(array, true, always(true), [] as validation.Error[], mergeArrays, validateItem)
   }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
+    if (value instanceof Array) {
+      return this.decodeArrayValues(value, decodingOptions)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
+      return this.decodeObjectAsArray(value, decodingOptions)
+    } else {
+      return decoding.fail('array', value)
+    }
+  }
+
+  private decodeArrayValues<T extends types.Type>(
+    array: unknown[],
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
+    const addDecodedItem = (accumulator: any[], item: any) => {
+      accumulator.push(item)
+      return accumulator
+    }
+    const decodeItem = (item: unknown, index: number) =>
+      types
+        .concretise(this.wrappedType)
+        .decodeWithoutValidation(item, decodingOptions)
+        .mapError((errors) => path.prependIndexToAll(errors, index))
+
+    return decodingOptions?.errorReportingStrategy === 'allErrors'
+      ? result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoding.Error[], mergeArrays, decodeItem)
+      : result.tryEachFailFast(array, [] as unknown[], addDecodedItem, decodeItem)
+  }
+
+  private decodeObjectAsArray(
+    object: Object,
+    decodingOptions: decoding.Options,
+  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
+    return objectToArray(object).chain((object) => this.decodeArrayValues(Object.values(object), decodingOptions))
+  }
+}
+
+/**
+ * @param object an object to check for array-castability
+ * @returns the values of the object sorted by their key, if the given object is castable as an array: that is, if all
+ *          its keys are consecutive numbers from `0` up to a given `n`
+ */
+function objectToArray(object: Object): decoding.Result<any[]> {
+  const keys = keysAsConsecutiveNumbers(object)
+  return keys === undefined
+    ? decoding.fail('array', object)
+    : decoding.succeed(keys.map((i) => object[i as keyof object]))
+}
+
+/**
+ * @param object the object whose keys will be converted to an array of sorted numbers
+ * @returns an array of sorted numbers if all the keys of `object` are numbers (starting from 0) and consecutive, that
+ *          is, the object is in the form `{0: "a", 1: "b", 2: "c", ...}`
+ */
+function keysAsConsecutiveNumbers(object: Object): number[] | undefined {
+  const keys = Object.keys(object).map(Number).sort()
+  const startsAtZero = keys.at(0) === 0
+  return startsAtZero && allConsecutive(keys) ? keys : undefined
+}
+
+/**
+ * @param numbers a _non empty_ array of numbers
+ * @returns `true` if all numbers in the array are consecutive in ascending order, that is the array is in the form
+ *          `[n, n+1, n+2, ...]`
+ */
+function allConsecutive(numbers: number[]): boolean {
+  let [previousNumber, ...rest] = numbers
+  for (const number of rest) {
+    const isConsecutive = previousNumber + 1 === number
+    if (!isConsecutive) {
+      return false
+    } else {
+      previousNumber = number
+    }
+  }
+  return true
 }
 
 function and(

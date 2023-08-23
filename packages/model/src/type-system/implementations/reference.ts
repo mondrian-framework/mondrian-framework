@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -35,5 +35,9 @@ class ReferenceTypeImpl<T extends types.Type>
 
   validate(value: types.Infer<types.ReferenceType<T>>, validationOptions?: validation.Options): validation.Result {
     return types.concretise(this.wrappedType).validate(value as never, validationOptions)
+  }
+
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<types.Infer<T>> {
+    return types.concretise(this.wrappedType).decodeWithoutValidation(value, decodingOptions)
   }
 }

@@ -87,7 +87,7 @@ function fragmentToSeparator(lookahead: Fragment): string {
 export type WithPath<Data extends Record<string, any>> = Data & { path: Path }
 
 /**
- * Utility function to prepend a prefix to the path of a `decoder.Error`.
+ * Utility function to prepend a prefix to the path of a `decoding.Error`.
  */
 export function prependFieldToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
   values: T[],
@@ -97,7 +97,7 @@ export function prependFieldToAll<Data extends Record<string, any>, T extends Wi
 }
 
 /**
- * Utility function to prepend an index to the path of a `decoder.Error`.
+ * Utility function to prepend an index to the path of a `decoding.Error`.
  */
 export function prependIndexToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
   values: T[],
@@ -107,7 +107,7 @@ export function prependIndexToAll<Data extends Record<string, any>, T extends Wi
 }
 
 /**
- * Utility function to prepend a variant to the path of a `decoder.Error`.
+ * Utility function to prepend a variant to the path of a `decoding.Error`.
  */
 export function prependVariantToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
   values: T[],

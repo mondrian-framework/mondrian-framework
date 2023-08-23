@@ -1,4 +1,4 @@
-import { decoder, m, validation } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 
 export type TimezoneType = m.CustomType<'timezone', {}, string>
 
@@ -6,7 +6,8 @@ export function timezone(options?: m.BaseOptions): TimezoneType {
   return m.custom(
     'timezone',
     (value) => value,
-    (value) => (typeof value === 'string' ? decoder.succeed(value) : decoder.fail('Expected a string timezone', value)),
+    (value) =>
+      typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a string timezone', value),
     validateTimezone,
     options,
   )

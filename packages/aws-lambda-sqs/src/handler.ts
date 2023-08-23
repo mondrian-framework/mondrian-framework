@@ -1,4 +1,4 @@
-import { decoder, types } from '@mondrian-framework/model'
+import { decoding, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'

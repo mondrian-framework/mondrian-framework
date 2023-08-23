@@ -1,4 +1,4 @@
-import { decoder, result, types, validation } from '../../'
+import { decoding, result, types, validation } from '../../'
 import { JSONType } from '@mondrian-framework/utils'
 
 export abstract class DefaultMethods<T extends types.Type> {
@@ -11,7 +11,7 @@ export abstract class DefaultMethods<T extends types.Type> {
   abstract getThis(): T
   abstract fromOptions(options?: types.OptionsOf<T>): T
   abstract encodeWithoutValidation(value: types.Infer<T>): JSONType
-  abstract decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<types.Infer<T>>
+  abstract decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<types.Infer<T>>
   abstract validate(value: types.Infer<T>, validationOptions?: validation.Options): validation.Result
 
   encode(value: types.Infer<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]> {
@@ -24,11 +24,11 @@ export abstract class DefaultMethods<T extends types.Type> {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<types.Infer<T>, validation.Error[] | decoder.Error[]> {
+  ): result.Result<types.Infer<T>, validation.Error[] | decoding.Error[]> {
     return this.decodeWithoutValidation(value, decodingOptions)
-      .mapError((errors) => errors as validation.Error[] | decoder.Error[])
+      .mapError((errors) => errors as validation.Error[] | decoding.Error[])
       .chain((decodedValue) => this.validate(decodedValue, validationOptions).replace(decodedValue))
   }
 

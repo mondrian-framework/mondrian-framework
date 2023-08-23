@@ -1,4 +1,4 @@
-import { decoder, validation, types, result } from './index'
+import { decoding, validation, types, result } from './index'
 import { filterMapObject, mapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -204,10 +204,10 @@ export type StringType = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<Infer<StringType>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<Infer<StringType>>
+  ): result.Result<Infer<StringType>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<StringType>>
   validate(value: Infer<StringType>, validationOptions?: validation.Options): validation.Result
   encode(value: Infer<StringType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: Infer<StringType>): JSONType
@@ -240,10 +240,10 @@ export type NumberType = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<Infer<NumberType>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<Infer<NumberType>>
+  ): result.Result<Infer<NumberType>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<NumberType>>
   validate(value: Infer<NumberType>, validationOptions?: validation.Options): validation.Result
   encode(value: Infer<NumberType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: Infer<NumberType>): JSONType
@@ -278,10 +278,10 @@ export type BooleanType = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<Infer<BooleanType>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<Infer<BooleanType>>
+  ): result.Result<Infer<BooleanType>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<BooleanType>>
   validate(value: Infer<BooleanType>, validationOptions?: validation.Options): validation.Result
   encode(value: Infer<BooleanType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: Infer<BooleanType>): JSONType
@@ -311,10 +311,10 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferEnum<Vs>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferEnum<Vs>>
+  ): result.Result<InferEnum<Vs>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferEnum<Vs>>
   validate(value: InferEnum<Vs>, validationOptions?: validation.Options): validation.Result
   encode(value: InferEnum<Vs>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferEnum<Vs>): JSONType
@@ -344,10 +344,10 @@ export type LiteralType<L extends number | string | boolean | null> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferLiteral<L>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferLiteral<L>>
+  ): result.Result<InferLiteral<L>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferLiteral<L>>
   validate(value: InferLiteral<L>, validationOptions?: validation.Options): validation.Result
   encode(value: InferLiteral<L>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferLiteral<L>): JSONType
@@ -378,10 +378,10 @@ export type UnionType<Ts extends Types> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferUnion<Ts>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferUnion<Ts>>
+  ): result.Result<InferUnion<Ts>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferUnion<Ts>>
   validate(value: InferUnion<Ts>, validationOptions?: validation.Options): validation.Result
   encode(value: InferUnion<Ts>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferUnion<Ts>): JSONType
@@ -414,10 +414,10 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferObject<M, Ts>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferObject<M, Ts>>
+  ): result.Result<InferObject<M, Ts>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferObject<M, Ts>>
   validate(value: InferObject<M, Ts>, validationOptions?: validation.Options): validation.Result
   encode(value: InferObject<M, Ts>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferObject<M, Ts>): JSONType
@@ -450,10 +450,10 @@ export type ArrayType<M extends Mutability, T extends Type> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferArray<M, T>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferArray<M, T>>
+  ): result.Result<InferArray<M, T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferArray<M, T>>
   validate(value: InferArray<M, T>, validationOptions?: validation.Options): validation.Result
   encode(value: InferArray<M, T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferArray<M, T>): JSONType
@@ -485,10 +485,10 @@ export type OptionalType<T extends Type> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferOptional<T>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferOptional<T>>
+  ): result.Result<InferOptional<T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferOptional<T>>
   validate(value: InferOptional<T>, validationOptions?: validation.Options): validation.Result
   encode(value: InferOptional<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferOptional<T>): JSONType
@@ -517,10 +517,10 @@ export type NullableType<T extends Type> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferNullable<T>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferNullable<T>>
+  ): result.Result<InferNullable<T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferNullable<T>>
   validate(value: InferNullable<T>, validationOptions?: validation.Options): validation.Result
   encode(value: InferNullable<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferNullable<T>): JSONType
@@ -549,10 +549,10 @@ export type ReferenceType<T extends Type> = {
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferReference<T>, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferReference<T>>
+  ): result.Result<InferReference<T>, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferReference<T>>
   validate(value: InferReference<T>, validationOptions?: validation.Options): validation.Result
   encode(value: InferReference<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferReference<T>): JSONType
@@ -582,10 +582,10 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
 
   decode(
     value: unknown,
-    decodingOptions?: decoder.Options,
+    decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferredAs, validation.Error[] | decoder.Error[]>
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<InferredAs>
+  ): result.Result<InferredAs, validation.Error[] | decoding.Error[]>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferredAs>
   validate(value: InferredAs, validationOptions?: validation.Options): validation.Result
   encode(value: InferredAs, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
   encodeWithoutValidation(value: InferredAs): JSONType
@@ -896,7 +896,7 @@ export function areEqual(one: Type, other: Type): boolean {
 export function isType<T extends Type>(
   type: T,
   value: unknown,
-  decodingOptions?: decoder.Options,
+  decodingOptions?: decoding.Options,
   validationOptions?: validation.Options,
 ): value is Infer<T> {
   return types
@@ -917,7 +917,7 @@ export function isType<T extends Type>(
 export function assertType<T extends Type>(
   type: T,
   value: unknown,
-  decodingOptions?: decoder.Options,
+  decodingOptions?: decoding.Options,
   validationOptions?: validation.Options,
 ): asserts value is Infer<T> {
   types

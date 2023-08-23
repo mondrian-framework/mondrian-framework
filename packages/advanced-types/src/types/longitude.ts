@@ -1,4 +1,4 @@
-import { decoder, m, validation } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 
 const MIN_LON = -180.0
 const MAX_LON = 180.0
@@ -11,7 +11,7 @@ export function longitude(options?: m.BaseOptions): m.CustomType<'longitude', {}
     'longitude',
     (number) => number,
     (value) =>
-      typeof value === 'number' ? decoder.succeed(value) : decoder.fail('Expected a longitude number', value),
+      typeof value === 'number' ? decoding.succeed(value) : decoding.fail('Expected a longitude number', value),
     validateLongitude,
     options,
   )

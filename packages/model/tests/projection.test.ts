@@ -1,4 +1,4 @@
-import { projection, types, decoder, validation, path, arbitrary } from '../src'
+import { projection, types, decoding, validation, path, arbitrary } from '../src'
 import { areSameArray } from '../src/utils'
 import { checkError, checkValue } from './decoder.test'
 import { assertFailure, assertOk } from './testing-utils'
@@ -9,7 +9,7 @@ import { expectTypeOf, describe, expect } from 'vitest'
 const exampleCustom = types.custom(
   'customType',
   () => null,
-  () => decoder.fail('test', 'test'),
+  () => decoding.fail('test', 'test'),
   () => validation.fail('test', 'test'),
 )
 

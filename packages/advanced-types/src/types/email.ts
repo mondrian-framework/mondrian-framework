@@ -1,4 +1,4 @@
-import { decoder, m, validation } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 
 export type EmailType = m.CustomType<'email', {}, string>
 
@@ -6,7 +6,7 @@ export function email(options?: m.BaseOptions): EmailType {
   return m.custom(
     'email',
     (value) => value,
-    (value) => (typeof value === 'string' ? decoder.succeed(value) : decoder.fail('Expected a mail string', value)),
+    (value) => (typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a mail string', value)),
     validateEmail,
     options,
   )

@@ -1,4 +1,4 @@
-import { decoder, path, result, types, validation } from '../../'
+import { decoding, path, result, types, validation } from '../../'
 import { always, mergeArrays } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -97,21 +97,21 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
 
   decodeWithoutValidation(
     value: unknown,
-    decodingOptions?: decoder.Options,
-  ): decoder.Result<types.Infer<types.ArrayType<M, T>>> {
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
     if (value instanceof Array) {
       return this.decodeArrayValues(value, decodingOptions)
     } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
       return this.decodeObjectAsArray(value, decodingOptions)
     } else {
-      return decoder.fail('array', value)
+      return decoding.fail('array', value)
     }
   }
 
   private decodeArrayValues<T extends types.Type>(
     array: unknown[],
-    decodingOptions?: decoder.Options,
-  ): decoder.Result<types.Infer<types.ArrayType<M, T>>> {
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
     const addDecodedItem = (accumulator: any[], item: any) => {
       accumulator.push(item)
       return accumulator
@@ -123,14 +123,14 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
         .mapError((errors) => path.prependIndexToAll(errors, index))
 
     return decodingOptions?.errorReportingStrategy === 'allErrors'
-      ? result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoder.Error[], mergeArrays, decodeItem)
+      ? result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoding.Error[], mergeArrays, decodeItem)
       : result.tryEachFailFast(array, [] as unknown[], addDecodedItem, decodeItem)
   }
 
   private decodeObjectAsArray(
     object: Object,
-    decodingOptions: decoder.Options,
-  ): decoder.Result<types.Infer<types.ArrayType<M, T>>> {
+    decodingOptions: decoding.Options,
+  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
     return objectToArray(object).chain((object) => this.decodeArrayValues(Object.values(object), decodingOptions))
   }
 }
@@ -140,11 +140,11 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
  * @returns the values of the object sorted by their key, if the given object is castable as an array: that is, if all
  *          its keys are consecutive numbers from `0` up to a given `n`
  */
-function objectToArray(object: Object): decoder.Result<any[]> {
+function objectToArray(object: Object): decoding.Result<any[]> {
   const keys = keysAsConsecutiveNumbers(object)
   return keys === undefined
-    ? decoder.fail('array', object)
-    : decoder.succeed(keys.map((i) => object[i as keyof object]))
+    ? decoding.fail('array', object)
+    : decoding.succeed(keys.map((i) => object[i as keyof object]))
 }
 
 /**

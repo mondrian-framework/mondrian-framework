@@ -1,4 +1,4 @@
-import { decoder, path, result, types, validation } from '../../'
+import { decoding, path, result, types, validation } from '../../'
 import { always, filterMapObject, mergeArrays } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -94,30 +94,30 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
 
   decodeWithoutValidation(
     value: unknown,
-    decodingOptions?: decoder.Options,
-  ): decoder.Result<types.Infer<types.ObjectType<M, Ts>>> {
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.ObjectType<M, Ts>>> {
     return castToObject(value, decodingOptions).chain((object) =>
       decodeObjectProperties(this.fields, object, decodingOptions),
     )
   }
 }
 
-function castToObject(value: unknown, decodingOptions?: decoder.Options): decoder.Result<Record<string, unknown>> {
+function castToObject(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Record<string, unknown>> {
   if (typeof value === 'object') {
     if (value === null && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
-      return decoder.fail('object', null)
+      return decoding.fail('object', null)
     }
-    return decoder.succeed((value ?? {}) as Record<string, unknown>)
+    return decoding.succeed((value ?? {}) as Record<string, unknown>)
   } else {
-    return decoder.fail('object', value)
+    return decoding.fail('object', value)
   }
 }
 
 function decodeObjectProperties(
   fields: types.Types,
   object: Record<string, unknown>,
-  decodingOptions?: decoder.Options,
-): decoder.Result<any> {
+  decodingOptions?: decoding.Options,
+): decoding.Result<any> {
   const addDecodedEntry = (accumulator: [string, unknown][], [fieldName, value]: readonly [string, unknown]) => {
     accumulator.push([fieldName, value])
     return accumulator
@@ -132,7 +132,7 @@ function decodeObjectProperties(
   const entries = Object.entries(fields)
   const decodedEntries =
     decodingOptions?.errorReportingStrategy === 'allErrors'
-      ? result.tryEach(entries, [], addDecodedEntry, [] as decoder.Error[], mergeArrays, decodeEntry)
+      ? result.tryEach(entries, [], addDecodedEntry, [] as decoding.Error[], mergeArrays, decodeEntry)
       : result.tryEachFailFast(entries, [], addDecodedEntry, decodeEntry)
   return decodedEntries.map(Object.fromEntries)
 }

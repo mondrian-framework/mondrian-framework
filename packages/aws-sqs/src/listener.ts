@@ -1,5 +1,5 @@
 import * as AWS from '@aws-sdk/client-sqs'
-import { decoder, types } from '@mondrian-framework/model'
+import { decoding, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 

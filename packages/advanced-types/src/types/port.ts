@@ -1,4 +1,4 @@
-import { decoder, m, validation } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 
 const MIN_PORT_NUMBER = 1
 const MAX_PORT_NUMBER = 65535
@@ -11,8 +11,8 @@ export function port(options?: m.BaseOptions): PortType {
     (number) => number,
     (value) =>
       typeof value === 'number' && Number.isInteger(value)
-        ? decoder.succeed(value)
-        : decoder.fail('Expected a TCP port number', value),
+        ? decoding.succeed(value)
+        : decoding.fail('Expected a TCP port number', value),
     validatePort,
     options,
   )

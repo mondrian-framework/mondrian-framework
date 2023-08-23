@@ -1,4 +1,4 @@
-import { decoder, m, validation } from '@mondrian-framework/model'
+import { decoding, m, validation } from '@mondrian-framework/model'
 
 const MIN_LAT = -90.0
 const MAX_LAT = 90.0
@@ -10,7 +10,8 @@ export function latitude(options?: m.BaseOptions): LatitudeType {
   return m.custom(
     'latitude',
     (number) => number,
-    (value) => (typeof value === 'number' ? decoder.succeed(value) : decoder.fail('Expected a latitude number', value)),
+    (value) =>
+      typeof value === 'number' ? decoding.succeed(value) : decoding.fail('Expected a latitude number', value),
     validateLatitude,
     options,
   )

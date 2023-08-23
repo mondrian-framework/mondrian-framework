@@ -1,6 +1,6 @@
 import { Api } from './api'
 import { encodeQueryObject } from './utils'
-import { decoder, projection, types } from '@mondrian-framework/model'
+import { decoding, projection, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 
 export type Sdk<F extends functions.Functions> = {

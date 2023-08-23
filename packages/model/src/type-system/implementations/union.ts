@@ -1,4 +1,4 @@
-import { decoder, path, types, validation } from '../../'
+import { decoding, path, types, validation } from '../../'
 import { failWithInternalError } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -67,8 +67,8 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
 
   decodeWithoutValidation(
     value: unknown,
-    decodingOptions?: decoder.Options,
-  ): decoder.Result<types.Infer<types.UnionType<Ts>>> {
+    decodingOptions?: decoding.Options,
+  ): decoding.Result<types.Infer<types.UnionType<Ts>>> {
     if (typeof value === 'object' && value) {
       const object = value as Record<string, any>
       const variantName = singleKeyFromObject(object)
@@ -81,7 +81,7 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
       }
     }
     const prettyVariants = Object.keys(this.variants).join(' | ')
-    return decoder.fail(`union (${prettyVariants})`, value)
+    return decoding.fail(`union (${prettyVariants})`, value)
   }
 }
 

@@ -1,7 +1,6 @@
-import { decoder, types, validation } from '../../'
+import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
-import { Options, Result } from 'src/decoder'
 
 /**
  * @param wrappedType the {@link Type `Type`} referenced by the resulting `ReferenceType`
@@ -38,7 +37,7 @@ class ReferenceTypeImpl<T extends types.Type>
     return types.concretise(this.wrappedType).validate(value as never, validationOptions)
   }
 
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<types.Infer<T>> {
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<types.Infer<T>> {
     return types.concretise(this.wrappedType).decodeWithoutValidation(value, decodingOptions)
   }
 }

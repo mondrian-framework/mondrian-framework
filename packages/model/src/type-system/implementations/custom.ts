@@ -1,4 +1,4 @@
-import { decoder, types, validation } from '../../'
+import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -9,9 +9,9 @@ type CustomEncoder<Name extends string, Options extends Record<string, any>, Inf
 
 type CustomDecoder<Name extends string, Options extends Record<string, any>, InferredAs> = (
   value: unknown,
-  decodingOptions?: decoder.Options,
+  decodingOptions?: decoding.Options,
   options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
-) => decoder.Result<InferredAs>
+) => decoding.Result<InferredAs>
 
 type CustomValidator<Name extends string, Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
@@ -71,7 +71,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     return this.validator(value, options, this.options)
   }
 
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options | undefined): decoder.Result<InferredAs> {
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options | undefined): decoding.Result<InferredAs> {
     return this.decoder(value, decodingOptions, this.options)
   }
 }

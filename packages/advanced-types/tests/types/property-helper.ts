@@ -1,5 +1,5 @@
 import { fc as gen, test } from '@fast-check/vitest'
-import { decoder, m, types } from '@mondrian-framework/model'
+import { decoding, m, types } from '@mondrian-framework/model'
 import { JSONType } from '@mondrian-framework/utils'
 import { SuiteFactory, expect } from 'vitest'
 
@@ -141,7 +141,7 @@ export function testTypeDecodingAndEncoding<T extends m.Type>(
     }[]
     invalidValues: JSONType[]
   },
-  decodingOptions?: Partial<decoder.Options>,
+  decodingOptions?: Partial<decoding.Options>,
 ): SuiteFactory<{}> {
   return () => {
     test('decoding works for valid values', () =>

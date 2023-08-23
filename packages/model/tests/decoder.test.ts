@@ -1,11 +1,11 @@
-import { decoder, types, path, validation, result } from '../src'
+import { decoding, types, path, validation, result } from '../src'
 import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { describe, expect, vi } from 'vitest'
 
-function compareDecoderErrors(one: decoder.Error[], other: decoder.Error[]): boolean {
-  const compareSingleErrors = (one: decoder.Error, other: decoder.Error) => {
+function compareDecoderErrors(one: decoding.Error[], other: decoding.Error[]): boolean {
+  const compareSingleErrors = (one: decoding.Error, other: decoding.Error) => {
     const expectedAreEqual = one.expected === other.expected
     const gotAreEqual = one.got === other.got || (Number.isNaN(one.got) && Number.isNaN(other.got))
     const pathsAreEqual = one.path.equals(other.path)
@@ -22,7 +22,7 @@ const nonNull = gen.anything().filter((value) => value !== null)
 const nonArray = gen.anything().filter((value) => !(value instanceof Array))
 const nonObject = gen.anything().filter((value) => !(typeof value === 'object'))
 
-export function checkError(result: decoder.Result<any>, expectedError: decoder.Error[]): void {
+export function checkError(result: decoding.Result<any>, expectedError: decoding.Error[]): void {
   const error = assertFailure(result)
   const isExpectedError = compareDecoderErrors(error, expectedError)
   expect(isExpectedError).toBe(true)
@@ -33,7 +33,7 @@ export function checkValue<A>(result: result.Result<A, any>, expectedValue: A): 
   expect(value).toEqual(expectedValue)
 }
 
-describe('decoder.decodeWithoutValidation', () => {
+describe('decoding.decodeWithoutValidation', () => {
   describe('boolean value', () => {
     const model = types.boolean()
 
@@ -535,7 +535,7 @@ describe('decoder.decodeWithoutValidation', () => {
         decode: (v: unknown, o: any) => {
           expect(v).toEqual(value)
           expect(o).toEqual(options)
-          return decoder.succeed(1)
+          return decoding.succeed(1)
         },
       }
       const decoderSpy = vi.spyOn(decoderFunction, 'decode')
@@ -552,7 +552,7 @@ describe('decoder.decodeWithoutValidation', () => {
   })
 })
 
-describe('decoder.decode', () => {
+describe('decoding.decode', () => {
   test.prop([gen.anything()])('should perform validation', (value) => {
     const options = { foo: 'bar', baz: 1 }
     const validationOptions = { errorReportingStrategy: 'allErrors' } as const
@@ -560,7 +560,7 @@ describe('decoder.decode', () => {
       encode: () => {
         throw 'test'
       },
-      decode: (_: any) => decoder.succeed('decoded successfully'),
+      decode: (_: any) => decoding.succeed('decoded successfully'),
       validate: (innerValue: any, innerValidationOptions: any, innerOptions: any) => {
         expect(innerValue).toEqual('decoded successfully')
         expect(innerValidationOptions).toEqual(validationOptions)

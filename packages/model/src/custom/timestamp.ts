@@ -1,4 +1,4 @@
-import { types, decoder, validation } from '../index'
+import { types, decoding, validation } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
@@ -25,15 +25,15 @@ function encodeTimestamp(timestamp: Date): JSONType {
 
 function decodeTimestamp(
   value: unknown,
-  _decodingOptions?: decoder.Options,
+  _decodingOptions?: decoding.Options,
   _options?: types.OptionsOf<TimestampType>,
-): decoder.Result<Date> {
+): decoding.Result<Date> {
   if (value instanceof Date) {
-    return decoder.succeed(value)
+    return decoding.succeed(value)
   }
   return typeof value === 'number' && -8640000000000000 <= value && value <= 8640000000000000
-    ? decoder.succeed(new Date(value))
-    : decoder.fail(`timestamp`, value)
+    ? decoding.succeed(new Date(value))
+    : decoding.fail(`timestamp`, value)
 }
 
 function validateTimestamp(

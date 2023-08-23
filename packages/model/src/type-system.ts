@@ -52,8 +52,7 @@ export type Types = Record<string, Type>
  * This can be useful to use in pair with {@link concretise conretise} to make
  * sure you are dealing with a type that is not lazy.
  */
-// prettier-ignore
-export type Concrete<T extends Type> = Exclude<T, () => any>
+export type Concrete<T extends Type> = [T] extends [() => infer T1 extends Type] ? Concrete<T1> : Exclude<T, () => any>
 
 /**
  * Infers the Typescript type equivalent of a given Mondrian {@link Type `Type`}.

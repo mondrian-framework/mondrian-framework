@@ -60,14 +60,14 @@ export function build<const Fs extends functions.Functions, const API extends Ap
         if (response.status === 200) {
           const json = await response.json()
           const partialOutputType = types.partialDeep(functionBody.output)
-          const result = decoder.decode(partialOutputType, json)
+          const result = types.concretise(partialOutputType).decode(json)
           if (!result.isOk) {
             throw new Error(JSON.stringify(result.error))
           }
           const projectionRespected = projection.respectsProjection(
             functionBody.output,
             projection as never,
-            result.value,
+            result.value as never,
           )
           if (!projectionRespected.isOk) {
             throw new Error(JSON.stringify(projectionRespected.error))

@@ -1,6 +1,6 @@
 import { ErrorHandler, FunctionSpecifications, Request } from './api'
 import { generateOpenapiInput } from './openapi'
-import { decoder, projection, types } from '@mondrian-framework/model'
+import { projection, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 
 export function fromFunction<Fs extends functions.Functions, ServerContext, ContextInput>({
@@ -50,7 +50,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
       }
     }
     const input = specification.openapi ? specification.openapi.input(request) : inputExtractor(request)
-    const decoded = decoder.decode(functionBody.input, input, { typeCastingStrategy: 'tryCasting' })
+    const decoded = types.concretise(functionBody.input).decode(input, { typeCastingStrategy: 'tryCasting' })
     if (!decoded.isOk) {
       log('Bad request.')
       return { status: 400, body: { errors: decoded.error }, headers: responseHeaders }
@@ -80,7 +80,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
       const result = await functions.apply(functionBody, {
         projection: givenProjection.value as projection.FromType<types.Type>,
         context: moduleContext as Record<string, unknown>,
-        input: decoded.value,
+        input: decoded.value as never,
         operationId,
         log,
       })

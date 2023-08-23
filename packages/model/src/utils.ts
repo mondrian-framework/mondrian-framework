@@ -56,7 +56,8 @@ export function mapObject<A, B>(
 
 /**
  * @param message the message to display in the error
- * @returns a TypeScript `Error` where
+ * @throws an Error with the `[internal error]` header and an additional message
+ *         redirecting to the project's issue page
  */
 export function failWithInternalError(message: string): never {
   const header = '[internal error]'
@@ -79,6 +80,11 @@ export function areSameArray<A>(
   return one === other || (one.length === other.length && one.every((value, i) => compare(value, other[i])))
 }
 
+/**
+ * @param _value a value that must be inferred as of type never
+ * @param errorMessage the error message to throw in case this function is actually called
+ * @throws an {@link failWithInternalError internal error} with the given message
+ */
 export function assertNever(_value: never, errorMessage: string): never {
   failWithInternalError(errorMessage)
 }
@@ -86,11 +92,27 @@ export function assertNever(_value: never, errorMessage: string): never {
 /**
  * @param value
  * @returns a function that always returns the given value, no matter the input
+ * @example ```ts
+ *          always(1)(true) // -> 1
+ *          always("foo")(10) // -> "foo"
+ *          ```
  */
 export function always<A>(value: A): (_: any) => A {
   return (_) => value
 }
 
+/**
+ * @param taggedVariant an object that should represent a tagged variant (that is, it has a single field)
+ * @returns a tuple with the name of the single field of the object and its value
+ * @throws an {@link failWithInternalError internal error} if the given object has 0 or more than one fields
+ *         this function should only be used for internal purposes _if you are 100% sure_ that the given
+ *         object is a tagged variant
+ * @example ```ts
+ *          unsafeObjectToTaggedVariant({ foo: 1 }) // -> ["foo", 1]
+ *          unsafeObjectToTaggedVariant({}) // -> Exception!
+ *          unsafeObjectToTaggedVariant({ foo: 1, bar: 1 }) // -> Exception!
+ *          ```
+ */
 export function unsafeObjectToTaggedVariant<T>(taggedVariant: Record<string, T>): [string, T] {
   if (taggedVariant) {
     const entries = Object.entries(taggedVariant)
@@ -101,7 +123,15 @@ export function unsafeObjectToTaggedVariant<T>(taggedVariant: Record<string, T>)
   }
 }
 
-export function mergeArrays<A>(one: A[], other: A[]): A[] {
+/**
+ * @param one the array to merge with `other`
+ * @param other the array to merge with the first one
+ * @returns a new array obtained by concatenating `other` to `one`
+ * @example ```ts
+ *          mergeArrays([1, 2], [3, 4, 5]) // -> [1, 2, 3, 4, 5]
+ *          ```
+ */
+export function mergeArrays<A>(one: readonly A[], other: readonly A[]): A[] {
   return [...one, ...other]
 }
 

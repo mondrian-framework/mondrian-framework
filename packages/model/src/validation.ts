@@ -1,4 +1,5 @@
 import { result, validation, path } from './index'
+import { WithPath } from './utils'
 
 /**
  * The options that can be used when validating a type:
@@ -41,7 +42,7 @@ export type Result = result.Result<true, validation.Error[]>
  *          - `path: "$[1].foo"` the error took place while validating a field called `foo`
  *            in an object at index 1 of an array
  */
-export type Error = path.WithPath<{
+export type Error = WithPath<{
   assertion: string
   got: unknown
 }>

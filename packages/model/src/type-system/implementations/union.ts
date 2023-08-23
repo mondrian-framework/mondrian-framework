@@ -1,5 +1,5 @@
-import { decoding, path, types, validation } from '../../'
-import { failWithInternalError } from '../../utils'
+import { decoding, types, validation } from '../../'
+import { failWithInternalError, prependVariantToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -60,7 +60,7 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
         failWithInternalError(failureMessage)
       } else {
         const result = types.concretise(variantType).validate(value[variantName] as never, validationOptions)
-        return result.mapError((errors) => path.prependVariantToAll(errors, variantName))
+        return result.mapError((errors) => prependVariantToAll(errors, variantName))
       }
     }
   }
@@ -77,7 +77,7 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
           .concretise(this.variants[variantName])
           .decodeWithoutValidation(object[variantName], decodingOptions)
           .map((value) => Object.fromEntries([[variantName, value]]) as types.Infer<types.UnionType<Ts>>)
-          .mapError((errors) => path.prependVariantToAll(errors, variantName))
+          .mapError((errors) => prependVariantToAll(errors, variantName))
       }
     }
     const prettyVariants = Object.keys(this.variants).join(' | ')

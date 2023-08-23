@@ -1,5 +1,5 @@
-import { decoding, path, result, types, validation } from '../../'
-import { always, mergeArrays } from '../../utils'
+import { decoding, result, types, validation } from '../../'
+import { always, mergeArrays, prependIndexToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -89,7 +89,7 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
       types
         .concretise(this.wrappedType)
         .validate(item as never, options)
-        .mapError((errors) => path.prependIndexToAll(errors, index))
+        .mapError((errors) => prependIndexToAll(errors, index))
     return options.errorReportingStrategy === 'stopAtFirstError'
       ? result.tryEachFailFast(array, true, always(true), validateItem)
       : result.tryEach(array, true, always(true), [] as validation.Error[], mergeArrays, validateItem)
@@ -120,7 +120,7 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
       types
         .concretise(this.wrappedType)
         .decodeWithoutValidation(item, decodingOptions)
-        .mapError((errors) => path.prependIndexToAll(errors, index))
+        .mapError((errors) => prependIndexToAll(errors, index))
 
     return decodingOptions?.errorReportingStrategy === 'allErrors'
       ? result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoding.Error[], mergeArrays, decodeItem)

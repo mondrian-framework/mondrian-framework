@@ -1,5 +1,15 @@
 import { decoding, path, projection, result, types } from './index'
-import { always, assertNever, filterMapObject, mergeArrays, unsafeObjectToTaggedVariant } from './utils'
+import {
+  WithPath,
+  always,
+  assertNever,
+  filterMapObject,
+  mergeArrays,
+  prependFieldToAll,
+  prependIndexToAll,
+  prependVariantToAll,
+  unsafeObjectToTaggedVariant,
+} from './utils'
 
 /**
  * This is the type of a projection: it is either the literal value `true` or an object
@@ -142,7 +152,7 @@ export function subProjection<P extends Projection, S extends Selector<P>>(
   return selected
 }
 
-export type Error = path.WithPath<{
+export type Error = WithPath<{
   missingField: string
 }>
 
@@ -207,7 +217,7 @@ function validateUnion(
     variantProjection ?? (types.isScalar(variantType) ? true : {}),
     variantValue as never,
   )
-  return result.mapError((errors) => path.prependVariantToAll(errors, variantName))
+  return result.mapError((errors) => prependVariantToAll(errors, variantName))
 }
 
 function validateObject(
@@ -250,9 +260,7 @@ function validateRequestedField(
 
   const fieldProjection = subProjection(projection, [fieldName] as never)
   const res = respectsProjection(fieldType, fieldProjection, fieldValue as never)
-  return res
-    .mapError((errors) => path.prependFieldToAll(errors, fieldName))
-    .map((fieldValue) => [[fieldName, fieldValue]])
+  return res.mapError((errors) => prependFieldToAll(errors, fieldName)).map((fieldValue) => [[fieldName, fieldValue]])
 }
 
 function getRequiredFields(fields: types.Types, projection: Projection): [string, types.Type][] {
@@ -265,9 +273,7 @@ function getRequiredFields(fields: types.Types, projection: Projection): [string
 
 function validateArray(type: types.Type, projection: Projection, array: any[]): result.Result<any, projection.Error[]> {
   const validateItem = (item: any, index: number) =>
-    respectsProjection(type, projection as never, item as never).mapError((errors) =>
-      path.prependIndexToAll(errors, index),
-    )
+    respectsProjection(type, projection as never, item as never).mapError((errors) => prependIndexToAll(errors, index))
 
   return result.tryEach(array, true, always(array), [] as projection.Error[], mergeArrays, validateItem)
 }
@@ -314,7 +320,7 @@ export function decode<T extends types.Type>(
     const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
       decode(fieldType, (value as Record<string, unknown>)[fieldName], options)
         .map((value) => [fieldName, value] as const)
-        .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+        .mapError((errors) => prependFieldToAll(errors, fieldName))
     const entries = Object.entries(unwrapped.kind === types.Kind.Object ? unwrapped.fields : unwrapped.variants).filter(
       ([fieldName, _]) => (value as Record<string, unknown>)[fieldName] !== undefined,
     ) as [string, types.Type][]

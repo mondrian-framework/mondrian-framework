@@ -31,7 +31,7 @@ function encodeDecimal(value: BigNumber, options?: m.OptionsOf<DecimalType>): st
 
 function decodeDecimal(
   value: unknown,
-  decodingOptions: decoder.Options,
+  decodingOptions?: decoder.Options,
   options?: m.OptionsOf<DecimalType>,
 ): decoder.Result<BigNumber> {
   if (typeof value === 'string' || typeof value === 'number') {
@@ -40,7 +40,7 @@ function decodeDecimal(
     if (number.isNaN()) {
       return decoder.fail(`Invalid decimal. (base ${options?.decimals ?? 10})`, value)
     }
-    if (decodingOptions.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
+    if (decodingOptions?.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
       return decoder.fail(
         `Invalid decimal places (need exactly ${options?.decimals}). (base ${options?.decimals ?? 10})`,
         value,

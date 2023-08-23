@@ -50,7 +50,7 @@ function decodeJwt<T extends types.Type>(
       complete: true,
       algorithms: [options?.algorithm ?? DEFAULT_HS_JWT_ALGORITHM],
     })
-    return decoder.decodeWithoutValidation(payloadType, decoded.payload)
+    return types.concretise(payloadType).decodeWithoutValidation(decoded.payload)
   } catch {
     return decoder.fail('Invalid JWT type. Verify failed.', value)
   }

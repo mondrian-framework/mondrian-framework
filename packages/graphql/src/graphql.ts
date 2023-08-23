@@ -299,7 +299,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
             log,
           })
           try {
-            const result = await functions.apply(functionBody, {
+            const result = await functionBody.apply({
               context: moduleCtx,
               projection: proj.value,
               input: decoded.value,

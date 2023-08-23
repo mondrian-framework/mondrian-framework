@@ -97,7 +97,7 @@ export function build<const Fs extends functions.Functions, CI>({
           operationId,
           log,
         })
-        await functions.apply(functionBody, {
+        await functionBody.apply({
           input: decoded.value,
           projection: undefined,
           operationId,

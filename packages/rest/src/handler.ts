@@ -77,7 +77,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         operationId,
         log,
       })
-      const result = await functions.apply(functionBody, {
+      const result = await functionBody.apply({
         projection: givenProjection.value as projection.FromType<types.Type>,
         context: moduleContext as Record<string, unknown>,
         input: decoded.value,

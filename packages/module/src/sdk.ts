@@ -50,7 +50,7 @@ class SdkBuilder<const Metadata> {
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
             const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
-            const result = await functions.apply(func, {
+            const result = await func.apply({
               input: input as never, //TODO: types.Infer<types.Type> should infer unknown?
               projection: options?.projection as never, //TODO: projection.FromType<types.Type> should infer Projection?
               context: ctx,

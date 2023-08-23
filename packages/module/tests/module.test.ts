@@ -36,10 +36,11 @@ test('Real example', async () => {
       log(`Logged in: ${input.email}`, 'log')
       return { jwt: user.email, user }
     },
-    after: [
+    middlewares: [
       {
         name: 'Hide password',
-        apply: ({ result }) => {
+        apply: async (args, next) => {
+          const result = await next(args)
           if (result?.user?.password) {
             return { ...result, user: { ...result.user, password: '****' } }
           }
@@ -61,14 +62,14 @@ test('Real example', async () => {
       log(`Registered: ${input.email}`)
       return db.updateUser(input)
     },
-    before: [
+    middlewares: [
       {
         name: 'Avoid weak passwords',
-        apply: ({ args }) => {
+        apply: (args, next) => {
           if (args.input.password === '123') {
             throw new Error('Weak password')
           }
-          return args
+          return next(args)
         },
       },
     ],

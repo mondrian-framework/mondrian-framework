@@ -44,7 +44,7 @@ export function start<const F extends functions.Functions, CI>({
           const input = (await options.input()) as never
           const contextInput = await context({ cron: options.cron })
           const ctx = await module.context(contextInput, { input, projection: undefined, operationId, log })
-          await functions.apply(functionBody, { input, projection: undefined, operationId, log, context: ctx })
+          await functionBody.apply({ input, projection: undefined, operationId, log, context: ctx })
         } catch (error) {
           if (error instanceof Error) {
             await log(error.message, 'error')

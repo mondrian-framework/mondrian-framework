@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { decoder, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -38,5 +38,19 @@ class BooleanTypeImpl extends DefaultMethods<types.BooleanType> implements types
 
   validate(_value: types.Infer<types.BooleanType>, _validationOptions?: validation.Options): validation.Result {
     return validation.succeed()
+  }
+
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoder.Options): decoder.Result<boolean> {
+    if (value === true || value === false) {
+      return decoder.succeed(value)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === 'true') {
+      return decoder.succeed(true)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === 'false') {
+      return decoder.succeed(false)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+      return decoder.succeed(value !== 0)
+    } else {
+      return decoder.fail('boolean', value)
+    }
   }
 }

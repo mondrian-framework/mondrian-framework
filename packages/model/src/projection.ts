@@ -286,12 +286,18 @@ export function decode<T extends types.Type>(
 ): decoder.Result<FromType<T>> {
   const trueResult = (
     options?.typeCastingStrategy === 'tryCasting'
-      ? decoder
-          .decode(types.literal('true'), value, options)
+      ? types
+          .literal('true')
+          .decode(value, options)
           .map(() => true)
-          .lazyOr(() => decoder.decode(types.literal(1), value, options).map(() => true))
-          .lazyOr(() => decoder.decode(types.literal(true), value, options))
-      : decoder.decode(types.literal(true), value, options)
+          .lazyOr(() =>
+            types
+              .literal(1)
+              .decode(value, options)
+              .map(() => true),
+          )
+          .lazyOr(() => types.literal(true).decode(value, options))
+      : types.literal(true).decode(value, options)
   ) as decoder.Result<FromType<T>>
   if (trueResult.isOk) {
     return trueResult

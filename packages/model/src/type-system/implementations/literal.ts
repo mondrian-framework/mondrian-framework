@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { types, decoder, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -48,5 +48,22 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
 
   validate(_value: L, _validationOptions?: validation.Options): validation.Result {
     return validation.succeed()
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoder.Options,
+  ): decoder.Result<types.Infer<types.LiteralType<L>>> {
+    if (value === this.literalValue) {
+      return decoder.succeed(this.literalValue)
+    } else if (
+      decodingOptions?.typeCastingStrategy === 'tryCasting' &&
+      this.literalValue === null &&
+      value === 'null'
+    ) {
+      return decoder.succeed(this.literalValue)
+    } else {
+      return decoder.fail(`literal (${this.literalValue})`, value)
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { result, types, decoder, validation } from '../index'
+import { types, decoder, validation } from '../index'
 
 /**
  * The type of a datetime, defined as a custom type.
@@ -24,14 +24,14 @@ function encodeDateTime(date: Date): string {
 
 function decodeDateTime(
   value: unknown,
-  decodingOptions: decoder.Options,
+  decodingOptions?: decoder.Options,
   _options?: types.OptionsOf<DateTimeType>,
 ): decoder.Result<Date> {
   if (value instanceof Date) {
     return decoder.succeed(value)
-  } else if (typeof value === 'string' && decodingOptions.typeCastingStrategy === 'expectExactTypes') {
+  } else if (typeof value === 'string' && decodingOptions?.typeCastingStrategy === 'expectExactTypes') {
     return tryMakeDate(value)
-  } else if (typeof value === 'number' && decodingOptions.typeCastingStrategy === 'tryCasting') {
+  } else if (typeof value === 'number' && decodingOptions?.typeCastingStrategy === 'tryCasting') {
     return tryMakeDate(value)
   }
   return decoder.fail('ISO date', value)

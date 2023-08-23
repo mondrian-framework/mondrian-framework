@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { types, decoder, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -95,5 +95,27 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
     } else {
       return validation.succeed()
     }
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoder.Options,
+  ): decoder.Result<types.Infer<types.NumberType>> {
+    if (typeof value === 'number') {
+      return decoder.succeed(value)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
+      return numberFromString(value)
+    } else {
+      return decoder.fail('number', value)
+    }
+  }
+}
+
+function numberFromString(string: string): decoder.Result<number> {
+  const number = Number(string)
+  if (Number.isNaN(number)) {
+    return decoder.fail('number', string)
+  } else {
+    return decoder.succeed(number)
   }
 }

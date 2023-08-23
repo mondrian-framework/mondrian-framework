@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { decoder, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -47,5 +47,21 @@ class NullableTypeImpl<T extends types.Type>
     return value === null
       ? validation.succeed()
       : types.concretise(this.wrappedType).validate(value as never, validationOptions)
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoder.Options,
+  ): decoder.Result<types.Infer<types.NullableType<T>>> {
+    if (value === null) {
+      return decoder.succeed(null)
+    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === undefined) {
+      return decoder.succeed(null)
+    } else {
+      return types
+        .concretise(this.wrappedType)
+        .decodeWithoutValidation(value, decodingOptions)
+        .mapError((errors) => errors.map(decoder.addExpected('null')))
+    }
   }
 }

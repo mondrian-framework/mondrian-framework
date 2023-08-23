@@ -32,7 +32,7 @@ function encodeUnknown(value: unknown): JSONType {
 
 function decodeUnknown(
   value: unknown,
-  _decodingOptions: decoder.Options,
+  _decodingOptions?: decoder.Options,
   _options?: types.OptionsOf<UnknownType>,
 ): decoder.Result<unknown> {
   return decoder.succeed(value)

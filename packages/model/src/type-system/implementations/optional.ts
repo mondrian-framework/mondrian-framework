@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { decoder, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -44,5 +44,17 @@ class OptionalTypeImpl<T extends types.Type>
     return value === undefined
       ? validation.succeed()
       : types.concretise(this.wrappedType).validate(value as never, validationOptions)
+  }
+
+  decodeWithoutValidation(
+    value: unknown,
+    decodingOptions?: decoder.Options,
+  ): decoder.Result<types.Infer<types.OptionalType<T>>> {
+    return value === undefined || value === null
+      ? decoder.succeed(undefined)
+      : types
+          .concretise(this.wrappedType)
+          .decodeWithoutValidation(value, decodingOptions)
+          .mapError((errors) => errors.map(decoder.addExpected('undefined')))
   }
 }

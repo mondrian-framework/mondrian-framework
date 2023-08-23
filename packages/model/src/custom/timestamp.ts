@@ -25,7 +25,7 @@ function encodeTimestamp(timestamp: Date): JSONType {
 
 function decodeTimestamp(
   value: unknown,
-  _decodingOptions: decoder.Options,
+  _decodingOptions?: decoder.Options,
   _options?: types.OptionsOf<TimestampType>,
 ): decoder.Result<Date> {
   if (value instanceof Date) {

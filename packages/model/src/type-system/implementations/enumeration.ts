@@ -1,4 +1,4 @@
-import { types, validation } from '../../'
+import { decoder, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -47,5 +47,11 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
 
   validate(_value: types.Infer<types.EnumType<Vs>>, _validationOptions?: validation.Options): validation.Result {
     return validation.succeed()
+  }
+
+  decodeWithoutValidation(value: unknown, _decodingOptions?: decoder.Options): decoder.Result<Vs[number]> {
+    return typeof value === 'string' && this.variants.includes(value)
+      ? decoder.succeed(value)
+      : decoder.fail(`enum (${this.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
   }
 }

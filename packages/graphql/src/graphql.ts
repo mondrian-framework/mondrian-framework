@@ -277,7 +277,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
             server: 'GQL',
           })
           setHeader(serverContext, 'operation-id', operationId)
-          const decoded = decoder.decode(functionBody.input, input[gqlInputTypeName], {
+          const decoded = types.concretise(functionBody.input).decode(input[gqlInputTypeName], {
             typeCastingStrategy: 'tryCasting',
           })
           if (!decoded.isOk) {
@@ -302,7 +302,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
             const result = await functions.apply(functionBody, {
               context: moduleCtx,
               projection: proj.value,
-              input: decoded.value,
+              input: decoded.value as never,
               operationId,
               log,
             })

@@ -9,9 +9,9 @@ describe('path.empty', () => {
 describe('path.fromFragments', () => {
   test('creates a path with the given fragments', () => {
     const fragments: path.Fragment[] = [
-      { kind: 'index', index: 1 },
-      { kind: 'field', fieldName: 'f' },
-      { kind: 'variant', variantName: 'v' },
+      { kind: path.FragmentKind.Index, index: 1 },
+      { kind: path.FragmentKind.Field, fieldName: 'f' },
+      { kind: path.FragmentKind.Variant, variantName: 'v' },
     ]
     expect(path.fromFragments(fragments).toArray()).toEqual(fragments)
   })
@@ -21,8 +21,8 @@ describe('path.prependField', () => {
   test('prepends the given field', () => {
     const fragments = path.empty().prependField('second').prependField('first').toArray()
     expect(fragments).toEqual([
-      { kind: 'field', fieldName: 'first' },
-      { kind: 'field', fieldName: 'second' },
+      { kind: path.FragmentKind.Field, fieldName: 'first' },
+      { kind: path.FragmentKind.Field, fieldName: 'second' },
     ])
   })
 
@@ -37,8 +37,8 @@ describe('path.appendField', () => {
   test('appends the given field', () => {
     const fragments = path.empty().appendField('first').appendField('second').toArray()
     expect(fragments).toEqual([
-      { kind: 'field', fieldName: 'first' },
-      { kind: 'field', fieldName: 'second' },
+      { kind: path.FragmentKind.Field, fieldName: 'first' },
+      { kind: path.FragmentKind.Field, fieldName: 'second' },
     ])
   })
 
@@ -53,8 +53,8 @@ describe('path.prependIndex', () => {
   test('prepends the given index', () => {
     const fragments = path.empty().prependIndex(2).prependIndex(1).toArray()
     expect(fragments).toEqual([
-      { kind: 'index', index: 1 },
-      { kind: 'index', index: 2 },
+      { kind: path.FragmentKind.Index, index: 1 },
+      { kind: path.FragmentKind.Index, index: 2 },
     ])
   })
 
@@ -69,8 +69,8 @@ describe('path.appendIndex', () => {
   test('appends the given index', () => {
     const fragments = path.empty().appendIndex(1).appendIndex(2).toArray()
     expect(fragments).toEqual([
-      { kind: 'index', index: 1 },
-      { kind: 'index', index: 2 },
+      { kind: path.FragmentKind.Index, index: 1 },
+      { kind: path.FragmentKind.Index, index: 2 },
     ])
   })
 
@@ -85,8 +85,8 @@ describe('path.prependVariant', () => {
   test('prepends the given variant', () => {
     const fragments = path.empty().prependVariant('second').prependVariant('first').toArray()
     expect(fragments).toEqual([
-      { kind: 'variant', variantName: 'first' },
-      { kind: 'variant', variantName: 'second' },
+      { kind: path.FragmentKind.Variant, variantName: 'first' },
+      { kind: path.FragmentKind.Variant, variantName: 'second' },
     ])
   })
 
@@ -101,8 +101,8 @@ describe('path.appendVariant', () => {
   test('appends the given variant', () => {
     const fragments = path.empty().appendVariant('first').appendVariant('second').toArray()
     expect(fragments).toEqual([
-      { kind: 'variant', variantName: 'first' },
-      { kind: 'variant', variantName: 'second' },
+      { kind: path.FragmentKind.Variant, variantName: 'first' },
+      { kind: path.FragmentKind.Variant, variantName: 'second' },
     ])
   })
 

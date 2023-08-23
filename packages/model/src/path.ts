@@ -7,9 +7,19 @@ import { areSameArray, assertNever } from './utils'
  *  - `Variant`: if it denotes one of the variants of a tagged union
  */
 export type Fragment =
-  | { kind: 'field'; fieldName: string }
-  | { kind: 'index'; index: number }
-  | { kind: 'variant'; variantName: string }
+  | { kind: FragmentKind.Field; fieldName: string }
+  | { kind: FragmentKind.Index; index: number }
+  | { kind: FragmentKind.Variant; variantName: string }
+
+/**
+ * The possible kinds of fragments.
+ * @see {@link Fragment `Fragment`} to learn more about the different kind of path's fragments
+ */
+export enum FragmentKind {
+  Field,
+  Index,
+  Variant,
+}
 
 /**
  * @returns an empty path (that is, a path that is composed of no fragments)
@@ -147,12 +157,12 @@ class PathImpl implements Path {
 
   prependFragment = (fragment: Fragment) => new PathImpl([fragment, ...this.fragments])
   appendFragment = (fragment: Fragment) => new PathImpl([...this.fragments, fragment])
-  prependField = (fieldName: string) => this.prependFragment({ kind: 'field', fieldName })
-  appendField = (fieldName: string) => this.appendFragment({ kind: 'field', fieldName })
-  prependIndex = (index: number) => this.prependFragment({ kind: 'index', index })
-  appendIndex = (index: number) => this.appendFragment({ kind: 'index', index })
-  prependVariant = (variantName: string) => this.prependFragment({ kind: 'variant', variantName })
-  appendVariant = (variantName: string) => this.appendFragment({ kind: 'variant', variantName })
+  prependField = (fieldName: string) => this.prependFragment({ kind: FragmentKind.Field, fieldName })
+  appendField = (fieldName: string) => this.appendFragment({ kind: FragmentKind.Field, fieldName })
+  prependIndex = (index: number) => this.prependFragment({ kind: FragmentKind.Index, index })
+  appendIndex = (index: number) => this.appendFragment({ kind: FragmentKind.Index, index })
+  prependVariant = (variantName: string) => this.prependFragment({ kind: FragmentKind.Variant, variantName })
+  appendVariant = (variantName: string) => this.appendFragment({ kind: FragmentKind.Variant, variantName })
   toArray = () => this.fragments
   format = () => `\$${this.fragments.map(fragmentToString).join('')}`
   equals = (other: Path) => this === other || areSameArray(other.toArray(), this.toArray(), areFragmentsEqual)
@@ -160,19 +170,19 @@ class PathImpl implements Path {
 
 function areFragmentsEqual(one: Fragment, other: Fragment): boolean {
   return (
-    (one.kind === 'field' && other.kind === 'field' && one.fieldName === other.fieldName) ||
-    (one.kind === 'index' && other.kind === 'index' && one.index === other.index) ||
-    (one.kind === 'variant' && other.kind === 'variant' && one.variantName === other.variantName)
+    (one.kind === FragmentKind.Field && other.kind === FragmentKind.Field && one.fieldName === other.fieldName) ||
+    (one.kind === FragmentKind.Index && other.kind === FragmentKind.Index && one.index === other.index) ||
+    (one.kind === FragmentKind.Variant && other.kind === FragmentKind.Variant && one.variantName === other.variantName)
   )
 }
 
 function fragmentToString(fragment: Fragment): string {
   switch (fragment.kind) {
-    case 'field':
+    case FragmentKind.Field:
       return `.${fragment.fieldName}`
-    case 'index':
+    case FragmentKind.Index:
       return `[${fragment.index.toString()}]`
-    case 'variant':
+    case FragmentKind.Variant:
       return `.${fragment.variantName}`
     default:
       assertNever(fragment, 'I run into a fragment type I cannot turn into a string')

@@ -1,3 +1,5 @@
+import { path } from 'src'
+
 /**
  * @param values the array to map over
  * @param mapper a mapping function that may return `undefined`
@@ -69,7 +71,11 @@ export function failWithInternalError(message: string): never {
  * @param compare the function used to compare the arrays' objects
  * @returns true if the array are equal element by element
  */
-export function areSameArray<A>(one: A[], other: A[], compare: (one: A, other: A) => boolean): boolean {
+export function areSameArray<A>(
+  one: readonly A[],
+  other: readonly A[],
+  compare: (one: A, other: A) => boolean,
+): boolean {
   return one === other || (one.length === other.length && one.every((value, i) => compare(value, other[i])))
 }
 
@@ -97,4 +103,45 @@ export function unsafeObjectToTaggedVariant<T>(taggedVariant: Record<string, T>)
 
 export function mergeArrays<A>(one: A[], other: A[]): A[] {
   return [...one, ...other]
+}
+
+/**
+ * A type describing objects with a `path` field of type {@link path.Path `Path`}
+ */
+export type WithPath<Data extends Record<string, any>> = Data & { path: path.Path }
+
+/**
+ * @param values an array of item that all have a `path` field
+ * @param fieldName the field to prepend to the path of each item of the given array
+ * @returns an array of item with the path updated with the prepended field
+ */
+export function prependFieldToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
+  values: T[],
+  fieldName: string,
+): T[] {
+  return values.map((value) => ({ ...value, path: value.path.prependField(fieldName) }))
+}
+
+/**
+ * @param values an array of item that all have a `path` field
+ * @param index the index to prepend to the path of each item of the given array
+ * @returns an array of item with the path updated with the prepended index
+ */
+export function prependIndexToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
+  values: T[],
+  index: number,
+): T[] {
+  return values.map((value) => ({ ...value, path: value.path.prependIndex(index) }))
+}
+
+/**
+ * @param values an array of item that all have a `path` field
+ * @param variantName the variant to prepend to the path of each item of the given array
+ * @returns an array of item with the path updated with the prepended variant
+ */
+export function prependVariantToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
+  values: T[],
+  variantName: string,
+): T[] {
+  return values.map((value) => ({ ...value, path: value.path.prependVariant(variantName) }))
 }

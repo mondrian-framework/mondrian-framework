@@ -1,4 +1,5 @@
 import { decoding, result, path } from './index'
+import { WithPath } from './utils'
 
 /**
  * The options that can be used when decoding a type:
@@ -45,7 +46,7 @@ export type Result<A> = result.Result<A, decoding.Error[]>
  *          - `path: "$[1].foo"` the error took place while decoding a field called `foo`
  *            in an object at index 1 of an array
  */
-export type Error = path.WithPath<{
+export type Error = WithPath<{
   expected: string
   got: unknown
 }>

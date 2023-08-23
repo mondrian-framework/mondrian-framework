@@ -1,5 +1,5 @@
 import { decoding, path, result, types, validation } from '../../'
-import { always, filterMapObject, mergeArrays } from '../../utils'
+import { always, filterMapObject, mergeArrays, prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -85,7 +85,7 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
       types
         .concretise(this.fields[fieldName])
         .validate(fieldValue as never, options)
-        .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+        .mapError((errors) => prependFieldToAll(errors, fieldName))
 
     return options.errorReportingStrategy === 'stopAtFirstError'
       ? result.tryEachFailFast(entries, true, always(true), validateEntry)
@@ -127,7 +127,7 @@ function decodeObjectProperties(
       .concretise(fieldType)
       .decodeWithoutValidation(object[fieldName], decodingOptions)
       .map((value) => [fieldName, value] as const)
-      .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+      .mapError((errors) => prependFieldToAll(errors, fieldName))
 
   const entries = Object.entries(fields)
   const decodedEntries =

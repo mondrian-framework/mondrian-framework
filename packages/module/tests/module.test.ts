@@ -27,7 +27,7 @@ test('Real example', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
-    apply: async ({ input, context: { db }, log }) => {
+    body: async ({ input, context: { db }, log }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
         log(`Invalid email or password: ${input.email}`, 'warn')
@@ -53,7 +53,7 @@ test('Real example', async () => {
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: types.nullable(User),
-    apply: async ({ input, context: { db }, log }) => {
+    body: async ({ input, context: { db }, log }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
         log(`Double register: ${input.email}`, 'error')
@@ -79,7 +79,7 @@ test('Real example', async () => {
   const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
     input: types.object({ firstname: types.string(), lastname: types.string() }),
     output: User,
-    apply: async ({ input, context: { db, authenticatedUser } }) => {
+    body: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
         throw new Error('Unauthorized')
       }
@@ -171,7 +171,7 @@ describe('Unique type name', () => {
     const f = functions.build({
       input,
       output,
-      apply: () => {
+      body: () => {
         throw 'Unreachable'
       },
     })
@@ -192,7 +192,7 @@ describe('Default middlewares', () => {
     const dummy = functions.build({
       input: type,
       output: type,
-      apply: async ({ input }) => {
+      body: async ({ input }) => {
         if (input?.value === 'wrong') {
           return {} //projection not respected sometimes!
         }

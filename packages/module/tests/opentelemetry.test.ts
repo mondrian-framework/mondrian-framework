@@ -1,30 +1,39 @@
 import { functions, module, sdk } from '../src'
 import { types } from '@mondrian-framework/model'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { Resource } from '@opentelemetry/resources'
 import {
   BasicTracerProvider,
   SimpleSpanProcessor,
   ConsoleSpanExporter,
   InMemorySpanExporter,
 } from '@opentelemetry/sdk-trace-base'
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { describe, expect, test } from 'vitest'
+import { NodeTracerProvider }  from '@opentelemetry/sdk-trace-node'
 
 describe('Opentelemetry', () => {
   test('should produce spans', async () => {
-    const provider = new BasicTracerProvider()
+    const provider = new NodeTracerProvider({
+      resource: new Resource({
+        [SemanticResourceAttributes.SERVICE_NAME]: 'test',
+        [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
+      }),
+    })
     provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
     const spanExporter = new InMemorySpanExporter()
     provider.addSpanProcessor(new SimpleSpanProcessor(spanExporter))
-    /*const exporter = new OTLPTraceExporter({
+    const exporter = new OTLPTraceExporter({
       url: 'http://localhost:4318/v1/traces',
     })
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter))*/
+    provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
     provider.register()
 
     const type = () => types.object({ type, value: types.string() }).optional()
     const dummy = functions.build({
       input: types.string(),
       output: types.string(),
-      apply: async ({ input }) => {
+      body: async ({ input }) => {
         if (input !== 'ping') {
           throw new Error('Only "pong" is accepted')
         }

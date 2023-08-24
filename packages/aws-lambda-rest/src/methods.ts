@@ -43,6 +43,7 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
             method: request.method.toLowerCase() as rest.Method,
             params: request.params as Record<string, string>,
             query: request.query as Record<string, string>,
+            route: request.route,
           },
         })
         response.status(result.status)

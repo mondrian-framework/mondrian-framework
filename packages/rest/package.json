@@ -17,6 +17,7 @@
   "peerDependencies": {
     "@mondrian-framework/model": "^1.0.7",
     "@mondrian-framework/module": "^1.0.9",
-    "@mondrian-framework/utils": "^1.0.6"
+    "@mondrian-framework/utils": "^1.0.6",
+    "@opentelemetry/sdk-node": "0.41.2"
   }
 }

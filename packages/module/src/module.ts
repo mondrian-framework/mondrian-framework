@@ -1,16 +1,9 @@
 import { functions, logger } from '.'
-import { Function, FunctionArguments, Middleware } from './function'
+import { FunctionImplementation } from './function/implementation'
+import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
-import { projection, result, types } from '@mondrian-framework/model'
-import opentelemetry, {
-  ValueType,
-  SpanKind,
-  SpanStatusCode,
-  Counter,
-  Histogram,
-  Tracer,
-  Span,
-} from '@opentelemetry/api'
+import { projection, types } from '@mondrian-framework/model'
+import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
  * The Mondrian module type.
@@ -148,7 +141,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
       const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
       const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
       const counter = myMeter.createCounter('task.invocation')
-      const func: Function = {
+      const func: functions.Function = {
         ...functionBody,
         middlewares: [
           ...maxProjectionDepthMiddleware,
@@ -156,134 +149,12 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
           ...(functionBody.middlewares ?? []),
         ],
       }
-      const wrappedFunction: Function<types.Type, types.Type, {}> = module.options?.opentelemetryInstrumentation
-        ? new OpenTelemetryFunction(func, functionName, module, { histogram, tracer, counter })
+      const wrappedFunction: functions.Function<types.Type, types.Type, {}> = module.options
+        ?.opentelemetryInstrumentation
+        ? new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
         : new FunctionImplementation(func)
       return [functionName, wrappedFunction]
     }),
   ) as Fs
   return { ...module, functions: wrappedFunctions }
-}
-
-class FunctionImplementation<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>>
-  implements Function<I, O, Context>
-{
-  readonly input: I
-  readonly output: O
-  readonly body: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
-  readonly middlewares: readonly Middleware<I, O, Context>[]
-  readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
-
-  constructor(func: Function<I, O, Context>) {
-    this.input = func.input
-    this.output = func.output
-    this.body = func.apply
-    this.middlewares = func.middlewares ?? []
-    this.options = func.options
-  }
-
-  public apply(args: FunctionArguments<I, O, Context>): Promise<types.Infer<types.PartialDeep<O>>> {
-    return this.execute(0, args)
-  }
-
-  private async execute(
-    middlewareIndex: number,
-    args: FunctionArguments<I, O, Context>,
-  ): Promise<types.Infer<types.PartialDeep<O>>> {
-    if (middlewareIndex >= this.middlewares.length) {
-      return this.body(args)
-    }
-    const middleware = this.middlewares[middlewareIndex]
-    return middleware.apply(args, (mappedArgs) => this.execute(middlewareIndex + 1, mappedArgs), this)
-  }
-}
-
-class OpenTelemetryFunction<
-  I extends types.Type,
-  O extends types.Type,
-  Context extends Record<string, unknown>,
-> extends FunctionImplementation<I, O, Context> {
-  private readonly name: string
-  private readonly module: Pick<Module, 'name' | 'version'>
-
-  private readonly tracer: Tracer
-  private readonly counter: Counter
-  private readonly histogram: Histogram
-
-  public async apply(args: FunctionArguments<I, O, Context>): Promise<types.Infer<types.PartialDeep<O>>> {
-    this.counter.add(1)
-    const startTime = new Date().getTime()
-    const spanResult = await this.tracer.startActiveSpan(
-      `function:apply`,
-      {
-        kind: SpanKind.INTERNAL,
-        //TODO: use SemanticResourceAttributes from '@opentelemetry/semantic-conventions' ?
-        attributes: {
-          'mondrian.function.name': this.name,
-          'mondrian.module.name': this.module.name,
-          'mondrian.module.version': this.module.version,
-          'mondrian.operation.id': args.operationId,
-          'mondrian.operation.projection': JSON.stringify(args.projection),
-        },
-      },
-      async (span) => {
-        try {
-          const r = await this.executeWithinSpan(0, args, span)
-          span.setStatus({ code: SpanStatusCode.OK })
-          span.end()
-          return result.ok<types.Infer<types.PartialDeep<O>>, unknown>(r)
-        } catch (error) {
-          //TODO: evaluate if needed (maybe it contains secrets)
-          /*span.setAttribute(
-            'mondrian.input',
-            JSON.stringify(types.concretise(this.input).encodeWithoutValidation(args.input as never)),
-          )*/
-          if (error instanceof Error) {
-            span.recordException(error)
-          }
-          span.setStatus({ code: SpanStatusCode.ERROR })
-          span.end()
-          return result.fail<types.Infer<types.PartialDeep<O>>, unknown>(error)
-        }
-      },
-    )
-    const finishTIme = new Date().getTime()
-    this.histogram.record(finishTIme - startTime)
-    if (!spanResult.isOk) {
-      throw spanResult.error
-    }
-    return spanResult.value
-  }
-
-  private async executeWithinSpan(
-    middlewareIndex: number,
-    args: FunctionArguments<I, O, Context>,
-    span: Span,
-  ): Promise<types.Infer<types.PartialDeep<O>>> {
-    if (middlewareIndex >= this.middlewares.length) {
-      span.addEvent('body execution')
-      return this.body(args)
-    }
-    const middleware = this.middlewares[middlewareIndex]
-    span.addEvent('midlleware execution', { name: middleware.name })
-    return middleware.apply(args, (mappedArgs) => this.executeWithinSpan(middlewareIndex + 1, mappedArgs, span), this)
-  }
-
-  constructor(
-    func: Function<I, O, Context>,
-    name: string,
-    module: Pick<Module, 'name' | 'version'>,
-    opentelemetry: {
-      tracer: Tracer
-      counter: Counter
-      histogram: Histogram
-    },
-  ) {
-    super(func)
-    this.name = name
-    this.module = module
-    this.tracer = opentelemetry.tracer
-    this.counter = opentelemetry.counter
-    this.histogram = opentelemetry.histogram
-  }
 }

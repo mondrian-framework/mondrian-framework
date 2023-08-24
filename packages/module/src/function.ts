@@ -1,4 +1,5 @@
 import { logger } from '.'
+import { FunctionImplementation } from './function/implementation'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
@@ -11,6 +12,7 @@ export type Function<
 > = {
   readonly input: I
   readonly output: O
+  readonly body: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
   readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
   readonly middlewares?: readonly Middleware<I, O, Context>[]
   readonly options?: { readonly namespace?: string; readonly description?: string }
@@ -81,7 +83,7 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
  * ```
  */
 export function build<const I extends types.Type, const O extends types.Type>(
-  func: Function<I, O, {}>,
+  func: Omit<Function<I, O, {}>, 'apply'>,
 ): Function<I, O, {}> {
   return withContext().build(func)
 }
@@ -119,8 +121,8 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
    * @returns A Mondrian function.
    */
   public build<const I extends types.Type, const O extends types.Type>(
-    func: Function<I, O, Context>,
+    func: Omit<Function<I, O, Context>, 'apply'>,
   ): Function<I, O, Context> {
-    return func
+    return new FunctionImplementation(func)
   }
 }

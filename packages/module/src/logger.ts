@@ -13,7 +13,7 @@ type LoggerContext = {
   server?: string //REST, GRAPHQL, LOCAL, ...
 }
 
-class LoggerBuilder {
+export class LoggerBuilder {
   private _context: LoggerContext
 
   constructor(context: LoggerContext) {

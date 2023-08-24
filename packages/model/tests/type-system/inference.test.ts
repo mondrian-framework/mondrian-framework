@@ -108,7 +108,7 @@ describe('Infer', () => {
       const model = types.merge(
         types.object({ field1: types.string() }),
         types.object({ field2: types.number() }),
-        'mutable',
+        types.Mutability.Mutable,
       )
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string; field2: number }>()
@@ -135,7 +135,7 @@ describe('Infer', () => {
         {
           field1: true,
         },
-        'mutable',
+        types.Mutability.Mutable,
       )
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
@@ -156,7 +156,7 @@ describe('Infer', () => {
         {
           field2: true,
         },
-        'mutable',
+        types.Mutability.Mutable,
       )
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
@@ -171,7 +171,7 @@ describe('Infer', () => {
     test('omitted object references inferred as mutable single field object', () => {
       const model = types.omitReferences(
         types.object({ field1: types.string(), field2: types.number().reference() }),
-        'mutable',
+        types.Mutability.Mutable,
       )
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
@@ -188,7 +188,7 @@ describe('Infer', () => {
     test('partial of mutable object inferred with every field optional', () => {
       const model = types.partial(
         types.object({ field1: types.string().nullable(), field2: types.number().optional().reference() }),
-        'mutable',
+        types.Mutability.Mutable,
       )
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1?: string | null; field2?: number }>()

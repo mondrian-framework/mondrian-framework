@@ -4,15 +4,15 @@ import { JSONType } from '@mondrian-framework/utils'
 
 /**
  * @param value the literal value held by the new `LiteralType`
- * @param options the {@link LiteralTypeOptions options} used to define the new `LiteralType`
- * @returns a {@link LiteralType `LiteralType`} representing the literal type of `value`
+ * @param options the {@link types.LiteralTypeOptions} used to define the new `LiteralType`
+ * @returns a {@link types.LiteralType} representing the literal type of `value`
  * @example Imagine you have to deal with HTTP requests whose HTTP version must be `"2.0"`.
  *          The version field could be modelled with a literal type to can guarantee that a request can only be built
  *          if its version is the string `"2.0"`:
  *
  *          ```ts
- *          type RequiredVersion = Infer<typeof requiredVersion>
- *          const requiredVersion = literal("2.0", {
+ *          type RequiredVersion = types.Infer<typeof requiredVersion>
+ *          const requiredVersion = types.literal("2.0", {
  *            name: "requiredVersion",
  *            description: "the required version for the HTTPS requests",
  *          })

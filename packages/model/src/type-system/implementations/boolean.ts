@@ -3,14 +3,14 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param options the {@link BooleanTypeOptions options} used to define the new `BooleanType`
- * @returns a {@link BooleanType `BooleanType`} with the given `options`
+ * @param options the {@link types.BooleanTypeOptions} used to define the new `BooleanType`
+ * @returns a {@link types.BooleanType} with the given options
  * @example Imagine you have to keep track of a flag that is used to check wether a user is an admin or not.
  *          The corresponding model could be defined like this:
  *
  *          ```ts
- *          type AdminFlag = Infer<typeof adminFlag>
- *          const adminFlag: BooleanType = boolean({
+ *          type AdminFlag = types.Infer<typeof adminFlag>
+ *          const adminFlag = types.boolean({
  *            name: "isAdmin",
  *            description: "a flag that is True if the user is also an admin",
  *          })

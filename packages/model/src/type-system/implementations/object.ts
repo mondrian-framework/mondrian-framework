@@ -1,13 +1,13 @@
 import { decoding, path, result, types, validation } from '../../'
-import { always, filterMapObject, mergeArrays } from '../../utils'
+import { always, filterMapObject, mergeArrays, prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param types an object where each field is itself a {@link Type `Type`}, used to determine the structure of the
+ * @param types an object where each field is itself a {@link types.Type}, used to determine the structure of the
  *              new `ObjectType`
- * @param options the {@link ObjectTypeOptions options} used to define the new `ObjectType`
- * @returns an {@link ObjectType `ObjectType`} with the provided `values` and `options`
+ * @param options the {@link types.ObjectTypeOptions} used to define the new `ObjectType`
+ * @returns an {@link types.ObjectType} with the provided values
  * @example Imagine you are modelling a `User` that has a username, an age and a boolean flag to tell if it is an admin
  *          or not. Its definition could look like this:
  *
@@ -34,16 +34,16 @@ import { JSONType } from '@mondrian-framework/utils'
  */
 export function object<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.ObjectType<'immutable', Ts>>,
-): types.ObjectType<'immutable', Ts> {
-  return new ObjectTypeImpl('immutable', fields, options)
+  options?: types.OptionsOf<types.ObjectType<types.Mutability.Immutable, Ts>>,
+): types.ObjectType<types.Mutability.Immutable, Ts> {
+  return new ObjectTypeImpl(types.Mutability.Immutable, fields, options)
 }
 
 export function mutableObject<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.ObjectType<'mutable', Ts>>,
-): types.ObjectType<'mutable', Ts> {
-  return new ObjectTypeImpl('mutable', fields, options)
+  options?: types.OptionsOf<types.ObjectType<types.Mutability.Mutable, Ts>>,
+): types.ObjectType<types.Mutability.Mutable, Ts> {
+  return new ObjectTypeImpl(types.Mutability.Mutable, fields, options)
 }
 
 class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
@@ -85,7 +85,7 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
       types
         .concretise(this.fields[fieldName])
         .validate(fieldValue as never, options)
-        .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+        .mapError((errors) => prependFieldToAll(errors, fieldName))
 
     return options.errorReportingStrategy === 'stopAtFirstError'
       ? result.tryEachFailFast(entries, true, always(true), validateEntry)
@@ -127,7 +127,7 @@ function decodeObjectProperties(
       .concretise(fieldType)
       .decodeWithoutValidation(object[fieldName], decodingOptions)
       .map((value) => [fieldName, value] as const)
-      .mapError((errors) => path.prependFieldToAll(errors, fieldName))
+      .mapError((errors) => prependFieldToAll(errors, fieldName))
 
   const entries = Object.entries(fields)
   const decodedEntries =

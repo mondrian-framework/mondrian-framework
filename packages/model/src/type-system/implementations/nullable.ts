@@ -3,12 +3,12 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param wrappedType the {@link Type `Type`} describing the item held by the new `NullableType`
- * @param options the {@link NullableTypeOptions options} used to define the new `NullableType`
- * @returns a {@link NullableType `NullableType`} holding an item of the given type, with the given `options`
+ * @param wrappedType the {@link types.Type} describing the item held by the new `NullableType`
+ * @param options the {@link types.NullableTypeOptions} used to define the new `NullableType`
+ * @returns a {@link types.NullableType} holding an item of the given type
  * @example ```ts
- *          type NullableString = Infer<typeof nullableString>
- *          const nullableString = nullable(string())
+ *          type NullableString = types.Infer<typeof nullableString>
+ *          const nullableString = types.nullable(types.string()) // or types.string().nullable()
  *
  *          const exampleNull: NullableString = null
  *          const examplePresent: NullableString = "Hello, Mondrian!"

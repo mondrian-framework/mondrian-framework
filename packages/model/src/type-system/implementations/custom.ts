@@ -20,7 +20,28 @@ type CustomValidator<Name extends string, Options extends Record<string, any>, I
 ) => validation.Result
 
 /**
- * TODO
+ * @param typeName the name of the custom type to be created
+ * @param encodeWithoutValidation a function to perform encoding of the custom type
+ * @param decoder a function to perform decoding of the custom type
+ * @param validator a function to perform validation of the custom type
+ * @param options the options that can be used to define the new custom type
+ * @returns a new custom type with the provided encoding/decoding/validation functions
+ * @example custom types can be useful whenever you need to define some types that are not
+ *          covered by Mondrian's default types. For example, you could define the type
+ *          of dates as a custom type:
+ *
+ *           ```ts
+ *          const encoder = (date) => date.toString()
+ *          const decoder = (value) => decoder.succeed(new Date(value))
+ *
+ *          type MyDate = types.Infer<typeof myDate> // -> Date
+ *          const myDate = types.custom<"date, {}, Date>("date", encoder, decoder, validator.succeed)
+ *          const value: MyDate = new Date("11-10-1998")
+ *          ```
+ *
+ *          Custom types give you the freedom of deciding the type inferred for it so you
+ *          can pick whatever best suits your needs as long as you can encode/decode it
+ *          to a JSON type
  */
 export function custom<Name extends string, Options extends Record<string, any>, InferredAs>(
   typeName: Name,

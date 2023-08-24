@@ -3,12 +3,12 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param wrappedType the {@link Type `Type`} describing the item held by the new `OptionalType`
- * @param options the {@link OptionalTypeOptions options} used to define the new `OptionalType`
- * @returns an {@link OptionalType `OptionalType`} holding an item of the given type, with the given `options`
+ * @param wrappedType the {@link types.Type} describing the item held by the new `OptionalType`
+ * @param options the {@link types.OptionalTypeOptions} used to define the new `OptionalType`
+ * @returns an {@link types.OptionalType} holding an item of the given type
  * @example ```ts
- *          type OptionalNumber = Infer<typeof stringArray>
- *          const optionalNumber = optional(number())
+ *          type OptionalNumber = types.Infer<typeof stringArray>
+ *          const optionalNumber = types.optional(types.number()) // types.number().optional()
  *
  *          const exampleMissing: OptionalNumber = undefined
  *          const examplePresent: OptionalNumber = 42

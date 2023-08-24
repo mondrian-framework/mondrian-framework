@@ -102,20 +102,20 @@ type ProjectInternal<T extends types.Type, P extends projection.Projection>
   : [T] extends [types.NullableType<infer T1>] ? null | Project<T1, P>
   : [T] extends [types.ReferenceType<infer T1>] ? Project<T1, P>
   : [T] extends [types.UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [_P in Key]: Key extends keyof P ? P[Key] extends projection.Projection ? P[Key] extends true ? InferExcludingReferences<Ts[Key]> : Project<Ts[Key], P[Key]> : never : Project<Ts[Key], {}> } }[keyof Ts]
-  : [T] extends [types.ObjectType<'immutable', infer Ts>] ? Readonly<{ [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never }>
-  : [T] extends [types.ObjectType<'mutable', infer Ts>] ? { [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never }
-  : [T] extends [types.ArrayType<"immutable", infer T1>] ? readonly Project<T1, P>[]
-  : [T] extends [types.ArrayType<'mutable', infer T1>] ? Project<T1, P>[]
+  : [T] extends [types.ObjectType<types.Mutability.Immutable, infer Ts>] ? Readonly<{ [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never }>
+  : [T] extends [types.ObjectType<types.Mutability.Mutable, infer Ts>] ? { [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never }
+  : [T] extends [types.ArrayType<types.Mutability.Immutable, infer T1>] ? readonly Project<T1, P>[]
+  : [T] extends [types.ArrayType<types.Mutability.Mutable, infer T1>] ? Project<T1, P>[]
   : [T] extends [() => infer T1 extends types.Type] ? Project<T1, P>
   : InferExcludingReferences<T>
 
 // prettier-ignore
 type InferExcludingReferences<T extends types.Type>
   = [T] extends [types.UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: InferExcludingReferences<Ts[Key]> } }[keyof Ts]
-  : [T] extends [types.ObjectType<"immutable", infer Ts>] ? Readonly<{ [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }>
-  : [T] extends [types.ObjectType<"mutable", infer Ts>] ? { [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }
-  : [T] extends [types.ArrayType<"immutable", infer T1>] ? readonly InferExcludingReferences<T1>[]
-  : [T] extends [types.ArrayType<"mutable", infer T1>] ? InferExcludingReferences<T1>[]
+  : [T] extends [types.ObjectType<types.Mutability.Immutable, infer Ts>] ? Readonly<{ [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }>
+  : [T] extends [types.ObjectType<types.Mutability.Mutable, infer Ts>] ? { [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }
+  : [T] extends [types.ArrayType<types.Mutability.Immutable, infer T1>] ? readonly InferExcludingReferences<T1>[]
+  : [T] extends [types.ArrayType<types.Mutability.Mutable, infer T1>] ? InferExcludingReferences<T1>[]
   : [T] extends [types.OptionalType<infer T1>] ? undefined | InferExcludingReferences<T1>
   : [T] extends [types.NullableType<infer T1>] ? null | InferExcludingReferences<T1>
   : [T] extends [types.ReferenceType<infer T1>] ? InferExcludingReferences<T1>

@@ -1,15 +1,15 @@
-import { decoding, path, result, types, validation } from '../../'
-import { always, mergeArrays } from '../../utils'
+import { decoding, result, types, validation } from '../../'
+import { always, mergeArrays, prependIndexToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param wrappedType the {@link types.Type `Type`} describing the items held by the new `ArrayType`
- * @param options the {@link types.ArrayTypeOptions options} used to define the new `ArrayType`
- * @returns an {@link types.ArrayType `ArrayType`} holding items of the given type, with the given `options`
+ * @param wrappedType the {@link types.Type} describing the items held by the new `ArrayType`
+ * @param options the {@link types.ArrayTypeOptions} used to define the new `ArrayType`
+ * @returns a {@link types.ArrayType} holding items of the given type
  * @example ```ts
- *          type StringArray = Infer<typeof stringArray>
- *          const stringArray = array(string(), {
+ *          type StringArray = types.Infer<typeof stringArray>
+ *          const stringArray = types.array(string(), {
  *            name: "a list of at most 3 strings",
  *            maxItems: 3,
  *          })
@@ -19,23 +19,23 @@ import { JSONType } from '@mondrian-framework/utils'
  */
 export function array<T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.ArrayType<'immutable', T>>,
-): types.ArrayType<'immutable', T> {
-  return new ArrayTypeImpl('immutable', wrappedType, options)
+  options?: types.OptionsOf<types.ArrayType<types.Mutability.Immutable, T>>,
+): types.ArrayType<types.Mutability.Immutable, T> {
+  return new ArrayTypeImpl(types.Mutability.Immutable, wrappedType, options)
 }
 
 /**
  * The same as the {@link array `array`} function, but the inferred array is `readonly`.
  *
- * @param wrappedType the {@link types.Type `Type`} describing the items held by the new `ArrayType`
- * @param options the {@link types.ArrayTypeOptions options} used to define the new `ArrayType`
- * @returns an {@link types.ArrayType `ArrayType`} holding items of the given type, with the given `options`
+ * @param wrappedType the {@link types.Type} describing the items held by the new `ArrayType`
+ * @param options the {@link types.ArrayTypeOptions} used to define the new `ArrayType`
+ * @returns a {@link types.ArrayType} holding items of the given type
  */
 export function mutableArray<T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.ArrayType<'mutable', T>>,
-): types.ArrayType<'mutable', T> {
-  return new ArrayTypeImpl('mutable', wrappedType, options)
+  options?: types.OptionsOf<types.ArrayType<types.Mutability.Mutable, T>>,
+): types.ArrayType<types.Mutability.Mutable, T> {
+  return new ArrayTypeImpl(types.Mutability.Mutable, wrappedType, options)
 }
 
 class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
@@ -74,11 +74,11 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
 
     const options = { ...validation.defaultOptions, ...validationOptions }
     // prettier-ignore
-    return and(options, maxLengthValidation,
-    () => and(options, minLengthValidation,
-      () => this.validateArrayElements(value, options),
-    ),
-  )
+    return and(options, maxLengthValidation, // First check the array respects the maximum length
+      () => and(options, minLengthValidation, // Then check that is respects the minimum length
+        () => this.validateArrayElements(value, options), // Lastly validate its items
+      ),
+    )
   }
 
   private validateArrayElements(
@@ -89,7 +89,8 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
       types
         .concretise(this.wrappedType)
         .validate(item as never, options)
-        .mapError((errors) => path.prependIndexToAll(errors, index))
+        .mapError((errors) => prependIndexToAll(errors, index))
+
     return options.errorReportingStrategy === 'stopAtFirstError'
       ? result.tryEachFailFast(array, true, always(true), validateItem)
       : result.tryEach(array, true, always(true), [] as validation.Error[], mergeArrays, validateItem)
@@ -113,6 +114,8 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
     decodingOptions?: decoding.Options,
   ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
     const addDecodedItem = (accumulator: any[], item: any) => {
+      // Here to be more efficient we update the accumulator in place and return a reference to it,
+      // otherwise, we would need to create a new accumulator for each new decoded item
       accumulator.push(item)
       return accumulator
     }
@@ -120,7 +123,7 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
       types
         .concretise(this.wrappedType)
         .decodeWithoutValidation(item, decodingOptions)
-        .mapError((errors) => path.prependIndexToAll(errors, index))
+        .mapError((errors) => prependIndexToAll(errors, index))
 
     return decodingOptions?.errorReportingStrategy === 'allErrors'
       ? result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoding.Error[], mergeArrays, decodeItem)
@@ -176,6 +179,18 @@ function allConsecutive(numbers: number[]): boolean {
   return true
 }
 
+/**
+ * @param options the validation options to be used when concatenating multiple steps
+ * @param result the first result of the validation
+ * @param other a function to lazily generate the next validation step
+ * @returns a `Result` based on the options and the first `result`: if the validation
+ *          strategy is to fail at the first error then as soon as an error is encountered
+ *          the validation stops and fails with that error (so the second validation step
+ *          may never be executed).
+ *
+ *          If the first step succeeds, the result will be the one obatined by the second
+ *          step of the validation process
+ */
 function and(
   options: validation.Options,
   result: validation.Result,

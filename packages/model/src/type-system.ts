@@ -1900,7 +1900,21 @@ type PartialObjectFields<Ts extends Types> = {
 }
 
 /**
- * TODO: doc
+ * Given a {@link Type} returns a new type where all the fields of object types are turned into
+ * optional fields
+ *
+ * @example ```ts
+ *          const model = types.number()
+ *          types.Infer<types.PartialDeep<typeof model>> // number
+ *          ```
+ * @example ```ts
+ *          const model = types.object({ field: number })
+ *          types.Infer<types.PartialDeep<typeof model>> // { field?: number }
+ *          ```
+ * @example ```ts
+ *          const model = types.object({ field: number }).array()
+ *          types.Infer<types.PartialDeep<typeof model>> // { field?: number }[]
+ *          ```
  */
 //prettier-ignore
 export type PartialDeep<T extends Type> 
@@ -1913,11 +1927,15 @@ export type PartialDeep<T extends Type>
   : [T] extends [(() => infer T1 extends Type)] ? () => PartialDeep<T1>
   : T
 
-//TODO: better typing
 /**
- * TODO: doc
- * @param type
- * @returns
+ * @param type the type whose fields will be all turned into optional types
+ * @returns a new {@link Type} where the fields of every {@link ObjectType} appearing in it is turned
+ *          into an optional field
+ * @example ```ts
+ *          const model = types.object({ field: types.string() }).array()
+ *          types.partialDeep(model)
+ *          // -> same as types.object({ field: types.string().optional() }).array()
+ *          ```
  */
 export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
   if (typeof type === 'function') {
@@ -1949,10 +1967,10 @@ export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
 }
 
 /**
+ * TODO: add documentation and tests
  * @param one the first type to compare
  * @param other the second type to compare
  * @returns true if the two types model the same type
- * TODO: add documentation and tests
  */
 export function areEqual(one: Type, other: Type): boolean {
   if (one == other) {
@@ -1998,8 +2016,8 @@ export function areEqual(one: Type, other: Type): boolean {
 /**
  * @param type the type to check against
  * @param value the value whose type needs to be checked
- * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
- * @param validationOptions the {@link ValidationOptions options} used for the validation process
+ * @param decodingOptions the {@link decoding.Options} used for the decoding process
+ * @param validationOptions the {@link validation.Options} used for the validation process
  * @returns true if `value` is actually a valid member of the type `T`
  */
 export function isType<T extends Type>(

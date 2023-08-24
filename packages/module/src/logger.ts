@@ -1,4 +1,4 @@
-//TODO: probably need a rework (see #51).
+//TODO: when ready remove this Logger and use opentelemetry standard.
 
 /**
  * The Mondrian logger type.

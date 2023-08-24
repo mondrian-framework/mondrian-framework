@@ -2,6 +2,11 @@ import { decoding, validation, types, result } from './index'
 import { filterMapObject, mapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
+/**
+ * The possible kinds of types modelled by the Mondrian Framework
+ *
+ * @see {@link Type}
+ */
 export enum Kind {
   Number,
   String,
@@ -18,9 +23,11 @@ export enum Kind {
 }
 
 /**
- * A type that can be defined with the Mondrian framework.
+ * A type that can be defined with the Mondrian framework. Types are used to provide a formal description
+ * of your data. In addition, the Mondrian framework can take advantage of these definitions to
+ * automatically generate encoders, decoders, and much more.
  *
- * To learn more you can read about [the Mondrian model.](https://twinlogix.github.io/mondrian-framework/docs/docs/model)
+ * @see To learn more about the Mondrian model, read the [online documentation](https://twinlogix.github.io/mondrian-framework/docs/docs/model)
  */
 export type Type =
   | NumberType
@@ -38,7 +45,13 @@ export type Type =
   | (() => Type)
 
 /**
- * Makes any type lazy.
+ * Utility type to turn any type into a possibly lazy version of itself
+ *
+ * @example ```ts
+ *          function do_something(arg: Lazy<number>) { ... }
+ *          do_something(1)         // Since the argument is lazy it can either be a number value
+ *          do_something(() => 1)   // or a function that returns a number value
+ *          ```
  */
 export type Lazy<T> = T | (() => Lazy<T>)
 
@@ -49,29 +62,37 @@ export type Types = Record<string, Type>
 
 /**
  * The same as type but doesn't include the lazy type definition: `() => Type`.
- * This can be useful to use in pair with {@link concretise conretise} to make
- * sure you are dealing with a type that is not lazy.
+ * This type can be useful when you want to make sure that you're working with an actual type
+ * and not a lazy definition
+ *
+ * @example ```ts
+ *          const lazyModel = () => types.number().array()
+ *          type ModelType = Concrete<typeof lazyModel>
+ *          // -> ModelType = ArrayType<"immutable", NumberType>
+ *          ```
+ * @see {@link concretise} to turn a possibly-lazy type into a concrete type
  */
 export type Concrete<T extends Type> = [T] extends [() => infer T1 extends Type] ? Concrete<T1> : Exclude<T, () => any>
 
 /**
- * Infers the Typescript type equivalent of a given Mondrian {@link Type `Type`}.
+ * A type that turns a Mondrian {@link Type `Type`} into the equivalent TypeScript's type
+ *
  * @example ```ts
- *          const model = string()
- *          type Type = Infer<typeof model>
+ *          const model = types.string()
+ *          type Type = types.Infer<typeof model>
  *          // -> Type = string
  *          ```
  * @example ```ts
- *          const model = nullable(number())
- *          type Type = Infer<typeof model>
+ *          const model = types.number().nullable()
+ *          type Type = types.Infer<typeof model>
  *          // -> Type = number | null
  *          ```
  * @example ```ts
- *          const model = object({
- *            field1: number(),
- *            field2: string(),
+ *          const model = types.object({
+ *            field1: types.number(),
+ *            field2: types.string(),
  *          })
- *          type Type = Infer<typeof model>
+ *          type Type = types.Infer<typeof model>
  *          // -> Type = { field1: number, field2: string }
  *          ```
  */
@@ -92,7 +113,7 @@ export type Infer<T extends Type>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
-type InferObject<M, Ts extends Types> = M extends 'mutable' ? InferMutableObject<Ts> : InferImmutableObject<Ts>
+type InferObject<M, Ts extends Types> = M extends Mutability.Mutable ? InferMutableObject<Ts> : InferImmutableObject<Ts>
 // prettier-ignore
 type InferImmutableObject<Ts extends Types> = { readonly [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { readonly [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
 // prettier-ignore
@@ -100,7 +121,7 @@ type InferMutableObject<Ts extends Types> = { [Key in NonOptionalKeys<Ts>]: Infe
 type InferUnion<Ts extends Types> = { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
 type InferEnum<Vs extends readonly [string, ...string[]]> = Vs[number]
 type InferLiteral<L> = L
-type InferArray<M, T extends Type> = M extends 'mutable' ? InferMutableArray<T> : InferImmutableArray<T>
+type InferArray<M, T extends Type> = M extends Mutability.Mutable ? InferMutableArray<T> : InferImmutableArray<T>
 type InferMutableArray<T extends Type> = Infer<T>[]
 type InferImmutableArray<T extends Type> = readonly Infer<T>[]
 type InferOptional<T extends Type> = undefined | Infer<T>
@@ -108,17 +129,52 @@ type InferNullable<T extends Type> = null | Infer<T>
 type InferReference<T extends Type> = Infer<T>
 
 /**
- * TODO: Add doc
+ * Given an array of types, returns the union of the fields whose type is optional
+ *
+ * @example ```ts
+ *          const model = types.object({
+ *            foo: types.string(),
+ *            bar: types.number().optional(),
+ *            baz: types.boolean().array().optional(),
+ *          })
+ *          OptionalKeys<typeof model> // -> "bar" | "baz"
+ *          ```
  */
 type OptionalKeys<T extends Types> = { [K in keyof T]: IsOptional<T[K]> extends true ? K : never }[keyof T]
 
 /**
- * TODO: Add doc
+ * Given an array of types, returns the union of the fields whose type is not optional
+ *
+ * @example ```ts
+ *          const model = types.object({
+ *            foo: types.string(),
+ *            bar: types.number().optional(),
+ *            baz: types.boolean().array(),
+ *          })
+ *          OptionalKeys<typeof model> // -> "foo" | "baz"
+ *          ```
  */
 type NonOptionalKeys<T extends Types> = { [K in keyof T]: IsOptional<T[K]> extends true ? never : K }[keyof T]
 
 /**
- * TODO: Add doc
+ * Returns the literal type `true` for any {@link Type} that is optional. That is, if the type has a top-level
+ * {@link OptionalType optional wrapper}
+ *
+ * @example ```ts
+ *          const model = types.number().optional().reference()
+ *          IsOptional<typeof model> // -> true
+ *          ```
+ *          The top-level decorators are `OptionalType` and `ReferenceType` so the type is optional
+ * @example ```ts
+ *          const model = types.number().optional()
+ *          IsOptional<typeof model> // -> true
+ *          ```
+ *          The top-level decorator is `OptionalType` so the type is optional
+ * @example ```ts
+ *          const model = types.number().optional().array()
+ *          IsOptional<typeof model> // -> false
+ *          ```
+ *          The top-level decorator is `ArrayType` so the type is not optional
  */
 //prettier-ignore
 type IsOptional<T extends Type> 
@@ -129,7 +185,24 @@ type IsOptional<T extends Type>
   : false
 
 /**
- * TODO: Add doc
+ * Returns the literal type `true` for any {@link Type} that is a reference.
+ * That is, if the type has a top-level {@link ReferenceType reference wrapper}
+ *
+ * @example ```ts
+ *          const model = types.number().optional().reference()
+ *          IsOptional<typeof model> // -> true
+ *          ```
+ *          The top-level decorators are `OptionalType` and `ReferenceType` so the type is a reference
+ * @example ```ts
+ *          const model = types.number().reference()
+ *          IsOptional<typeof model> // -> true
+ *          ```
+ *          The top-level decorator is `ReferenceType` so the type is a reference
+ * @example ```ts
+ *          const model = types.number().reference().array()
+ *          IsOptional<typeof model> // -> false
+ *          ```
+ *          The top-level decorator is `ArrayType` so the type is not a reference
  */
 //prettier-ignore
 type IsReference<T extends Type> 
@@ -140,7 +213,7 @@ type IsReference<T extends Type>
   : false
 
 /**
- * Given a type `T`, returns the type of the options it can accept when it is defined.
+ * Given a {@link Type}, returns the type of the options it can accept when it is defined
  *
  * @example ```ts
  *          type Options = OptionsOf<NumberType>
@@ -167,7 +240,10 @@ export type OptionsOf<T extends Type>
 /**
  * The possible mutability of objects and arrays.
  */
-export type Mutability = 'mutable' | 'immutable'
+export enum Mutability {
+  Mutable,
+  Immutable,
+}
 
 /**
  * @param type the possibly lazy {@link Type type} to turn into a concrete type
@@ -199,7 +275,7 @@ export type StringType = {
 
   optional(): OptionalType<StringType>
   nullable(): NullableType<StringType>
-  array(): ArrayType<'immutable', StringType>
+  array(): ArrayType<Mutability.Immutable, StringType>
   reference(): ReferenceType<StringType>
 
   decode(
@@ -235,7 +311,7 @@ export type NumberType = {
 
   optional(): OptionalType<NumberType>
   nullable(): NullableType<NumberType>
-  array(): ArrayType<'immutable', NumberType>
+  array(): ArrayType<Mutability.Immutable, NumberType>
   reference(): ReferenceType<NumberType>
 
   decode(
@@ -273,7 +349,7 @@ export type BooleanType = {
 
   optional(): OptionalType<BooleanType>
   nullable(): NullableType<BooleanType>
-  array(): ArrayType<'immutable', BooleanType>
+  array(): ArrayType<Mutability.Immutable, BooleanType>
   reference(): ReferenceType<BooleanType>
 
   decode(
@@ -306,7 +382,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
 
   optional(): OptionalType<EnumType<Vs>>
   nullable(): NullableType<EnumType<Vs>>
-  array(): ArrayType<'immutable', EnumType<Vs>>
+  array(): ArrayType<Mutability.Immutable, EnumType<Vs>>
   reference(): ReferenceType<EnumType<Vs>>
 
   decode(
@@ -339,7 +415,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
 
   optional(): OptionalType<LiteralType<L>>
   nullable(): NullableType<LiteralType<L>>
-  array(): ArrayType<'immutable', LiteralType<L>>
+  array(): ArrayType<Mutability.Immutable, LiteralType<L>>
   reference(): ReferenceType<LiteralType<L>>
 
   decode(
@@ -373,7 +449,7 @@ export type UnionType<Ts extends Types> = {
 
   optional(): OptionalType<UnionType<Ts>>
   nullable(): NullableType<UnionType<Ts>>
-  array(): ArrayType<'immutable', UnionType<Ts>>
+  array(): ArrayType<Mutability.Immutable, UnionType<Ts>>
   reference(): ReferenceType<UnionType<Ts>>
 
   decode(
@@ -405,11 +481,11 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
   readonly fields: Ts
   readonly options?: ObjectTypeOptions
 
-  immutable(): ObjectType<'immutable', Ts>
-  mutable(): ObjectType<'mutable', Ts>
+  immutable(): ObjectType<Mutability.Immutable, Ts>
+  mutable(): ObjectType<Mutability.Mutable, Ts>
   optional(): OptionalType<ObjectType<M, Ts>>
   nullable(): NullableType<ObjectType<M, Ts>>
-  array(): ArrayType<'immutable', ObjectType<M, Ts>>
+  array(): ArrayType<Mutability.Immutable, ObjectType<M, Ts>>
   reference(): ReferenceType<ObjectType<M, Ts>>
 
   decode(
@@ -441,11 +517,11 @@ export type ArrayType<M extends Mutability, T extends Type> = {
   readonly wrappedType: T
   readonly options?: ArrayTypeOptions
 
-  immutable(): ArrayType<'immutable', T>
-  mutable(): ArrayType<'mutable', T>
+  immutable(): ArrayType<Mutability.Immutable, T>
+  mutable(): ArrayType<Mutability.Mutable, T>
   optional(): OptionalType<ArrayType<M, T>>
   nullable(): NullableType<ArrayType<M, T>>
-  array(): ArrayType<'immutable', ArrayType<M, T>>
+  array(): ArrayType<Mutability.Immutable, ArrayType<M, T>>
   reference(): ReferenceType<ArrayType<M, T>>
 
   decode(
@@ -480,7 +556,7 @@ export type OptionalType<T extends Type> = {
   readonly options?: OptionalTypeOptions
 
   nullable(): NullableType<OptionalType<T>>
-  array(): ArrayType<'immutable', OptionalType<T>>
+  array(): ArrayType<Mutability.Immutable, OptionalType<T>>
   reference(): ReferenceType<OptionalType<T>>
 
   decode(
@@ -512,7 +588,7 @@ export type NullableType<T extends Type> = {
   readonly options?: NullableTypeOptions
 
   optional(): OptionalType<NullableType<T>>
-  array(): ArrayType<'immutable', NullableType<T>>
+  array(): ArrayType<Mutability.Immutable, NullableType<T>>
   reference(): ReferenceType<NullableType<T>>
 
   decode(
@@ -545,7 +621,7 @@ export type ReferenceType<T extends Type> = {
 
   optional(): OptionalType<ReferenceType<T>>
   nullable(): NullableType<ReferenceType<T>>
-  array(): ArrayType<'immutable', ReferenceType<T>>
+  array(): ArrayType<Mutability.Immutable, ReferenceType<T>>
 
   decode(
     value: unknown,
@@ -577,7 +653,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
 
   optional(): OptionalType<CustomType<Name, Options, InferredAs>>
   nullable(): NullableType<CustomType<Name, Options, InferredAs>>
-  array(): ArrayType<'immutable', CustomType<Name, Options, InferredAs>>
+  array(): ArrayType<Mutability.Immutable, CustomType<Name, Options, InferredAs>>
   reference(): ReferenceType<CustomType<Name, Options, InferredAs>>
 
   decode(
@@ -605,7 +681,7 @@ export type CustomTypeOptions<AdditionalOptions> = BaseOptions & AdditionalOptio
  * @param other the second `ObjectType` to merge
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the merged objects are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is 'immutable'.
+ * @param mutable result object's mutability. Default is Mutability.Immutable.
  * @returns a new {@link ObjectType `ObjectType`} obtained by merging `one` with `other`.
  *          If both objects define a field with the same name, the type of the resulting field is the one defined by
  *          `other`.
@@ -623,7 +699,7 @@ export type CustomTypeOptions<AdditionalOptions> = BaseOptions & AdditionalOptio
  *          }
  *          ```
  */
-export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability = 'immutable'>(
+export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability = Mutability.Immutable>(
   one: Lazy<ObjectType<any, Ts1>>,
   other: Lazy<ObjectType<any, Ts2>>,
   mutable?: M,
@@ -634,7 +710,7 @@ export function merge<Ts1 extends Types, Ts2 extends Types, M extends Mutability
       merge(concretise(one) as ObjectType<any, Ts1>, concretise(other) as ObjectType<any, Ts2>, mutable, options)()
   }
   const mergedFields = { ...one.fields, ...other.fields }
-  const constructor = mutable === 'mutable' ? types.mutableObject : types.object
+  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
   return () => constructor(mergedFields, options) as unknown as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
 }
 
@@ -647,7 +723,7 @@ type MergeObjectFields<Ts1 extends Types, Ts2 extends Types> = {
  * @param fields the fields to pick
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is 'immutable'.
+ * @param mutable result object's mutability. Default is Mutability.Immutable.
  * @returns a new {@link ObjectType `ObjectType`} obtained by picking only the wanted fields.
  * @example ```ts
  *          const book = object({ name: string(), description: string(), publishedIn: integer() })
@@ -663,7 +739,7 @@ type MergeObjectFields<Ts1 extends Types, Ts2 extends Types> = {
 export function pick<
   const Ts extends Types,
   const Fields extends { [K in keyof Ts]?: true },
-  M extends Mutability = 'immutable',
+  M extends Mutability = Mutability.Immutable,
 >(
   obj: Lazy<ObjectType<any, Ts>>,
   fields: Fields,
@@ -674,7 +750,7 @@ export function pick<
     return () => pick(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
   const pickedFields = filterMapObject(obj.fields, (k, t) => (k in fields && fields[k] === true ? t : undefined))
-  const constructor = mutable === 'mutable' ? types.mutableObject : types.object
+  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
   return () => constructor(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
 }
 
@@ -687,7 +763,7 @@ type PickObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true 
  * @param fields the fields to omit
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is 'immutable'.
+ * @param mutable result object's mutability. Default is Mutability.Immutable.
  * @returns a new {@link ObjectType `ObjectType`} obtained by omitting the specified fields.
  * @example ```ts
  *          const book = object({ name: string(), description: string(), publishedIn: integer() })
@@ -703,7 +779,7 @@ type PickObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true 
 export function omit<
   const Ts extends Types,
   const Fields extends { [K in keyof Ts]?: true },
-  M extends Mutability = 'immutable',
+  M extends Mutability = Mutability.Immutable,
 >(
   obj: Lazy<ObjectType<any, Ts>>,
   fields: Fields,
@@ -714,7 +790,7 @@ export function omit<
     return () => omit(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
   }
   const pickedFields = filterMapObject(obj.fields, (k, t) => (!(k in fields) || fields[k] !== true ? t : undefined))
-  const constructor = mutable === 'mutable' ? types.mutableObject : types.object
+  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
   return () => constructor(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
 }
 
@@ -726,7 +802,7 @@ type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true 
  * @param obj the `ObjectType` to remove all reference fields
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is 'immutable'.
+ * @param mutable result object's mutability. Default is Mutability.Immutable.
  * @returns a new {@link ObjectType `ObjectType`} obtained by omitting all the reference fields.
  * @example ```ts
  *          const author = object({ id: string() })
@@ -740,7 +816,7 @@ type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true 
  *          }
  *          ```
  */
-export function omitReferences<const Ts extends Types, M extends Mutability = 'immutable'>(
+export function omitReferences<const Ts extends Types, M extends Mutability = Mutability.Immutable>(
   obj: Lazy<ObjectType<any, Ts>>,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
@@ -749,7 +825,7 @@ export function omitReferences<const Ts extends Types, M extends Mutability = 'i
     return () => omitReferences(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
   const pickedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Reference) ? undefined : t))
-  const constructor = mutable === 'mutable' ? types.mutableObject : types.object
+  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
   return () => constructor(pickedFields, options) as ObjectType<M, OmitReferenceObjectFields<Ts>>
 }
 
@@ -761,7 +837,7 @@ type OmitReferenceObjectFields<Ts extends Types> = {
  * @param obj the `ObjectType` to transform
  * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
  *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is 'immutable'.
+ * @param mutable result object's mutability. Default is Mutability.Immutable.
  * @returns a new {@link ObjectType `ObjectType`} where every fields is optional.
  * @example ```ts
  *          const book = object({ name: string(), description: string(), publishedIn: integer() })
@@ -773,7 +849,7 @@ type OmitReferenceObjectFields<Ts extends Types> = {
  *          }
  *          ```
  */
-export function partial<const Ts extends Types, M extends Mutability = 'immutable'>(
+export function partial<const Ts extends Types, M extends Mutability = Mutability.Immutable>(
   obj: Lazy<ObjectType<any, Ts>>,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
@@ -782,7 +858,7 @@ export function partial<const Ts extends Types, M extends Mutability = 'immutabl
     return () => partial(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
   const mappedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Optional) ? t : types.optional(t)))
-  const constructor = mutable === 'mutable' ? types.mutableObject : types.object
+  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
   return () => constructor(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
 }
 

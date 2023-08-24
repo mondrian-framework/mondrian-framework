@@ -34,16 +34,16 @@ import { JSONType } from '@mondrian-framework/utils'
  */
 export function object<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.ObjectType<'immutable', Ts>>,
-): types.ObjectType<'immutable', Ts> {
-  return new ObjectTypeImpl('immutable', fields, options)
+  options?: types.OptionsOf<types.ObjectType<types.Mutability.Immutable, Ts>>,
+): types.ObjectType<types.Mutability.Immutable, Ts> {
+  return new ObjectTypeImpl(types.Mutability.Immutable, fields, options)
 }
 
 export function mutableObject<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.ObjectType<'mutable', Ts>>,
-): types.ObjectType<'mutable', Ts> {
-  return new ObjectTypeImpl('mutable', fields, options)
+  options?: types.OptionsOf<types.ObjectType<types.Mutability.Mutable, Ts>>,
+): types.ObjectType<types.Mutability.Mutable, Ts> {
+  return new ObjectTypeImpl(types.Mutability.Mutable, fields, options)
 }
 
 class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>

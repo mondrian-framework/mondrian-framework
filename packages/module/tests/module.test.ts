@@ -13,7 +13,9 @@ test('Real example', async () => {
       friend: types.optional(User).reference(),
     })
   type User = types.Infer<typeof User>
-  const LoginInput = types.pick(User, { email: true, password: true }, 'immutable', { name: 'LoginInput' })
+  const LoginInput = types.pick(User, { email: true, password: true }, types.Mutability.Immutable, {
+    name: 'LoginInput',
+  })
   const LoginOutput = types.object({ jwt: types.string(), user: User }).nullable().setName('LoginOuput')
 
   //Functions

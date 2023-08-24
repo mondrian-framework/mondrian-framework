@@ -23,7 +23,7 @@ describe('Project', () => {
   test('Infer scalar on scalar type with any projection with wrapper', () => {
     expectTypeOf<Project<types.NullableType<types.NumberType>, {}>>().toEqualTypeOf<number | null>()
     expectTypeOf<Project<types.OptionalType<types.NumberType>, {}>>().toEqualTypeOf<number | undefined>()
-    expectTypeOf<Project<types.ArrayType<'mutable', types.NumberType>, {}>>().toEqualTypeOf<number[]>()
+    expectTypeOf<Project<types.ArrayType<types.Mutability.Mutable, types.NumberType>, {}>>().toEqualTypeOf<number[]>()
     expectTypeOf<Project<types.ReferenceType<types.NumberType>, {}>>().toEqualTypeOf<number>()
   })
 
@@ -66,7 +66,10 @@ describe('Project', () => {
   })
 
   test('limit case', () => {
-    type T = types.ObjectType<'mutable', { a: types.NumberType; b: types.ReferenceType<types.StringType> }>
+    type T = types.ObjectType<
+      types.Mutability.Mutable,
+      { a: types.NumberType; b: types.ReferenceType<types.StringType> }
+    >
     type A = Project<T, projection.FromType<T>>
     type C = Project<T, true>
     type B = Project<T, {}>

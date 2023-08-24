@@ -60,7 +60,7 @@ export const RegisterInput = t.merge(
     password: t.string({ minLength: 5, maxLength: 100 }),
     audit: Audit,
   }),
-  'immutable',
+  t.Mutability.Immutable,
   { name: 'RegisterInput' },
 )
 export type RegisterInput = t.Infer<typeof RegisterInput>
@@ -71,7 +71,7 @@ export const PostInput = t.pick(
     title: true,
     content: true,
   },
-  'immutable',
+  t.Mutability.Immutable,
   { name: 'PostInput' },
 )
 

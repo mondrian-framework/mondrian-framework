@@ -19,9 +19,9 @@ import { JSONType } from '@mondrian-framework/utils'
  */
 export function array<T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.ArrayType<'immutable', T>>,
-): types.ArrayType<'immutable', T> {
-  return new ArrayTypeImpl('immutable', wrappedType, options)
+  options?: types.OptionsOf<types.ArrayType<types.Mutability.Immutable, T>>,
+): types.ArrayType<types.Mutability.Immutable, T> {
+  return new ArrayTypeImpl(types.Mutability.Immutable, wrappedType, options)
 }
 
 /**
@@ -33,9 +33,9 @@ export function array<T extends types.Type>(
  */
 export function mutableArray<T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.ArrayType<'mutable', T>>,
-): types.ArrayType<'mutable', T> {
-  return new ArrayTypeImpl('mutable', wrappedType, options)
+  options?: types.OptionsOf<types.ArrayType<types.Mutability.Mutable, T>>,
+): types.ArrayType<types.Mutability.Mutable, T> {
+  return new ArrayTypeImpl(types.Mutability.Mutable, wrappedType, options)
 }
 
 class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>

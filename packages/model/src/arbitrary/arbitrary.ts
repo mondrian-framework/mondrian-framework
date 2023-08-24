@@ -176,7 +176,7 @@ export function objectTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ObjectT
  */
 export function object<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.ObjectType<'mutable' | 'immutable', Ts>> {
+): gen.Arbitrary<types.ObjectType<types.Mutability, Ts>> {
   return gen.oneof(immutableObject(fieldsGenerators), mutableObject(fieldsGenerators))
 }
 
@@ -186,7 +186,7 @@ export function object<Ts extends types.Types>(
  */
 export function immutableObject<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.ObjectType<'immutable', Ts>> {
+): gen.Arbitrary<types.ObjectType<types.Mutability.Immutable, Ts>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
       return types.object(fields, options)
@@ -200,7 +200,7 @@ export function immutableObject<Ts extends types.Types>(
  */
 export function mutableObject<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.ObjectType<'mutable', Ts>> {
+): gen.Arbitrary<types.ObjectType<types.Mutability.Mutable, Ts>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
       return types.mutableObject(fields, options)
@@ -235,7 +235,7 @@ export function arrayTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ArrayTyp
  */
 export function array<T extends types.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.ArrayType<'mutable' | 'immutable', T>> {
+): gen.Arbitrary<types.ArrayType<types.Mutability, T>> {
   return gen.oneof(immutableArray(wrappedTypeGenerator), mutableArray(wrappedTypeGenerator))
 }
 
@@ -245,7 +245,7 @@ export function array<T extends types.Type>(
  */
 export function immutableArray<T extends types.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.ArrayType<'immutable', T>> {
+): gen.Arbitrary<types.ArrayType<types.Mutability.Immutable, T>> {
   return orUndefined(arrayTypeOptions()).chain((options) => {
     return wrappedTypeGenerator.map((wrappedType) => {
       return types.array(wrappedType, options)
@@ -259,7 +259,7 @@ export function immutableArray<T extends types.Type>(
  */
 export function mutableArray<T extends types.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.ArrayType<'mutable', T>> {
+): gen.Arbitrary<types.ArrayType<types.Mutability.Mutable, T>> {
   return orUndefined(arrayTypeOptions()).chain((options) => {
     return wrappedTypeGenerator.map((wrappedType) => {
       return types.mutableArray(wrappedType, options)
@@ -388,7 +388,7 @@ export function wrapperType(
   | types.ReferenceType<types.Type>
   | types.OptionalType<types.Type>
   | types.NullableType<types.Type>
-  | types.ArrayType<'mutable' | 'immutable', types.Type>
+  | types.ArrayType<types.Mutability, types.Type>
 > {
   return gen.oneof(reference(wrappedType), optional(wrappedType), nullable(wrappedType), array(wrappedType))
 }

@@ -4,10 +4,10 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param types an object where each field is itself a {@link Type `Type`}, used to determine the structure of the
+ * @param types an object where each field is itself a {@link types.Type}, used to determine the structure of the
  *              new `ObjectType`
- * @param options the {@link ObjectTypeOptions options} used to define the new `ObjectType`
- * @returns an {@link ObjectType `ObjectType`} with the provided `values` and `options`
+ * @param options the {@link types.ObjectTypeOptions} used to define the new `ObjectType`
+ * @returns an {@link types.ObjectType} with the provided values
  * @example Imagine you are modelling a `User` that has a username, an age and a boolean flag to tell if it is an admin
  *          or not. Its definition could look like this:
  *

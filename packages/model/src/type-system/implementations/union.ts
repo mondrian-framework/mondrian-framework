@@ -4,11 +4,28 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param variants a record with the different variants, each one paired with a function that can be used to determine
- *                 wether a value belongs to that variant or not
- * @param options the {@link UnionTypeOptions options} used to define the new `UnionType`
- * @returns a new {@link UnionType `UnionType`} with the provided `variants` and `options`
- * @example Imagine you are modelling TODO
+ * @param variants a record with the different variants of the union
+ * @param options the {@link types.UnionTypeOptions} used to define the new `UnionType`
+ * @returns a new {@link types.UnionType} with the provided variants
+ * @example Imagine you are modelling the response a server might send a client following a request.
+ *          The response may be successfull and hold a value (let's say it's just an integer value
+ *          for simplicity) or be an error and hold an error code and an additional string to
+ *          explain what went wrong.
+ *
+ *          This type could be modelled as follows:
+ *          ```ts
+ *          type Respose = types.Infer<typeof response>
+ *          const response = types.union({
+ *            success: types.number(),
+ *            failure: types.object({
+ *              errorCode: types.number(),
+ *              errorMessage: types.string(),
+ *            })
+ *          })
+ *
+ *          const successResponse: Response = { success: 1 }
+ *          const failureResponse: Response = { failure: { errorCode: 418, errorMessage: "I'm a teapot" } }
+ *          ```
  */
 export function union<Ts extends types.Types>(
   variants: Ts,

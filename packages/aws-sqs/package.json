@@ -12,9 +12,9 @@
   },
   "keywords": [],
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.398.0",
     "@mondrian-framework/model": "*",
     "@mondrian-framework/module": "*",
-    "@mondrian-framework/utils": "*",
-    "@aws-sdk/client-sqs": "3.332.0"
+    "@mondrian-framework/utils": "*"
   }
 }

@@ -1,6 +1,9 @@
 import { functions } from '..'
 import { types } from '@mondrian-framework/model'
 
+/**
+ * Basic function implementation.
+ */
 export class FunctionImplementation<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>>
   implements functions.Function<I, O, Context>
 {

@@ -3,13 +3,15 @@ import { FunctionImplementation } from './implementation'
 import { result, types } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
 
+/**
+ * Opentelemetry instrumented function.
+ */
 export class OpentelemetryFunction<
   I extends types.Type,
   O extends types.Type,
   Context extends Record<string, unknown>,
 > extends FunctionImplementation<I, O, Context> {
   private readonly name: string
-
   private readonly tracer: Tracer
   private readonly counter: Counter
   private readonly histogram: Histogram
@@ -21,7 +23,6 @@ export class OpentelemetryFunction<
       `module:${this.name}`,
       {
         kind: SpanKind.INTERNAL,
-        //TODO: use SemanticResourceAttributes from '@opentelemetry/semantic-conventions' ?
         attributes: {
           operationId: args.operationId,
           projection: JSON.stringify(args.projection),
@@ -61,11 +62,11 @@ export class OpentelemetryFunction<
     span: Span,
   ): Promise<types.Infer<types.PartialDeep<O>>> {
     if (middlewareIndex >= this.middlewares.length) {
-      span.addEvent('body execution')
+      span.addEvent('execution', { type: 'body' })
       return this.body(args)
     }
     const middleware = this.middlewares[middlewareIndex]
-    span.addEvent('midlleware execution', { name: middleware.name })
+    span.addEvent('execution', { type: 'middleware', name: middleware.name })
     return middleware.apply(args, (mappedArgs) => this.executeWithinSpan(middlewareIndex + 1, mappedArgs, span), this)
   }
 

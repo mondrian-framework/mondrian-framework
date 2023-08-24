@@ -1,8 +1,8 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateOpenapiInput } from './openapi'
-import { decoding, projection, result, types, validation } from '@mondrian-framework/model'
+import { decoding, projection, result, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
-import opentelemetry, { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
+import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
 export function fromFunction<Fs extends functions.Functions, ServerContext, ContextInput>({
@@ -25,7 +25,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
   const inputExtractor = getInputExtractor({ functionBody, specification })
-  const partialOutputType = types.partialDeep(functionBody.output)
+  const partialOutputType = types.concretise(types.partialDeep(functionBody.output))
 
   const thisLogger = logger.withContext({
     moduleName: module.name,
@@ -47,32 +47,26 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     //Check version
     const version = checkVersion({ request, minVersion, maxVersion })
     if (!version.isOk) {
-      await log('Invalid version.')
-      span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, version.error.status)
-      span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(version.error.body) })
-      span?.end()
+      await log('Bad request. (version)')
+      endSpanWithError({ span, failure: version })
       return addHeadersToResponse(version.error, responseHeaders)
     }
 
     //Decode input
     const input = specification.openapi ? specification.openapi.input(request) : inputExtractor(request)
-    const decoded = types.concretise(functionBody.input).decode(input, { typeCastingStrategy: 'tryCasting' })
+    const decoded = decodeInput({ input, inputType: functionBody.input })
     if (!decoded.isOk) {
-      await log('Bad request.')
-      span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, 400)
-      span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(decoded.error) })
-      span?.end()
-      return { status: 400, body: { errors: decoded.error }, headers: responseHeaders }
+      await log('Bad request. (input)')
+      endSpanWithError({ span, failure: decoded })
+      return addHeadersToResponse(decoded.error, responseHeaders)
     }
     span?.addEvent('Input decoded')
 
     //Decode projection
-    const givenProjection = extractProjection({ request, outputType: functionBody.output })
+    const givenProjection = decodeProjection({ request, outputType: functionBody.output })
     if (!givenProjection.isOk) {
       await log('Bad request. (projection)')
-      span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, givenProjection.error.status)
-      span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(givenProjection.error.body) })
-      span?.end()
+      endSpanWithError({ span, failure: givenProjection })
       return addHeadersToResponse(givenProjection.error, responseHeaders)
     }
     span?.addEvent('Projection decoded')
@@ -81,7 +75,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     try {
       const contextInput = await context(serverContext)
       moduleContext = await module.context(contextInput, {
-        projection: givenProjection.value as projection.Projection,
+        projection: givenProjection.value,
         input: decoded.value,
         operationId,
         log,
@@ -93,11 +87,11 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         operationId,
         log,
       })
-      const encoded = types.concretise(partialOutputType).encode(result)
+      const encoded = partialOutputType.encode(result)
+      const response: Response = { status: 200, body: encoded, headers: responseHeaders }
       log('Completed.')
-      span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, 200)
-      span?.end()
-      return { status: 200, body: encoded, headers: responseHeaders }
+      endSpanWithResponse({ span, response })
+      return response
     } catch (e) {
       span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, 500)
       if (e instanceof Error) {
@@ -120,7 +114,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         if (result !== undefined) {
           span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, result.status)
           span?.end()
-          return { ...result, headers: { ...result.headers, ...responseHeaders } }
+          return addHeadersToResponse(result, responseHeaders)
         }
       }
       span?.end()
@@ -176,7 +170,18 @@ function checkVersion({
   return result.ok(version)
 }
 
-function extractProjection({
+function decodeInput({
+  input,
+  inputType,
+}: {
+  input: unknown
+  inputType: types.Type
+}): result.Result<unknown, Response> {
+  const decoded = types.concretise(inputType).decode(input, { typeCastingStrategy: 'tryCasting' })
+  return decoded.mapError((error) => ({ status: 400, body: { errors: error }, headers: {} }))
+}
+
+function decodeProjection({
   request,
   outputType,
 }: {
@@ -197,4 +202,16 @@ function extractProjection({
 
 function addHeadersToResponse(response: Response, headers: Response['headers']): Response {
   return { ...response, headers: { ...response.headers, ...headers } }
+}
+
+function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<any, Response> }): void {
+  span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, failure.error.status)
+  span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(failure.error.body) })
+  span?.end()
+}
+
+function endSpanWithResponse({ span, response }: { span?: Span; response: Response }): void {
+  span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, response.status)
+  span?.setStatus({ code: SpanStatusCode.OK })
+  span?.end()
 }

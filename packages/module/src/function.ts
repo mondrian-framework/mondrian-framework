@@ -3,9 +3,9 @@ import { FunctionImplementation } from './function/implementation'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
- * Mondrian function type.
+ * A Mondrian function.
  */
-export type FunctionDefinition<
+export type Function<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
   Context extends Record<string, unknown> = Record<string, unknown>,
@@ -13,20 +13,27 @@ export type FunctionDefinition<
   readonly input: I
   readonly output: O
   readonly body: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
   readonly middlewares?: readonly Middleware<I, O, Context>[]
-  readonly options?: { readonly namespace?: string; readonly description?: string }
+  readonly options?: FunctionOptions
 }
 
 /**
- * Extension of {@link FunctionDefinition}. It include also an `apply` function that execute the function's middlewares and body.
+ * Mondrian {@link Function} options.
  */
-export type Function<
+export type FunctionOptions = {
+  readonly namespace?: string
+  readonly description?: string
+}
+
+/**
+ * Information needed to define a Mondrian {@link Function}
+ */
+type FunctionDefinition<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
   Context extends Record<string, unknown> = Record<string, unknown>,
-> = FunctionDefinition<I, O, Context> & {
-  readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
-}
+> = Omit<Function<I, O, Context>, 'apply'>
 
 /**
  * Arguments of a function call.
@@ -87,7 +94,7 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
  *     return 'signed jwt'
  *   },
  *   middlewares: [hidePasswordMiddleware],
- *   options: { 
+ *   options: {
  *     namespace: 'authentication',
  *     description: 'Sign a jwt for the authenticated user (1h validity)'
  *   }

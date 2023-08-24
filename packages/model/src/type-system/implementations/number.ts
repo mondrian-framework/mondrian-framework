@@ -24,16 +24,14 @@ export function number(options?: types.OptionsOf<types.NumberType>): types.Numbe
 }
 
 /**
- * @param options the {@link NumberTypeOptions options} used to define the new `NumberType`
- * @throws if the `multipleOf` field of `options` is not an integer number
- * @returns a {@link NumberType `NumberType`} where the `multipleOf` is an integer and defaults to 1 if it not defined
- *          in `options`
+ * @param options the {@link types.NumberTypeOptions} used to define the new `NumberType`
+ * @returns a {@link types.NumberType} where the `isInteger` flag is set to true
  * @example Imagine you have to deal with the age of a users: it can be thought of as an integer number that can never
  *          be lower than zero. A model for such a data type could be defined like this:
  *
  *          ```ts
- *          type Age = Infer<typeof age>
- *          const age = integer({
+ *          type Age = types.Infer<typeof age>
+ *          const age = types.integer({
  *            name: "age",
  *            description: "an age that is never negative",
  *            inclusiveMinimum: 0,

@@ -3,8 +3,8 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param options the {@link StringTypeOptions options} used to define the new `StringType`
- * @returns a {@link StringType `StringType`} with the given `options`
+ * @param options the {@link types.StringTypeOptions} used to define the new `StringType`
+ * @returns a {@link types.StringType} with the given `options`
  * @example Imagine you have to deal with string usernames that can never be empty.
  *          A model for such username could be defined like this:
  *

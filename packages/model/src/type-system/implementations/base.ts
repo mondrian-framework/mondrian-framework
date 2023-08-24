@@ -15,7 +15,6 @@ export abstract class DefaultMethods<T extends types.Type> {
   abstract validate(value: types.Infer<T>, validationOptions?: validation.Options): validation.Result
 
   encode(value: types.Infer<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]> {
-    // TODO: once we move validator to the interface change this as well
     return types
       .concretise(this.getThis())
       .validate(value as never, validationOptions)

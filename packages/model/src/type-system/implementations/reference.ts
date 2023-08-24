@@ -3,9 +3,9 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 
 /**
- * @param wrappedType the {@link Type `Type`} referenced by the resulting `ReferenceType`
- * @param options the {@link ReferenceTypeOptions options} used to define the new `ReferenceType`
- * @returns a {@link ReferenceType `ReferenceType`} wrapping the given type, with the given `options`
+ * @param wrappedType the {@link types.Type} referenced by the resulting `ReferenceType`
+ * @param options the {@link types.ReferenceTypeOptions} used to define the new `ReferenceType`
+ * @returns a {@link types.ReferenceType} wrapping the given type, with the given `options`
  */
 export function reference<T extends types.Type>(
   wrappedType: T,

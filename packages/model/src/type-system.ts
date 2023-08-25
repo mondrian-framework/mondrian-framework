@@ -276,6 +276,7 @@ export function concretise<T extends Type>(type: T): Concrete<T> {
 export type BaseOptions = {
   readonly name?: string
   readonly description?: string
+  readonly sensitive?: boolean
 }
 
 /**
@@ -399,6 +400,7 @@ export type StringType = {
   setOptions(options: StringTypeOptions): StringType
   updateOptions(options: StringTypeOptions): StringType
   setName(name: string): StringType
+  sensitive(): StringType
 }
 
 /**
@@ -531,6 +533,7 @@ export type NumberType = {
   setOptions(options: NumberTypeOptions): NumberType
   updateOptions(options: NumberTypeOptions): NumberType
   setName(name: string): NumberType
+  sensitive(): NumberType
 }
 
 /**
@@ -663,6 +666,7 @@ export type BooleanType = {
   setOptions(options: BooleanTypeOptions): BooleanType
   updateOptions(options: BooleanTypeOptions): BooleanType
   setName(name: string): BooleanType
+  sensitive(): BooleanType
 }
 
 /**
@@ -791,6 +795,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
   setOptions(options: EnumTypeOptions): EnumType<Vs>
   updateOptions(options: EnumTypeOptions): EnumType<Vs>
   setName(name: string): EnumType<Vs>
+  sensitive(): EnumType<Vs>
 }
 
 /**
@@ -918,6 +923,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
   setOptions(options: LiteralTypeOptions): LiteralType<L>
   updateOptions(options: LiteralTypeOptions): LiteralType<L>
   setName(name: string): LiteralType<L>
+  sensitive(): LiteralType<L>
 }
 
 /**
@@ -1047,6 +1053,7 @@ export type UnionType<Ts extends Types> = {
   setOptions(options: UnionTypeOptions): UnionType<Ts>
   updateOptions(options: UnionTypeOptions): UnionType<Ts>
   setName(name: string): UnionType<Ts>
+  sensitive(): UnionType<Ts>
 }
 
 /**
@@ -1179,6 +1186,7 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
   setOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   updateOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   setName(name: string): ObjectType<M, Ts>
+  sensitive(): ObjectType<M, Ts>
 }
 
 /**
@@ -1311,6 +1319,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
   setOptions(options: ArrayTypeOptions): ArrayType<M, T>
   updateOptions(options: ArrayTypeOptions): ArrayType<M, T>
   setName(name: string): ArrayType<M, T>
+  sensitive(): ArrayType<M, T>
 }
 
 /**
@@ -1433,6 +1442,7 @@ export type OptionalType<T extends Type> = {
   setOptions(options: OptionalTypeOptions): OptionalType<T>
   updateOptions(options: OptionalTypeOptions): OptionalType<T>
   setName(name: string): OptionalType<T>
+  sensitive(): OptionalType<T>
 }
 
 /**
@@ -1552,6 +1562,7 @@ export type NullableType<T extends Type> = {
   setOptions(options: NullableTypeOptions): NullableType<T>
   updateOptions(options: NullableTypeOptions): NullableType<T>
   setName(name: string): NullableType<T>
+  sensitive(): NullableType<T>
 }
 
 /**
@@ -1669,6 +1680,7 @@ export type ReferenceType<T extends Type> = {
   setOptions(options: ReferenceTypeOptions): ReferenceType<T>
   updateOptions(options: ReferenceTypeOptions): ReferenceType<T>
   setName(name: string): ReferenceType<T>
+  sensitive(): ReferenceType<T>
 }
 
 /**
@@ -1786,6 +1798,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
   setOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
   updateOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
   setName(name: string): CustomType<Name, Options, InferredAs>
+  sensitive(): CustomType<Name, Options, InferredAs>
 }
 
 /**

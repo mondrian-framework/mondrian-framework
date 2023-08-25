@@ -40,4 +40,5 @@ export abstract class DefaultMethods<T extends types.Type> {
   setOptions = (options: types.OptionsOf<T>) => this.fromOptions(options)
   updateOptions = (options: types.OptionsOf<T>) => this.fromOptions({ ...this.options, ...options })
   setName = (name: string) => this.fromOptions({ ...(this.options as types.OptionsOf<T>), name })
+  sensitive = () => this.fromOptions({ ...(this.options as types.OptionsOf<T>), sensitive: true })
 }

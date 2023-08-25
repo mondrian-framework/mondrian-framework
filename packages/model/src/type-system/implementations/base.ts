@@ -35,6 +35,7 @@ export abstract class DefaultMethods<T extends types.Type> {
   nullable = () => types.nullable(this.getThis())
   reference = () => types.reference(this.getThis())
   array = () => types.array(this.getThis())
+  equals = (other: types.Type) => types.areEqual(this.getThis(), other)
 
   setOptions = (options: types.OptionsOf<T>) => this.fromOptions(options)
   updateOptions = (options: types.OptionsOf<T>) => this.fromOptions({ ...this.options, ...options })

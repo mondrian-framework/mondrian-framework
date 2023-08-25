@@ -3,6 +3,7 @@
 The `@mondrian-framework/model` package contains a wide range of useful functions for defining a data model schema, from the simplest type `string` to complex objects, arrays, and unions. The syntax used has been designed to make development straightforward and the schema as readable as possible.
 
 ## Primitives
+
 Mondrian Framework supports the definition of a really small, simple but powerfull range of primitive types.
 
 ```ts showLineNumbers
@@ -41,6 +42,7 @@ const PositiveNumber = m.number({
 ```
 
 ## Advanced Types
+
 Besides primitive types, the framework provides a wide range of utility types that are already implemented and ready to use. In order to minimize packages size and required dependencies, these advanced types are provided in a separate package named `@mondrian-framework/advanced-types`.
 
 ```ts showLineNumbers
@@ -72,10 +74,13 @@ m.ISBN() // ISBN-10 or ISBN-13
 m.RGB() // CSS RGB, ex: rgb(255, 220, 200)
 m.RGBA() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
 ```
+
 ## Custom types
+
 In addition to [primitive types](#primitives), it is possible to define custom types with completely arbitrary logics. The mentioned [advanced types](#advanced-types) are built exactly in this way.
 
 Below is an example implementation of the `port` type that represents a TCP port.
+
 ```ts showLineNumbers
 import { CustomTypeOpts, Result, number, integer, validate } from '@mondrian-framework/model'
 
@@ -113,13 +118,16 @@ export function port(opts?: CustomTypeOpts) {
   )
 }
 ```
+
 Please note that the implementation of the custom type requires the definition of:
-  - `encodedType`: which identifies the type representing this encoded custom type, typically in JSON format. In this specific case, the TCP port is a number.
-  - `decode`: a function that translates, if necessary, the encoded type into the internal type. In the example, no translation is needed because the TCP port is represented by a number in both the encoded and decoded models.
-  - `encode`: similar to decode, encode is a translation function from the internal type to the encoded type.
-  - `validate`: a validation function for the already decoded data, where custom and even complex rules can be added."
+
+- `encodedType`: which identifies the type representing this encoded custom type, typically in JSON format. In this specific case, the TCP port is a number.
+- `decode`: a function that translates, if necessary, the encoded type into the internal type. In the example, no translation is needed because the TCP port is represented by a number in both the encoded and decoded models.
+- `encode`: similar to decode, encode is a translation function from the internal type to the encoded type.
+- `validate`: a validation function for the already decoded data, where custom and even complex rules can be added."
 
 A custom type can be used exactly as a primitive, simply calling its definition function.
+
 ```ts showLineNumbers
 import { m } from '@mondrian-framework/model'
 // highlight-start
@@ -133,7 +141,9 @@ const NetworkAddress = m.object({
   // highlight-end
 })
 ```
+
 ## Enums
+
 Enums allow a developer to define a set of named constants. Using enums can make it easier to document intent, or create a set of distinct cases. Mondrian provides only string-based enums.
 
 ```ts showLineNumbers
@@ -141,18 +151,22 @@ const UserType = m.enum(['CUSTOMER', 'ADMIN'])
 ```
 
 ## Literals
-Literals represent <em>specific</em> strings or numbers in type positions. They are a common construct in the TypeScript language.
+
+Literals represent *specific* strings or numbers in type positions. They are a common construct in the TypeScript language.
+
 ```ts showLineNumbers
 const Zero = m.literal(0)
 const Hello = m.literal('Hello')
 ```
 
 ## Optional
+
 You can make any type optional with an `optional()` decorator. This means that the given type can be also `undefined`, or not specified if assigned to a field of an [object](#objects).
 
 ```ts
 const OptionalString = m.optional(m.string())
 ```
+
 For convenience, you can also call the `optional()` method on an existing type.
 
 ```ts
@@ -160,6 +174,7 @@ const OptionalString = m.string().optional()
 ```
 
 ## Nullable
+
 Similarly, you can make any type nullable with a `nullable()` decorator. This means that the given type can be also `null`.
 
 ```ts
@@ -169,6 +184,7 @@ const NullableString = m.string().nullable()
 ```
 
 ## Default
+
 Another useful feature is the `.default()` decorator, that can receive a value or a function parameter. The default value is applied during the [decode](./04-decode.md) phase if the input of the decorated type is `undefined`.
 
 ```ts
@@ -182,7 +198,9 @@ m.decode(NumberDefaultRandom, undefined) // => 0.4413456736055323
 ```
 
 ## Objects
+
 Objects are structured types with a set of fields, required by default.
+
 ```ts showLineNumbers
 const User = m.object({
   id: m.integer(),
@@ -192,7 +210,9 @@ const User = m.object({
   dateOfBirth: m.datetime().optional(),
 })
 ```
+
 Fields can be [primitive types](#primitives), as in the previous example, [advanced types](#advanced-types), [custom types](#custom-types) or other objects. In the latter case, they can be declared separately to be used multiple times or inline.
+
 ```ts showLineNumbers
 // highlight-start
 const Address = m.object({
@@ -220,6 +240,7 @@ const User = m.object({
 ```
 
 ## Arrays
+
 Arrays are managed through a decorator that accept an optional parameter that defines maximum number of allowed elements.
 
 ```ts showLineNumbers
@@ -239,7 +260,7 @@ const User = m.object({
 })
 ```
 
-Combining the `array` decorator with others like `optional`, `nullable`, and `default` assumes different meanings depending on the order in which they are applied. Note, for example, the following two cases: 
+Combining the `array` decorator with others like `optional`, `nullable`, and `default` assumes different meanings depending on the order in which they are applied. Note, for example, the following two cases:
 
 ```ts showLineNumbers
 import { m, decode } from '@mondrian-framework/model'
@@ -253,8 +274,11 @@ decode(NullableArrayOfStrings, [null]) // => error
 decode(ArrayOfNullableStrings, null) // => error
 decode(ArrayOfNullableStrings, [null]) // => [null]
 ```
+
 ## Unions
+
 Mondrian provides an union function that allows you to compose multiple types with an `or` semantics.
+
 ```ts showLineNumbers
 const StringOrNumber = m.union({ string: m.string(), number: m.number() })
 
@@ -262,9 +286,11 @@ m.validate(StringOrNumber, "a string").success // => true
 m.validate(StringOrNumber, 10).success // => true
 m.validate(StringOrNumber, true).success // => false
 ```
-Every element of the union must be named in order to support advanced functionalities like [projections](./05-projection.md). 
+
+Every element of the union must be named in order to support advanced functionalities like [projections](./05-projection.md).
 
 You can also combine complex types like objects or custom types.
+
 ```ts showLineNumbers
 
 const Book = m.object({
@@ -287,4 +313,4 @@ const SearchResult = m.union({ book: Book, collection: Collection })
 
 ## Merge
 
-## Recursion 
+## Recursion

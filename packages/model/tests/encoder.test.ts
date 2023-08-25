@@ -159,7 +159,7 @@ describe('encoder.encode', () => {
     const validateSpy = vi.spyOn(mocks, 'validate')
     const encodeSpy = vi.spyOn(mocks, 'encode')
     const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
-    assertOk(model.encode(value, validationOptions))
+    assertOk(model.encode(value, undefined, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
     expect(encodeSpy).toBeCalledTimes(1)
   })

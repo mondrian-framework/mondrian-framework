@@ -1,4 +1,4 @@
-import { decoding, result, types, validation } from '../../'
+import { decoding, encoding, result, types, validation } from '../../'
 import { JSONType } from '@mondrian-framework/utils'
 
 export abstract class DefaultMethods<T extends types.Type> {
@@ -10,19 +10,23 @@ export abstract class DefaultMethods<T extends types.Type> {
 
   abstract getThis(): T
   abstract fromOptions(options?: types.OptionsOf<T>): T
-  abstract encodeWithNoChecks(value: types.Infer<T>): JSONType
+  abstract encodeWithNoChecks(value: types.Infer<T>, encodingOptions?: encoding.Options): JSONType
   abstract decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<types.Infer<T>>
   abstract validate(value: types.Infer<T>, validationOptions?: validation.Options): validation.Result
 
-  encodeWithoutValidation(value: types.Infer<T>): JSONType {
-    return this.encodeWithNoChecks(value)
+  encodeWithoutValidation(value: types.Infer<T>, encodingOptions?: encoding.Options): JSONType {
+    return this.encodeWithNoChecks(value, encodingOptions)
   }
 
-  encode(value: types.Infer<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]> {
+  encode(
+    value: types.Infer<T>,
+    encodignOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]> {
     return types
       .concretise(this.getThis())
       .validate(value as never, validationOptions)
-      .replace(this.encodeWithoutValidation(value))
+      .replace(this.encodeWithoutValidation(value, encodignOptions))
   }
 
   decode(

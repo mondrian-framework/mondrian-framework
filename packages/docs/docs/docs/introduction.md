@@ -10,7 +10,7 @@ Its current implementation is written in [TypeScript](https://www.typescriptlang
 
 ## Mission
 
-Mondrian Framework mission is to enable developers to build <strong>better software ready to evolve</strong>.
+Mondrian Framework mission is to enable developers to build **better software ready to evolve**.
 
 To accomplish this ambitious goal we believe software needs to be splitted in small, cohesive and decoupled parts, with well defined boundaries built on solid abstractions. Such parts are commonly named modules.
 
@@ -25,19 +25,20 @@ Mondrian Framework is designed on rock solid design principles heavily inspired 
 It also naturally stems from a decade-long experience in software development and draws inspiration from various other frameworks and libraries already existing in the modern development landscape.
 
 ## Design principles
-There are various well known best practices in software engineering, many of which are extensively discussed in reference texts. Although they are accepted and teached by most organizations, they often go unapplied in practice for various reasons, typically unjustifiable. 
+
+There are various well known best practices in software engineering, many of which are extensively discussed in reference texts. Although they are accepted and teached by most organizations, they often go unapplied in practice for various reasons, typically unjustifiable.
 
 One of the goals of Mondrian Framework is to guide developers towards the systematic and almost automatic application of these practices to produce software with the following characteristics:
 
-- <strong>Modularity</strong>: the degree to which a system’s components may be separated and recombined.
+- **Modularity**: the degree to which a system’s components may be separated and recombined.
 
-- <strong>Cohesion</strong>: the degree to which the elements inside a module belong together.
+- **Cohesion**: the degree to which the elements inside a module belong together.
 
-- <strong>Separation of concerns</strong>: design principle that manages complexity by partitioning the software system so that each partition is responsible for a separate concern, minimizing the overlap of concerns as much as possible.
+- **Separation of concerns**: design principle that manages complexity by partitioning the software system so that each partition is responsible for a separate concern, minimizing the overlap of concerns as much as possible.
 
-- <strong>Information hiding</strong>: the process of removing details or attributes in the study of a system to focus attention on details of greater importance.
+- **Information hiding**: the process of removing details or attributes in the study of a system to focus attention on details of greater importance.
 
-- <strong>Loose coupling</strong>: the degree to which components are weakly associated (have breakable relationships) with each other.
+- **Loose coupling**: the degree to which components are weakly associated (have breakable relationships) with each other.
 
 ## Features
 
@@ -49,7 +50,7 @@ Following a list of the main features of Mondrian Framework:
 - Model projection types and utilities
 - Function definition
 - Multiple API server generation
-  - REST, with OpenAPI specification 
+  - REST, with OpenAPI specification
   - GraphQL, both schema and resolvers
   - gRPC, including Protobuf definition
   - others from the community
@@ -66,9 +67,9 @@ Following a list of the main features of Mondrian Framework:
   - Advanced resource based security framework
 - Automatic client SDK generation
 - Dependency Injection
-- Exception management 
+- Exception management
 - Built-in mocking
 - Built-in logging
 - Built-in metrics
-- Built-in tracing 
+- Built-in tracing
 - 100% TypeScript

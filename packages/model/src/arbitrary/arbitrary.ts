@@ -433,6 +433,7 @@ function baseOptionsGeneratorsRecord() {
   return {
     name: gen.string(),
     description: gen.string(),
+    sensitive: gen.boolean(),
   }
 }
 

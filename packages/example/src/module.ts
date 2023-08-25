@@ -19,7 +19,7 @@ export const m = module.build<Functions, { jwt?: string }>({
       output: 'log',
       maxProjectionDepth: 5,
     },
-    opentelemetryInstrumentation: true
+    opentelemetryInstrumentation: true,
   },
   authentication: { type: 'bearer', format: 'jwt' },
   async context(input: { jwt?: string }) {

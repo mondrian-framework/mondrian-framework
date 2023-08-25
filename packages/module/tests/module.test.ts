@@ -29,13 +29,13 @@ test('Real example', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
-    body: async ({ input, context: { db }, log }) => {
+    body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
-        log(`Invalid email or password: ${input.email}`, 'warn')
+        logger.logWarn(`Invalid email or password: ${input.email}`)
         return null
       }
-      log(`Logged in: ${input.email}`, 'log')
+      logger.logInfo(`Logged in: ${input.email}`)
       return { jwt: user.email, user }
     },
     middlewares: [
@@ -55,13 +55,13 @@ test('Real example', async () => {
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: types.nullable(User),
-    body: async ({ input, context: { db }, log }) => {
+    body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
-        log(`Double register: ${input.email}`, 'error')
+        logger.logWarn(`Double register`, { email: input.email })
         return null
       }
-      log(`Registered: ${input.email}`)
+      logger.logInfo(`Registered: ${input.email}`)
       return db.updateUser(input)
     },
     middlewares: [
@@ -226,7 +226,7 @@ describe('Default middlewares', () => {
       async () => await client.functions.dummy({ value: '123' }, { projection: { type: { type: { type: true } } } }),
     ).rejects.toThrowError('Max projection depth reached: requested projection have a depth of 3. The maximum is 2.')
     expect(async () => await client.functions.dummy({ value: 'wrong' })).rejects.toThrowError(
-      'Invalid output: {"errors":[{"missingField":"value","path":{"fragments":[]}}]}',
+      '[{"missingField":"value","path":{"fragments":[]}}]',
     )
   })
 })

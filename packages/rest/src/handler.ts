@@ -27,7 +27,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   const inputExtractor = getInputExtractor({ functionBody, specification })
   const partialOutputType = types.concretise(types.partialDeep(functionBody.output))
 
-  const thisLogger = logger.withContext({
+  const thisLogger = logger.build({
     moduleName: module.name,
     operationName: functionName,
     operationType: specification.method.toUpperCase(),
@@ -41,13 +41,13 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   const handler = async (request: Request, serverContext: ServerContext, span?: Span) => {
     const operationId = utils.randomOperationId()
     span?.setAttribute('operationId', operationId)
-    const log = thisLogger.build({ operationId })
+    const operationLogger = thisLogger.updateContext({ operationId })
     const responseHeaders = { 'operation-id': operationId }
 
     //Check version
     const version = checkVersion({ request, minVersion, maxVersion })
     if (!version.isOk) {
-      await log('Bad request. (version)')
+      operationLogger.logError('Bad request. (version)')
       endSpanWithError({ span, failure: version })
       return addHeadersToResponse(version.error, responseHeaders)
     }
@@ -56,7 +56,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     const input = specification.openapi ? specification.openapi.input(request) : inputExtractor(request)
     const decoded = decodeInput({ input, inputType: functionBody.input })
     if (!decoded.isOk) {
-      await log('Bad request. (input)')
+      operationLogger.logError('Bad request. (input)')
       endSpanWithError({ span, failure: decoded })
       return addHeadersToResponse(decoded.error, responseHeaders)
     }
@@ -65,7 +65,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     //Decode projection
     const givenProjection = decodeProjection({ request, outputType: functionBody.output })
     if (!givenProjection.isOk) {
-      await log('Bad request. (projection)')
+      operationLogger.logError('Bad request. (projection)')
       endSpanWithError({ span, failure: givenProjection })
       return addHeadersToResponse(givenProjection.error, responseHeaders)
     }
@@ -78,18 +78,18 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         projection: givenProjection.value,
         input: decoded.value,
         operationId,
-        log,
+        logger: operationLogger,
       })
       const result = await functionBody.apply({
         projection: givenProjection.value as projection.FromType<types.Type>,
         context: moduleContext as Record<string, unknown>,
         input: decoded.value as never,
         operationId,
-        log,
+        logger: operationLogger,
       })
-      const encoded = partialOutputType.encode(result)
+      const encoded = partialOutputType.encodeWithoutValidation(result)
       const response: Response = { status: 200, body: encoded, headers: responseHeaders }
-      log('Completed.')
+      operationLogger.logInfo('Completed.')
       endSpanWithResponse({ span, response })
       return response
     } catch (e) {
@@ -97,11 +97,11 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
       if (e instanceof Error) {
         span?.recordException(e)
       }
-      log('Failed with exception.')
+      operationLogger.logError('Failed with exception.')
       if (error) {
         const result = await error({
           error: e,
-          log,
+          logger: operationLogger,
           functionName,
           operationId,
           context: moduleContext,

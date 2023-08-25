@@ -20,7 +20,7 @@ export type Module<Fs extends functions.Functions = functions.Functions, Context
       input: unknown
       projection: projection.Projection | undefined
       operationId: string
-      log: logger.Logger
+      logger: logger.MondrianLogger
     },
   ) => Promise<ContextType<Fs>>
   options?: ModuleOptions

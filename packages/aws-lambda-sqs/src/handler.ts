@@ -45,9 +45,8 @@ export function build<const Fs extends functions.Functions, CI>({
   })
 
   return async (event, fContext) => {
-    const baseLogger = logger.withContext({ moduleName: module.name, server: 'LAMBDA-SQS' })
-    const eventLog = logger.build({ operationId: fContext.awsRequestId })
-    await eventLog(`Received ${event.Records.length} messages.`)
+    const baseLogger = logger.build({ moduleName: module.name, server: 'LAMBDA-SQS' })
+    baseLogger.logInfo(`Received ${event.Records.length} messages.`)
     const batchItemFailures: SQSBatchItemFailure[] = []
     let spec: FunctionSpecifications | undefined = undefined
     for (let i = 0; i < event.Records.length; i++) {
@@ -56,19 +55,19 @@ export function build<const Fs extends functions.Functions, CI>({
       const [functionName, specification] =
         specifications.find(([_, s]) => 'anyQueue' in s || s.queueUrl === url) ?? ([null, null] as const)
       if (!specification || !functionName) {
-        await eventLog(`Message ${i} ignored! source: ${url}`, 'warn')
+        baseLogger.logWarn(`Message ${i} ignored! source: ${url}`)
         continue
       }
       const functionBody = module.functions[functionName]
       spec = specification
       const operationId = utils.randomOperationId()
-      const log = baseLogger.build({ operationId, operationType: url, operationName: functionName })
+      const operationLogger = baseLogger.updateContext({ operationId, operationType: url, operationName: functionName })
       try {
         let body: unknown
         try {
           body = m.body === undefined ? undefined : JSON.parse(m.body)
         } catch {
-          await log(`Bad message: not a valid json ${m.body}`)
+          operationLogger.logError(`Bad message: not a valid json ${m.body}`)
           if (specification.malformedMessagePolicy === 'delete') {
             continue
           }
@@ -80,7 +79,7 @@ export function build<const Fs extends functions.Functions, CI>({
 
         const decoded = types.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
         if (!decoded.isOk) {
-          await log(`Bad message: ${JSON.stringify(decoded.error)}`)
+          operationLogger.logError(`Bad message: ${JSON.stringify(decoded.error)}`)
           if (specification.malformedMessagePolicy === 'delete') {
             continue
           }
@@ -95,16 +94,16 @@ export function build<const Fs extends functions.Functions, CI>({
           input: decoded.value,
           projection: undefined,
           operationId,
-          log,
+          logger: operationLogger,
         })
         await functionBody.apply({
           input: decoded.value as never,
           projection: undefined,
           operationId,
           context: ctx,
-          log,
+          logger: operationLogger,
         })
-        await log(`Completed.`)
+        operationLogger.logInfo(`Completed.`)
       } catch (error) {
         if (!specification.reportBatchItemFailures) {
           throw new Error(`Bad message: not a valid json ${m.body}`)

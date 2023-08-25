@@ -43,7 +43,7 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
   readonly projection: projection.FromType<O> | undefined
   readonly operationId: string
   readonly context: Context
-  readonly log: logger.Logger
+  readonly logger: logger.MondrianLogger
 }
 
 /**

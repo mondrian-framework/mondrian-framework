@@ -269,7 +269,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
           info: GraphQLResolveInfo,
         ) => {
           const operationId = utils.randomOperationId()
-          const log = logger.build({
+          const operationLogger = logger.build({
             moduleName: module.name,
             operationId,
             operationType: specification.type,
@@ -281,13 +281,13 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
             typeCastingStrategy: 'tryCasting',
           })
           if (!decoded.isOk) {
-            log('Bad request.')
+            operationLogger.logError('Bad request.')
             throw createGraphQLError(`Invalid input.`, { extensions: decoded.error })
           }
           const gqlProjection = infoToProjection(info, functionBody.output)
           const proj = projection.decode(functionBody.output, gqlProjection, { typeCastingStrategy: 'tryCasting' })
           if (!proj.isOk) {
-            log('Bad request. (projection)')
+            operationLogger.logError('Bad request. (projection)')
             throw createGraphQLError(`Invalid input.`, { extensions: proj.error })
           }
 
@@ -296,7 +296,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
             projection: proj.value,
             input: decoded.value,
             operationId,
-            log,
+            logger: operationLogger,
           })
           try {
             const result = await functionBody.apply({
@@ -304,18 +304,18 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
               projection: proj.value,
               input: decoded.value as never,
               operationId,
-              log,
+              logger: operationLogger,
             })
-            const encoded = types.concretise(partialOutputType).encode(result)
+            const encoded = types.concretise(partialOutputType).encodeWithoutValidation(result)
             //TODO: if union remove tag and set `__variant_${tag}`: true
-            log('Completed.')
+            operationLogger.logInfo('Completed.')
             return encoded
           } catch (e) {
-            log('Failed with exception.')
+            operationLogger.logError('Failed with exception.')
             if (error) {
               const result = await error({
                 error: e,
-                log,
+                log: operationLogger,
                 functionName,
                 operationId,
                 context: moduleCtx,

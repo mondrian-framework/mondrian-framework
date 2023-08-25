@@ -1,11 +1,49 @@
-//TODO: when ready remove this Logger and use opentelemetry standard.
+import { logs, LogRecord, LogAttributes, Logger, SeverityNumber } from '@opentelemetry/api-logs'
 
 /**
- * The Mondrian logger type.
+ * The Mondrian logger, extends opentelemetry {@link Logger}.
  */
-export type Logger = (message: string, level?: 'log' | 'warn' | 'error') => void | Promise<void>
+export class MondrianLogger implements Logger {
+  private readonly logger: Logger
+  private readonly context: MondrianLoggerContext
+  private readonly createdAt: number
 
-type LoggerContext = {
+  constructor(logger: Logger, context: MondrianLoggerContext) {
+    this.logger = logger
+    this.context = context
+    this.createdAt = new Date().getTime()
+  }
+  emit(logRecord: LogRecord): void {
+    this.logger.emit({
+      ...logRecord,
+      attributes: {
+        ...logRecord.attributes,
+        ...this.context,
+        elapsedMs: new Date().getTime() - this.createdAt,
+      },
+    })
+  }
+  logDebug(message: string, attributes?: LogAttributes): void {
+    this.emit({ body: message, severityNumber: SeverityNumber.DEBUG, severityText: 'DEBUG', attributes })
+  }
+  logInfo(message: string, attributes?: LogAttributes): void {
+    this.emit({ body: message, severityNumber: SeverityNumber.INFO, severityText: 'INFO', attributes })
+  }
+  logWarn(message: string, attributes?: LogAttributes): void {
+    this.emit({ body: message, severityNumber: SeverityNumber.WARN, severityText: 'WARN', attributes })
+  }
+  logError(message: string, attributes?: LogAttributes): void {
+    this.emit({ body: message, severityNumber: SeverityNumber.ERROR, severityText: 'ERROR', attributes })
+  }
+  logFatal(message: string, attributes?: LogAttributes): void {
+    this.emit({ body: message, severityNumber: SeverityNumber.FATAL, severityText: 'FATAL', attributes })
+  }
+  updateContext(context: MondrianLoggerContext): MondrianLogger {
+    return new MondrianLogger(this.logger, { ...this.context, ...context })
+  }
+}
+
+type MondrianLoggerContext = {
   moduleName?: string
   operationId?: string
   operationType?: string //QUERY, MUTATION, GET, POST, SQS-URL ...
@@ -13,41 +51,7 @@ type LoggerContext = {
   server?: string //REST, GRAPHQL, LOCAL, ...
 }
 
-export class LoggerBuilder {
-  private _context: LoggerContext
-
-  constructor(context: LoggerContext) {
-    this._context = context
-  }
-
-  public build(context?: LoggerContext): Logger {
-    return build({ ...this._context, ...context })
-  }
-
-  public withContext(context: LoggerContext): LoggerBuilder {
-    return new LoggerBuilder({ ...this._context, ...context })
-  }
-}
-
-export function withContext(context: LoggerContext): LoggerBuilder {
-  return new LoggerBuilder(context)
-}
-
-export function build(context?: LoggerContext): Logger {
-  const now = new Date()
-  return (message: string, level?: 'log' | 'warn' | 'error') => {
-    const op =
-      context?.operationType && context?.operationName
-        ? `${context?.operationType} / ${context?.operationName}`
-        : context?.operationName
-        ? context?.operationName
-        : context?.operationType
-        ? context?.operationType
-        : null
-    console[level ?? 'log'](
-      `${context?.operationId ? `[${context?.operationId}] ` : ''}[${context?.moduleName ?? 'Unknown-Module'}${
-        op ? ` / ${op}` : ''
-      } / ${context?.server ?? 'Unknown-Server'}]: ${message} (${new Date().getTime() - now.getTime()} ms)`,
-    )
-  }
+export function build(context: MondrianLoggerContext): MondrianLogger {
+  //TODO: always use 'default' logger?
+  return new MondrianLogger(logs.getLogger('default'), context)
 }

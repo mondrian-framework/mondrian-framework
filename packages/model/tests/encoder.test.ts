@@ -135,9 +135,22 @@ describe('encoder.encodeWithoutValidation', () => {
     expect(model.encodeWithoutValidation(value)).toEqual(value)
     expect(encodeSpy).toHaveBeenCalledTimes(1)
   })
+
+  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([model, value]) => {
+    const result = types
+      .concretise(model)
+      .sensitive()
+      .encodeWithoutValidation(value, { sensitiveInformationStrategy: 'hide' })
+    expect(result).toEqual(null)
+  })
 })
 
 describe('encoder.encode', () => {
+  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([model, value]) => {
+    const result = types.concretise(model).sensitive().encode(value, { sensitiveInformationStrategy: 'hide' })
+    expect(assertOk(result)).toEqual(null)
+  })
+
   test.prop([gen.anything()])('performs validation', (value) => {
     const options = { foo: 'bar', baz: 1 }
     const validationOptions = { errorReportingStrategy: 'allErrors' } as const

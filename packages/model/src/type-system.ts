@@ -295,7 +295,7 @@ export type StringType = {
    *          types.Infer<typeof model> // string | undefined
    *          ```
    */
-  optional(): OptionalType<StringType>
+  optional(options?: OptionalTypeOptions): OptionalType<StringType>
 
   /**
    * Turns this type into a nullable version of itself
@@ -305,7 +305,7 @@ export type StringType = {
    *          types.Infer<typeof model> // string | null
    *          ```
    */
-  nullable(): NullableType<StringType>
+  nullable(options?: NullableTypeOptions): NullableType<StringType>
 
   /**
    * Turns this type into an array of elements of this type
@@ -315,7 +315,7 @@ export type StringType = {
    *          types.Infer<typeof model> // string[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, StringType>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, StringType>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -325,7 +325,7 @@ export type StringType = {
    *          types.Infer<typeof model> // string
    *          ```
    */
-  reference(): ReferenceType<StringType>
+  reference(options?: ReferenceTypeOptions): ReferenceType<StringType>
 
   /**
    * @param value
@@ -427,7 +427,7 @@ export type NumberType = {
    *          types.Infer<typeof model> // number | undefined
    *          ```
    */
-  optional(): OptionalType<NumberType>
+  optional(options?: OptionalTypeOptions): OptionalType<NumberType>
 
   /**
    * Turns this type into a nullable version of itself
@@ -437,7 +437,7 @@ export type NumberType = {
    *          types.Infer<typeof model> // number | null
    *          ```
    */
-  nullable(): NullableType<NumberType>
+  nullable(options?: NullableTypeOptions): NullableType<NumberType>
 
   /**
    * Turns this type into an array of elements of this type
@@ -447,7 +447,7 @@ export type NumberType = {
    *          types.Infer<typeof model> // number[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, NumberType>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, NumberType>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -457,7 +457,7 @@ export type NumberType = {
    *          types.Infer<typeof model> // number
    *          ```
    */
-  reference(): ReferenceType<NumberType>
+  reference(options?: ReferenceTypeOptions): ReferenceType<NumberType>
 
   /**
    * @param value
@@ -559,7 +559,7 @@ export type BooleanType = {
    *          types.Infer<typeof model> // boolean | undefined
    *          ```
    */
-  optional(): OptionalType<BooleanType>
+  optional(options?: OptionalTypeOptions): OptionalType<BooleanType>
 
   /**
    * Turns this type into a nullable version of itself
@@ -569,7 +569,7 @@ export type BooleanType = {
    *          types.Infer<typeof model> // boolean | null
    *          ```
    */
-  nullable(): NullableType<BooleanType>
+  nullable(options?: NullableTypeOptions): NullableType<BooleanType>
 
   /**
    * Turns this type into an array of elements of this type
@@ -579,7 +579,7 @@ export type BooleanType = {
    *          types.Infer<typeof model> // boolean[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, BooleanType>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, BooleanType>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -589,7 +589,7 @@ export type BooleanType = {
    *          types.Infer<typeof model> // boolean
    *          ```
    */
-  reference(): ReferenceType<BooleanType>
+  reference(options?: ReferenceTypeOptions): ReferenceType<BooleanType>
 
   /**
    * @param value
@@ -686,7 +686,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    *          types.Infer<typeof model> // "foo" | "bar" | undefined
    *          ```
    */
-  optional(): OptionalType<EnumType<Vs>>
+  optional(options?: OptionalTypeOptions): OptionalType<EnumType<Vs>>
 
   /**
    * Turns this type into a nullable version of itself
@@ -696,7 +696,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    *          types.Infer<typeof model> // "foo" | "bar" | null
    *          ```
    */
-  nullable(): NullableType<EnumType<Vs>>
+  nullable(options?: NullableTypeOptions): NullableType<EnumType<Vs>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -706,7 +706,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    *          types.Infer<typeof model> // ("foo" | "bar")[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, EnumType<Vs>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, EnumType<Vs>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -716,7 +716,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    *          types.Infer<typeof model> // "foo" | "bar"
    *          ```
    */
-  reference(): ReferenceType<EnumType<Vs>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<EnumType<Vs>>
 
   /**
    * @param value
@@ -814,7 +814,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    *          types.Infer<typeof model> // 1 | undefined
    *          ```
    */
-  optional(): OptionalType<LiteralType<L>>
+  optional(options?: OptionalTypeOptions): OptionalType<LiteralType<L>>
 
   /**
    * Turns this type into a nullable version of itself
@@ -824,7 +824,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    *          types.Infer<typeof model> // 1 | null
    *          ```
    */
-  nullable(): NullableType<LiteralType<L>>
+  nullable(options?: NullableTypeOptions): NullableType<LiteralType<L>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -834,7 +834,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    *          types.Infer<typeof model> // (1)[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, LiteralType<L>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, LiteralType<L>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -844,7 +844,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    *          types.Infer<typeof model> // 1
    *          ```
    */
-  reference(): ReferenceType<LiteralType<L>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<LiteralType<L>>
 
   /**
    * @param value
@@ -942,7 +942,7 @@ export type UnionType<Ts extends Types> = {
    *          types.Infer<typeof model> // { v1: number } | { v2: string } | undefined
    *          ```
    */
-  optional(): OptionalType<UnionType<Ts>>
+  optional(options?: OptionalTypeOptions): OptionalType<UnionType<Ts>>
 
   /**
    * Turns this type into a nullable version of itself
@@ -952,7 +952,7 @@ export type UnionType<Ts extends Types> = {
    *          types.Infer<typeof model> // { v1: number } | { v2: string } | null
    *          ```
    */
-  nullable(): NullableType<UnionType<Ts>>
+  nullable(options?: NullableTypeOptions): NullableType<UnionType<Ts>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -962,7 +962,7 @@ export type UnionType<Ts extends Types> = {
    *          types.Infer<typeof model> // ({ v1: number } | { v2: string })[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, UnionType<Ts>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, UnionType<Ts>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -972,7 +972,7 @@ export type UnionType<Ts extends Types> = {
    *          types.Infer<typeof model> // { v1: number } | { v2: string }
    *          ```
    */
-  reference(): ReferenceType<UnionType<Ts>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<UnionType<Ts>>
 
   /**
    * @param value
@@ -1074,7 +1074,7 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    *          types.Infer<typeof model> // { readonly field: number } | undefined
    *          ```
    */
-  optional(): OptionalType<ObjectType<M, Ts>>
+  optional(options?: OptionalTypeOptions): OptionalType<ObjectType<M, Ts>>
 
   /**
    * Turns this type into a nullable version of itself
@@ -1084,7 +1084,7 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    *          types.Infer<typeof model> // { readonly field: number } | null
    *          ```
    */
-  nullable(): NullableType<ObjectType<M, Ts>>
+  nullable(options?: NullableTypeOptions): NullableType<ObjectType<M, Ts>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -1094,7 +1094,7 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    *          types.Infer<typeof model> // { readonly field: number }[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, ObjectType<M, Ts>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ObjectType<M, Ts>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -1104,7 +1104,7 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    *          types.Infer<typeof model> // { field: number }
    *          ```
    */
-  reference(): ReferenceType<ObjectType<M, Ts>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<ObjectType<M, Ts>>
 
   /**
    * @param value
@@ -1206,7 +1206,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    *          types.Infer<typeof model> // number[] | undefined
    *          ```
    */
-  optional(): OptionalType<ArrayType<M, T>>
+  optional(options?: OptionalTypeOptions): OptionalType<ArrayType<M, T>>
 
   /**
    * Turns this type into a nullable version of itself
@@ -1216,7 +1216,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    *          types.Infer<typeof model> // number[] | null
    *          ```
    */
-  nullable(): NullableType<ArrayType<M, T>>
+  nullable(options?: NullableTypeOptions): NullableType<ArrayType<M, T>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -1226,7 +1226,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    *          types.Infer<typeof model> // number[][]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, ArrayType<M, T>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ArrayType<M, T>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -1236,7 +1236,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    *          types.Infer<typeof model> // number[]
    *          ```
    */
-  reference(): ReferenceType<ArrayType<M, T>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<ArrayType<M, T>>
 
   /**
    * @param value
@@ -1337,7 +1337,7 @@ export type OptionalType<T extends Type> = {
    *          types.Infer<typeof model> // number | undefined | null
    *          ```
    */
-  nullable(): NullableType<OptionalType<T>>
+  nullable(options?: NullableTypeOptions): NullableType<OptionalType<T>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -1347,7 +1347,7 @@ export type OptionalType<T extends Type> = {
    *          types.Infer<typeof model> // (number | undefined)[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, OptionalType<T>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, OptionalType<T>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -1357,7 +1357,7 @@ export type OptionalType<T extends Type> = {
    *          types.Infer<typeof model> // number | undefined
    *          ```
    */
-  reference(): ReferenceType<OptionalType<T>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<OptionalType<T>>
 
   /**
    * @param value
@@ -1456,7 +1456,7 @@ export type NullableType<T extends Type> = {
    *          types.Infer<typeof model> // number | null | undefined
    *          ```
    */
-  optional(): OptionalType<NullableType<T>>
+  optional(options?: OptionalTypeOptions): OptionalType<NullableType<T>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -1466,7 +1466,7 @@ export type NullableType<T extends Type> = {
    *          types.Infer<typeof model> // (number | null)[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, NullableType<T>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, NullableType<T>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -1476,7 +1476,7 @@ export type NullableType<T extends Type> = {
    *          types.Infer<typeof model> // number | null
    *          ```
    */
-  reference(): ReferenceType<NullableType<T>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<NullableType<T>>
 
   /**
    * @param value
@@ -1575,7 +1575,7 @@ export type ReferenceType<T extends Type> = {
    *          types.Infer<typeof model> // number | undefined
    *          ```
    */
-  optional(): OptionalType<ReferenceType<T>>
+  optional(options?: OptionalTypeOptions): OptionalType<ReferenceType<T>>
 
   /**
    * Turns this type into a nullable version of itself
@@ -1585,7 +1585,7 @@ export type ReferenceType<T extends Type> = {
    *          types.Infer<typeof model> // number | null
    *          ```
    */
-  nullable(): NullableType<ReferenceType<T>>
+  nullable(options?: NullableTypeOptions): NullableType<ReferenceType<T>>
 
   /**
    * Turns this type into an array of elements of this type
@@ -1595,7 +1595,7 @@ export type ReferenceType<T extends Type> = {
    *          types.Infer<typeof model> // number[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, ReferenceType<T>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ReferenceType<T>>
 
   /**
    * @param value
@@ -1692,7 +1692,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    *          types.Infer<typeof model> // number | undefined
    *          ```
    */
-  optional(): OptionalType<CustomType<Name, Options, InferredAs>>
+  optional(options?: OptionalTypeOptions): OptionalType<CustomType<Name, Options, InferredAs>>
 
   /**
    * Turns this type into a nullable version of itself
@@ -1702,7 +1702,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    *          types.Infer<typeof model> // number | null
    *          ```
    */
-  nullable(): NullableType<CustomType<Name, Options, InferredAs>>
+  nullable(options?: NullableTypeOptions): NullableType<CustomType<Name, Options, InferredAs>>
   /**
    * Turns this type into an array of elements of this type
    *
@@ -1711,7 +1711,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    *          types.Infer<typeof model> // number[]
    *          ```
    */
-  array(): ArrayType<Mutability.Immutable, CustomType<Name, Options, InferredAs>>
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, CustomType<Name, Options, InferredAs>>
 
   /**
    * Turns this type into a reference to elements of this type
@@ -1721,7 +1721,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    *          types.Infer<typeof model> // number
    *          ```
    */
-  reference(): ReferenceType<CustomType<Name, Options, InferredAs>>
+  reference(options?: ReferenceTypeOptions): ReferenceType<CustomType<Name, Options, InferredAs>>
 
   /**
    * @param value

@@ -71,7 +71,7 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
     }
   }
 
-  encodeWithoutValidation(value: types.Infer<types.NumberType>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.NumberType>): JSONType {
     return value
   }
 

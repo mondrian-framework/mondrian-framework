@@ -46,7 +46,7 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
     this.variants = variants
   }
 
-  encodeWithoutValidation(value: types.Infer<types.UnionType<Ts>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.UnionType<Ts>>): JSONType {
     const failureMessage =
       'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system'
     const variantName = Object.keys(value)[0]

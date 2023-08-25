@@ -1,4 +1,4 @@
-import { decoding, result, types, validation } from '../../'
+import { decoding, encoding, result, types, validation } from '../../'
 import { JSONType } from '@mondrian-framework/utils'
 
 export abstract class DefaultMethods<T extends types.Type> {
@@ -10,15 +10,23 @@ export abstract class DefaultMethods<T extends types.Type> {
 
   abstract getThis(): T
   abstract fromOptions(options?: types.OptionsOf<T>): T
-  abstract encodeWithoutValidation(value: types.Infer<T>): JSONType
+  abstract encodeWithNoChecks(value: types.Infer<T>, encodingOptions?: encoding.Options): JSONType
   abstract decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<types.Infer<T>>
   abstract validate(value: types.Infer<T>, validationOptions?: validation.Options): validation.Result
 
-  encode(value: types.Infer<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]> {
+  encodeWithoutValidation(value: types.Infer<T>, encodingOptions?: encoding.Options): JSONType {
+    return encodingOptions?.sensitiveInformationStrategy ? null : this.encodeWithNoChecks(value, encodingOptions)
+  }
+
+  encode(
+    value: types.Infer<T>,
+    encodignOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]> {
     return types
       .concretise(this.getThis())
       .validate(value as never, validationOptions)
-      .replace(this.encodeWithoutValidation(value))
+      .replace(this.encodeWithoutValidation(value, encodignOptions))
   }
 
   decode(
@@ -40,4 +48,5 @@ export abstract class DefaultMethods<T extends types.Type> {
   setOptions = (options: types.OptionsOf<T>) => this.fromOptions(options)
   updateOptions = (options: types.OptionsOf<T>) => this.fromOptions({ ...this.options, ...options })
   setName = (name: string) => this.fromOptions({ ...(this.options as types.OptionsOf<T>), name })
+  sensitive = () => this.fromOptions({ ...(this.options as types.OptionsOf<T>), sensitive: true })
 }

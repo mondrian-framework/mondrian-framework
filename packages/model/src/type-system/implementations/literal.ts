@@ -42,7 +42,7 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
     this.literalValue = literalValue
   }
 
-  encodeWithoutValidation(value: types.Infer<types.LiteralType<L>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.LiteralType<L>>): JSONType {
     return value
   }
 

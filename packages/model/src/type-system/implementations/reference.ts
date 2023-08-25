@@ -29,7 +29,7 @@ class ReferenceTypeImpl<T extends types.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithoutValidation(value: types.Infer<types.ReferenceType<T>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.ReferenceType<T>>): JSONType {
     return types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 

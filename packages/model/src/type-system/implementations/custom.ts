@@ -65,7 +65,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
 
   getThis = () => this
   fromOptions = (options: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>) =>
-    custom(this.typeName, this.encodeWithoutValidation, this.decoder, this.validator, options)
+    custom(this.typeName, this.encodeWithNoChecks, this.decoder, this.validator, options)
 
   constructor(
     typeName: Name,
@@ -81,7 +81,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     this.validator = validator
   }
 
-  encodeWithoutValidation(value: types.Infer<types.CustomType<Name, Options, InferredAs>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.CustomType<Name, Options, InferredAs>>): JSONType {
     return this.encoder(value, this.options)
   }
 

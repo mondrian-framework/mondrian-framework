@@ -58,7 +58,7 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
     this.mutability = mutability
   }
 
-  encodeWithoutValidation(value: types.Infer<types.ArrayType<M, T>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.ArrayType<M, T>>): JSONType {
     const concreteItemType = types.concretise(this.wrappedType)
     return value.map((item) => concreteItemType.encodeWithoutValidation(item as never))
   }

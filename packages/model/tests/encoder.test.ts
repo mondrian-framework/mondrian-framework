@@ -135,9 +135,22 @@ describe('encoder.encodeWithoutValidation', () => {
     expect(model.encodeWithoutValidation(value)).toEqual(value)
     expect(encodeSpy).toHaveBeenCalledTimes(1)
   })
+
+  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([model, value]) => {
+    const result = types
+      .concretise(model)
+      .sensitive()
+      .encodeWithoutValidation(value, { sensitiveInformationStrategy: 'hide' })
+    expect(result).toEqual(null)
+  })
 })
 
 describe('encoder.encode', () => {
+  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([model, value]) => {
+    const result = types.concretise(model).sensitive().encode(value, { sensitiveInformationStrategy: 'hide' })
+    expect(assertOk(result)).toEqual(null)
+  })
+
   test.prop([gen.anything()])('performs validation', (value) => {
     const options = { foo: 'bar', baz: 1 }
     const validationOptions = { errorReportingStrategy: 'allErrors' } as const
@@ -159,7 +172,7 @@ describe('encoder.encode', () => {
     const validateSpy = vi.spyOn(mocks, 'validate')
     const encodeSpy = vi.spyOn(mocks, 'encode')
     const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
-    assertOk(model.encode(value, validationOptions))
+    assertOk(model.encode(value, undefined, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
     expect(encodeSpy).toBeCalledTimes(1)
   })

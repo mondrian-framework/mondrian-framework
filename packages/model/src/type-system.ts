@@ -1,4 +1,4 @@
-import { decoding, validation, types, result } from './index'
+import { decoding, validation, types, result, encoding } from './index'
 import { filterMapObject, mapObject } from './utils'
 import { JSONType } from '@mondrian-framework/utils'
 
@@ -276,6 +276,7 @@ export function concretise<T extends Type>(type: T): Concrete<T> {
 export type BaseOptions = {
   readonly name?: string
   readonly description?: string
+  readonly sensitive?: boolean
 }
 
 /**
@@ -375,7 +376,11 @@ export type StringType = {
    *          model.encode("foo") // succeeds with value: "foo"
    *          ```
    */
-  encode(value: Infer<StringType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: Infer<StringType>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -387,7 +392,7 @@ export type StringType = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: Infer<StringType>): JSONType
+  encodeWithoutValidation(value: Infer<StringType>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -399,6 +404,7 @@ export type StringType = {
   setOptions(options: StringTypeOptions): StringType
   updateOptions(options: StringTypeOptions): StringType
   setName(name: string): StringType
+  sensitive(): StringType
 }
 
 /**
@@ -507,7 +513,11 @@ export type NumberType = {
    *          model.encode(11) // succeeds with value: 11
    *          ```
    */
-  encode(value: Infer<NumberType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: Infer<NumberType>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -519,7 +529,7 @@ export type NumberType = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: Infer<NumberType>): JSONType
+  encodeWithoutValidation(value: Infer<NumberType>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -531,6 +541,7 @@ export type NumberType = {
   setOptions(options: NumberTypeOptions): NumberType
   updateOptions(options: NumberTypeOptions): NumberType
   setName(name: string): NumberType
+  sensitive(): NumberType
 }
 
 /**
@@ -639,7 +650,11 @@ export type BooleanType = {
    *          model.encode(true) // succeeds with value: true
    *          ```
    */
-  encode(value: Infer<BooleanType>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: Infer<BooleanType>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -651,7 +666,7 @@ export type BooleanType = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: Infer<BooleanType>): JSONType
+  encodeWithoutValidation(value: Infer<BooleanType>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -663,6 +678,7 @@ export type BooleanType = {
   setOptions(options: BooleanTypeOptions): BooleanType
   updateOptions(options: BooleanTypeOptions): BooleanType
   setName(name: string): BooleanType
+  sensitive(): BooleanType
 }
 
 /**
@@ -767,7 +783,11 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    *          model.encode("foo") // succeeds with value: "foo"
    *          ```
    */
-  encode(value: InferEnum<Vs>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferEnum<Vs>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -779,7 +799,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferEnum<Vs>): JSONType
+  encodeWithoutValidation(value: InferEnum<Vs>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -791,6 +811,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
   setOptions(options: EnumTypeOptions): EnumType<Vs>
   updateOptions(options: EnumTypeOptions): EnumType<Vs>
   setName(name: string): EnumType<Vs>
+  sensitive(): EnumType<Vs>
 }
 
 /**
@@ -894,7 +915,11 @@ export type LiteralType<L extends number | string | boolean | null> = {
    *          model.encode(1) // succeeds with value: 1
    *          ```
    */
-  encode(value: InferLiteral<L>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferLiteral<L>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -906,7 +931,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferLiteral<L>): JSONType
+  encodeWithoutValidation(value: InferLiteral<L>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -918,6 +943,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
   setOptions(options: LiteralTypeOptions): LiteralType<L>
   updateOptions(options: LiteralTypeOptions): LiteralType<L>
   setName(name: string): LiteralType<L>
+  sensitive(): LiteralType<L>
 }
 
 /**
@@ -1023,7 +1049,11 @@ export type UnionType<Ts extends Types> = {
    *          model.encode({ v1: 1 }) // succeeds with value: { v1: 1 }
    *          ```
    */
-  encode(value: InferUnion<Ts>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferUnion<Ts>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -1035,7 +1065,7 @@ export type UnionType<Ts extends Types> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferUnion<Ts>): JSONType
+  encodeWithoutValidation(value: InferUnion<Ts>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1047,6 +1077,7 @@ export type UnionType<Ts extends Types> = {
   setOptions(options: UnionTypeOptions): UnionType<Ts>
   updateOptions(options: UnionTypeOptions): UnionType<Ts>
   setName(name: string): UnionType<Ts>
+  sensitive(): UnionType<Ts>
 }
 
 /**
@@ -1155,7 +1186,11 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    *          model.encode({ field: 1 }) // succeeds with value: { field: 1 }
    *          ```
    */
-  encode(value: InferObject<M, Ts>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferObject<M, Ts>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -1167,7 +1202,7 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferObject<M, Ts>): JSONType
+  encodeWithoutValidation(value: InferObject<M, Ts>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1179,6 +1214,7 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
   setOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   updateOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   setName(name: string): ObjectType<M, Ts>
+  sensitive(): ObjectType<M, Ts>
 }
 
 /**
@@ -1287,7 +1323,11 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    *          model.encode([1, 2, 3]) // succeeds with value: [1, 2, 3]
    *          ```
    */
-  encode(value: InferArray<M, T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferArray<M, T>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -1299,7 +1339,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferArray<M, T>): JSONType
+  encodeWithoutValidation(value: InferArray<M, T>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1311,6 +1351,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
   setOptions(options: ArrayTypeOptions): ArrayType<M, T>
   updateOptions(options: ArrayTypeOptions): ArrayType<M, T>
   setName(name: string): ArrayType<M, T>
+  sensitive(): ArrayType<M, T>
 }
 
 /**
@@ -1409,7 +1450,11 @@ export type OptionalType<T extends Type> = {
    *          model.encode(undefined) // succeeds with value: null
    *          ```
    */
-  encode(value: InferOptional<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferOptional<T>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -1421,7 +1466,7 @@ export type OptionalType<T extends Type> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferOptional<T>): JSONType
+  encodeWithoutValidation(value: InferOptional<T>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1433,6 +1478,7 @@ export type OptionalType<T extends Type> = {
   setOptions(options: OptionalTypeOptions): OptionalType<T>
   updateOptions(options: OptionalTypeOptions): OptionalType<T>
   setName(name: string): OptionalType<T>
+  sensitive(): OptionalType<T>
 }
 
 /**
@@ -1528,7 +1574,11 @@ export type NullableType<T extends Type> = {
    *          model.encode(null) // succeeds with value: null
    *          ```
    */
-  encode(value: InferNullable<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferNullable<T>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -1540,7 +1590,7 @@ export type NullableType<T extends Type> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferNullable<T>): JSONType
+  encodeWithoutValidation(value: InferNullable<T>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1552,6 +1602,7 @@ export type NullableType<T extends Type> = {
   setOptions(options: NullableTypeOptions): NullableType<T>
   updateOptions(options: NullableTypeOptions): NullableType<T>
   setName(name: string): NullableType<T>
+  sensitive(): NullableType<T>
 }
 
 /**
@@ -1645,7 +1696,11 @@ export type ReferenceType<T extends Type> = {
    *          model.encode(11) // succeeds with value: 11
    *          ```
    */
-  encode(value: InferReference<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferReference<T>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -1657,7 +1712,7 @@ export type ReferenceType<T extends Type> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferReference<T>): JSONType
+  encodeWithoutValidation(value: InferReference<T>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1669,6 +1724,7 @@ export type ReferenceType<T extends Type> = {
   setOptions(options: ReferenceTypeOptions): ReferenceType<T>
   updateOptions(options: ReferenceTypeOptions): ReferenceType<T>
   setName(name: string): ReferenceType<T>
+  sensitive(): ReferenceType<T>
 }
 
 /**
@@ -1762,7 +1818,11 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    */
-  encode(value: InferredAs, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]>
+  encode(
+    value: InferredAs,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the value before
@@ -1774,7 +1834,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferredAs): JSONType
+  encodeWithoutValidation(value: InferredAs, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1786,6 +1846,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
   setOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
   updateOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
   setName(name: string): CustomType<Name, Options, InferredAs>
+  sensitive(): CustomType<Name, Options, InferredAs>
 }
 
 /**

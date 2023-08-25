@@ -41,7 +41,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
     this.variants = variants
   }
 
-  encodeWithoutValidation(value: types.Infer<types.EnumType<Vs>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.EnumType<Vs>>): JSONType {
     return value
   }
 

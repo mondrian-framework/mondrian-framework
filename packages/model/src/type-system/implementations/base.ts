@@ -15,7 +15,7 @@ export abstract class DefaultMethods<T extends types.Type> {
   abstract validate(value: types.Infer<T>, validationOptions?: validation.Options): validation.Result
 
   encodeWithoutValidation(value: types.Infer<T>, encodingOptions?: encoding.Options): JSONType {
-    return this.encodeWithNoChecks(value, encodingOptions)
+    return encodingOptions?.sensitiveInformationStrategy ? null : this.encodeWithNoChecks(value, encodingOptions)
   }
 
   encode(

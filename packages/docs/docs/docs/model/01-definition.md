@@ -1,310 +1,382 @@
 # Definition
 
-The `@mondrian-framework/model` package contains a wide range of useful functions for defining a data model schema, from the simplest type `string` to complex objects, arrays, and unions. The syntax used has been designed to make development straightforward and the schema as readable as possible.
+The `@mondrian-framework/model` package contains a wide range of useful functions for defining a data model schema, from primitive types to complex objects, arrays, and unions. It does so by providing a series of builders that can help make development straightforward and the schema as readable as possible.
+
+Everything you may need to define a new schema is defined inside the `types` namespace of the `@mondrian-framework/model` package, so to get things started you should import it:
+
+```ts
+import { types } from "@mondrian-framework/model"
+```
 
 ## Primitives
 
-Mondrian Framework supports the definition of a really small, simple but powerfull range of primitive types.
+Mondrian Framework supports the definition of a small, simple but powerful range of primitive types.
 
-```ts showLineNumbers
-m.boolean()
-m.string()
-m.number()
-m.integer()
-m.datetime() // ISO 8601
-m.timestamp() // unixtime (ms)
-m.null()
-m.void()
+```ts
+types.boolean()
+types.string()
+types.number()
+types.integer()
 ```
 
 Each of these can accept different params that can refine their semantics with some options, like common validation rules.
 
-```ts showLineNumbers
-m.string({ minLength: 5, maxLength: 256, regex: /^[1-9]\d{0,2}$/g })
-m.number({ minimum: 0, maximum: 10000, multiplierOf: 10 })
-m.integer({ minimum: 0, maximum: 10 })
-m.datetime({ minimum: new Date(2023, 0, 1), maximum: new Date() })
-m.timestamp({ minimum: new Date(2023, 0, 1), maximum: new Date() })
+```ts
+types.string({ minLength: 1, maxLength: 256, regex: /^[1-9]\d{0,2}$/g })
+types.number({ minimum: 0, exclusiveMaximum: 10000 })
+types.integer({ minimum: 0, maximum: 10 })
 ```
 
-Furthermore, each function allows for the possibility of setting a description parameter where useful text can be inserted for generating automatic documentation of the model.
+Furthermore, each type constructor allows for the possibility of setting a description parameter where useful text can be inserted for generating automatic documentation of the model.
 
-```ts showLineNumbers
-const EmailAddress = m.string({ 
+```ts
+const emailAddress = types.string({ 
+  description: "A string representing a valid email address",
   regex: ^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$, 
-  description: "A string representing a valid email address" 
 })
 
-const PositiveNumber = m.number({ 
-  minimum: 0, 
+const positiveNumber = types.number({
   description: "A positive number" 
+  minimum: 0, 
 })
 ```
 
-## Advanced Types
+### Enums
 
-Besides primitive types, the framework provides a wide range of utility types that are already implemented and ready to use. In order to minimize packages size and required dependencies, these advanced types are provided in a separate package named `@mondrian-framework/advanced-types`.
+Enums allow to define a set of named constants. Using enums can make it easier to document intent, or create a set of distinct cases. Mondrian provides only string-based enums:
+
+```ts
+const userKind = types.enumeration(['customer', 'admin'])
+```
+
+### Literals
+
+Literals represent *specific* strings or numbers in type positions. They are a common construct in the TypeScript language and they are supported by the Mondrian Framework as well:
+
+```ts
+const zero = types.literal(0)
+const greeting = types.literal('Hello, World!')
+```
+
+## Wrapper types
+
+Only primitive types wouldn't get us far in defining complex business domains. That's why Mondrian also supports the definition of wrapper types like arrays, optional and nullable values that can wrap and enrich the definition of any other Mondrian type.
+
+### Optional
+
+The `optional()` type builder can be used to turn any type definition into the corresponding optional type.
+This means that the given type can be also `undefined`, or not specified if assigned to a field of an [object](#objects).
+
+Optional types can be defined wrapping other Mondrian types:
+
+```ts
+// These definitions are equivalent
+const optionalString1 = types.optional(types.string())
+const optionalString2 = types.string().optional()
+// same as string | undefined
+```
+
+Like with other Mondrian types, optionals can also accept additional options:
+
+```ts
+const optional = types.number().optional({
+  description: "An optional number!",
+})
+```
+
+### Nullable
+
+Similarly to optional types, you can make any type nullable with the `nullable()` decorator. This means that the given type can be also `null`:
+
+```ts
+const nullableString1 = types.nullable(types.string())
+const nullableString2 = types.string().nullable()
+// same as string | null
+```
+
+### Arrays
+
+Just like optionals and nullables, array types can bedefined by wrapping another Mondrian type.
+The resulting definition describes an array of values of the wrapped type:
+
+```ts
+const arrayOfStrings1 = types.array(types.string())
+const arrayOfStrings2 = types.string().array()
+// same as string[]
+```
+
+Array definitions, like many other Mondrian types, support optional parameters:
+
+```ts
+const nonEmptyArray1 = types.array(types.string(), { minItems: 1 })
+const nonEmptyArray2 = types.string().array({ minItems: 1 })
+```
+
+Combining the `array` decorator with others like `optional` and `nullable` assumes different meanings depending on the order in which they are applied. Note, for example, the following two cases:
+
+```ts
+const nullableArrayOfStrings = types.string().array().nullable()
+// same as string[] | null
+
+const arrayOfNullableStrings = types.string().nullable().array()
+// same as (string | null)[]
+```
+
+## Composite types
+
+Another key piece fundamental in order to get an expressive model is the ability to define sum and product types. Mondrian allows such definitions with the ability to define unions and objects.
+
+### Objects
+
+Objects are structured types with a set of fields. By default the object's fields are required and immutable:
+
+```ts
+const myObject = types.object({
+  field1: types.number(),
+  field2: types.string(),
+})
+// same as { readonly field1: number, readonly field2: string }
+```
+
+#### Object mutability
+
+Being immutable is a sensitive default that should be good for almost all cases; however, sometimes it could be necessary to define an object with mutable fields. In order to do so, one can use the `.mutable()` method:
+
+```ts
+const myMutableObject = myObject.mutable()
+// same as { field1: number, field2: string }
+```
+
+Likewise, a mutable object definition can be turned back into an immutable one with the `.immutable()` method:
+
+```ts
+const backToImmutable = myMutableObject.immutable()
+// same as { readonly field1: number, readonly field2: string }
+```
+
+#### Possibly missing fields
+
+Fields are considered required by default. In order to define a possibly missing field one can use an optional Mondrian type:
+
+```ts
+const myObject = types.object({
+  required: types.number(),
+  optional: types.string().optional(),
+})
+// same as { readonly required: number, readonly optional?: string }
+```
+
+#### Complex object definitions
+
+All the examples shown so far only use primitive and wrapper types as object fields. However, there's nothing stopping you from using *any kind* of Mondrian type, no matter how complex it is!
+
+An object could have primitive types, other objects, unions or even [custom types](#custom-types) as their fields. Let's consider a more complex example:
+
+```ts
+const address = types.object({
+  country: types.string(),
+  city: types.string(),
+  street: types.string(),
+})
+
+const user = types.object({
+  id: types.number(),
+  name: types.string(),
+  // highlight-start
+  mainAddress: address,
+  secondaryAddresses: address.array(),
+  // highlight-end
+})
+```
+
+### Unions
+
+Unions are a way to define types that can hold values from a fixed set of types (usually referred to as variants).
+
+In Mondrian we can define a union by specifying all of its possible variants:
+
+```ts
+const myUnion = types.union({
+  firstVariant: types.string(),
+  secondVariant: types.number()
+})
+// same as { readonly variant1: string } | { readonly variant2: number }
+```
+
+As you can see, there is a difference with how TypeScript natively handles variants: Mondrian variants are *tagged*, meaning that each variant of a union type must have a unique name to tell it apart from the others.
+
+Just like object fields, union variants can be of any Mondrian type:
+
+```ts
+// This type models the fact that a user can either be
+// logged in, or a guest
+const user = types.union({
+  loggedIn: types.object({ name: types.string() }),
+  guest: types.object({}),
+})
+```
+
+#### A thorough example
+
+With these building blocks, we have an powerful toolbox to expressively describe complex domains.
+
+Let's work through a more complex example and see how this would work out.
+In this example we're modelling (a simplified version of) user login:
+
+- we receive a password and username as input
+- we send back a response that can either be successful of contain an error message:
+  - if the user can be logged in the response is successful and contains the user information
+  - if the user cannot be logged in the response will contain an error message
+
+The type definitions needed for this example would be the following:
 
 ```ts showLineNumbers
-import m from '@mondrian-framework/advanced-types'
+// The type of users, arguably it could be more complex but it's ok as an example
+type User = types.Infer<typeof user>
+const user = types.object({
+  id: types.integer(),
+  username: types.string(),
+})
 
-// DATE AND TIME RELATED
-m.date() // date string without time, ex: 2023-01-24
-m.time() // time only string RFC 3339, ex: 12:05:55Z
-m.timezone() // IANA Time Zone, ex: Europe/Rome
+// The input we receive when a user wants to login
+type AuthenticationData = types.Infer<typeof authenticationData>
+const authenticationData = types.object({
+  username: types.string(),
+  password: types.string(),
+})
 
-// LOCATION RELATED
-m.countryCode() // ISO 3166-1 alpha-2, ex: IT
-m.latitude() 
-m.longitude()
-m.locale() // ISO 639-1, ex: it
-m.currency() // ISO 4217, ex: EUR
+// The type of the response: it can either be a `success` or `failure`
+type LoginResponse = types.Infer<typeof loginResponse>
+const loginResponse = types.union({
+  success: user,
+  failure: types.object({
+    reason: types.string(),
+  })
+})
+```
 
-// OTHERS
-m.email() 
-m.phoneNumber() // E.164 ex: +17895551234
-m.MAC() // IEEE 802 48-bit
-m.IP() // IPv4 or IPv6 address
-m.port() // TCP port
-m.version() // semantic version, ex: 1.1.2
-m.JWT() // JSON Web Token
-m.URL() // RFC 3986, ex: https://www.google.com
-m.UUID() // Universal Unique Identifier
-m.ISBN() // ISBN-10 or ISBN-13
-m.RGB() // CSS RGB, ex: rgb(255, 220, 200)
-m.RGBA() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
+Given these type definitions we can get an idea of how the login process could work out:
+
+```ts showLineNumbers
+async function loginUser(auth: AuthenticationData) {
+  const user = await fetchUser(auth.username, auth.password)
+  const response = user
+    ? { success: user }
+    : { failure: { reason: "wrong username or password" } }
+
+  await sendResponse(response)
+}
+```
+
+Types definitions can help us define clear and expressive models that are faithful to the modelled domain.
+
+## Additional Types
+
+Besides the primitive types you can find in `@mondrian-framework/model`, there's also a wide range of utility types that are already implemented and ready to use. In order to minimize packages size and required dependencies, these additional types are provided in a separate package named `@mondrian-framework/advanced-types`.
+
+To use those definitions you can import the package like this:
+
+```ts
+import types from '@mondrian-framework/advanced-types'
+```
+
+There are definitions related to date and time:
+
+```ts
+types.date() // date string without time, ex: 2023-01-24
+types.time() // time only string RFC 3339, ex: 12:05:55Z
+types.timezone() // IANA Time Zone, ex: Europe/Rome
+```
+
+To locations:
+
+```ts
+types.countryCode() // ISO 3166-1 alpha-2, ex: IT
+types.latitude() 
+types.longitude()
+types.locale() // ISO 639-1, ex: it
+types.currency() // ISO 4217, ex: EUR
+```
+
+And many more:
+
+```ts
+types.email() 
+types.phoneNumber() // E.164 ex: +17895551234
+types.mac() // IEEE 802 48-bit
+types.ip() // IPv4 or IPv6 address
+types.port() // TCP port
+types.version() // semantic version, ex: 1.1.2
+types.jwt() // JSON Web Token
+types.url() // RFC 3986, ex: https://www.google.com
+types.uuid() // Universal Unique Identifier
+types.isbn() // ISBN-10 or ISBN-13
+types.rgb() // CSS RGB, ex: rgb(255, 220, 200)
+types.rgba() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
 ```
 
 ## Custom types
 
-In addition to [primitive types](#primitives), it is possible to define custom types with completely arbitrary logics. The mentioned [advanced types](#advanced-types) are built exactly in this way.
+Sometimes the types offered by the Mondrian framework may not be enough for your needs. That's why you can also define custom types that implement completely arbitrary logics. The mentioned [advanced types](#additional-types) are built exactly in this way.
 
-Below is an example implementation of the `port` type that represents a TCP port.
+A custom type can be defined using the `custom` function:
+
+```ts
+const myCustomType = types.custom<"name", {}, number>(...)
+```
+
+As you may have noticed, the `custom` function has three generic types:
+
+- the literal string with the name of the custom type
+- the type of additional options that may be needed by the custom type, besides the basic options shared by all the mondrian types
+- the type the custom type will be inferred as ([here's](./02-validation.md) a more thorough explanation of Mondrian's type inference)
+
+Then, the arguments you need to pass to the custom builder are:
+
+- the name of the custom type
+- a decoder that can turn unknown values into that custom type's inferred type
+- an encoder that can turn custom types into JSON values
+- a validator that may perform additional validation logic to ensure that values are correct
+- additional options for that custom type
+
+Below is an example implementation of the `port` type that represents a TCP port. It could also be defined as a simple integer, however, defining it as a custom type can prove to be more expressive and it would also allow you to define custom arbitrary decoding, encoding and validation logic:
 
 ```ts showLineNumbers
-import { CustomTypeOpts, Result, number, integer, validate } from '@mondrian-framework/model'
+import { validation, decoding, types } from '@mondrian-framework/model'
 
 const MIN_PORT_NUMBER = 0
 const MAX_PORT_NUMBER = 65535
 
-export function port(opts?: CustomTypeOpts) {
-  return m.custom(
-    {
-      name: 'port',
-      encodedType: number(),
-      decode: (input, opts, decodeOpts) => {
-        return { success: true, value: input }
-      },
-      encode: (input, opts) => {
-        return input
-      },
-      validate(input) {
-        const isInteger = validate(integer(), input)
-        if (!isInteger.success) {
-          return isInteger
-        }
-        const inputInteger = isInteger.value
-        if (inputInteger <= MIN_PORT_NUMBER || inputInteger > MAX_PORT_NUMBER) {
-          return Result.error(
-            `Invalid TCP port number ` +
-            `(must be between ${MIN_PORT_NUMBER + 1} and ${MAX_PORT_NUMBER})`,
-            input,
-          )
-        }
-        return Result.success(inputNumber)
-      },
-    },
-    opts,
+export function port(options: types.BaseOptions): types.CustomType<"port", {}, number> {
+  return types.custom<"port", {}, number>(
+    "port",
+    encodePort,
+    decodePort,
+    validatePort,
+    options,
   )
 }
-```
 
-Please note that the implementation of the custom type requires the definition of:
+// Since a port is a number it is already a JSONType and encoding is a no-op
+function encodePort(port: number): JSONType {
+  return port
+}
 
-- `encodedType`: which identifies the type representing this encoded custom type, typically in JSON format. In this specific case, the TCP port is a number.
-- `decode`: a function that translates, if necessary, the encoded type into the internal type. In the example, no translation is needed because the TCP port is represented by a number in both the encoded and decoded models.
-- `encode`: similar to decode, encode is a translation function from the internal type to the encoded type.
-- `validate`: a validation function for the already decoded data, where custom and even complex rules can be added."
+// A value is of type port if it is a number between MAX_PORT_NUMBER and MIN_PORT_NUMBER
+function decodePort(value: unknown): decoding.Result<number> {
+  if (typeof value !== "number") {
+    return decoding.fail("a port number", value)
+  } else if (value < MIN_PORT_NUMBER || value > MAX_PORT_NUMBER) {
+    return decoding.fail("a port number between 0 and 65535", value)
+  } else {
+    return decoding.succeed(value)
+  }
+}
 
-A custom type can be used exactly as a primitive, simply calling its definition function.
-
-```ts showLineNumbers
-import { m } from '@mondrian-framework/model'
-// highlight-start
-import { port } from './port'
-// highlight-end
-
-const NetworkAddress = m.object({
-  ip: m.string(),
-  // highlight-start
-  port: port(),
-  // highlight-end
-})
-```
-
-## Enums
-
-Enums allow a developer to define a set of named constants. Using enums can make it easier to document intent, or create a set of distinct cases. Mondrian provides only string-based enums.
-
-```ts showLineNumbers
-const UserType = m.enum(['CUSTOMER', 'ADMIN'])
-```
-
-## Literals
-
-Literals represent *specific* strings or numbers in type positions. They are a common construct in the TypeScript language.
-
-```ts showLineNumbers
-const Zero = m.literal(0)
-const Hello = m.literal('Hello')
-```
-
-## Optional
-
-You can make any type optional with an `optional()` decorator. This means that the given type can be also `undefined`, or not specified if assigned to a field of an [object](#objects).
-
-```ts
-const OptionalString = m.optional(m.string())
-```
-
-For convenience, you can also call the `optional()` method on an existing type.
-
-```ts
-const OptionalString = m.string().optional()
-```
-
-## Nullable
-
-Similarly, you can make any type nullable with a `nullable()` decorator. This means that the given type can be also `null`.
-
-```ts
-// two equivalent defintions
-const NullableString = m.nullable(m.string())
-const NullableString = m.string().nullable()
-```
-
-## Default
-
-Another useful feature is the `.default()` decorator, that can receive a value or a function parameter. The default value is applied during the [decode](./04-decode.md) phase if the input of the decorated type is `undefined`.
-
-```ts
-import { m, decode } from '@mondrian-framework/model'
-
-const NumberDefaultZero = m.number().default(0)
-const NumberDefaultRandom = m.number().default(Math.random)
-
-m.decode(NumberDefaultZero, undefined) // => 0
-m.decode(NumberDefaultRandom, undefined) // => 0.4413456736055323
-```
-
-## Objects
-
-Objects are structured types with a set of fields, required by default.
-
-```ts showLineNumbers
-const User = m.object({
-  id: m.integer(),
-  name: m.string(),
-  surname: m.string(),
-  email: m.string().optional(),
-  dateOfBirth: m.datetime().optional(),
-})
-```
-
-Fields can be [primitive types](#primitives), as in the previous example, [advanced types](#advanced-types), [custom types](#custom-types) or other objects. In the latter case, they can be declared separately to be used multiple times or inline.
-
-```ts showLineNumbers
-// highlight-start
-const Address = m.object({
-  street: m.integer(),
-  city: m.string(),
-  zipcode: m.string(),
-  country: m.string(),
-})
-// highlight-end
-
-const User = m.object({
-  id: m.integer(),
-  name: m.string(),
-  surname: m.string(),
-  email: m.string().optional(),
-  dateOfBirth: m.datetime(.optional()),
-  // highlight-start
-  credentials: m.object({
-    username: m.string(),
-    password: m.password(),
-  }),
-  address: Address.optional(),
-  // highlight-end
-})
-```
-
-## Arrays
-
-Arrays are managed through a decorator that accept an optional parameter that defines maximum number of allowed elements.
-
-```ts showLineNumbers
- // two equivalent defintions
-const ArrayOfStrings = m.array(m.string())
-const ArrayOfStrings = m.string().array()
-
-const ArrayOfMaxFiveStrings = m.string().array({ maxItems: 5 })
-
-const User = m.object({
-  id: m.integer(),
-  name: m.string(),
-  surname: m.string(),
-  // highlight-start
-  emails: m.string().array(),
-  // highlight-end
-})
-```
-
-Combining the `array` decorator with others like `optional`, `nullable`, and `default` assumes different meanings depending on the order in which they are applied. Note, for example, the following two cases:
-
-```ts showLineNumbers
-import { m, decode } from '@mondrian-framework/model'
-
-const NullableArrayOfStrings = m.string().array().nullable()
-const ArrayOfNullableStrings = m.string().nullable().array()
-
-decode(NullableArrayOfStrings, null) // => null
-decode(NullableArrayOfStrings, [null]) // => error
-
-decode(ArrayOfNullableStrings, null) // => error
-decode(ArrayOfNullableStrings, [null]) // => [null]
-```
-
-## Unions
-
-Mondrian provides an union function that allows you to compose multiple types with an `or` semantics.
-
-```ts showLineNumbers
-const StringOrNumber = m.union({ string: m.string(), number: m.number() })
-
-m.validate(StringOrNumber, "a string").success // => true
-m.validate(StringOrNumber, 10).success // => true
-m.validate(StringOrNumber, true).success // => false
-```
-
-Every element of the union must be named in order to support advanced functionalities like [projections](./05-projection.md).
-
-You can also combine complex types like objects or custom types.
-
-```ts showLineNumbers
-
-const Book = m.object({
-  id: m.string(),
-  title: m.string()
-})
-
-const Collection = m.object({
-  id: m.string(),
-  title: m.string(),
-  books: Book.array(),
-})
-
-const SearchResult = m.union({ book: Book, collection: Collection })
+// There's no additional validation to perform, so always return a succeeding result
+function validatePort(port: number): validation.Result {
+  return validation.succeed()
+}
 ```
 
 ## Reference

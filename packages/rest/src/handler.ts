@@ -125,7 +125,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   return async ({ request, serverContext }) => {
     if (tracer) {
       return tracer.startActiveSpan(
-        `rest:${functionName}`,
+        `mondrian:rest-handler:${functionName}`,
         {
           attributes: {
             [SemanticAttributes.HTTP_METHOD]: request.method,

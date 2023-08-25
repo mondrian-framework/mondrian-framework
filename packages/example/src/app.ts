@@ -4,11 +4,13 @@ import { cron } from '@mondrian-framework/cron'
 import { server as restServer } from '@mondrian-framework/rest-fastify'
 import { logs } from '@opentelemetry/api-logs'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { Resource } from '@opentelemetry/resources'
 import { LoggerProvider, SimpleLogRecordProcessor, ConsoleLogRecordExporter } from '@opentelemetry/sdk-logs'
 import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
+import { PrismaInstrumentation } from '@prisma/instrumentation'
 import { fastify } from 'fastify'
 
 const provider = new NodeTracerProvider({
@@ -17,11 +19,17 @@ const provider = new NodeTracerProvider({
     [SemanticResourceAttributes.SERVICE_VERSION]: m.version,
   }),
 })
+registerInstrumentations({
+  tracerProvider: provider,
+  instrumentations: [new PrismaInstrumentation()],
+})
+
 if (process.env.OTLP_EXPORTER_URL) {
   provider.addSpanProcessor(new SimpleSpanProcessor(new OTLPTraceExporter({ url: process.env.OTLP_EXPORTER_URL })))
 } else {
   provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
 }
+
 provider.register()
 
 const loggerProvider = new LoggerProvider()

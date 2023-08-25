@@ -20,7 +20,7 @@ export class OpentelemetryFunction<
     this.counter.add(1)
     const startTime = new Date().getTime()
     const spanResult = await this.tracer.startActiveSpan(
-      `module:${this.name}`,
+      `mondrian:function-apply:${this.name}`,
       {
         kind: SpanKind.INTERNAL,
         attributes: {

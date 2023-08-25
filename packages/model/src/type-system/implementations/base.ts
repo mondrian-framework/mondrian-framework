@@ -31,10 +31,10 @@ export abstract class DefaultMethods<T extends types.Type> {
       .chain((decodedValue) => this.validate(decodedValue, validationOptions).replace(decodedValue))
   }
 
-  optional = () => types.optional(this.getThis())
-  nullable = () => types.nullable(this.getThis())
-  reference = () => types.reference(this.getThis())
-  array = () => types.array(this.getThis())
+  optional = (options: types.OptionalTypeOptions) => types.optional(this.getThis(), options)
+  nullable = (options: types.NullableTypeOptions) => types.nullable(this.getThis(), options)
+  reference = (options: types.ReferenceTypeOptions) => types.reference(this.getThis(), options)
+  array = (options: types.ReferenceTypeOptions) => types.array(this.getThis(), options)
   equals = (other: types.Type) => types.areEqual(this.getThis(), other)
 
   setOptions = (options: types.OptionsOf<T>) => this.fromOptions(options)

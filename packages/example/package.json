@@ -31,7 +31,9 @@
     "serverless-offline": "12.0.4",
     "serverless-plugin-typescript": "2.1.5",
     "serverless-plugin-monorepo": "0.11.0",
-    "rest": "2.0.0"
+    "rest": "2.0.0",
+    "@opentelemetry/sdk-node": "0.41.2",
+    "@opentelemetry/api-logs": "0.41.2"
   },
   "devDependencies": {
     "dotenv": "16.0.3",

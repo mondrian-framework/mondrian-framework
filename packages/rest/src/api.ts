@@ -23,12 +23,15 @@ export type Request = {
   query: Record<string, string | undefined>
   headers: Record<string, string | string[] | undefined>
   method: Method
+  route: string
 }
+
+export type Response = { status: number; body: unknown; headers?: Record<string, string> }
 
 export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
   args: {
     error: unknown
-    log: logger.Logger
+    logger: logger.MondrianLogger
     functionName: keyof Fs
     context: unknown
     operationId: string
@@ -37,7 +40,7 @@ export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
       input: unknown
     }
   } & RestContext,
-) => Promise<{ status: number; body: unknown; headers?: Record<string, string> } | void>
+) => Promise<Response | void>
 
 export type FunctionSpecifications = {
   method: Method

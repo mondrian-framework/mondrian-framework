@@ -1,56 +1,73 @@
 import { logger } from '.'
+import { FunctionImplementation } from './function/implementation'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
- * Mondrian function type.
+ * A Mondrian function.
  */
 export type Function<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
   Context extends Record<string, unknown> = Record<string, unknown>,
 > = {
-  input: I
-  output: O
-  apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
-  before?: BeforeMiddleware<I, O, Context>[]
-  after?: AfterMiddleware<I, O, Context>[]
-  options?: { namespace?: string; description?: string }
+  readonly input: I
+  readonly output: O
+  readonly body: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  readonly middlewares?: readonly Middleware<I, O, Context>[]
+  readonly options?: FunctionOptions
 }
+
+/**
+ * Mondrian {@link Function} options.
+ */
+export type FunctionOptions = {
+  readonly namespace?: string
+  readonly description?: string
+}
+
+/**
+ * Information needed to define a Mondrian {@link Function}
+ */
+type FunctionDefinition<
+  I extends types.Type = types.Type,
+  O extends types.Type = types.Type,
+  Context extends Record<string, unknown> = Record<string, unknown>,
+> = Omit<Function<I, O, Context>, 'apply'>
 
 /**
  * Arguments of a function call.
  */
 export type FunctionArguments<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
-  input: types.Infer<I>
-  projection: projection.FromType<O> | undefined
-  operationId: string
-  context: Context
-  log: logger.Logger
+  readonly input: types.Infer<I>
+  readonly projection: projection.FromType<O> | undefined
+  readonly operationId: string
+  readonly context: Context
+  readonly logger: logger.MondrianLogger
 }
 
 /**
- * 'Before' function's middleware. Applied before calling the {@link Function}'s apply.
- * Usefull for trasforming the {@link FunctionArguments} of a function.
+ * Mondrian function's middleware type. Applied before calling the {@link Function}'s body.
+ * Usefull for trasforming the {@link FunctionArguments} or the result of a function.
+ * Example:
+ * ```
+ *
+ * const hidePasswordMiddleware: Middleware<Input, Output, Context> = {
+ *   name: 'Hide password',
+ *   apply: async ({ next, args }) => {
+ *     const result = await next(args)
+ *     return result?.password ? { ...result, password: '****' } : result
+ *   },
+ * }
+ * ```
  */
-export type BeforeMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
-  name?: string
-  apply: (args: {
-    args: FunctionArguments<I, O, Context>
-    thisFunction: Function<I, O, Context>
-  }) => FunctionArguments<I, O, Context> | Promise<FunctionArguments<I, O, Context>>
-}
-
-/**
- * 'After' function's middleware. Applied after calling the {@link Function}'s apply.
- * Usefull for trasforming the {@link Function} apply result.
- */
-export type AfterMiddleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
-  name?: string
-  apply: (args: {
-    args: FunctionArguments<I, O, Context>
-    result: types.Infer<types.PartialDeep<O>>
-    thisFunction: Function<I, O, Context>
-  }) => types.Infer<types.PartialDeep<O>> | Promise<types.Infer<types.PartialDeep<O>>>
+export type Middleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
+  name: string
+  apply: (
+    args: FunctionArguments<I, O, Context>,
+    next: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>,
+    thisFunction: Function<I, O, Context>,
+  ) => Promise<types.Infer<types.PartialDeep<O>>>
 }
 
 /**
@@ -61,27 +78,6 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
 }
 
 /**
- * Executes a Mondrian function with the given arguments. It's executes also the before and after middlewares.
- * @param func the function to execute.
- * @param args the function arguments.
- * @returns the function result.
- */
-export async function apply<
-  const I extends types.Type,
-  const O extends types.Type,
-  const Context extends Record<string, unknown>,
->(func: Function<I, O, Context>, args: FunctionArguments<I, O, Context>): Promise<types.Infer<types.PartialDeep<O>>> {
-  for (const middleware of func.before ?? []) {
-    args = await middleware.apply({ args, thisFunction: func })
-  }
-  let result = await func.apply(args)
-  for (const middleware of func.after ?? []) {
-    result = await middleware.apply({ args, result, thisFunction: func })
-  }
-  return result
-}
-
-/**
  * Builds a Mondrian function.
  *
  * Example:
@@ -89,18 +85,24 @@ export async function apply<
  * import { types } from '@mondrian-framework/model'
  * import { functions } from '@mondrian-framework/module'
  *
- * const loginFunction = functions
- *   .build({
- *     input: type.object({ username: types.stirng(), password: types.string() }),
- *     output: types.string(),
- *     body: async ({ input: { username, password } }) => {
- *       return 'something'
- *     }
- *   })
+ * const loginFunction = functions.build({
+ *   input: type.object({ username: types.stirng(), password: types.string() }),
+ *   output: types.string(),
+ *   body: async ({ input: { username, password }, context: { db } }) => {
+ *     const user = await db.findUser({ username })
+ *     // ...
+ *     return 'signed jwt'
+ *   },
+ *   middlewares: [hidePasswordMiddleware],
+ *   options: {
+ *     namespace: 'authentication',
+ *     description: 'Sign a jwt for the authenticated user (1h validity)'
+ *   }
+ * })
  * ```
  */
 export function build<const I extends types.Type, const O extends types.Type>(
-  func: Function<I, O, {}>,
+  func: FunctionDefinition<I, O, {}>,
 ): Function<I, O, {}> {
   return withContext().build(func)
 }
@@ -138,8 +140,8 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
    * @returns A Mondrian function.
    */
   public build<const I extends types.Type, const O extends types.Type>(
-    func: Function<I, O, Context>,
+    func: FunctionDefinition<I, O, Context>,
   ): Function<I, O, Context> {
-    return func
+    return new FunctionImplementation(func)
   }
 }

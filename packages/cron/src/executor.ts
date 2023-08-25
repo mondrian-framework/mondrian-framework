@@ -25,8 +25,8 @@ export function start<const F extends functions.Functions, CI>({
   api: Api<F>
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
-  const baseLogger = logger.withContext({ moduleName: module.name, server: 'CRON' })
-  const scheduledTasks: { task: ScheduledTask; log: logger.Logger }[] = []
+  const baseLogger = logger.build({ moduleName: module.name, server: 'CRON' })
+  const scheduledTasks: { task: ScheduledTask; logger: logger.MondrianLogger }[] = []
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const options = api.functions[functionName]
     if (!options) {
@@ -39,19 +39,28 @@ export function start<const F extends functions.Functions, CI>({
       options.cron,
       async () => {
         const operationId = utils.randomOperationId()
-        const log = baseLogger.build({ operationId, operationType: options.cron, operationName: functionName })
+        const operationLogger = baseLogger.updateContext({
+          operationId,
+          operationType: options.cron,
+          operationName: functionName,
+        })
         try {
           const input = (await options.input()) as never
           const contextInput = await context({ cron: options.cron })
-          const ctx = await module.context(contextInput, { input, projection: undefined, operationId, log })
-          await functions.apply(functionBody, { input, projection: undefined, operationId, log, context: ctx })
+          const ctx = await module.context(contextInput, {
+            input,
+            projection: undefined,
+            operationId,
+            logger: operationLogger,
+          })
+          await functionBody.apply({ input, projection: undefined, operationId, logger: operationLogger, context: ctx })
         } catch (error) {
           if (error instanceof Error) {
-            await log(error.message, 'error')
+            operationLogger.logError(error.message)
           }
-          await log('Unknown error', 'error')
+          operationLogger.logError('Unknown error')
         }
-        await log('Done.')
+        await operationLogger.logInfo('Done.')
       },
       {
         runOnInit: options.runAtStart ?? false,
@@ -62,16 +71,16 @@ export function start<const F extends functions.Functions, CI>({
     task.start()
     scheduledTasks.push({
       task,
-      log: baseLogger.build({ operationType: options.cron, operationName: functionName }),
+      logger: baseLogger.updateContext({ operationType: options.cron, operationName: functionName }),
     })
   }
 
   return {
     async close() {
-      baseLogger.build()('Stopping jobs...')
-      for (const { task, log } of scheduledTasks) {
+      baseLogger.logInfo('Stopping jobs...')
+      for (const { task, logger } of scheduledTasks) {
         task.stop()
-        await log('Stopped.')
+        logger.logInfo('Stopped.')
       }
     },
   }

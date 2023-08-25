@@ -29,19 +29,20 @@ test('Real example', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
-    apply: async ({ input, context: { db }, log }) => {
+    body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
-        log(`Invalid email or password: ${input.email}`, 'warn')
+        logger.logWarn(`Invalid email or password: ${input.email}`)
         return null
       }
-      log(`Logged in: ${input.email}`, 'log')
+      logger.logInfo(`Logged in: ${input.email}`)
       return { jwt: user.email, user }
     },
-    after: [
+    middlewares: [
       {
         name: 'Hide password',
-        apply: ({ result }) => {
+        apply: async (args, next) => {
+          const result = await next(args)
           if (result?.user?.password) {
             return { ...result, user: { ...result.user, password: '****' } }
           }
@@ -54,23 +55,23 @@ test('Real example', async () => {
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: types.nullable(User),
-    apply: async ({ input, context: { db }, log }) => {
+    body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
-        log(`Double register: ${input.email}`, 'error')
+        logger.logWarn(`Double register`, { email: input.email })
         return null
       }
-      log(`Registered: ${input.email}`)
+      logger.logInfo(`Registered: ${input.email}`)
       return db.updateUser(input)
     },
-    before: [
+    middlewares: [
       {
         name: 'Avoid weak passwords',
-        apply: ({ args }) => {
+        apply: (args, next) => {
           if (args.input.password === '123') {
             throw new Error('Weak password')
           }
-          return args
+          return next(args)
         },
       },
     ],
@@ -80,7 +81,7 @@ test('Real example', async () => {
   const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
     input: types.object({ firstname: types.string(), lastname: types.string() }),
     output: User,
-    apply: async ({ input, context: { db, authenticatedUser } }) => {
+    body: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
         throw new Error('Unauthorized')
       }
@@ -172,7 +173,7 @@ describe('Unique type name', () => {
     const f = functions.build({
       input,
       output,
-      apply: () => {
+      body: () => {
         throw 'Unreachable'
       },
     })
@@ -193,7 +194,7 @@ describe('Default middlewares', () => {
     const dummy = functions.build({
       input: type,
       output: type,
-      apply: async ({ input }) => {
+      body: async ({ input }) => {
         if (input?.value === 'wrong') {
           return {} //projection not respected sometimes!
         }
@@ -225,7 +226,7 @@ describe('Default middlewares', () => {
       async () => await client.functions.dummy({ value: '123' }, { projection: { type: { type: { type: true } } } }),
     ).rejects.toThrowError('Max projection depth reached: requested projection have a depth of 3. The maximum is 2.')
     expect(async () => await client.functions.dummy({ value: 'wrong' })).rejects.toThrowError(
-      'Invalid output: {"errors":[{"missingField":"value","path":{"fragments":[]}}]}',
+      '[{"missingField":"value","path":{"fragments":[]}}]',
     )
   })
 })

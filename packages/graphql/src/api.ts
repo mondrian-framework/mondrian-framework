@@ -21,7 +21,7 @@ export type Api<Fs extends functions.Functions> = {
 export type ErrorHandler<F extends functions.Functions, ContextInput> = (
   args: {
     error: unknown
-    log: logger.Logger
+    log: logger.MondrianLogger
     functionName: keyof F
     context: unknown
     operationId: string

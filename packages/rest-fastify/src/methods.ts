@@ -45,6 +45,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
             method: request.method.toLowerCase() as rest.Method,
             params: request.params as Record<string, string>,
             query: request.query as Record<string, string>,
+            route: request.routerPath,
           },
         })
         reply.status(result.status)

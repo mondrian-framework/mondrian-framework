@@ -1,4 +1,5 @@
-import { functions, logger, module, utils } from '.'
+import { functions, module, utils } from '.'
+import { logger as mondrianLogger } from '.'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
@@ -34,7 +35,7 @@ class SdkBuilder<const Metadata> {
     module: module.Module<Fs, ContextInput>
     context: (args: { metadata?: Metadata }) => Promise<ContextInput>
   }): Sdk<Fs, Metadata> {
-    const defaultLogger = logger.withContext({ moduleName: module.name, server: 'LOCAL' })
+    const presetLogger = mondrianLogger.build({ moduleName: module.name, server: 'LOCAL' })
     const fs = Object.fromEntries(
       Object.entries(module.functions).map(([functionName, func]) => {
         const wrapper = async (
@@ -46,21 +47,26 @@ class SdkBuilder<const Metadata> {
           },
         ) => {
           const operationId = options?.operationId ?? utils.randomOperationId()
-          const log = defaultLogger.build({ operationId, operationName: functionName })
+          const thisLogger = presetLogger.updateContext({ operationId, operationName: functionName })
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
-            const ctx = await module.context(contextInput, { input, projection: options?.projection, operationId, log })
-            const result = await functions.apply(func, {
+            const ctx = await module.context(contextInput, {
+              input,
+              projection: options?.projection,
+              operationId,
+              logger: thisLogger,
+            })
+            const result = await func.apply({
               input: input as never, //TODO: types.Infer<types.Type> should infer unknown?
               projection: options?.projection as never, //TODO: projection.FromType<types.Type> should infer Projection?
               context: ctx,
               operationId,
-              log,
+              logger: thisLogger,
             })
-            log('Done.')
+            thisLogger.logInfo('Done.')
             return result
           } catch (error) {
-            log(error instanceof Error ? `Call failed. ${error.message}` : `Call failed.`)
+            thisLogger.logError(error instanceof Error ? `Call failed. ${error.message}` : `Call failed.`)
             throw error
           }
         }

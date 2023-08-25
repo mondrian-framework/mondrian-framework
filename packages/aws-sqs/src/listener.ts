@@ -1,5 +1,5 @@
 import * as AWS from '@aws-sdk/client-sqs'
-import { decoding, types } from '@mondrian-framework/model'
+import { types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
@@ -63,7 +63,7 @@ export function start<const Fs extends functions.Functions, const CI>({
   return {
     async close() {
       alive.yes = false
-      await logger.build({ moduleName: module.name, server: 'SQS' })('Closing listeners...')
+      await logger.build({ moduleName: module.name, server: 'SQS' }).logInfo('Closing listeners...')
       await Promise.all(promises)
     },
   }
@@ -89,14 +89,13 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
   concurrency: number
 }) {
   const functionBody = module.functions[functionName]
-  const baseLogger = logger.withContext({
+  const baseLogger = logger.build({
     moduleName: module.name,
     operationType: queueUrl,
     operationName: functionName,
     server: 'SQS',
   })
-  const listenerLog = baseLogger.build()
-  await listenerLog('Started.')
+  baseLogger.logInfo('Started.')
   while (alive.yes) {
     try {
       const message = await client.receiveMessage({ QueueUrl: queueUrl, MaxNumberOfMessages: 1, WaitTimeSeconds: 20 })
@@ -106,7 +105,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
       //TODO: execute in a separate handler (concurrency)
       const operationId = utils.randomOperationId()
       const m = message.Messages[0]
-      const log = baseLogger.build({ operationId })
+      const operationLogger = baseLogger.updateContext({ operationId })
       let body: unknown
       try {
         body = m.Body === undefined ? undefined : JSON.parse(m.Body)
@@ -114,7 +113,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
         }
-        await log(`Bad message: not a valid json ${m.Body}`)
+        operationLogger.logError(`Bad message: not a valid json ${m.Body}`)
         continue
       }
       const decoded = types.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
@@ -122,7 +121,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
         }
-        await log(`Bad message: ${JSON.stringify(decoded.error)}`)
+        operationLogger.logError(`Bad message: ${JSON.stringify(decoded.error)}`)
         continue
       }
       const contextInput = await context({ message: m })
@@ -130,23 +129,23 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         input: decoded.value,
         projection: undefined,
         operationId,
-        log,
+        logger: operationLogger,
       })
-      await functions.apply(functionBody, {
+      await functionBody.apply({
         input: decoded.value as never,
         projection: undefined,
         operationId,
         context: ctx,
-        log,
+        logger: operationLogger,
       })
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
-      await log(`Completed.`)
+      operationLogger.logInfo(`Completed.`)
     } catch (error) {
       if (error instanceof Error) {
-        listenerLog(error.message, 'error')
+        baseLogger.logError(error.message)
       }
       await sleep(1000)
     }
   }
-  listenerLog('Stopped.')
+  baseLogger.logInfo('Stopped.')
 }

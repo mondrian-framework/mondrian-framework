@@ -1,8 +1,32 @@
 import { CRON_API, REST_API } from './api'
-import { m as module } from './module'
+import { m, m as module } from './module'
 import { cron } from '@mondrian-framework/cron'
 import { server as restServer } from '@mondrian-framework/rest-fastify'
+import { logs } from '@opentelemetry/api-logs'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { Resource } from '@opentelemetry/resources'
+import { LoggerProvider, SimpleLogRecordProcessor, ConsoleLogRecordExporter } from '@opentelemetry/sdk-logs'
+import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base'
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { fastify } from 'fastify'
+
+const provider = new NodeTracerProvider({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: m.name,
+    [SemanticResourceAttributes.SERVICE_VERSION]: m.version,
+  }),
+})
+if (process.env.OTLP_EXPORTER_URL) {
+  provider.addSpanProcessor(new SimpleSpanProcessor(new OTLPTraceExporter({ url: process.env.OTLP_EXPORTER_URL })))
+} else {
+  provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
+}
+provider.register()
+
+const loggerProvider = new LoggerProvider()
+loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(new ConsoleLogRecordExporter()))
+logs.setGlobalLoggerProvider(loggerProvider)
 
 async function main() {
   const server = fastify()
@@ -14,9 +38,9 @@ async function main() {
     context: async ({ fastify }) => {
       return { jwt: fastify.request.headers.authorization }
     },
-    async error({ error, log, functionName }) {
+    async error({ error, logger, functionName }) {
       if (error instanceof Error) {
-        log(error.message)
+        logger.logError(error.message)
         if (functionName === 'login') {
           return { status: 400, body: 'Unauthorized' }
         }
@@ -38,11 +62,11 @@ async function main() {
       }
     },
   })*/
-  cron.start({
+  /*cron.start({
     module,
     api: CRON_API,
     context: async ({}) => ({}),
-  })
+  })*/
   const address = await server.listen({ port: 4000 })
   console.log(`Module "${module.name}" has started in ${new Date().getTime() - time} ms! ${address}`)
 }

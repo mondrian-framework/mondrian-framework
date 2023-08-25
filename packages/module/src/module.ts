@@ -1,6 +1,9 @@
 import { functions, logger } from '.'
+import { FunctionImplementation } from './function/implementation'
+import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
+import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
  * The Mondrian module type.
@@ -17,7 +20,7 @@ export type Module<Fs extends functions.Functions = functions.Functions, Context
       input: unknown
       projection: projection.Projection | undefined
       operationId: string
-      log: logger.Logger
+      logger: logger.MondrianLogger
     },
   ) => Promise<ContextType<Fs>>
   options?: ModuleOptions
@@ -40,6 +43,10 @@ export type ModuleOptions = {
      */
     maxProjectionDepth?: number
   }
+  /**
+   * Enables opetelemetry instrumentation.
+   */
+  opentelemetryInstrumentation?: boolean
 }
 
 //TODO: factorize UnionToIntersection to utils package
@@ -121,23 +128,31 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 ): Module<Fs, ContextInput> {
   assertUniqueNames(module.functions)
   const maxProjectionDepthMiddleware = module.options?.checks?.maxProjectionDepth
-    ? middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)
-    : null
+    ? [middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)]
+    : []
   const checkOutputTypeMiddleware =
     module.options?.checks?.output == null || module.options?.checks?.output !== 'ignore'
-      ? middleware.checkOutputType(module.options?.checks?.output ?? 'throw')
-      : null
+      ? [middleware.checkOutputType(module.options?.checks?.output ?? 'throw')]
+      : []
+
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const wrappedFunction = functions.build({
+      const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
+      const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
+      const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
+      const counter = myMeter.createCounter('task.invocation')
+      const func: functions.Function = {
         ...functionBody,
-        before: maxProjectionDepthMiddleware
-          ? [maxProjectionDepthMiddleware, ...(functionBody.before ?? [])]
-          : functionBody.before,
-        after: checkOutputTypeMiddleware
-          ? [...(functionBody.after ?? []), checkOutputTypeMiddleware]
-          : functionBody.after,
-      })
+        middlewares: [
+          ...maxProjectionDepthMiddleware,
+          ...checkOutputTypeMiddleware,
+          ...(functionBody.middlewares ?? []),
+        ],
+      }
+      const wrappedFunction: functions.Function<types.Type, types.Type, {}> = module.options
+        ?.opentelemetryInstrumentation
+        ? new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
+        : new FunctionImplementation(func)
       return [functionName, wrappedFunction]
     }),
   ) as Fs

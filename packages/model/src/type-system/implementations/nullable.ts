@@ -36,7 +36,7 @@ class NullableTypeImpl<T extends types.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithoutValidation(value: types.Infer<types.NullableType<T>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.NullableType<T>>): JSONType {
     return value === null ? null : types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 

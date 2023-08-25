@@ -32,7 +32,7 @@ class BooleanTypeImpl extends DefaultMethods<types.BooleanType> implements types
     super(options)
   }
 
-  encodeWithoutValidation(value: types.Infer<types.BooleanType>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.BooleanType>): JSONType {
     return value
   }
 

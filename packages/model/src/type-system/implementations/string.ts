@@ -48,7 +48,7 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
     }
   }
 
-  encodeWithoutValidation(value: types.Infer<types.StringType>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.StringType>): JSONType {
     return value
   }
 

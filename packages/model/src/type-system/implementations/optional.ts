@@ -36,7 +36,7 @@ class OptionalTypeImpl<T extends types.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithoutValidation(value: types.Infer<types.OptionalType<T>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.OptionalType<T>>): JSONType {
     return value === undefined ? null : types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 

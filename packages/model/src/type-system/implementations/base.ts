@@ -10,9 +10,13 @@ export abstract class DefaultMethods<T extends types.Type> {
 
   abstract getThis(): T
   abstract fromOptions(options?: types.OptionsOf<T>): T
-  abstract encodeWithoutValidation(value: types.Infer<T>): JSONType
+  abstract encodeWithNoChecks(value: types.Infer<T>): JSONType
   abstract decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<types.Infer<T>>
   abstract validate(value: types.Infer<T>, validationOptions?: validation.Options): validation.Result
+
+  encodeWithoutValidation(value: types.Infer<T>): JSONType {
+    return this.encodeWithNoChecks(value)
+  }
 
   encode(value: types.Infer<T>, validationOptions?: validation.Options): result.Result<JSONType, validation.Error[]> {
     return types

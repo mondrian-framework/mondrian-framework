@@ -67,7 +67,7 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
     this.fields = fields
   }
 
-  encodeWithoutValidation(value: types.Infer<types.ObjectType<M, Ts>>): JSONType {
+  encodeWithNoChecks(value: types.Infer<types.ObjectType<M, Ts>>): JSONType {
     const object = value as Record<string, types.Type>
     return filterMapObject(this.fields, (fieldName, fieldType) => {
       const concreteFieldType = types.concretise(fieldType)

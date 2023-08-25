@@ -389,6 +389,13 @@ export type StringType = {
    */
   encodeWithoutValidation(value: Infer<StringType>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: StringTypeOptions): StringType
   updateOptions(options: StringTypeOptions): StringType
   setName(name: string): StringType
@@ -513,6 +520,13 @@ export type NumberType = {
    * @returns the value encoded as a `JSONType`
    */
   encodeWithoutValidation(value: Infer<NumberType>): JSONType
+
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
 
   setOptions(options: NumberTypeOptions): NumberType
   updateOptions(options: NumberTypeOptions): NumberType
@@ -639,6 +653,13 @@ export type BooleanType = {
    */
   encodeWithoutValidation(value: Infer<BooleanType>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: BooleanTypeOptions): BooleanType
   updateOptions(options: BooleanTypeOptions): BooleanType
   setName(name: string): BooleanType
@@ -760,6 +781,13 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    */
   encodeWithoutValidation(value: InferEnum<Vs>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: EnumTypeOptions): EnumType<Vs>
   updateOptions(options: EnumTypeOptions): EnumType<Vs>
   setName(name: string): EnumType<Vs>
@@ -879,6 +907,13 @@ export type LiteralType<L extends number | string | boolean | null> = {
    * @returns the value encoded as a `JSONType`
    */
   encodeWithoutValidation(value: InferLiteral<L>): JSONType
+
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
 
   setOptions(options: LiteralTypeOptions): LiteralType<L>
   updateOptions(options: LiteralTypeOptions): LiteralType<L>
@@ -1001,6 +1036,13 @@ export type UnionType<Ts extends Types> = {
    * @returns the value encoded as a `JSONType`
    */
   encodeWithoutValidation(value: InferUnion<Ts>): JSONType
+
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
 
   setOptions(options: UnionTypeOptions): UnionType<Ts>
   updateOptions(options: UnionTypeOptions): UnionType<Ts>
@@ -1127,6 +1169,13 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    */
   encodeWithoutValidation(value: InferObject<M, Ts>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   updateOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   setName(name: string): ObjectType<M, Ts>
@@ -1252,6 +1301,13 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    */
   encodeWithoutValidation(value: InferArray<M, T>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: ArrayTypeOptions): ArrayType<M, T>
   updateOptions(options: ArrayTypeOptions): ArrayType<M, T>
   setName(name: string): ArrayType<M, T>
@@ -1367,6 +1423,13 @@ export type OptionalType<T extends Type> = {
    */
   encodeWithoutValidation(value: InferOptional<T>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: OptionalTypeOptions): OptionalType<T>
   updateOptions(options: OptionalTypeOptions): OptionalType<T>
   setName(name: string): OptionalType<T>
@@ -1479,6 +1542,13 @@ export type NullableType<T extends Type> = {
    */
   encodeWithoutValidation(value: InferNullable<T>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: NullableTypeOptions): NullableType<T>
   updateOptions(options: NullableTypeOptions): NullableType<T>
   setName(name: string): NullableType<T>
@@ -1589,6 +1659,13 @@ export type ReferenceType<T extends Type> = {
    */
   encodeWithoutValidation(value: InferReference<T>): JSONType
 
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
   setOptions(options: ReferenceTypeOptions): ReferenceType<T>
   updateOptions(options: ReferenceTypeOptions): ReferenceType<T>
   setName(name: string): ReferenceType<T>
@@ -1698,6 +1775,13 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    * @returns the value encoded as a `JSONType`
    */
   encodeWithoutValidation(value: InferredAs): JSONType
+
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
 
   setOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
   updateOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>

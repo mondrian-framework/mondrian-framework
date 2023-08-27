@@ -52,7 +52,9 @@ export function checkOutputType(onFailure: 'log' | 'throw'): functions.Middlewar
           body: 'Invalid output',
           attributes: {
             projection: JSON.stringify(projection),
-            output: JSON.stringify(outputPartialDeepType.encodeWithoutValidation(res)), //TODO: hide sensitive data
+            output: JSON.stringify(
+              outputPartialDeepType.encodeWithoutValidation(res, { sensitiveInformationStrategy: 'hide' }),
+            ),
             errors: errorsMessage,
           },
           severityNumber: SeverityNumber.ERROR,

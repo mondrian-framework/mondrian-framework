@@ -30,14 +30,17 @@ export class OpentelemetryFunction<
       },
       async (span) => {
         try {
-          const r = await this.executeWithinSpan(0, args, span)
+          const applyResult = await this.executeWithinSpan(0, args, span)
           span.setStatus({ code: SpanStatusCode.OK })
           span.end()
-          return result.ok<types.Infer<types.PartialDeep<O>>, unknown>(r)
+          return result.ok<types.Infer<types.PartialDeep<O>>, unknown>(applyResult)
         } catch (error) {
+          const concreteInputType = types.concretise(this.input)
           span.setAttribute(
             'input.json',
-            JSON.stringify(types.concretise(this.input).encodeWithoutValidation(args.input as never)), //TODO: hide sensitive data #57
+            JSON.stringify(
+              concreteInputType.encodeWithoutValidation(args.input as never, { sensitiveInformationStrategy: 'hide' }),
+            ),
           )
           if (error instanceof Error) {
             span.recordException(error)
@@ -48,8 +51,8 @@ export class OpentelemetryFunction<
         }
       },
     )
-    const finishTIme = new Date().getTime()
-    this.histogram.record(finishTIme - startTime)
+    const endTime = new Date().getTime()
+    this.histogram.record(endTime - startTime)
     if (!spanResult.isOk) {
       throw spanResult.error
     }

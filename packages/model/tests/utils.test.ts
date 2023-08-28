@@ -3,7 +3,7 @@ import { expectToThrowErrorMatching } from './testing-utils'
 import { fc as gen, test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
 
-describe('filterMap', () => {
+describe.concurrent('filterMap', () => {
   const integerList = gen.array(gen.integer())
   test.prop([integerList])('behaves as a map followed by a filter', (list) => {
     const mapper = (x: number) => (x % 2 === 0 ? x : undefined)
@@ -13,7 +13,7 @@ describe('filterMap', () => {
   })
 })
 
-describe('filterMapObject', () => {
+describe.concurrent('filterMapObject', () => {
   test.prop([gen.dictionary(gen.string(), gen.integer())])('behaves as a map followed by a filter', (object) => {
     const mapper = (_fieldName: string, fieldValue: number) => (fieldValue % 2 === 0 ? fieldValue : undefined)
     const filterMappedEntries = Object.entries(object)
@@ -25,7 +25,7 @@ describe('filterMapObject', () => {
   })
 })
 
-describe('failWithInternalError', () => {
+describe.concurrent('failWithInternalError', () => {
   test('throws when called', () => {
     expect(() => failWithInternalError('foo')).toThrowError(/.*\[internal error\].*/)
   })
@@ -46,7 +46,7 @@ describe('failWithInternalError', () => {
   })
 })
 
-describe('areSameArray', () => {
+describe.concurrent('areSameArray', () => {
   test('is false for arrays with different size', () => {
     expect(areSameArray([1], [1, 2, 3], (n, m) => n === m)).toBe(false)
     expect(areSameArray([1, 2, 3], [1], (n, m) => n === m)).toBe(false)

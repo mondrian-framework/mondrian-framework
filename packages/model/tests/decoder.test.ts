@@ -33,11 +33,11 @@ export function checkValue<A>(result: result.Result<A, any>, expectedValue: A): 
   expect(value).toEqual(expectedValue)
 }
 
-describe('decoding.decodeWithoutValidation', () => {
-  describe('boolean value', () => {
+describe.concurrent('decoding.decodeWithoutValidation', () => {
+  describe.concurrent('boolean value', () => {
     const model = types.boolean()
 
-    describe('without casting', () => {
+    describe.concurrent('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
 
       test.prop([nonBoolean])('fails on non booleans', (value) => {
@@ -52,7 +52,7 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('with casting', () => {
+    describe.concurrent('with casting', () => {
       const options = { typeCastingStrategy: 'tryCasting' } as const
 
       test('can decode the strings "true" and "false"', () => {
@@ -70,10 +70,10 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('number value', () => {
+  describe.concurrent('number value', () => {
     const model = types.number()
 
-    describe('without casting', () => {
+    describe.concurrent('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
 
       test.prop([nonNumber])('fails on non numbers', (value) => {
@@ -94,7 +94,7 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('with casting', () => {
+    describe.concurrent('with casting', () => {
       const options = { typeCastingStrategy: 'tryCasting' } as const
 
       test('works with +-0 strings', () => {
@@ -116,10 +116,10 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('string value', () => {
+  describe.concurrent('string value', () => {
     const model = types.string()
 
-    describe('without casting', () => {
+    describe.concurrent('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
 
       test.prop([nonString])('fails on non strings', (value) => {
@@ -133,7 +133,7 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('with casting', () => {
+    describe.concurrent('with casting', () => {
       const options = { typeCastingStrategy: 'tryCasting' } as const
 
       test.prop([number])('can decode numbers as strings', (number) => {
@@ -148,8 +148,8 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('literal value', () => {
-    describe('literal number', () => {
+  describe.concurrent('literal value', () => {
+    describe.concurrent('literal number', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
       const literalValue = 1
       const model = types.literal(literalValue)
@@ -171,7 +171,7 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('literal string', () => {
+    describe.concurrent('literal string', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
       const literalValue = 'mondrian'
       const model = types.literal(literalValue)
@@ -196,7 +196,7 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('literal boolean', () => {
+    describe.concurrent('literal boolean', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
       const literalValue = true
       const model = types.literal(literalValue)
@@ -221,11 +221,11 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('literal null', () => {
+    describe.concurrent('literal null', () => {
       const literalValue = null
       const model = types.literal(literalValue)
 
-      describe('without casting', () => {
+      describe.concurrent('without casting', () => {
         const options = { typeCastingStrategy: 'expectExactTypes' } as const
 
         test('can decode the exact same literal', () => {
@@ -239,7 +239,7 @@ describe('decoding.decodeWithoutValidation', () => {
         })
       })
 
-      describe('with casting', () => {
+      describe.concurrent('with casting', () => {
         const options = { typeCastingStrategy: 'tryCasting' } as const
 
         test('can decode the "null" string as the null literal', () => {
@@ -255,7 +255,7 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('enum variant', () => {
+  describe.concurrent('enum variant', () => {
     const variants = ['one', 'two', 'three'] as const
     const model = types.enumeration(variants)
 
@@ -277,7 +277,7 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('optional value', () => {
+  describe.concurrent('optional value', () => {
     const model = types.number().optional()
 
     test('decodes null as undefined', () => {
@@ -299,10 +299,10 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('nullable value', () => {
+  describe.concurrent('nullable value', () => {
     const model = types.number().nullable()
 
-    describe('without casting', () => {
+    describe.concurrent('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
 
       test('decodes null as null', () => {
@@ -320,7 +320,7 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('with casting', () => {
+    describe.concurrent('with casting', () => {
       const options = { typeCastingStrategy: 'tryCasting' } as const
 
       test('can decode undefined as null', () => {
@@ -329,17 +329,17 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('reference value', () => {
+  describe.concurrent('reference value', () => {
     const model = types.number().reference()
     test('decodes wrapped type', () => {
       checkValue(model.decodeWithoutValidation(1), 1)
     })
   })
 
-  describe('array value', () => {
+  describe.concurrent('array value', () => {
     const model = types.number().array()
 
-    describe('without casting', () => {
+    describe.concurrent('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
       test.prop([gen.array(number)])('decodes an array of values', (array) => {
         checkValue(model.decodeWithoutValidation(array, options), array)
@@ -358,7 +358,7 @@ describe('decoding.decodeWithoutValidation', () => {
         checkError(result, expectedError)
       })
 
-      describe('when reportingAllErrors', () => {
+      describe.concurrent('when reportingAllErrors', () => {
         const options = { typeCastingStrategy: 'expectExactTypes', errorReportingStrategy: 'allErrors' } as const
         test('reports all errors', () => {
           const value = [0, 1, 'error1', 'error2']
@@ -372,7 +372,7 @@ describe('decoding.decodeWithoutValidation', () => {
       })
     })
 
-    describe('with casting', () => {
+    describe.concurrent('with casting', () => {
       const options = { typeCastingStrategy: 'tryCasting' } as const
 
       test('can decode array-like object with numeric keys', () => {
@@ -405,7 +405,7 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('object value', () => {
+  describe.concurrent('object value', () => {
     const model = types.object({
       field1: types.number(),
       field2: types.number().optional(),
@@ -471,7 +471,7 @@ describe('decoding.decodeWithoutValidation', () => {
       checkError(result, expected)
     })
 
-    describe('when reporting all errors', () => {
+    describe.concurrent('when reporting all errors', () => {
       const options = { errorReportingStrategy: 'allErrors' } as const
 
       test('reports all errors in decoding its fields', () => {
@@ -486,7 +486,7 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('union value', () => {
+  describe.concurrent('union value', () => {
     const model = types.union({ variant1: types.number(), variant2: types.string().optional() })
 
     test.prop([number.filter((n) => n % 2 === 0)])('can decode its tagged variant', (number) => {
@@ -523,7 +523,7 @@ describe('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe('custom type', () => {
+  describe.concurrent('custom type', () => {
     const options = {
       typeCastingStrategy: 'tryCasting',
       errorReportingStrategy: 'allErrors',
@@ -552,7 +552,7 @@ describe('decoding.decodeWithoutValidation', () => {
   })
 })
 
-describe('decoding.decode', () => {
+describe.concurrent('decoding.decode', () => {
   test.prop([gen.anything()])('should perform validation', (value) => {
     const options = { foo: 'bar', baz: 1 }
     const validationOptions = { errorReportingStrategy: 'allErrors' } as const
@@ -577,7 +577,7 @@ describe('decoding.decode', () => {
   })
 })
 
-describe('datetime value', () => {
+describe.concurrent('datetime value', () => {
   const model = types.dateTime()
   test.prop([gen.date()])('can decode date', (date) => {
     checkValue(model.decodeWithoutValidation(date), date)
@@ -588,7 +588,7 @@ describe('datetime value', () => {
   })
 })
 
-describe('timestamp value', () => {
+describe.concurrent('timestamp value', () => {
   const model = types.timestamp()
   test.prop([gen.date()])('can decode date', (date) => {
     checkValue(model.decodeWithoutValidation(date), date)

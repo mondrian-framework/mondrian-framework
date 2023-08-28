@@ -126,3 +126,12 @@ export const failWithErrors = <A>(errors: decoding.Error[]): decoding.Result<A> 
  */
 export const fail = <A>(expected: string, got: unknown): decoding.Result<A> =>
   decoding.failWithErrors([{ expected, got, path: path.empty() }])
+
+/**
+ * @param error the {@link Error error} to turn into a string
+ * @returns a string representation of the given error
+ */
+export function errorToString(error: Error): string {
+  const { expected, got, path } = error
+  return `expected: ${expected}, got: ${got}, path: ${path.format()}`
+}

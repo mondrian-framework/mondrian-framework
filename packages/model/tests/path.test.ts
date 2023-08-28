@@ -2,11 +2,11 @@ import { path } from '../src'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
 
-describe('path.empty', () => {
+describe.concurrent('path.empty', () => {
   test('returns empty path', () => expect(path.empty().toArray()).toEqual([]))
 })
 
-describe('path.fromFragments', () => {
+describe.concurrent('path.fromFragments', () => {
   test('creates a path with the given fragments', () => {
     const fragments: path.Fragment[] = [
       { kind: path.FragmentKind.Index, index: 1 },
@@ -17,7 +17,7 @@ describe('path.fromFragments', () => {
   })
 })
 
-describe('path.prependField', () => {
+describe.concurrent('path.prependField', () => {
   test('prepends the given field', () => {
     const fragments = path.empty().prependField('second').prependField('first').toArray()
     expect(fragments).toEqual([
@@ -33,7 +33,7 @@ describe('path.prependField', () => {
   })
 })
 
-describe('path.appendField', () => {
+describe.concurrent('path.appendField', () => {
   test('appends the given field', () => {
     const fragments = path.empty().appendField('first').appendField('second').toArray()
     expect(fragments).toEqual([
@@ -49,7 +49,7 @@ describe('path.appendField', () => {
   })
 })
 
-describe('path.prependIndex', () => {
+describe.concurrent('path.prependIndex', () => {
   test('prepends the given index', () => {
     const fragments = path.empty().prependIndex(2).prependIndex(1).toArray()
     expect(fragments).toEqual([
@@ -65,7 +65,7 @@ describe('path.prependIndex', () => {
   })
 })
 
-describe('path.appendIndex', () => {
+describe.concurrent('path.appendIndex', () => {
   test('appends the given index', () => {
     const fragments = path.empty().appendIndex(1).appendIndex(2).toArray()
     expect(fragments).toEqual([
@@ -81,7 +81,7 @@ describe('path.appendIndex', () => {
   })
 })
 
-describe('path.prependVariant', () => {
+describe.concurrent('path.prependVariant', () => {
   test('prepends the given variant', () => {
     const fragments = path.empty().prependVariant('second').prependVariant('first').toArray()
     expect(fragments).toEqual([
@@ -97,7 +97,7 @@ describe('path.prependVariant', () => {
   })
 })
 
-describe('path.appendVariant', () => {
+describe.concurrent('path.appendVariant', () => {
   test('appends the given variant', () => {
     const fragments = path.empty().appendVariant('first').appendVariant('second').toArray()
     expect(fragments).toEqual([
@@ -113,7 +113,7 @@ describe('path.appendVariant', () => {
   })
 })
 
-describe('path.format', () => {
+describe.concurrent('path.format', () => {
   test('prints $ for the empty path', () => {
     expect(path.empty().format()).toEqual('$')
   })
@@ -145,7 +145,7 @@ describe('path.format', () => {
   })
 })
 
-describe('path.equals', () => {
+describe.concurrent('path.equals', () => {
   test('is true for paths with same fragments', () => {
     const one = path.empty().prependField('inner').prependIndex(1).prependVariant('variant')
     const other = path.empty().prependField('inner').prependIndex(1).prependVariant('variant')

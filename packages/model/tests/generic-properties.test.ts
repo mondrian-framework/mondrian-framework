@@ -3,7 +3,7 @@ import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
 
-describe('encoding', () => {
+describe.concurrent('encoding', () => {
   test.prop([arbitrary.typeAndValue()])('can always encode a type and a valid value', ([type, value]) => {
     assertOk(types.concretise(type).encode(value))
   })
@@ -29,7 +29,7 @@ describe('encoding', () => {
   })
 })
 
-describe('validation', () => {
+describe.concurrent('validation', () => {
   test.prop([arbitrary.typeAndValue()])('always succeeds on generated valid values', ([type, value]) => {
     assertOk(types.concretise(type).validate(value))
   })

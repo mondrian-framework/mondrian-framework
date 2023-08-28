@@ -13,7 +13,7 @@ const exampleCustom = types.custom(
   () => validation.fail('test', 'test'),
 )
 
-describe('projection.FromType', () => {
+describe.concurrent('projection.FromType', () => {
   test('is true for base types', () => {
     expectTypeOf<projection.FromType<types.NumberType>>().toEqualTypeOf<true>()
     expectTypeOf<projection.FromType<types.StringType>>().toEqualTypeOf<true>()
@@ -80,7 +80,7 @@ describe('projection.FromType', () => {
   })
 })
 
-describe('projection.depth', () => {
+describe.concurrent('projection.depth', () => {
   test('is zero for true/{} projections', () => {
     expect(projection.depth(true)).toBe(0)
     expect(projection.depth({})).toBe(0)
@@ -95,7 +95,7 @@ describe('projection.depth', () => {
   })
 })
 
-describe('projection.Selector', () => {
+describe.concurrent('projection.Selector', () => {
   test('is never for true/{} projections', () => {
     expectTypeOf<projection.Selector<true>>().toEqualTypeOf<never>()
     expectTypeOf<projection.Selector<{}>>().toEqualTypeOf<never>()
@@ -115,7 +115,7 @@ describe('projection.Selector', () => {
   })
 })
 
-describe('projection.SubProjection', () => {
+describe.concurrent('projection.SubProjection', () => {
   test("is always never for true/{} since they don't have subprojections", () => {
     expectTypeOf<projection.SubProjection<true, never>>().toEqualTypeOf<never>()
     expectTypeOf<projection.SubProjection<{}, never>>().toEqualTypeOf<never>()
@@ -131,7 +131,7 @@ describe('projection.SubProjection', () => {
   })
 })
 
-describe('projection.subProjection', () => {
+describe.concurrent('projection.subProjection', () => {
   type Projection = true | { field1?: true; field2?: true | { subfield1?: true; subfield2?: true } }
 
   test('returns true if called on true projection', () => {
@@ -189,7 +189,7 @@ const baseTypeAndValue = arbitrary
     })
   })
 
-describe('projection.respectsProjection', () => {
+describe.concurrent('projection.respectsProjection', () => {
   test.prop([baseTypeAndValue])('works on base types', ([type, value]) => {
     assertOk(projection.respectsProjection(type, true as never, value))
   })
@@ -209,7 +209,7 @@ describe('projection.respectsProjection', () => {
     )
   })
 
-  describe('reports missing required fields', () => {
+  describe.concurrent('reports missing required fields', () => {
     test('from arrays', () => {
       const model = types.object({ field1: types.number(), field2: types.string() }).array()
       const value = [{ field1: 1 }, { field2: 'hello' }, { field1: 2, field2: 'hi' }, {}]
@@ -282,7 +282,7 @@ describe('projection.respectsProjection', () => {
     })
   })
 
-  describe('trim not requested fields', () => {
+  describe.concurrent('trim not requested fields', () => {
     test('from object', () => {
       const model = types.object({ field1: types.number(), field2: types.string().optional() })
       checkValue(projection.respectsProjection(model, {}, { field1: 1, field2: '' }), {})
@@ -301,7 +301,7 @@ function checkErrors(actual: projection.Error[], expected: projection.Error[]) {
   expect(areSameArray(actual, expected, compareProjectionErrors)).toBe(true)
 }
 
-describe('decode', () => {
+describe.concurrent('decode', () => {
   const model = () =>
     types.object({ field1: types.string(), field2: types.union({ type: model, base: types.literal(null) }) })
 

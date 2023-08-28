@@ -35,13 +35,13 @@ const mockDecode = () => {
 const alwaysSuccess = types.custom('alwaysSuccess', mockEncode, mockDecode, () => validation.succeed())
 const alwaysFail = types.custom('alwaysFail', mockEncode, mockDecode, (value) => validation.fail('test', value))
 
-describe('validation.validate', () => {
-  describe('on number types', () => {
+describe.concurrent('validation.validate', () => {
+  describe.concurrent('on number types', () => {
     test.prop([gen.double()])('always succeeds if given no options', (n) => {
       assertOk(types.number().validate(n))
     })
 
-    describe('checks the number is >= than its minimum', () => {
+    describe.concurrent('checks the number is >= than its minimum', () => {
       const minimum = 11
       const model = types.number({ minimum })
 
@@ -57,7 +57,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('checks the number is > than its excluding minimum', () => {
+    describe.concurrent('checks the number is > than its excluding minimum', () => {
       const exclusiveMinimum = 11
       const model = types.number({ exclusiveMinimum })
 
@@ -73,7 +73,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('checks the number is <= than its maximum', () => {
+    describe.concurrent('checks the number is <= than its maximum', () => {
       const maximum = 11
       const model = types.number({ maximum })
 
@@ -89,7 +89,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('checks the number is < than its exclusive maximum', () => {
+    describe.concurrent('checks the number is < than its exclusive maximum', () => {
       const exclusiveMaximum = 11
       const model = types.number({ exclusiveMaximum })
 
@@ -105,7 +105,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('checks the number is an integer', () => {
+    describe.concurrent('checks the number is an integer', () => {
       const model = types.number({ isInteger: true })
 
       const validValue = gen.integer()
@@ -121,12 +121,12 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on string types', () => {
+  describe.concurrent('on string types', () => {
     test.prop([gen.string()])('always succeeds when given no options', (string) => {
       assertOk(types.string().validate(string))
     })
 
-    describe('checks the string matches the given regex', () => {
+    describe.concurrent('checks the string matches the given regex', () => {
       const model = types.string({ regex: /^mondrian/ })
 
       const validValue = gen.string().map((s) => 'mondrian' + s)
@@ -141,7 +141,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('checks the string has the minimum length', () => {
+    describe.concurrent('checks the string has the minimum length', () => {
       const minLength = 3
       const model = types.string({ minLength })
 
@@ -157,7 +157,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('checks the string has the maximum length', () => {
+    describe.concurrent('checks the string has the maximum length', () => {
       const maxLength = 3
       const model = types.string({ maxLength })
 
@@ -174,14 +174,14 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on boolean types', () => {
+  describe.concurrent('on boolean types', () => {
     test.prop([arbitrary.boolean()])('always succeeds', (model) => {
       assertOk(model.validate(true))
       assertOk(model.validate(false))
     })
   })
 
-  describe('on enum types', () => {
+  describe.concurrent('on enum types', () => {
     const variants = ['one', 'two', 'three'] as const
     test.prop([arbitrary.enumeration(gen.constant(variants))])('always succeeds', (model) => {
       assertOk(model.validate('one'))
@@ -190,14 +190,14 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on literal types', () => {
+  describe.concurrent('on literal types', () => {
     const literalValue = gen.oneof(gen.string(), gen.boolean(), gen.integer(), gen.float(), gen.constant(null))
     test.prop([arbitrary.literal(literalValue)])('always succeeds', (model) => {
       assertOk(model.validate(model.literalValue))
     })
   })
 
-  describe('on optional types', () => {
+  describe.concurrent('on optional types', () => {
     test.prop([gen.anything().filter((value) => value !== undefined)])('validates the inner type', (value) => {
       assertOk(alwaysSuccess.optional().validate(value))
       checkError(alwaysFail.optional().validate(value), [{ got: value, path: path.empty() }])
@@ -209,7 +209,7 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on nullable types', () => {
+  describe.concurrent('on nullable types', () => {
     test.prop([gen.anything().filter((value) => value !== null)])('validates the inner type', (value) => {
       assertOk(alwaysSuccess.nullable().validate(value))
       checkError(alwaysFail.nullable().validate(value), [{ got: value, path: path.empty() }])
@@ -221,14 +221,14 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on reference types', () => {
+  describe.concurrent('on reference types', () => {
     test.prop([gen.anything()])('validates the inner type', (value) => {
       assertOk(alwaysSuccess.reference().validate(value))
       checkError(alwaysFail.reference().validate(value), [{ got: value, path: path.empty() }])
     })
   })
 
-  describe('on array types', () => {
+  describe.concurrent('on array types', () => {
     test.prop([gen.array(gen.anything())])('validates its items', (array) => {
       assertOk(alwaysSuccess.array().validate(array))
     })
@@ -237,7 +237,7 @@ describe('validation.validate', () => {
       checkError(alwaysFail.array().validate(array), [{ got: array[0], path: path.empty().prependIndex(0) }])
     })
 
-    describe('checks min length', () => {
+    describe.concurrent('checks min length', () => {
       const minItems = 4
       const model = types.array(alwaysSuccess, { minItems })
 
@@ -252,7 +252,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('checks max length', () => {
+    describe.concurrent('checks max length', () => {
       const maxItems = 4
       const model = types.array(alwaysSuccess, { maxItems })
 
@@ -267,7 +267,7 @@ describe('validation.validate', () => {
       })
     })
 
-    describe('when reporting all errors', () => {
+    describe.concurrent('when reporting all errors', () => {
       const options = { errorReportingStrategy: 'allErrors' } as const
       const toErrors = (array: any[]) =>
         array.map((value, index) => ({ got: value, path: path.empty().prependIndex(index) }))
@@ -298,7 +298,7 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on object types', () => {
+  describe.concurrent('on object types', () => {
     const objectGenerator = gen.record({ field1: gen.anything(), field2: gen.anything() })
 
     test.prop([objectGenerator])('validates its fields', (object) => {
@@ -312,7 +312,7 @@ describe('validation.validate', () => {
       checkError(model.validate(object), expectedError)
     })
 
-    describe('when reporting all errors', () => {
+    describe.concurrent('when reporting all errors', () => {
       const options = { errorReportingStrategy: 'allErrors' } as const
 
       test.prop([objectGenerator])('reports all the errors with its fields', (object) => {
@@ -326,7 +326,7 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on union types', () => {
+  describe.concurrent('on union types', () => {
     test.prop([gen.anything()])('succeeds if variant is valid', (value) => {
       const model = types.union({ variant1: alwaysSuccess, variant2: alwaysFail })
       assertOk(model.validate({ variant1: value }))
@@ -345,7 +345,7 @@ describe('validation.validate', () => {
     })
   })
 
-  describe('on custom types', () => {
+  describe.concurrent('on custom types', () => {
     const options = { errorReportingStrategy: 'allErrors' } as const
 
     test.prop([gen.anything()])('calls the provided decoder', (value) => {

@@ -19,7 +19,7 @@ const literalValue: gen.Arbitrary<boolean | string | number | null> = gen.oneof(
   number,
 )
 
-describe('encoder.encodeWithoutValidation', () => {
+describe.concurrent('encoder.encodeWithoutValidation', () => {
   test.prop([arbitrary.number(), number])('encodes a number value as itself', (model, number) => {
     expect(model.encodeWithoutValidation(number)).toEqual(number)
   })
@@ -88,7 +88,7 @@ describe('encoder.encodeWithoutValidation', () => {
     },
   )
 
-  describe('on union values', () => {
+  describe.concurrent('on union values', () => {
     const unionModel = arbitrary.union({
       variant1: arbitrary.number(),
       variant2: arbitrary.optional(arbitrary.string()),
@@ -145,7 +145,7 @@ describe('encoder.encodeWithoutValidation', () => {
   })
 })
 
-describe('encoder.encode', () => {
+describe.concurrent('encoder.encode', () => {
   test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([model, value]) => {
     const result = types.concretise(model).sensitive().encode(value, { sensitiveInformationStrategy: 'hide' })
     expect(assertOk(result)).toEqual(null)

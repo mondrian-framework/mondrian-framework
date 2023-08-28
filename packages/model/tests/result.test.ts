@@ -13,7 +13,7 @@ function expectOk<A, E>(result: result.Result<A, E>, expected: A) {
   expect(value).toEqual(expected)
 }
 
-describe('chain', () => {
+describe.concurrent('chain', () => {
   test('short circuits on error values', () =>
     expectFailure(
       result.fail('error').chain((_) => expect.fail()),
@@ -33,7 +33,7 @@ describe('chain', () => {
   })
 })
 
-describe('map', () => {
+describe.concurrent('map', () => {
   test('changes the success value', () =>
     expectOk(
       result.ok(1).map((n) => n + 1),
@@ -46,7 +46,7 @@ describe('map', () => {
     ))
 })
 
-describe('mapError', () => {
+describe.concurrent('mapError', () => {
   test('leaves the success value unchanged', () =>
     expectOk(
       result.ok(1).mapError((_) => expect.fail()),
@@ -60,28 +60,28 @@ describe('mapError', () => {
     ))
 })
 
-describe('replace', () => {
+describe.concurrent('replace', () => {
   test('replaces the success value', () => expectOk(result.ok(1).replace(2), 2))
   test('leaves the error unchanged', () => expectFailure(result.fail('error').replace(2), 'error'))
 })
 
-describe('recover', () => {
+describe.concurrent('recover', () => {
   test('returns value if called on ok value', () => expect(result.ok(1).recover(() => 0)).toBe(1))
   test('provides the error to the callback', () => expect(result.fail(1).recover((n) => n + 1)).toBe(2))
   test('returns fallback if called on failure value', () => expect(result.fail('error').recover(() => 1)).toBe(1))
 })
 
-describe('lazyUnwrap', () => {
+describe.concurrent('lazyUnwrap', () => {
   test('returns value if called on ok value', () => expect(result.ok(1).recover(() => expect.fail())).toBe(1))
   test('returns fallback if called on failure value', () => expect(result.fail('error').recover(() => 1)).toBe(1))
 })
 
-describe('or', () => {
+describe.concurrent('or', () => {
   test('returns second result if called on failure value', () => expectOk(result.fail('error').or(result.ok(1)), 1))
   test('returns first result if called on ok value', () => expectOk(result.ok(1).or(result.fail('a')), 1))
 })
 
-describe('lazyOr', () => {
+describe.concurrent('lazyOr', () => {
   test('returns second result if called on failure value', () =>
     expectOk(
       result.fail('error').lazyOr(() => result.ok(1)),
@@ -94,7 +94,7 @@ describe('lazyOr', () => {
     ))
 })
 
-describe('match', () => {
+describe.concurrent('match', () => {
   test('calls first function when called on ok value', () =>
     result.ok(1).match(
       (_) => {},

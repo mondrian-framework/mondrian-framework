@@ -1,16 +1,22 @@
 import { result, types } from '../src'
 import { expect } from 'vitest'
 
-export function assertOk<A>(result: result.Result<A, any>): A {
+export function assertOk<A, E>(
+  result: result.Result<A, E>,
+  prettyError: (error: E) => string = (error) => `${error}`,
+): A {
   return result.match(
     (value) => value,
-    (error) => expect.fail(`Expected an \`ok\` result but got a \`failure\` with error\n${error}`),
+    (error) => expect.fail(`Expected an \`ok\` result but got a \`failure\` with error\n${prettyError(error)}`),
   )
 }
 
-export function assertFailure<E>(result: result.Result<any, E>): E {
+export function assertFailure<A, E>(
+  result: result.Result<A, E>,
+  prettyValue: (value: A) => string = (value) => `${value}`,
+): E {
   return result.match(
-    (value) => expect.fail(`Expected a \`failure\` result but got an \`ok\` with value\n${value}`),
+    (value) => expect.fail(`Expected a \`failure\` result but got an \`ok\` with value\n${prettyValue(value)}`),
     (error) => error,
   )
 }

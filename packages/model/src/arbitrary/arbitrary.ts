@@ -397,7 +397,8 @@ export function wrapperType(
  * Generator for a generic object type.
  */
 function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
-  return gen.dictionary(gen.string(), gen.constant(type(maxDepth - 1))).chain((fieldsGenerators) => {
+  const fieldName = gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf')
+  return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain((fieldsGenerators) => {
     return gen.oneof(object(fieldsGenerators), mutableObject(fieldsGenerators))
   })
 }

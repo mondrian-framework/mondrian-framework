@@ -66,11 +66,11 @@
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 100px
+  gap: 100px;
 }
 
-section:nth-child(2n){
-  background: rgba(0,0,0,0.03);
+section:nth-child(2n) {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 [data-theme='dark'] section:nth-child(2n) {
@@ -135,7 +135,6 @@ section:nth-child(2n){
   background: #ebbc03;
   color: var(--ifm-color-gray-900);
 }
-
 
 @media screen and (max-width: 1280px) {
   .bannerLeft {

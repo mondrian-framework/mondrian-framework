@@ -23,6 +23,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Check packages are formatted
+        shell: bash
         run: npx prettier --check packages/*/src
       - name: Build
         run: npm run build

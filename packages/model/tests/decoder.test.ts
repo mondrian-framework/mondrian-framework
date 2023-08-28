@@ -598,3 +598,10 @@ describe.concurrent('timestamp value', () => {
     checkValue(model.decodeWithoutValidation(number), new Date(number))
   })
 })
+
+describe.concurrent('errorToString', () => {
+  test('prints the error and its path', () => {
+    const error = { expected: 'expected', got: '1', path: path.empty() }
+    expect(decoding.errorToString(error)).toEqual('expected: expected, got: 1, path: $')
+  })
+})

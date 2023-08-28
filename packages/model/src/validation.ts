@@ -91,3 +91,12 @@ export const failWithErrors = (errors: validation.Error[]): validation.Result =>
  */
 export const fail = (assertion: string, got: unknown): validation.Result =>
   validation.failWithErrors([{ assertion, got, path: path.empty() }])
+
+/**
+ * @param error the {@link Error error} to turn into a string
+ * @returns a string representation of the given error
+ */
+export function errorToString(error: Error): string {
+  const { assertion, got, path } = error
+  return `assertion: ${assertion}, got: ${got}, path: ${path.format()}`
+}

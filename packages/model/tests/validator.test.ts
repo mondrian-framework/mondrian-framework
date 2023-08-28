@@ -35,6 +35,13 @@ const mockDecode = () => {
 const alwaysSuccess = types.custom('alwaysSuccess', mockEncode, mockDecode, () => validation.succeed())
 const alwaysFail = types.custom('alwaysFail', mockEncode, mockDecode, (value) => validation.fail('test', value))
 
+describe.concurrent('errorToString', () => {
+  test('prints the error and its path', () => {
+    const error = { assertion: 'assertion', got: '1', path: path.empty() }
+    expect(validation.errorToString(error)).toEqual('assertion: assertion, got: 1, path: $')
+  })
+})
+
 describe.concurrent('validation.validate', () => {
   describe.concurrent('on number types', () => {
     test.prop([gen.double()])('always succeeds if given no options', (n) => {

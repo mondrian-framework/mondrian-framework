@@ -12,7 +12,7 @@ const user = types.object({
 It acts as a _description_ of the structure of users: every value with a type that conforms to `user` should have an integer `id` field and a string `username` field.
 
 However, this description wouldn't be too useful if there wasn't a way to actually create values conforming to the types we define.
-That's why the Mondrian framework also exposes many utility methods and types to brdige the gap between Typescript's and Mondrian's type systems.
+That's why the Mondrian framework also exposes many utility methods and types to bridge the gap between Typescript's and Mondrian's type systems.
 
 ## Type inference
 
@@ -167,7 +167,7 @@ const response = types.union({
   success: types.string(),
   error: types.object({
     code: types.number(),
-    message: types.number(),
+    message: types.string(),
   })
 })
 

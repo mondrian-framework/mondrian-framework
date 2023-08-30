@@ -267,7 +267,7 @@ function openapiSecurityRequirements({
   module: module.Module<any, any>
   functionName: string
 }): OpenAPIV3_1.SecurityRequirementObject[] | undefined {
-  const auth = (module.functinoOptions ?? {})[functionName]?.authentication
+  const auth = (module.functionOptions ?? {})[functionName]?.authentication
   if (auth && auth !== 'NONE') {
     return [{ [functionName]: [] }]
   } else if (auth === 'NONE') {
@@ -288,7 +288,7 @@ function openapiSecuritySchemes({
     ? { type: 'http', scheme: module.authentication.type, bearerFormat: module.authentication.format }
     : undefined
   const schemas = Object.fromEntries(
-    Object.entries(module.functinoOptions ?? {}).flatMap(([k, v]) => {
+    Object.entries(module.functionOptions ?? {}).flatMap(([k, v]) => {
       if (!v?.authentication || v.authentication === 'NONE') {
         return []
       }

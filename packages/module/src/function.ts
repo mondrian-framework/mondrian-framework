@@ -10,11 +10,29 @@ export type Function<
   O extends types.Type = types.Type,
   Context extends Record<string, unknown> = Record<string, unknown>,
 > = {
+  /**
+   * Function input {@link types.Type Type}.
+   */
   readonly input: I
+  /**
+   * Function output {@link types.Type Type}.
+   */
   readonly output: O
+  /**
+   * Function boby.
+   */
   readonly body: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  /**
+   * Function apply. This executes function's {@link Middleware} and function's body.
+   */
   readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  /**
+   * Function {@link Middleware Middlewares}
+   */
   readonly middlewares?: readonly Middleware<I, O, Context>[]
+  /**
+   * Function {@link FunctionOptions}
+   */
   readonly options?: FunctionOptions
 }
 
@@ -22,7 +40,13 @@ export type Function<
  * Mondrian {@link Function} options.
  */
 export type FunctionOptions = {
+  /**
+   * Namespace of a function. It's used as documentation.
+   */
   readonly namespace?: string
+  /**
+   * Description of a function.  It's used as documentation.
+   */
   readonly description?: string
 }
 
@@ -36,13 +60,28 @@ type FunctionDefinition<
 > = Omit<Function<I, O, Context>, 'apply'>
 
 /**
- * Arguments of a function call.
+ * Arguments of a function invokation.
  */
 export type FunctionArguments<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
+  /**
+   * Function's input. It respects the function input {@link types.Type Type}.
+   */
   readonly input: types.Infer<I>
+  /**
+   * Wanted output projection. The return value must respects this projection.
+   */
   readonly projection: projection.FromType<O> | undefined
+  /**
+   * Operation ID.
+   */
   readonly operationId: string
+  /**
+   * Function context.
+   */
   readonly context: Context
+  /**
+   * Function logger.
+   */
   readonly logger: logger.MondrianLogger
 }
 
@@ -62,7 +101,17 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
  * ```
  */
 export type Middleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
+  /**
+   * Middleware descriptive name.
+   */
   name: string
+  /**
+   * Apply function of this middleware.
+   * @param args Argument of the functin invokation. Can be transformed with `next` callback.
+   * @param next Continuation callback of the middleware.
+   * @param thisFunction Reference to the underlying {@link Function}.
+   * @returns a value that respect function's output type and the given projection.
+   */
   apply: (
     args: FunctionArguments<I, O, Context>,
     next: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>,

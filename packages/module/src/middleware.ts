@@ -40,12 +40,10 @@ export function checkOutputType(onFailure: 'log' | 'throw'): functions.Middlewar
     apply: async (args, next, thisFunction) => {
       const res = await next(args)
       const outputPartialDeepType = types.concretise(types.partialDeep(thisFunction.output))
-      const checkResult = (
-        projection.respectsProjection(thisFunction.output, args.projection ?? (true as never), res) as result.Result<
-          never,
-          projection.Error[] | validation.Error[]
-        >
-      ).chain((trimmed) => outputPartialDeepType.validate(trimmed).map(() => trimmed))
+      const checkResult = projection
+        .respectsProjection(thisFunction.output, args.projection ?? (true as never), res)
+        .chain((trimmed) => outputPartialDeepType.validate(trimmed).replace(trimmed))
+
       if (!checkResult.isOk) {
         const errorsMessage = JSON.stringify(checkResult.error)
         args.logger.emit({

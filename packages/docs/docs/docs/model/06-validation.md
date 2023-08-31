@@ -89,3 +89,82 @@ array.validate([-1, 0, -2], { errorReportingStrategy: "allErrors" })
 //   { assertion: ">= 0", got: -2, path: "$[2]" },
 // ])
 ```
+
+## Validation, encoding and decoding
+
+Now that you have a clearer picture of the encoding, decoding, and validation
+you may start to notice the role validation plays in encoding and decoding.
+
+- The purpose of encoding is turning a _valid_ type into a JSON, so it first needs
+  to make sure that the type it's encoding is actually valid, otherwise one may
+  end up inadvertently encoding some type that breaks important invariants
+- The purspose of decoding is turning an unknown value into a _valid_ type. So,
+  after checking that it has the right structure (for example, that it's an
+  object with the required fields), it also needs to validate it.
+  Otherwise one may end up using a value that breaks important invariants
+
+There's an escape hatch that you can use when you're 100% sure that you don't
+need validation in the encoding and decoding processes: the
+`encodeWithoutValidation` and `decodeWithoutValidation`.
+
+Those two methods do exactly what you'd expect: they perform encoding/decoding
+skipping all the validation checks.
+
+> It is highly discouraged to use these methods. Even if you are 100% sure that
+> you are never going to need validation for your custom types: your current
+> requirements may change in the future and you may have forgetten you're not
+> validating your data allowing sneaky bugs to enter your codebase.
+>
+> ```ts showLineNumbers
+> type Username = types.Infer<typeof username>
+> const username = types.string()
+>
+> type User = types.Infer<typeof user>
+> const user = types.object({ id: types.number(), username })
+> 
+> async function registerNewUser(input: { username: Username }) { 
+>     const encoded = username.encodeWithoutValidation(input.username) // <- this is super unsafe
+>     const id = await saveUserToDB(encoded)
+>     return id
+> }
+> ```
+>
+> Some time later you realise that theres' a bug: users shouldn't be allowed to
+> register with an empty string as username, so you add further validation:
+>
+> ```ts showLineNumbers
+> type Username = types.Infer<typeof username>
+> // highlight-start
+> const username = types.string({ minLenght: 1 })
+> // highlight-end
+>
+> type User = types.Infer<typeof user>
+> const user = types.object({ id: types.number(), username })
+> 
+> async function registerNewUser(input: { username: Username }) { 
+>     const encoded = username.encodeWithoutValidation(input.username)
+>     const id = await saveUserToDB(encoded)
+>     return id
+> }
+> ```
+>
+> This change is not enough, though: users will still be able to register with
+> an empty string as their username! Can you see why? Since we were using
+> `.encodeWithoutValidation` we didn't check any additional invariant (for
+> example that the string is not empty).
+>
+> If we used `.encode` from the beginning, we would have been forced from the
+> compiler to handle any possible error case and wouldn't have missed that:
+>
+> ```ts showLineNumbers
+> async function registerNewUser(input: { username: Username }) { 
+>     const encodedUsername = username.encode(input.username)
+>     if (encodedUsername.isOk) {
+>         const id = await saveUserToDB(encoded)
+>         return id
+>     } else {
+>         logger.log(LogKind.Error, "invalid input", encodedUsername.error)
+>         return undefined
+>     }
+> }
+> ```

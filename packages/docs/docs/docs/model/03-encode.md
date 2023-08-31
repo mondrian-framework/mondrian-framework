@@ -27,8 +27,8 @@ nonNegativeNumber.encode(10) // -> ok(10)
 nonNegativeNumber.encode(-1) // -> error([ assertion: "expected a number >= 0", got: -1, path: "$" ])
 ```
 
-Since additional assertions described in the type options do not change the
-inferred type, it is not possible to statically check that values of the
+Additional assertions described in the type options do not change the
+inferred type, so it is not possible to statically check that values of the
 inferred type respect those invariants: it is the encoder's job to make sure an
 invalid value never gets encoded.
 

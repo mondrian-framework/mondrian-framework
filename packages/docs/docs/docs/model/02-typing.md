@@ -1,6 +1,7 @@
 # Typing
 
-In the [previous chapter](./01-definition.md) you learned about the Mondrian types and how they can be defined. Consider this example type we've shown before:
+In the [previous chapter](./01-definition.md) you learned about the Mondrian
+types and how they can be defined. Consider this example type we've shown before:
 
 ```ts showLineNumbers
 const user = types.object({
@@ -9,16 +10,24 @@ const user = types.object({
 })
 ```
 
-It acts as a _description_ of the structure of users: every value with a type that conforms to `user` should have an integer `id` field and a string `username` field.
+It acts as a _description_ of the structure of users: every value with a type
+that conforms to `user` should have an integer `id` field and a string `username`
+field.
 
-However, this description wouldn't be too useful if there wasn't a way to actually create values conforming to the types we define.
-That's why the Mondrian framework also exposes many utility methods and types to bridge the gap between Typescript's and Mondrian's type systems.
+However, this description wouldn't be too useful if there wasn't a way to actually
+create values conforming to the types we define.
+That's why the Mondrian framework also exposes many utility methods and types to
+bridge the gap between Typescript's and Mondrian's type systems.
 
 ## Type inference
 
-You may have noticed that all the Mondrian types are closely related to Typescript ones: Mondrian primitives can easily be mapped to Typescript's (`types.number()` is `number`, `types.string()` is `string`, and so on); the same applies for complex types like objects, arrays and optional values.
+You may have noticed that all the Mondrian types are closely related to Typescript
+ones: Mondrian primitives can easily be mapped to Typescript's
+(`types.number()` is `number`, `types.string()` is `string`, and so on); the
+same applies for complex types like objects, arrays and optional values.
 
-Thanks to this resemblance, every Mondrian type can be turned into a corresponding Typescript type thanks to the `types.Infer` type:
+Thanks to this resemblance, every Mondrian type can be turned into a corresponding
+Typescript type thanks to the `types.Infer` type:
 
 ```ts showLineNumbers
 const model = types.number()
@@ -29,7 +38,8 @@ const value: Model = 10
 
 ### Inference of primitives
 
-All Mondrian primitive types are turned into the corresponding Typescript's primitive type:
+All Mondrian primitive types are turned into the corresponding Typescript's
+primitive type:
 
 | Mondrian type                | Inferred Typescript type        |
 | ---------------------------- | ------------------------------- |
@@ -273,4 +283,3 @@ types.assertType(error, value)
 console.log("Error code:", value.code)
 console.log("Error message:", value.message)
 ```
-

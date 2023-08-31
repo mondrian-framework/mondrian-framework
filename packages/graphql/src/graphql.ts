@@ -5,7 +5,7 @@ import { createGraphQLError } from '@graphql-tools/utils'
 import { decoding, projection, types, validation } from '@mondrian-framework/model'
 import { module, utils, functions, logger } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
-import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
+import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema, printSchema } from 'graphql'
 
 type GraphqlType =
   | { type: 'scalar'; description?: string; impl: types.CustomType<string, {}, any> }
@@ -495,6 +495,7 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
       },
     })
     //console.log(schemaDefs)
+    console.log(printSchema(schema))
     return schema
   } catch (error) {
     console.log(schemaDefs)

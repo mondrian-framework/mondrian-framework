@@ -16,6 +16,22 @@ export class OpentelemetryFunction<
   private readonly counter: Counter
   private readonly histogram: Histogram
 
+  constructor(
+    func: functions.Function<I, O, Context>,
+    name: string,
+    opentelemetry: {
+      tracer: Tracer
+      counter: Counter
+      histogram: Histogram
+    },
+  ) {
+    super(func)
+    this.name = name
+    this.tracer = opentelemetry.tracer
+    this.counter = opentelemetry.counter
+    this.histogram = opentelemetry.histogram
+  }
+
   public async apply(args: functions.FunctionArguments<I, O, Context>): Promise<types.Infer<types.PartialDeep<O>>> {
     this.counter.add(1)
     const startTime = new Date().getTime()
@@ -71,21 +87,5 @@ export class OpentelemetryFunction<
     const middleware = this.middlewares[middlewareIndex]
     span.addEvent('execution', { type: 'middleware', name: middleware.name })
     return middleware.apply(args, (mappedArgs) => this.executeWithinSpan(middlewareIndex + 1, mappedArgs, span), this)
-  }
-
-  constructor(
-    func: functions.Function<I, O, Context>,
-    name: string,
-    opentelemetry: {
-      tracer: Tracer
-      counter: Counter
-      histogram: Histogram
-    },
-  ) {
-    super(func)
-    this.name = name
-    this.tracer = opentelemetry.tracer
-    this.counter = opentelemetry.counter
-    this.histogram = opentelemetry.histogram
   }
 }

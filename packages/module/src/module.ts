@@ -127,9 +127,10 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   module: Module<Fs, ContextInput>,
 ): Module<Fs, ContextInput> {
   assertUniqueNames(module.functions)
-  const maxProjectionDepthMiddleware = module.options?.checks?.maxProjectionDepth
-    ? [middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)]
-    : []
+  const maxProjectionDepthMiddleware =
+    module.options?.checks?.maxProjectionDepth != null
+      ? [middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)]
+      : []
   const checkOutputTypeMiddleware =
     module.options?.checks?.output == null || module.options?.checks?.output !== 'ignore'
       ? [middleware.checkOutputType(module.options?.checks?.output ?? 'throw')]
@@ -137,23 +138,28 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
-      const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
-      const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
-      const counter = myMeter.createCounter('task.invocation')
       const func: functions.Function = {
         ...functionBody,
         middlewares: [
           ...maxProjectionDepthMiddleware,
-          ...checkOutputTypeMiddleware,
           ...(functionBody.middlewares ?? []),
+          ...checkOutputTypeMiddleware,
         ],
       }
-      const wrappedFunction: functions.Function<types.Type, types.Type, {}> = module.options
-        ?.opentelemetryInstrumentation
-        ? new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
-        : new FunctionImplementation(func)
-      return [functionName, wrappedFunction]
+      if (module.options?.opentelemetryInstrumentation) {
+        const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
+        const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
+        const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
+        const counter = myMeter.createCounter('task.invocation')
+        const wrappedFunction: functions.Function<types.Type, types.Type, {}> = new OpentelemetryFunction(
+          func,
+          functionName,
+          { histogram, tracer, counter },
+        )
+        return [functionName, wrappedFunction]
+      } else {
+        return [functionName, new FunctionImplementation(func)]
+      }
     }),
   ) as Fs
   return { ...module, functions: wrappedFunctions }

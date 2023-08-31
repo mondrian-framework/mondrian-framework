@@ -57,8 +57,8 @@ class SdkBuilder<const Metadata> {
               logger: thisLogger,
             })
             const result = await func.apply({
-              input: input as never, //TODO: types.Infer<types.Type> should infer unknown?
-              projection: options?.projection as never, //TODO: projection.FromType<types.Type> should infer Projection?
+              input: input as never,
+              projection: options?.projection as never,
               context: ctx,
               operationId,
               logger: thisLogger,

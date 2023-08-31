@@ -15,7 +15,7 @@ Let's look at an example of how decoding can work out for a Mondrian type:
 
 ```ts showLineNumbers
 type SearchQuery = types.Infer<typeof searchQuery>
-const searchQeury = types.object({
+const searchQuery = types.object({
     name: types.string(),
     limit: types.number().optional(),
     skip: types.number().optional(),

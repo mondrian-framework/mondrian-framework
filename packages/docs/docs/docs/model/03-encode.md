@@ -132,7 +132,9 @@ end up sharing the user's secret.
 One wai to fix this problem is to remember to remove the sensitive data from
 the encoded object; however, Mondrian can help you with that; you can update
 the model definition by marking the field as `sensitive` and tell the encoder to
-hide sensitive data:
+hide sensitive data.
+
+This way, the encoder will always turn al sensitive data into `null` values:
 
 ```ts showLineNumbers
 const User = types.Infer<typeof user>

@@ -27,7 +27,7 @@ types.datetime()
 types.timestamp()
 ```
 
-Each of these can accept different params that can refine their semantics with
+Each of these can accept different parameters that can refine their semantics with
 some options, like common validation rules.
 
 ```ts showLineNumbers
@@ -77,7 +77,7 @@ const greeting = types.literal('Hello, World!')
 
 Besides the primitive types you can find in `@mondrian-framework/model`, there's
 also a wide range of utility types that are already implemented and ready to use.
-In order to minimize packages size and required dependencies, these additional
+In order to minimize package size and required dependencies, these additional
 types are provided in a separate package named `@mondrian-framework/advanced-types`.
 
 To use those definitions you can import the package like this:
@@ -125,7 +125,7 @@ types.rgba() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
 
 Only primitive types wouldn't get us far in defining complex business domains.
 That's why Mondrian also supports the definition of wrapper types like arrays,
-optional and nullable values that can wrap and enrich the definition of any
+optional, and nullable values that can wrap and enrich the definition of any
 other Mondrian type.
 
 ### Optional
@@ -135,7 +135,7 @@ corresponding optional type.
 This means that the given type can be also `undefined`, or not specified if
 assigned to a field of an [object](#objects).
 
-Optional types can be defined wrapping other Mondrian types:
+Optional types can be defined by wrapping other Mondrian types:
 
 ```ts showLineNumbers
 // These definitions are equivalent
@@ -166,7 +166,7 @@ const nullableString2 = types.string().nullable()
 
 ### Arrays
 
-Just like optionals and nullables, array types can bedefined by wrapping another
+Just like optionals and nullables, array types can be defined by wrapping another
 Mondrian type.
 The resulting definition describes an array of values of the wrapped type:
 
@@ -235,7 +235,7 @@ const backToImmutable = myMutableObject.immutable()
 
 #### Possibly missing fields
 
-Fields are considered required by default. In order to define a possibly missing
+Fields are considered required by default. To define a possibly missing
 field one can use an optional Mondrian type:
 
 ```ts showLineNumbers
@@ -249,10 +249,10 @@ const myObject = types.object({
 #### Complex object definitions
 
 All the examples shown so far only use primitive and wrapper types as object
-fields. However, there's nothing stopping you from using *any kind* of Mondrian
+fields. However, nothing is stopping you from using *any kind* of Mondrian
 type, no matter how complex it is!
 
-An object could have primitive types, other objects, unions or even
+An object could have primitive types, other objects, unions, or even
 [custom types](#custom-types) as their fields. Let's consider a more complex
 example:
 
@@ -288,7 +288,7 @@ const myUnion = types.union({
 // same as { readonly variant1: string } | { readonly variant2: number }
 ```
 
-As you can see, there is a difference with how TypeScript natively handles
+As you can see, there is a difference in how TypeScript natively handles
 variants: Mondrian variants are *tagged*, meaning that each variant of a union
 type must have a unique name to tell it apart from the others.
 
@@ -305,15 +305,15 @@ const user = types.union({
 
 #### A thorough example
 
-With these building blocks, we have an powerful toolbox to expressively describe
+With these building blocks, we have a powerful toolbox to expressively describe
 complex domains.
 
 Let's work through a more complex example and see how this would work out.
-In this example we're modelling (a simplified version of) user login:
+In this example we're modeling (a simplified version of) user login:
 
 - we receive a password and username as input
-- we send back a response that can either be successful of contain an error message:
-  - if the user can be logged in the response is successful and contains the user information
+- we send back a response that can either be successful or contain an error message:
+  - if the user can be logged in the response is successful and contains the user's information
   - if the user cannot be logged in the response will contain an error message
 
 The type definitions needed for this example would be the following:
@@ -358,13 +358,13 @@ async function loginUser(auth: AuthenticationData) {
 ```
 
 Types definitions can help us define clear and expressive models that are
-faithful to the modelled domain.
+faithful to the modeled domain.
 
 ## Custom types
 
 Sometimes the types offered by the Mondrian framework may not be enough for
 your needs. That's why you can also define custom types that implement
-completely arbitrary logics. The mentioned [advanced types](#additional-types)
+completely arbitrary logic. The mentioned [advanced types](#additional-types)
 are built exactly in this way.
 
 A custom type can be defined using the `custom` function:
@@ -377,8 +377,8 @@ As you may have noticed, the `custom` function has three generic types:
 
 - the literal string with the name of the custom type
 - the type of additional options that may be needed by the custom type,
-  besides the basic options shared by all the mondrian types
-- the type the custom type will be inferred as ([here's](./02-validation.md)
+  besides the basic options shared by all the Mondrian types
+- the inferred type for the custom type ([here's](./02-typing.md)
   a more thorough explanation of Mondrian's type inference)
 
 Then, the arguments you need to pass to the custom builder are:
@@ -392,7 +392,7 @@ Then, the arguments you need to pass to the custom builder are:
 Below is an example implementation of the `port` type that represents a TCP port.
 It could also be defined as a simple integer, however, defining it as a custom
 type can prove to be more expressive and it would also allow you to define custom
-arbitrary decoding, encoding and validation logic:
+arbitrary decoding, encoding, and validation logic:
 
 ```ts showLineNumbers
 import { validation, decoding, types } from '@mondrian-framework/model'

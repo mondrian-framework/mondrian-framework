@@ -283,4 +283,3 @@ types.assertType(error, value)
 console.log("Error code:", value.code)
 console.log("Error message:", value.message)
 ```
-

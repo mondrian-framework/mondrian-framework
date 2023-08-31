@@ -10,7 +10,7 @@ export const m = module.build<Functions, { jwt?: string }>({
   name: 'reddit',
   version: '5.0.1',
   functions,
-  functinoOptions: {
+  functionOptions: {
     login: { authentication: 'NONE' },
     checkPost: { authentication: 'NONE' },
   },

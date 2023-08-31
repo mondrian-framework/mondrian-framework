@@ -8,7 +8,7 @@ type FunctionSpecifications = {
   namespace?: string | null
 }
 
-export type Api<Fs extends functions.Functions> = {
+export type Api<Fs> = {
   functions: {
     [K in keyof Fs]?: FunctionSpecifications | readonly FunctionSpecifications[]
   }

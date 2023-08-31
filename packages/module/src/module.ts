@@ -12,7 +12,7 @@ export type Module<Fs extends functions.Functions = functions.Functions, Context
   name: string
   version: string
   functions: Fs
-  functinoOptions?: { [K in keyof Fs]?: { authentication?: AuthenticationMethod | 'NONE' } }
+  functionOptions?: { [K in keyof Fs]?: { authentication?: AuthenticationMethod | 'NONE' } }
   authentication?: AuthenticationMethod
   context: (
     input: ContextInput,

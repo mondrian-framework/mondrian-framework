@@ -102,32 +102,26 @@ export type Infer<T extends Type>
   = [T] extends [NumberType] ? number
   : [T] extends [StringType] ? string
   : [T] extends [BooleanType] ? boolean
-  : [T] extends [LiteralType<infer L>] ? InferLiteral<L>
+  : [T] extends [LiteralType<infer L>] ? L
   : [T] extends [CustomType<any, any, infer InferredAs>] ? InferredAs
-  : [T] extends [EnumType<infer Vs>] ? InferEnum<Vs>
-  : [T] extends [OptionalType<infer T1>] ? InferOptional<T1>
-  : [T] extends [NullableType<infer T1>] ? InferNullable<T1>
-  : [T] extends [ReferenceType<infer T1>] ? InferReference<T1>
+  : [T] extends [EnumType<infer Vs>] ? Vs[number]
+  : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
+  : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
+  : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
   : [T] extends [ArrayType<infer M, infer T1>] ? InferArray<M, T1>
   : [T] extends [ObjectType<infer M, infer Ts>] ? InferObject<M, Ts>
   : [T] extends [UnionType<infer Ts>] ? InferUnion<Ts>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
-type InferObject<M, Ts extends Types> = M extends Mutability.Mutable ? InferMutableObject<Ts> : InferImmutableObject<Ts>
 // prettier-ignore
-type InferImmutableObject<Ts extends Types> = { readonly [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { readonly [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
+type InferObject<M extends Mutability, Ts extends Types> = ApplyObjectMutability<M, { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }>
 // prettier-ignore
-type InferMutableObject<Ts extends Types> = { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
 type InferUnion<Ts extends Types> = { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
-type InferEnum<Vs extends readonly [string, ...string[]]> = Vs[number]
-type InferLiteral<L> = L
-type InferArray<M, T extends Type> = M extends Mutability.Mutable ? InferMutableArray<T> : InferImmutableArray<T>
-type InferMutableArray<T extends Type> = Infer<T>[]
-type InferImmutableArray<T extends Type> = readonly Infer<T>[]
-type InferOptional<T extends Type> = undefined | Infer<T>
-type InferNullable<T extends Type> = null | Infer<T>
-type InferReference<T extends Type> = Infer<T>
+// prettier-ignore
+type InferArray<M, T extends Type> = M extends Mutability.Immutable ? Readonly<Infer<T>[]> : Infer<T>[]
+// prettier-ignore
+type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknown>> = M extends Mutability.Immutable ? { readonly [K in keyof T]: T[K] } : { [K in keyof T]: T[K] }
 
 /**
  * Given an array of types, returns the union of the fields whose type is optional
@@ -749,7 +743,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
     value: unknown,
     decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferEnum<Vs>, validation.Error[] | decoding.Error[]>
+  ): result.Result<Vs[number], validation.Error[] | decoding.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the decoded
@@ -762,7 +756,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    * @param decodingOptions the options used during the decoding process
    * @returns a {@link result decoding.Result} which holds the decoded value if the decoding process was successful
    */
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferEnum<Vs>>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Vs[number]>
 
   /**
    * @param value the value which will be validated
@@ -770,7 +764,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    * @returns the {@link validation.Result result} of the validation process. It is a successful result
    *          if the provided value pass all the validation checks, a failure otherwise
    */
-  validate(value: InferEnum<Vs>, validationOptions?: validation.Options): validation.Result
+  validate(value: Vs[number], validationOptions?: validation.Options): validation.Result
 
   /**
    * @param value the value to encode into a {@link JSONType}
@@ -784,7 +778,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    *          ```
    */
   encode(
-    value: InferEnum<Vs>,
+    value: Vs[number],
     encodingOptions?: encoding.Options,
     validationOptions?: validation.Options,
   ): result.Result<JSONType, validation.Error[]>
@@ -799,7 +793,7 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferEnum<Vs>, encodingOptions?: encoding.Options): JSONType
+  encodeWithoutValidation(value: Vs[number], encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -881,7 +875,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
     value: unknown,
     decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferLiteral<L>, validation.Error[] | decoding.Error[]>
+  ): result.Result<L, validation.Error[] | decoding.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the decoded
@@ -894,7 +888,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    * @param decodingOptions the options used during the decoding process
    * @returns a {@link result decoding.Result} which holds the decoded value if the decoding process was successful
    */
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferLiteral<L>>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<L>
 
   /**
    * @param value the value which will be validated
@@ -902,7 +896,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    * @returns the {@link validation.Result result} of the validation process. It is a successful result
    *          if the provided value pass all the validation checks, a failure otherwise
    */
-  validate(value: InferLiteral<L>, validationOptions?: validation.Options): validation.Result
+  validate(value: L, validationOptions?: validation.Options): validation.Result
 
   /**
    * @param value the value to encode into a {@link JSONType}
@@ -916,7 +910,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    *          ```
    */
   encode(
-    value: InferLiteral<L>,
+    value: L,
     encodingOptions?: encoding.Options,
     validationOptions?: validation.Options,
   ): result.Result<JSONType, validation.Error[]>
@@ -931,7 +925,7 @@ export type LiteralType<L extends number | string | boolean | null> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferLiteral<L>, encodingOptions?: encoding.Options): JSONType
+  encodeWithoutValidation(value: L, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1415,7 +1409,7 @@ export type OptionalType<T extends Type> = {
     value: unknown,
     decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferOptional<T>, validation.Error[] | decoding.Error[]>
+  ): result.Result<undefined | Infer<T>, validation.Error[] | decoding.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the decoded
@@ -1428,7 +1422,7 @@ export type OptionalType<T extends Type> = {
    * @param decodingOptions the options used during the decoding process
    * @returns a {@link result decoding.Result} which holds the decoded value if the decoding process was successful
    */
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferOptional<T>>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<undefined | Infer<T>>
 
   /**
    * @param value the value which will be validated
@@ -1436,7 +1430,7 @@ export type OptionalType<T extends Type> = {
    * @returns the {@link validation.Result result} of the validation process. It is a successful result
    *          if the provided value pass all the validation checks, a failure otherwise
    */
-  validate(value: InferOptional<T>, validationOptions?: validation.Options): validation.Result
+  validate(value: undefined | Infer<T>, validationOptions?: validation.Options): validation.Result
 
   /**
    * @param value the value to encode into a {@link JSONType}
@@ -1451,7 +1445,7 @@ export type OptionalType<T extends Type> = {
    *          ```
    */
   encode(
-    value: InferOptional<T>,
+    value: undefined | Infer<T>,
     encodingOptions?: encoding.Options,
     validationOptions?: validation.Options,
   ): result.Result<JSONType, validation.Error[]>
@@ -1466,7 +1460,7 @@ export type OptionalType<T extends Type> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferOptional<T>, encodingOptions?: encoding.Options): JSONType
+  encodeWithoutValidation(value: undefined | Infer<T>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1539,7 +1533,7 @@ export type NullableType<T extends Type> = {
     value: unknown,
     decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferNullable<T>, validation.Error[] | decoding.Error[]>
+  ): result.Result<null | Infer<T>, validation.Error[] | decoding.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the decoded
@@ -1552,7 +1546,7 @@ export type NullableType<T extends Type> = {
    * @param decodingOptions the options used during the decoding process
    * @returns a {@link result decoding.Result} which holds the decoded value if the decoding process was successful
    */
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferNullable<T>>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<null | Infer<T>>
 
   /**
    * @param value the value which will be validated
@@ -1560,7 +1554,7 @@ export type NullableType<T extends Type> = {
    * @returns the {@link validation.Result result} of the validation process. It is a successful result
    *          if the provided value pass all the validation checks, a failure otherwise
    */
-  validate(value: InferNullable<T>, validationOptions?: validation.Options): validation.Result
+  validate(value: null | Infer<T>, validationOptions?: validation.Options): validation.Result
 
   /**
    * @param value the value to encode into a {@link JSONType}
@@ -1575,7 +1569,7 @@ export type NullableType<T extends Type> = {
    *          ```
    */
   encode(
-    value: InferNullable<T>,
+    value: null | Infer<T>,
     encodingOptions?: encoding.Options,
     validationOptions?: validation.Options,
   ): result.Result<JSONType, validation.Error[]>
@@ -1590,7 +1584,7 @@ export type NullableType<T extends Type> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferNullable<T>, encodingOptions?: encoding.Options): JSONType
+  encodeWithoutValidation(value: null | Infer<T>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1662,7 +1656,7 @@ export type ReferenceType<T extends Type> = {
     value: unknown,
     decodingOptions?: decoding.Options,
     validationOptions?: validation.Options,
-  ): result.Result<InferReference<T>, validation.Error[] | decoding.Error[]>
+  ): result.Result<Infer<T>, validation.Error[] | decoding.Error[]>
 
   /**
    * ⚠️ Pay attention when using this function since it does not perform validation on the decoded
@@ -1675,7 +1669,7 @@ export type ReferenceType<T extends Type> = {
    * @param decodingOptions the options used during the decoding process
    * @returns a {@link result decoding.Result} which holds the decoded value if the decoding process was successful
    */
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferReference<T>>
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<T>>
 
   /**
    * @param value the value which will be validated
@@ -1683,7 +1677,7 @@ export type ReferenceType<T extends Type> = {
    * @returns the {@link validation.Result result} of the validation process. It is a successful result
    *          if the provided value pass all the validation checks, a failure otherwise
    */
-  validate(value: InferReference<T>, validationOptions?: validation.Options): validation.Result
+  validate(value: Infer<T>, validationOptions?: validation.Options): validation.Result
 
   /**
    * @param value the value to encode into a {@link JSONType}
@@ -1697,7 +1691,7 @@ export type ReferenceType<T extends Type> = {
    *          ```
    */
   encode(
-    value: InferReference<T>,
+    value: Infer<T>,
     encodingOptions?: encoding.Options,
     validationOptions?: validation.Options,
   ): result.Result<JSONType, validation.Error[]>
@@ -1712,7 +1706,7 @@ export type ReferenceType<T extends Type> = {
    * @param value the value to encode into a {@link JSONType}
    * @returns the value encoded as a `JSONType`
    */
-  encodeWithoutValidation(value: InferReference<T>, encodingOptions?: encoding.Options): JSONType
+  encodeWithoutValidation(value: Infer<T>, encodingOptions?: encoding.Options): JSONType
 
   /**
    * @param other the type this will get compared to
@@ -1929,7 +1923,7 @@ export function pick<
   }
   const pickedFields = filterMapObject(obj.fields, (k, t) => (k in fields && fields[k] === true ? t : undefined))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(pickedFields, options) as ObjectType<M, PickObjectFields<Ts, Fields>>
+  return () => constructor(pickedFields, options) as unknown as ObjectType<M, PickObjectFields<Ts, Fields>>
 }
 
 type PickObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
@@ -1969,7 +1963,7 @@ export function omit<
   }
   const pickedFields = filterMapObject(obj.fields, (k, t) => (!(k in fields) || fields[k] !== true ? t : undefined))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(pickedFields, options) as ObjectType<M, OmitObjectFields<Ts, Fields>>
+  return () => constructor(pickedFields, options) as unknown as ObjectType<M, OmitObjectFields<Ts, Fields>>
 }
 
 type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true }> = {
@@ -2004,7 +1998,7 @@ export function omitReferences<const Ts extends Types, M extends Mutability = Mu
   }
   const pickedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Reference) ? undefined : t))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(pickedFields, options) as ObjectType<M, OmitReferenceObjectFields<Ts>>
+  return () => constructor(pickedFields, options) as unknown as ObjectType<M, OmitReferenceObjectFields<Ts>>
 }
 
 type OmitReferenceObjectFields<Ts extends Types> = {
@@ -2037,7 +2031,7 @@ export function partial<const Ts extends Types, M extends Mutability = Mutabilit
   }
   const mappedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Optional) ? t : types.optional(t)))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(mappedFields, options) as ObjectType<M, PartialObjectFields<Ts>>
+  return () => constructor(mappedFields, options) as unknown as ObjectType<M, PartialObjectFields<Ts>>
 }
 
 type PartialObjectFields<Ts extends Types> = {

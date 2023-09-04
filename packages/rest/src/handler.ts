@@ -16,7 +16,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }: {
   functionName: string
   module: module.Module<Fs, ContextInput>
-  functionBody: functions.Function
+  functionBody: functions.FunctionImplementation
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   globalMaxVersion: number
@@ -144,7 +144,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
 function getInputExtractor(args: {
   specification: FunctionSpecifications
-  functionBody: functions.Function
+  functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }

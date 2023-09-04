@@ -1,5 +1,5 @@
 import { functions } from '..'
-import { FunctionImplementation } from './implementation'
+import { BaseFunction } from './base'
 import { result, types } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
 
@@ -10,7 +10,7 @@ export class OpentelemetryFunction<
   I extends types.Type,
   O extends types.Type,
   Context extends Record<string, unknown>,
-> extends FunctionImplementation<I, O, Context> {
+> extends BaseFunction<I, O, Context> {
   private readonly name: string
   private readonly tracer: Tracer
   private readonly counter: Counter

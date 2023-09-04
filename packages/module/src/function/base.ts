@@ -4,8 +4,8 @@ import { types } from '@mondrian-framework/model'
 /**
  * Basic function implementation.
  */
-export class FunctionImplementation<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>>
-  implements functions.Function<I, O, Context>
+export class BaseFunction<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>>
+  implements functions.FunctionImplementation<I, O, Context>
 {
   readonly input: I
   readonly output: O
@@ -13,7 +13,7 @@ export class FunctionImplementation<I extends types.Type, O extends types.Type, 
   readonly middlewares: readonly functions.Middleware<I, O, Context>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
 
-  constructor(func: Omit<functions.Function<I, O, Context>, 'apply'>) {
+  constructor(func: functions.Function<I, O, Context>) {
     this.input = func.input
     this.output = func.output
     this.body = func.body

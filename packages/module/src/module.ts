@@ -1,5 +1,5 @@
 import { functions, logger } from '.'
-import { FunctionImplementation } from './function/implementation'
+import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
@@ -8,7 +8,7 @@ import opentelemetry, { ValueType } from '@opentelemetry/api'
 /**
  * The Mondrian module type.
  */
-export type Module<Fs extends functions.Functions = functions.Functions, ContextInput = unknown> = {
+export interface Module<Fs extends functions.Functions = functions.Functions, ContextInput = unknown> {
   name: string
   version: string
   functions: Fs
@@ -57,7 +57,7 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
  */
 type ContextType<F extends functions.Functions> = UnionToIntersection<
   {
-    [K in keyof F]: F[K] extends functions.Function<any, any, infer Context> ? Context : never
+    [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, infer Context> ? Context : never
   }[keyof F]
 >
 
@@ -138,7 +138,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const func: functions.Function = {
+      const func: functions.FunctionImplementation = {
         ...functionBody,
         middlewares: [
           ...maxProjectionDepthMiddleware,
@@ -151,16 +151,41 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
         const counter = myMeter.createCounter('task.invocation')
-        const wrappedFunction: functions.Function<types.Type, types.Type, {}> = new OpentelemetryFunction(
+        const wrappedFunction: functions.FunctionImplementation<types.Type, types.Type, {}> = new OpentelemetryFunction(
           func,
           functionName,
           { histogram, tracer, counter },
         )
         return [functionName, wrappedFunction]
       } else {
-        return [functionName, new FunctionImplementation(func)]
+        return [functionName, new BaseFunction(func)]
       }
     }),
   ) as Fs
   return { ...module, functions: wrappedFunctions }
 }
+
+/*
+export interface ModuleInterface<FsI extends Record<string, functions.FunctionInterface>> {
+  name: string
+  version: string
+  functions: FsI
+}
+
+export function define<const Fs extends Record<string, functions.FunctionInterface>>(
+  module: ModuleInterface<Fs>,
+): ModuleInterface<Fs> {
+  return module
+}
+
+export function ofDefinition<
+  const FsI extends Record<string, functions.FunctionInterface>,
+  const Fs extends { [K in keyof FsI]: functions.FunctionImplementation<FsI[K]['input'], FsI[K]['output'], any> },
+  const ContextInput = unknown,
+>(
+  moduleInterface: ModuleInterface<FsI>,
+  module: Omit<Module<Fs, ContextInput>, 'name' | 'version'>,
+): Module<Fs, ContextInput> {
+  return { ...moduleInterface, ...module }
+}
+*/

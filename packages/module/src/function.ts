@@ -1,15 +1,11 @@
 import { logger } from '.'
-import { FunctionImplementation } from './function/implementation'
+import { BaseFunction } from './function/base'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
- * A Mondrian function.
+ * Mondrian function interface.
  */
-export type Function<
-  I extends types.Type = types.Type,
-  O extends types.Type = types.Type,
-  Context extends Record<string, unknown> = Record<string, unknown>,
-> = {
+export interface FunctionInterface<I extends types.Type = types.Type, O extends types.Type = types.Type> {
   /**
    * Function input {@link types.Type Type}.
    */
@@ -19,21 +15,41 @@ export type Function<
    */
   readonly output: O
   /**
-   * Function boby.
+   * Function {@link FunctionOptions}
+   */
+  readonly options?: FunctionOptions
+}
+
+/**
+ * Mondrian function.
+ */
+export interface Function<
+  I extends types.Type = types.Type,
+  O extends types.Type = types.Type,
+  Context extends Record<string, unknown> = Record<string, unknown>,
+> extends FunctionInterface<I, O> {
+  /**
+   * Function body.
    */
   readonly body: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
-  /**
-   * Function apply. This executes function's {@link Middleware} and function's body.
-   */
-  readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
   /**
    * Function {@link Middleware Middlewares}
    */
   readonly middlewares?: readonly Middleware<I, O, Context>[]
+}
+
+/**
+ * Mondrian function implemetation.
+ */
+export interface FunctionImplementation<
+  I extends types.Type = types.Type,
+  O extends types.Type = types.Type,
+  Context extends Record<string, unknown> = Record<string, unknown>,
+> extends Function<I, O, Context> {
   /**
-   * Function {@link FunctionOptions}
+   * Function apply. This executes function's {@link Middleware} and function's body.
    */
-  readonly options?: FunctionOptions
+  readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
 }
 
 /**
@@ -49,15 +65,6 @@ export type FunctionOptions = {
    */
   readonly description?: string
 }
-
-/**
- * Information needed to define a Mondrian {@link Function}
- */
-type FunctionDefinition<
-  I extends types.Type = types.Type,
-  O extends types.Type = types.Type,
-  Context extends Record<string, unknown> = Record<string, unknown>,
-> = Omit<Function<I, O, Context>, 'apply'>
 
 /**
  * Arguments of a function invokation.
@@ -109,21 +116,21 @@ export type Middleware<I extends types.Type, O extends types.Type, Context exten
    * Apply function of this middleware.
    * @param args Argument of the functin invokation. Can be transformed with `next` callback.
    * @param next Continuation callback of the middleware.
-   * @param thisFunction Reference to the underlying {@link Function}.
+   * @param thisFunction Reference to the underlying {@link FunctionImplementation}.
    * @returns a value that respect function's output type and the given projection.
    */
   apply: (
     args: FunctionArguments<I, O, Context>,
     next: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>,
-    thisFunction: Function<I, O, Context>,
+    thisFunction: FunctionImplementation<I, O, Context>,
   ) => Promise<types.Infer<types.PartialDeep<O>>>
 }
 
 /**
- * A map of {@link Function}s.
+ * A map of {@link FunctionImplementation}s.
  */
 export type Functions<Contexts extends Record<string, Record<string, unknown>> = Record<string, any>> = {
-  [K in keyof Contexts]: Function<types.Type, types.Type, Contexts[K]>
+  [K in keyof Contexts]: FunctionImplementation<types.Type, types.Type, Contexts[K]>
 }
 
 /**
@@ -151,8 +158,8 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
  * ```
  */
 export function build<const I extends types.Type, const O extends types.Type>(
-  func: FunctionDefinition<I, O, {}>,
-): Function<I, O, {}> {
+  func: Function<I, O, {}>,
+): FunctionImplementation<I, O, {}> {
   return withContext().build(func)
 }
 
@@ -189,8 +196,16 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
    * @returns A Mondrian function.
    */
   public build<const I extends types.Type, const O extends types.Type>(
-    func: FunctionDefinition<I, O, Context>,
-  ): Function<I, O, Context> {
-    return new FunctionImplementation(func)
+    func: Function<I, O, Context>,
+  ): FunctionImplementation<I, O, Context> {
+    return new BaseFunction(func)
   }
 }
+
+/*
+export function define<const I extends types.Type, const O extends types.Type>(
+  func: FunctionInterface<I, O>,
+): FunctionInterface<I, O> {
+  return func
+}
+*/

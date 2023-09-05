@@ -1,4 +1,5 @@
 import { CRON_API, REST_API } from './api'
+import { startServer } from './good/rest'
 import { m, m as module } from './module'
 import { cron } from '@mondrian-framework/cron'
 import { server as restServer } from '@mondrian-framework/rest-fastify'
@@ -37,6 +38,7 @@ loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(new ConsoleLog
 logs.setGlobalLoggerProvider(loggerProvider)
 
 async function main() {
+  /*
   const server = fastify()
   const time = new Date().getTime()
   restServer.start({
@@ -56,6 +58,7 @@ async function main() {
       }
     },
   })
+  */
   /* graphql.serve({
     server,
     module,
@@ -75,6 +78,10 @@ async function main() {
     api: CRON_API,
     context: async ({}) => ({}),
   })*/
+
+  const time = new Date().getTime()
+  const server = fastify()
+  startServer(server)
   const address = await server.listen({ port: 4000 })
   console.log(`Module "${module.name}" has started in ${new Date().getTime() - time} ms! ${address}`)
 }

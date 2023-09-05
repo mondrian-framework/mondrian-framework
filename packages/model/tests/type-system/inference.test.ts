@@ -75,8 +75,8 @@ describe('Infer', () => {
     test('immutable ObjectType inferred with immutable fields', () => {
       const model = types.object({
         field1: types.number(),
-        field2: types.string(),
-        field3: types.object({ inner: types.boolean() }).mutable(),
+        field2: { virtual: types.string() },
+        field3: types.object({ inner: { virtual: types.boolean() } }).mutable(),
       })
       type Inferred = types.Infer<typeof model>
       type Expected = {

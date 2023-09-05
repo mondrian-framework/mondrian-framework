@@ -115,7 +115,12 @@ export type Infer<T extends Type>
   : never
 
 // prettier-ignore
-type InferObject<M extends Mutability, Ts extends Types> = ApplyObjectMutability<M, { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } & { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }>
+type InferObject<M extends Mutability, Ts extends Fields> =
+  ApplyObjectMutability<M,
+    { [Key in NonOptionalKeys<Ts>]: Infer<UnwrapField<Ts[Key]>> } &
+    { [Key in OptionalKeys<Ts>]?: Infer<UnwrapField<Ts[Key]>> }
+  >
+
 // prettier-ignore
 type InferUnion<Ts extends Types> = { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
 // prettier-ignore
@@ -135,7 +140,9 @@ type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknow
  *          OptionalKeys<typeof model> // "bar" | "baz"
  *          ```
  */
-type OptionalKeys<T extends Types> = { [K in keyof T]: IsOptional<T[K]> extends true ? K : never }[keyof T]
+type OptionalKeys<T extends Fields> = {
+  [K in keyof T]: IsOptional<UnwrapField<T[K]>> extends true ? K : never
+}[keyof T]
 
 /**
  * Given an array of types, returns the union of the fields whose type is not optional
@@ -149,7 +156,15 @@ type OptionalKeys<T extends Types> = { [K in keyof T]: IsOptional<T[K]> extends 
  *          OptionalKeys<typeof model> // "foo" | "baz"
  *          ```
  */
-type NonOptionalKeys<T extends Types> = { [K in keyof T]: IsOptional<T[K]> extends true ? never : K }[keyof T]
+type NonOptionalKeys<T extends Fields> = {
+  [K in keyof T]: IsOptional<UnwrapField<T[K]>> extends true ? never : K
+}[keyof T]
+
+export type UnwrapField<F extends Field> = F extends { virtual: infer T extends Type } ? T : F extends Type ? F : never
+
+export function unwrapField(field: types.Field): types.Type {
+  return 'virtual' in field ? field.virtual : field
+}
 
 /**
  * Returns the literal type `true` for any {@link Type} that is optional. That is, if the type has a top-level
@@ -1079,10 +1094,13 @@ export type UnionType<Ts extends Types> = {
  */
 export type UnionTypeOptions = BaseOptions
 
+export type Field = Type | { virtual: Type }
+export type Fields = Record<string, Field>
+
 /**
  * The model of an object in the Mondrian framework.
  */
-export type ObjectType<M extends Mutability, Ts extends Types> = {
+export type ObjectType<M extends Mutability, Ts extends Fields> = {
   readonly kind: Kind.Object
   readonly mutability: M
   readonly fields: Ts
@@ -2058,7 +2076,7 @@ type PartialObjectFields<Ts extends Types> = {
 //prettier-ignore
 export type PartialDeep<T extends Type> 
   = [T] extends [UnionType<infer Ts>] ? UnionType<{ [Key in keyof Ts]: PartialDeep<Ts[Key]> }>
-  : [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<Ts[Key]>> }>
+  : [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<UnwrapField<Ts[Key]>>> }>
   : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
   : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
   : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>

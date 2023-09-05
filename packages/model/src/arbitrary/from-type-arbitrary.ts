@@ -14,7 +14,7 @@ type CustomMapInternal<T extends types.Type, Visited extends types.Type[]>
   : [T] extends [types.EnumType<any>] ? {}
   : [T] extends [types.LiteralType<any>] ? {}
   : [T] extends [types.UnionType<infer Ts>] ? keyof Ts extends never ? {} : UnionToIntersection<{ [Key in keyof Ts]: CustomMapInternal<Ts[Key], Visited> }[keyof Ts]>
-  : [T] extends [types.ObjectType<any, infer Ts>] ? keyof Ts extends never ? {} : UnionToIntersection<{ [Key in keyof Ts]: CustomMapInternal<Ts[Key], Visited> }[keyof Ts]>
+  : [T] extends [types.ObjectType<any, infer Ts>] ? keyof Ts extends never ? {} : UnionToIntersection<{ [Key in keyof Ts]: CustomMapInternal<types.UnwrapField<Ts[Key]>, Visited> }[keyof Ts]>
   : [T] extends [types.ArrayType<any, infer T1>] ? CustomMapInternal<T1, Visited>
   : [T] extends [types.OptionalType<infer T1>] ? CustomMapInternal<T1, Visited>
   : [T] extends [types.NullableType<infer T1>] ? CustomMapInternal<T1, Visited>

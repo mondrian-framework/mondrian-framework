@@ -47,7 +47,7 @@ export type FromType<T extends types.Type> =
 : [T] extends [types.ReferenceType<infer T1>] ? true | FromType<T1>
 : [T] extends [(() => infer T1 extends types.Type)] ? true | FromType<T1>
 : [T] extends [types.UnionType<infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<Ts[Key]> }
-: [T] extends [types.ObjectType<any, infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<Ts[Key]> }
+: [T] extends [types.ObjectType<any, infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<types.UnwrapField<Ts[Key]>> }
 : never
 
 /**

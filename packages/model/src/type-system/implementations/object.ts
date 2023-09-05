@@ -1,4 +1,4 @@
-import { decoding, path, result, types, validation } from '../../'
+import { decoding, result, types, validation } from '../../'
 import { always, filterMapObject, mergeArrays, prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -32,21 +32,21 @@ import { JSONType } from '@mondrian-framework/utils'
  *          }
  *          ```
  */
-export function object<Ts extends types.Types>(
+export function object<Ts extends types.Fields>(
   fields: Ts,
   options?: types.OptionsOf<types.ObjectType<types.Mutability.Immutable, Ts>>,
 ): types.ObjectType<types.Mutability.Immutable, Ts> {
   return new ObjectTypeImpl(types.Mutability.Immutable, fields, options)
 }
 
-export function mutableObject<Ts extends types.Types>(
+export function mutableObject<Ts extends types.Fields>(
   fields: Ts,
   options?: types.OptionsOf<types.ObjectType<types.Mutability.Mutable, Ts>>,
 ): types.ObjectType<types.Mutability.Mutable, Ts> {
   return new ObjectTypeImpl(types.Mutability.Mutable, fields, options)
 }
 
-class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
+class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Fields>
   extends DefaultMethods<types.ObjectType<M, Ts>>
   implements types.ObjectType<M, Ts>
 {
@@ -70,7 +70,7 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
   encodeWithNoChecks(value: types.Infer<types.ObjectType<M, Ts>>): JSONType {
     const object = value as Record<string, types.Type>
     return filterMapObject(this.fields, (fieldName, fieldType) => {
-      const concreteFieldType = types.concretise(fieldType)
+      const concreteFieldType = types.concretise(types.unwrapField(fieldType))
       const fieldIsOptional = types.isOptional(concreteFieldType)
       const rawField = object[fieldName]
       const encodedField = concreteFieldType.encodeWithoutValidation(rawField as never)
@@ -83,7 +83,7 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
     const entries = Object.entries(value)
     const validateEntry = ([fieldName, fieldValue]: [string, unknown]) =>
       types
-        .concretise(this.fields[fieldName])
+        .concretise(types.unwrapField(this.fields[fieldName]))
         .validate(fieldValue as never, options)
         .mapError((errors) => prependFieldToAll(errors, fieldName))
 
@@ -114,7 +114,7 @@ function castToObject(value: unknown, decodingOptions?: decoding.Options): decod
 }
 
 function decodeObjectProperties(
-  fields: types.Types,
+  fields: types.Fields,
   object: Record<string, unknown>,
   decodingOptions?: decoding.Options,
 ): decoding.Result<any> {
@@ -122,9 +122,9 @@ function decodeObjectProperties(
     accumulator.push([fieldName, value])
     return accumulator
   }
-  const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
+  const decodeEntry = ([fieldName, fieldType]: [string, types.Field]) =>
     types
-      .concretise(fieldType)
+      .concretise(types.unwrapField(fieldType))
       .decodeWithoutValidation(object[fieldName], decodingOptions)
       .map((value) => [fieldName, value] as const)
       .mapError((errors) => prependFieldToAll(errors, fieldName))

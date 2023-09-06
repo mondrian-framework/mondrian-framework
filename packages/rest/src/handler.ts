@@ -63,6 +63,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     span?.addEvent('Input decoded')
 
     //Decode projection
+    //TODO: add all non virtual fields (also recursively on selected virtual fields)
     const givenProjection = decodeProjection({ request, outputType: functionBody.output })
     if (!givenProjection.isOk) {
       operationLogger.logError('Bad request. (projection)')

@@ -10,7 +10,7 @@ test('Real example', async () => {
       password: types.string(),
       firstname: types.string().optional(),
       lastname: types.string().optional(),
-      friend: types.optional(User).reference(),
+      friend: { virtual: types.optional(User) },
     })
   type User = types.Infer<typeof User>
   const LoginInput = types.pick(User, { email: true, password: true }, types.Mutability.Immutable, {

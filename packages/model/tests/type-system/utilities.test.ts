@@ -38,7 +38,7 @@ describe('omit', () => {
 
 describe('omitReferences', () => {
   test('Lazyness is supported', () => {
-    const t3 = () => types.omitReferences(t1)
+    const t3 = () => types.omitVirtualFields(t1)
     const t4 = types.merge(t3, types.object({}))
     const t1 = () => types.object({ n: { virtual: types.number() }, t2: types.optional(t2) })
     const t2 = () => () => types.object({ s: types.string(), t1: types.optional(t1) })

@@ -93,7 +93,7 @@ export function build<const Fs extends functions.Functions, ContextInput>(args: 
 
 /**
  * Infer a subset of a Mondrian type `T` based on a projection `P`
- * If not explicitly required, all {@link types.ReferenceType} fields are ignored.
+ * If not explicitly required, all virtual fields are excluded.
  */
 // prettier-ignore
 export type Project<T extends types.Type, P extends projection.Projection> 
@@ -106,10 +106,9 @@ type ProjectInternal<T extends types.Type, P extends projection.Projection>
   = [P] extends [true] ? InferExcludingReferences<T>
   : [T] extends [types.OptionalType<infer T1>] ? undefined | Project<T1, P>
   : [T] extends [types.NullableType<infer T1>] ? null | Project<T1, P>
-  : [T] extends [types.ReferenceType<infer T1>] ? Project<T1, P>
   : [T] extends [types.UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [_P in Key]: Key extends keyof P ? P[Key] extends projection.Projection ? P[Key] extends true ? InferExcludingReferences<Ts[Key]> : Project<Ts[Key], P[Key]> : never : Project<Ts[Key], {}> } }[keyof Ts]
-  : [T] extends [types.ObjectType<types.Mutability.Immutable, infer Ts>] ? Readonly<{ [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never }>
-  : [T] extends [types.ObjectType<types.Mutability.Mutable, infer Ts>] ? { [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<Ts[Key], P[Key]> : never }
+  : [T] extends [types.ObjectType<types.Mutability.Immutable, infer Ts>] ? Readonly<{ [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<types.UnwrapField<Ts[Key]>, P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<types.UnwrapField<Ts[Key]>, P[Key]> : never }>
+  : [T] extends [types.ObjectType<types.Mutability.Mutable, infer Ts>] ? { [Key in NonOptionalKeys<Ts> & keyof P]: P[Key] extends projection.Projection ? Project<types.UnwrapField<Ts[Key]>, P[Key]> : never } & { [Key in OptionalKeys<Ts> & keyof P]?: P[Key] extends projection.Projection ? Project<types.UnwrapField<Ts[Key]>, P[Key]> : never }
   : [T] extends [types.ArrayType<types.Mutability.Immutable, infer T1>] ? readonly Project<T1, P>[]
   : [T] extends [types.ArrayType<types.Mutability.Mutable, infer T1>] ? Project<T1, P>[]
   : [T] extends [() => infer T1 extends types.Type] ? Project<T1, P>
@@ -118,43 +117,38 @@ type ProjectInternal<T extends types.Type, P extends projection.Projection>
 // prettier-ignore
 type InferExcludingReferences<T extends types.Type>
   = [T] extends [types.UnionType<infer Ts>] ? { [Key in keyof Ts]: { readonly [P in Key]: InferExcludingReferences<Ts[Key]> } }[keyof Ts]
-  : [T] extends [types.ObjectType<types.Mutability.Immutable, infer Ts>] ? Readonly<{ [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }>
-  : [T] extends [types.ObjectType<types.Mutability.Mutable, infer Ts>] ? { [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<Ts[Key]> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<Ts[Key]> }
+  : [T] extends [types.ObjectType<types.Mutability.Immutable, infer Ts>] ? Readonly<{ [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<types.UnwrapField<Ts[Key]>> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<types.UnwrapField<Ts[Key]>> }>
+  : [T] extends [types.ObjectType<types.Mutability.Mutable, infer Ts>] ? { [Key in NonOptionalKeysNoReferences<Ts>]: InferExcludingReferences<types.UnwrapField<Ts[Key]>> } & { [Key in OptionalKeysNoReferences<Ts>]?: InferExcludingReferences<types.UnwrapField<Ts[Key]>> }
   : [T] extends [types.ArrayType<types.Mutability.Immutable, infer T1>] ? readonly InferExcludingReferences<T1>[]
   : [T] extends [types.ArrayType<types.Mutability.Mutable, infer T1>] ? InferExcludingReferences<T1>[]
   : [T] extends [types.OptionalType<infer T1>] ? undefined | InferExcludingReferences<T1>
   : [T] extends [types.NullableType<infer T1>] ? null | InferExcludingReferences<T1>
-  : [T] extends [types.ReferenceType<infer T1>] ? InferExcludingReferences<T1>
   : [T] extends [types.CustomType<infer _Name, infer _Options, infer InferredAs>] ? InferredAs
   : [T] extends [(() => infer T1 extends types.Type)] ? InferExcludingReferences<T1>
   : types.Infer<T>
 
-type OptionalKeysNoReferences<T extends types.Types> = {
-  [K in keyof T]: IsReference<T[K]> extends true ? never : IsOptional<T[K]> extends true ? K : never
-}[keyof T]
-type NonOptionalKeysNoReferences<T extends types.Types> = {
-  [K in keyof T]: IsReference<T[K]> extends true ? never : IsOptional<T[K]> extends true ? never : K
-}[keyof T]
-
 //prettier-ignore
-type IsReference<T extends types.Type> 
-  = [T] extends [types.OptionalType<infer T1>] ? IsReference<T1>
-  : [T] extends [types.NullableType<infer T1>] ? IsReference<T1>
-  : [T] extends [types.ReferenceType<infer _T1>] ? true
-  : [T] extends [() => infer T1 extends types.Type] ? IsReference<T1>
-  : false
+type OptionalKeysNoReferences<T extends types.Fields> =
+  {
+    [K in keyof T]: T[K] extends { virtual: types.Type } ? never : T[K] extends types.Type ? IsOptional<T[K]> extends K ? K:never : never
+  }[keyof T]
+//prettier-ignore
+
+type NonOptionalKeysNoReferences<T extends types.Fields> =
+  {
+    [K in keyof T]:  T[K] extends { virtual: types.Type } ? never : T[K] extends types.Type ? IsOptional<T[K]> extends K ? never:K : never
+  }[keyof T]
 
 //TODO: import this from model?
 //prettier-ignore
 type IsOptional<T extends types.Type> 
   = [T] extends [types.OptionalType<infer _T1>] ? true
   : [T] extends [types.NullableType<infer T1>] ? IsOptional<T1>
-  : [T] extends [types.ReferenceType<infer T1>] ? IsOptional<T1>
   : [T] extends [() => infer T1 extends types.Type] ? IsOptional<T1>
   : false
-type OptionalKeys<T extends types.Types> = {
-  [K in keyof T]: IsOptional<T[K]> extends true ? K : never
+type OptionalKeys<T extends types.Fields> = {
+  [K in keyof T]: IsOptional<types.UnwrapField<T[K]>> extends true ? K : never
 }[keyof T]
-type NonOptionalKeys<T extends types.Types> = {
-  [K in keyof T]: IsOptional<T[K]> extends true ? never : K
+type NonOptionalKeys<T extends types.Fields> = {
+  [K in keyof T]: IsOptional<types.UnwrapField<T[K]>> extends true ? never : K
 }[keyof T]

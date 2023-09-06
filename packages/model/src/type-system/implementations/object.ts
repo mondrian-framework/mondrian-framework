@@ -1,7 +1,7 @@
 import { decoding, result, types, validation } from '../../'
-import { always, filterMapObject, mergeArrays, prependFieldToAll } from '../../utils'
+import { prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
-import { JSONType } from '@mondrian-framework/utils'
+import { JSONType, always, filterMapObject, mergeArrays } from '@mondrian-framework/utils'
 
 /**
  * @param types an object where each field is itself a {@link types.Type}, used to determine the structure of the

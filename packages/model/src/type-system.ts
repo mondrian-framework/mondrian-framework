@@ -1,6 +1,5 @@
 import { decoding, validation, types, result, encoding } from './index'
-import { filterMapObject, mapObject } from './utils'
-import { JSONType } from '@mondrian-framework/utils'
+import { JSONType, filterMapObject, mapObject } from '@mondrian-framework/utils'
 
 /**
  * The possible kinds of types modelled by the Mondrian Framework

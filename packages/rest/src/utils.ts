@@ -1,8 +1,7 @@
 import { Api, FunctionSpecifications } from './api'
 import { projection, types } from '@mondrian-framework/model'
-import { mapObject } from '@mondrian-framework/model/src/utils'
 import { functions } from '@mondrian-framework/module'
-import { JSONType, isArray, setTraversingValue } from '@mondrian-framework/utils'
+import { JSONType, isArray, setTraversingValue, mapObject } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
   return internalEncodeQueryObject(input, prefix).join('&')

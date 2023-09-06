@@ -1,4 +1,5 @@
-import { areSameArray, assertNever } from './utils'
+import { assertNever } from './utils'
+import { areSameArray } from '@mondrian-framework/utils'
 
 /**
  * The type of a fragment composing a path in a mondrian type. It can either be:

@@ -8,7 +8,7 @@ export const User = () =>
       id: Id,
       email: a.email(),
       name: t.string({ minLength: 3, maxLength: 20 }).nullable(),
-      posts: t.reference(t.array(Post)),
+      posts: { virtual: t.array(Post) },
       audit: Audit,
     })
     .setName('User')
@@ -31,7 +31,7 @@ export const Post = () =>
       title: t.string({ minLength: 1, maxLength: 200 }),
       content: t.string({ maxLength: 5000 }).nullable(),
       published: t.boolean(),
-      author: t.reference(User),
+      author: { virtual: User },
     })
     .setName('Post')
 export type Post = t.Infer<typeof Post>

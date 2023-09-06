@@ -18,7 +18,6 @@ type CustomMapInternal<T extends types.Type, Visited extends types.Type[]>
   : [T] extends [types.ArrayType<any, infer T1>] ? CustomMapInternal<T1, Visited>
   : [T] extends [types.OptionalType<infer T1>] ? CustomMapInternal<T1, Visited>
   : [T] extends [types.NullableType<infer T1>] ? CustomMapInternal<T1, Visited>
-  : [T] extends [types.ReferenceType<infer T1>] ?  CustomMapInternal<T1, Visited>
   : [T] extends [types.CustomType<infer Name, infer Options, infer InferredAs>] ? { [K in Name]: (options?: Options) => gen.Arbitrary<InferredAs> }
   : [T] extends [(() => infer T1 extends types.Type)] ? WasAlredyVisited<Visited, T> extends false ? CustomMapInternal<T1, [...Visited, T]> : {}
   : {}
@@ -76,8 +75,6 @@ export function fromType<T extends types.Type>(
         concreteType.options,
         customArbitraries,
       ) as gen.Arbitrary<types.Infer<T>>
-    case types.Kind.Reference:
-      return fromType(concreteType.wrappedType, customArbitraries, maxDepth - 1) as gen.Arbitrary<types.Infer<T>>
     case types.Kind.Custom:
       return generatorFromArbitrariesMap(
         concreteType.typeName,

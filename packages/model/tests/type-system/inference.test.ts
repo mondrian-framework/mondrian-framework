@@ -163,14 +163,14 @@ describe('Infer', () => {
     })
 
     test('omitted object references inferred as single field object', () => {
-      const model = types.omitReferences(types.object({ field1: types.string(), field2: types.number().reference() }))
+      const model = types.omitReferences(types.object({ field1: types.string(), field2: { virtual: types.number() } }))
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
     })
 
     test('omitted object references inferred as mutable single field object', () => {
       const model = types.omitReferences(
-        types.object({ field1: types.string(), field2: types.number().reference() }),
+        types.object({ field1: types.string(), field2: { virtual: types.number() } }),
         types.Mutability.Mutable,
       )
       type Inferred = types.Infer<typeof model>
@@ -179,7 +179,7 @@ describe('Infer', () => {
 
     test('partial of object inferred with every field optional', () => {
       const model = types.partial(
-        types.object({ field1: types.string().nullable(), field2: types.number().optional().reference() }),
+        types.object({ field1: types.string().nullable(), field2: { virtual: types.number().optional() } }),
       )
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1?: string | null; readonly field2?: number }>()
@@ -187,7 +187,7 @@ describe('Infer', () => {
 
     test('partial of mutable object inferred with every field optional', () => {
       const model = types.partial(
-        types.object({ field1: types.string().nullable(), field2: types.number().optional().reference() }),
+        types.object({ field1: types.string().nullable(), field2: { virtual: types.number().optional() } }),
         types.Mutability.Mutable,
       )
       type Inferred = types.Infer<typeof model>
@@ -223,12 +223,6 @@ describe('Infer', () => {
 
   test('Function returning type is inferred as the returned type', () => {
     const model = () => types.number()
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<number>()
-  })
-
-  test('ReferenceType inferred as the wrapped type', () => {
-    const model = types.reference(types.number())
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()
   })

@@ -59,13 +59,6 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
     expect(model.encodeWithoutValidation(undefined)).toEqual(null)
   })
 
-  test.prop([arbitrary.reference(arbitrary.number()), number])(
-    'encodes a reference value as itself',
-    (model, number) => {
-      expect(model.encodeWithoutValidation(number)).toEqual(number)
-    },
-  )
-
   const objectModel = arbitrary.object({ age: arbitrary.number(), name: arbitrary.optional(arbitrary.string()) })
   const objectGenerator = gen.record({ age: number, name: gen.string() })
   test.prop([objectModel, objectGenerator])('encodes the fields of an object', (model, object) => {

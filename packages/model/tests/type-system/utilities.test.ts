@@ -40,7 +40,7 @@ describe('omitReferences', () => {
   test('Lazyness is supported', () => {
     const t3 = () => types.omitReferences(t1)
     const t4 = types.merge(t3, types.object({}))
-    const t1 = () => types.object({ n: types.number().reference(), t2: types.optional(t2) })
+    const t1 = () => types.object({ n: { virtual: types.number() }, t2: types.optional(t2) })
     const t2 = () => () => types.object({ s: types.string(), t1: types.optional(t1) })
     const result = t4().validate({ t2: { s: '2' } })
     expect(result.isOk).toBe(true)
@@ -71,22 +71,12 @@ describe('Utilities', () => {
     expect(types.isOptional(types.string().array().optional())).toBe(true)
     expect(types.isOptional(types.string().optional())).toBe(true)
     expect(types.isOptional(types.string().optional().nullable())).toBe(true)
-    expect(types.isOptional(types.string().optional().reference())).toBe(true)
     expect(types.isOptional(types.string().optional().array())).toBe(false)
     expect(types.isOptional(types.string().optional().array().optional)).toBe(true)
-  })
-  test('isReference', () => {
-    expect(types.isReference(types.string().array().reference())).toBe(true)
-    expect(types.isReference(types.string().reference())).toBe(true)
-    expect(types.isReference(types.string().reference().nullable())).toBe(true)
-    expect(types.isReference(types.string().reference().optional())).toBe(true)
-    expect(types.isReference(types.string().reference().array())).toBe(false)
-    expect(types.isReference(types.string().reference().array().reference)).toBe(true)
   })
   test('isNullable', () => {
     expect(types.isNullable(types.string().array().nullable())).toBe(true)
     expect(types.isNullable(types.string().nullable())).toBe(true)
-    expect(types.isNullable(types.string().nullable().reference())).toBe(true)
     expect(types.isNullable(types.string().nullable().optional())).toBe(true)
     expect(types.isNullable(types.string().nullable().array())).toBe(false)
     expect(types.isNullable(types.string().nullable().array().nullable)).toBe(true)
@@ -107,7 +97,7 @@ describe('Utilities', () => {
 
 describe('partialDeep', () => {
   test('validate with scalar', () => {
-    const model = types.string().nullable().reference().optional()
+    const model = types.string().nullable().optional()
     const partialModel = types.partialDeep(model)
     assertOk(partialModel.validate(''))
     assertOk(partialModel.validate(null))

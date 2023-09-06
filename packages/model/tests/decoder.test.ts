@@ -329,13 +329,6 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
     })
   })
 
-  describe.concurrent('reference value', () => {
-    const model = types.number().reference()
-    test('decodes wrapped type', () => {
-      checkValue(model.decodeWithoutValidation(1), 1)
-    })
-  })
-
   describe.concurrent('array value', () => {
     const model = types.number().array()
 

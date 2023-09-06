@@ -18,7 +18,6 @@ export enum Kind {
   Array,
   Optional,
   Nullable,
-  Reference,
   Custom,
 }
 
@@ -41,7 +40,6 @@ export type Type =
   | ArrayType<any, any>
   | OptionalType<any>
   | NullableType<any>
-  | ReferenceType<any>
   | CustomType<any, {}, any>
   | (() => Type)
 
@@ -107,7 +105,6 @@ export type Infer<T extends Type>
   : [T] extends [EnumType<infer Vs>] ? Vs[number]
   : [T] extends [OptionalType<infer T1>] ? undefined | Infer<T1>
   : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
-  : [T] extends [ReferenceType<infer T1>] ? Infer<T1>
   : [T] extends [ArrayType<infer M, infer T1>] ? InferArray<M, T1>
   : [T] extends [ObjectType<infer M, infer Ts>] ? InferObject<M, Ts>
   : [T] extends [UnionType<infer Ts>] ? InferUnion<Ts>
@@ -190,36 +187,7 @@ export function unwrapField(field: types.Field): types.Type {
 type IsOptional<T extends Type> 
   = [T] extends [OptionalType<infer _T1>] ? true
   : [T] extends [NullableType<infer T1>] ? IsOptional<T1>
-  : [T] extends [ReferenceType<infer T1>] ? IsOptional<T1>
   : [T] extends [() => infer T1 extends Type] ? IsOptional<T1>
-  : false
-
-/**
- * Returns the literal type `true` for any {@link Type} that is a reference.
- * That is, if the type has a top-level {@link ReferenceType reference wrapper}
- *
- * @example ```ts
- *          const model = types.number().optional().reference()
- *          IsOptional<typeof model> // true
- *          ```
- *          The top-level decorators are `OptionalType` and `ReferenceType` so the type is a reference
- * @example ```ts
- *          const model = types.number().reference()
- *          IsOptional<typeof model> // true
- *          ```
- *          The top-level decorator is `ReferenceType` so the type is a reference
- * @example ```ts
- *          const model = types.number().reference().array()
- *          IsOptional<typeof model> // false
- *          ```
- *          The top-level decorator is `ArrayType` so the type is not a reference
- */
-//prettier-ignore
-type IsReference<T extends Type> 
-  = [T] extends [ReferenceType<infer _T1>] ? true
-  : [T] extends [NullableType<infer T1>] ? IsReference<T1>
-  : [T] extends [ReferenceType<infer T1>] ? IsReference<T1>
-  : [T] extends [() => infer T1 extends Type] ? IsReference<T1>
   : false
 
 /**
@@ -242,7 +210,6 @@ export type OptionsOf<T extends Type>
   : [T] extends [ArrayType<infer M, infer T1>] ? NonNullable<ArrayType<M, T1>['options']>
   : [T] extends [OptionalType<infer T1>] ? NonNullable<OptionalType<T1>['options']>
   : [T] extends [NullableType<infer T1>] ? NonNullable<NullableType<T1>['options']>
-  : [T] extends [ReferenceType<infer T1>] ? NonNullable<ReferenceType<T1>['options']>
   : [T] extends [CustomType<infer N, infer Os, infer T>] ? NonNullable<CustomType<N, Os, T>['options']>
   : [T] extends [(() => infer T1 extends Type)] ? OptionsOf<T1>
   : never
@@ -326,16 +293,6 @@ export type StringType = {
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, StringType>
-
-  /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.string.reference()
-   *          types.Infer<typeof model> // string
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<StringType>
 
   /**
    * @param value
@@ -465,16 +422,6 @@ export type NumberType = {
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, NumberType>
 
   /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.number().reference()
-   *          types.Infer<typeof model> // number
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<NumberType>
-
-  /**
    * @param value
    * @param decodingOptions
    * @param validationOptions
@@ -602,16 +549,6 @@ export type BooleanType = {
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, BooleanType>
 
   /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.boolean().reference()
-   *          types.Infer<typeof model> // boolean
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<BooleanType>
-
-  /**
    * @param value
    * @param decodingOptions
    * @param validationOptions
@@ -732,16 +669,6 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, EnumType<Vs>>
-
-  /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.enumeration(["foo", "bar"]).reference()
-   *          types.Infer<typeof model> // "foo" | "bar"
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<EnumType<Vs>>
 
   /**
    * @param value
@@ -867,16 +794,6 @@ export type LiteralType<L extends number | string | boolean | null> = {
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, LiteralType<L>>
 
   /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.literal(1).reference()
-   *          types.Infer<typeof model> // 1
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<LiteralType<L>>
-
-  /**
    * @param value
    * @param decodingOptions
    * @param validationOptions
@@ -998,16 +915,6 @@ export type UnionType<Ts extends Types> = {
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, UnionType<Ts>>
-
-  /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.union({ v1: types.number() }, { v2: types.string() }).reference()
-   *          types.Infer<typeof model> // { v1: number } | { v2: string }
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<UnionType<Ts>>
 
   /**
    * @param value
@@ -1140,16 +1047,6 @@ export type ObjectType<M extends Mutability, Ts extends Fields> = {
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ObjectType<M, Ts>>
 
   /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.object({ field: types.number() }).reference()
-   *          types.Infer<typeof model> // { field: number }
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<ObjectType<M, Ts>>
-
-  /**
    * @param value
    * @param decodingOptions
    * @param validationOptions
@@ -1277,16 +1174,6 @@ export type ArrayType<M extends Mutability, T extends Type> = {
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ArrayType<M, T>>
 
   /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.number().array().reference()
-   *          types.Infer<typeof model> // number[]
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<ArrayType<M, T>>
-
-  /**
    * @param value
    * @param decodingOptions
    * @param validationOptions
@@ -1403,16 +1290,6 @@ export type OptionalType<T extends Type> = {
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, OptionalType<T>>
 
   /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.number().optional().reference()
-   *          types.Infer<typeof model> // number | undefined
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<OptionalType<T>>
-
-  /**
    * @param value
    * @param decodingOptions
    * @param validationOptions
@@ -1527,16 +1404,6 @@ export type NullableType<T extends Type> = {
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, NullableType<T>>
 
   /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.number().nullable().reference()
-   *          types.Infer<typeof model> // number | null
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<NullableType<T>>
-
-  /**
    * @param value
    * @param decodingOptions
    * @param validationOptions
@@ -1623,128 +1490,6 @@ export type NullableType<T extends Type> = {
 export type NullableTypeOptions = BaseOptions
 
 /**
- * The model for a {@link Type `Type`} that is a reference to another type.
- */
-export type ReferenceType<T extends Type> = {
-  readonly kind: Kind.Reference
-  readonly wrappedType: T
-  readonly options?: ReferenceTypeOptions
-
-  /**
-   * Turns this type into an optional version of itself
-   *
-   * @example ```ts
-   *          const model = types.number().reference().optional()
-   *          types.Infer<typeof model> // number | undefined
-   *          ```
-   */
-  optional(options?: OptionalTypeOptions): OptionalType<ReferenceType<T>>
-
-  /**
-   * Turns this type into a nullable version of itself
-   *
-   * @example ```ts
-   *          const model = types.number().reference().nullable()
-   *          types.Infer<typeof model> // number | null
-   *          ```
-   */
-  nullable(options?: NullableTypeOptions): NullableType<ReferenceType<T>>
-
-  /**
-   * Turns this type into an array of elements of this type
-   *
-   * @example ```ts
-   *          const model = types.number().reference().array()
-   *          types.Infer<typeof model> // number[]
-   *          ```
-   */
-  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ReferenceType<T>>
-
-  /**
-   * @param value
-   * @param decodingOptions
-   * @param validationOptions
-   * @example ```ts
-   *          const model = types.number().reference()
-   *          model.decode(12) // succeeds with value: 12
-   *          model.decode("foo") // fails: expected number, got string
-   *          ```
-   */
-  decode(
-    value: unknown,
-    decodingOptions?: decoding.Options,
-    validationOptions?: validation.Options,
-  ): result.Result<Infer<T>, validation.Error[] | decoding.Error[]>
-
-  /**
-   * ⚠️ Pay attention when using this function since it does not perform validation on the decoded
-   * type and this may lead to hard-to-debug bugs! You should never use this function unless you're
-   * 100% sure you don't need to perform validation.
-   *
-   * In normal circumstances you will never need this function and should use `decode` instead
-   *
-   * @param value the value to decode
-   * @param decodingOptions the options used during the decoding process
-   * @returns a {@link result decoding.Result} which holds the decoded value if the decoding process was successful
-   */
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Infer<T>>
-
-  /**
-   * @param value the value which will be validated
-   * @param validationOptions the options to use for the validation process
-   * @returns the {@link validation.Result result} of the validation process. It is a successful result
-   *          if the provided value pass all the validation checks, a failure otherwise
-   */
-  validate(value: Infer<T>, validationOptions?: validation.Options): validation.Result
-
-  /**
-   * @param value the value to encode into a {@link JSONType}
-   * @param validationOptions the options used when validating the value to encode
-   * @returns an ok {@link result.Result result} if the value to encode is valid (passes the validation
-   *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
-   *          and a failing result with the {@link validation.Error validation errors} is returned
-   * @example ```ts
-   *          const model = types.number().reference()
-   *          model.encode(11) // succeeds with value: 11
-   *          ```
-   */
-  encode(
-    value: Infer<T>,
-    encodingOptions?: encoding.Options,
-    validationOptions?: validation.Options,
-  ): result.Result<JSONType, validation.Error[]>
-
-  /**
-   * ⚠️ Pay attention when using this function since it does not perform validation on the value before
-   * encoding it and this may lead to encoding and passing around values that are not valid! You should
-   * never use this function unless you're 100% sure you don't need to perform validation.
-   *
-   * In normal circumstances you will never need this function and should use `encode` instead
-   *
-   * @param value the value to encode into a {@link JSONType}
-   * @returns the value encoded as a `JSONType`
-   */
-  encodeWithoutValidation(value: Infer<T>, encodingOptions?: encoding.Options): JSONType
-
-  /**
-   * @param other the type this will get compared to
-   * @returns true if the other type is equal to this one, that is
-   *          it is of the same kind and has the same options
-   */
-  equals(other: Type): boolean
-
-  setOptions(options: ReferenceTypeOptions): ReferenceType<T>
-  updateOptions(options: ReferenceTypeOptions): ReferenceType<T>
-  setName(name: string): ReferenceType<T>
-  sensitive(): ReferenceType<T>
-}
-
-/**
- * The options used to define a {@link ReferenceType `ReferenceType`}.
- */
-export type ReferenceTypeOptions = BaseOptions
-
-/**
  * The model for a custom-defined type.
  */
 export type CustomType<Name extends string, Options extends Record<string, any>, InferredAs> = {
@@ -1780,16 +1525,6 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, CustomType<Name, Options, InferredAs>>
-
-  /**
-   * Turns this type into a reference to elements of this type
-   *
-   * @example ```ts
-   *          const model = types.custom<"my_type", {}, number>(...).reference()
-   *          types.Infer<typeof model> // number
-   *          ```
-   */
-  reference(options?: ReferenceTypeOptions): ReferenceType<CustomType<Name, Options, InferredAs>>
 
   /**
    * @param value
@@ -2006,7 +1741,7 @@ type OmitObjectFields<Ts extends Types, Fields extends { [K in keyof Ts]?: true 
  *          }
  *          ```
  */
-export function omitReferences<const Ts extends Types, M extends Mutability = Mutability.Immutable>(
+export function omitReferences<const Ts extends Fields, M extends Mutability = Mutability.Immutable>(
   obj: Lazy<ObjectType<any, Ts>>,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
@@ -2014,12 +1749,12 @@ export function omitReferences<const Ts extends Types, M extends Mutability = Mu
   if (typeof obj === 'function') {
     return () => omitReferences(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
-  const pickedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Reference) ? undefined : t))
+  const pickedFields = filterMapObject(obj.fields, (_, t) => ('virtual' in t ? undefined : t))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
   return () => constructor(pickedFields, options) as unknown as ObjectType<M, OmitReferenceObjectFields<Ts>>
 }
 
-type OmitReferenceObjectFields<Ts extends Types> = {
+type OmitReferenceObjectFields<Ts extends Fields> = {
   [K in { [FK in keyof Ts]: IsReference<Ts[FK]> extends true ? never : FK }[keyof Ts]]: Ts[K]
 }
 
@@ -2039,7 +1774,7 @@ type OmitReferenceObjectFields<Ts extends Types> = {
  *          }
  *          ```
  */
-export function partial<const Ts extends Types, M extends Mutability = Mutability.Immutable>(
+export function partial<const Ts extends Fields, M extends Mutability = Mutability.Immutable>(
   obj: Lazy<ObjectType<any, Ts>>,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
@@ -2047,14 +1782,16 @@ export function partial<const Ts extends Types, M extends Mutability = Mutabilit
   if (typeof obj === 'function') {
     return () => partial(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
   }
-  const mappedFields = filterMapObject(obj.fields, (_, t) => (hasWrapper(t, Kind.Optional) ? t : types.optional(t)))
+  const mappedFields = filterMapObject(obj.fields, (_, t) => ('virtual' in t ? t : types.optional(t)))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
   return () => constructor(mappedFields, options) as unknown as ObjectType<M, PartialObjectFields<Ts>>
 }
 
-type PartialObjectFields<Ts extends Types> = {
-  [K in keyof Ts]: IsReference<Ts[K]> extends true ? Ts[K] : OptionalType<Ts[K]>
+type PartialObjectFields<Ts extends Fields> = {
+  [K in keyof Ts]: IsReference<Ts[K]> extends true ? Ts[K] : OptionalType<UnwrapField<Ts[K]>>
 }
+
+type IsReference<F extends Field> = F extends { virtual: infer _ } ? true : false
 
 /**
  * Given a {@link Type} returns a new type where all the fields of object types are turned into
@@ -2080,7 +1817,6 @@ export type PartialDeep<T extends Type>
   : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
   : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
   : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>
-  : [T] extends [ReferenceType<infer T1>] ? ReferenceType<PartialDeep<T1>>
   : [T] extends [(() => infer T1 extends Type)] ? () => PartialDeep<T1>
   : T
 
@@ -2100,8 +1836,6 @@ export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
   }
   const concreteType = concretise(type)
   switch (concreteType.kind) {
-    case Kind.Reference:
-      return types.reference(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
     case Kind.Nullable:
       return types.nullable(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
     case Kind.Optional:
@@ -2164,7 +1898,6 @@ export function areEqual(one: Type, other: Type): boolean {
     || (type1.kind === Kind.Array && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === Kind.Nullable && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === Kind.Optional && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === Kind.Reference && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === Kind.Object && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.fields, type2.fields))
     || (type1.kind === Kind.Union && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
   )
@@ -2215,7 +1948,7 @@ export function assertType<T extends Type>(
     )
 }
 
-function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Reference | Kind.Array): boolean {
+function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Array): boolean {
   const concreteType = concretise(type)
   const typeKind = concreteType.kind
   const isWrapperType = 'wrappedType' in concreteType
@@ -2236,14 +1969,6 @@ export function isOptional(type: Type): boolean {
  */
 export function isNullable(type: Type): type is Lazy<NullableType<Type>> {
   return hasWrapper(type, Kind.Nullable)
-}
-
-/**
- * @param type the type to check
- * @returns true if the type is a reference type
- */
-export function isReference(type: Type): type is Lazy<ReferenceType<Type>> {
-  return hasWrapper(type, Kind.Reference)
 }
 
 /**

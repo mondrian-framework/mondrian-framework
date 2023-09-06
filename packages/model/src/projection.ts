@@ -1,15 +1,13 @@
 import { decoding, path, projection, result, types } from './index'
 import {
   WithPath,
-  always,
   assertNever,
-  filterMapObject,
-  mergeArrays,
   prependFieldToAll,
   prependIndexToAll,
   prependVariantToAll,
   unsafeObjectToTaggedVariant,
 } from './utils'
+import { always, filterMapObject, mergeArrays } from '@mondrian-framework/utils'
 
 /**
  * This is the type of a projection: it is either the literal value `true` or an object

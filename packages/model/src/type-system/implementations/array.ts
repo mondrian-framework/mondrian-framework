@@ -1,7 +1,7 @@
 import { decoding, result, types, validation } from '../../'
-import { always, mergeArrays, prependIndexToAll } from '../../utils'
+import { prependIndexToAll } from '../../utils'
 import { DefaultMethods } from './base'
-import { JSONType } from '@mondrian-framework/utils'
+import { JSONType, always, mergeArrays } from '@mondrian-framework/utils'
 
 /**
  * @param wrappedType the {@link types.Type} describing the items held by the new `ArrayType`

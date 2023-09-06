@@ -79,3 +79,94 @@ export function isPlainObject(o: unknown): boolean {
   // Most likely a plain Object
   return true
 }
+
+/**
+ * @param values the array to map over
+ * @param mapper a mapping function that may return `undefined`
+ * @returns a new array where each element has been mapped with `mapper` and all values mapped to `undefined` are
+ *          discarted
+ */
+export function filterMap<A, B>(values: A[], mapper: (_: A) => B | undefined): B[] {
+  const mappedValues = []
+  for (const value of values) {
+    const mappedValue = mapper(value)
+    if (mappedValue !== undefined) {
+      mappedValues.push(mappedValue)
+    }
+  }
+  return mappedValues
+}
+
+/**
+ * @param object the object to map over
+ * @param mapper a mapping function that takes as input the name of a field and the corresponding value and maps it to
+ *               a value of type `B` or `undefined`
+ * @returns a new object with the same fields where each value is mapped using the mapping function, any value mapped to
+ *          `undefined` is discarded and the corresponding field is dropped from the new object
+ */
+export function filterMapObject<A, B>(
+  object: Record<string, A>,
+  mapper: (fieldName: string, fieldValue: A) => B | undefined,
+): Record<string, B> {
+  return Object.fromEntries(
+    Object.entries(object).flatMap(([fieldName, fieldValue]) => {
+      const mappedValue = mapper(fieldName, fieldValue)
+      return mappedValue !== undefined ? [[fieldName, mappedValue]] : []
+    }),
+  )
+}
+
+/**
+ * @param object the object to map over
+ * @param mapper a mapping function that takes as input the name of a field and the corresponding value and maps it to
+ *               a value of type `B`
+ * @returns a new object with the same fields where each value is mapped using the mapping function
+ */
+export function mapObject<A, B>(
+  object: Record<string, A>,
+  mapper: (fieldName: string, fieldValue: A) => B,
+): Record<string, B> {
+  return Object.fromEntries(
+    Object.entries(object).flatMap(([fieldName, fieldValue]) => {
+      const mappedValue = mapper(fieldName, fieldValue)
+      return [[fieldName, mappedValue]]
+    }),
+  )
+}
+
+/**
+ * @param one the array to merge with `other`
+ * @param other the array to merge with the first one
+ * @returns a new array obtained by concatenating `other` to `one`
+ * @example ```ts
+ *          mergeArrays([1, 2], [3, 4, 5]) // -> [1, 2, 3, 4, 5]
+ *          ```
+ */
+export function mergeArrays<A>(one: readonly A[], other: readonly A[]): A[] {
+  return [...one, ...other]
+}
+
+/**
+ * @param one the first array to compare
+ * @param other the second array to compare
+ * @param compare the function used to compare the arrays' objects
+ * @returns true if the array are equal element by element
+ */
+export function areSameArray<A>(
+  one: readonly A[],
+  other: readonly A[],
+  compare: (one: A, other: A) => boolean,
+): boolean {
+  return one === other || (one.length === other.length && one.every((value, i) => compare(value, other[i])))
+}
+/**
+ * @param value
+ * @returns a function that always returns the given value, no matter the input
+ * @example ```ts
+ *          always(1)(true) // -> 1
+ *          always("foo")(10) // -> "foo"
+ *          ```
+ */
+export function always<A>(value: A): (_: any) => A {
+  return (_) => value
+}

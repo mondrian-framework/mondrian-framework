@@ -1,5 +1,6 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateOpenapiInput } from './openapi'
+import { completeProjection } from './utils'
 import { decoding, projection, result, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
@@ -63,26 +64,26 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     span?.addEvent('Input decoded')
 
     //Decode projection
-    //TODO: add all non virtual fields (also recursively on selected virtual fields)
-    const givenProjection = decodeProjection({ request, outputType: functionBody.output })
-    if (!givenProjection.isOk) {
+    const decodedProjection = decodeProjection({ request, outputType: functionBody.output })
+    if (!decodedProjection.isOk) {
       operationLogger.logError('Bad request. (projection)')
-      endSpanWithError({ span, failure: givenProjection })
-      return addHeadersToResponse(givenProjection.error, responseHeaders)
+      endSpanWithError({ span, failure: decodedProjection })
+      return addHeadersToResponse(decodedProjection.error, responseHeaders)
     }
+    const givenProjection = completeProjection(decodedProjection.value, functionBody.output)
     span?.addEvent('Projection decoded')
 
     let moduleContext
     try {
       const contextInput = await context(serverContext)
       moduleContext = await module.context(contextInput, {
-        projection: givenProjection.value,
+        projection: givenProjection,
         input: decoded.value,
         operationId,
         logger: operationLogger,
       })
       const result = await functionBody.apply({
-        projection: givenProjection.value as projection.FromType<types.Type>,
+        projection: givenProjection as projection.FromType<types.Type>,
         context: moduleContext as Record<string, unknown>,
         input: decoded.value as never,
         operationId,
@@ -107,7 +108,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           operationId,
           context: moduleContext,
           functionArgs: {
-            projection: givenProjection.value,
+            projection: decodedProjection.value,
             input: decoded.value,
           },
           ...serverContext,

@@ -44,7 +44,6 @@ export type FromType<T extends types.Type> =
 : [T] extends [types.ArrayType<any, infer T1>] ? true | FromType<T1>
 : [T] extends [types.OptionalType<infer T1>] ? true | FromType<T1>
 : [T] extends [types.NullableType<infer T1>] ? true | FromType<T1>
-: [T] extends [types.ReferenceType<infer T1>] ? true | FromType<T1>
 : [T] extends [(() => infer T1 extends types.Type)] ? true | FromType<T1>
 : [T] extends [types.UnionType<infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<Ts[Key]> }
 : [T] extends [types.ObjectType<any, infer Ts>] ? true | { readonly [Key in keyof Ts]?: true | FromType<types.UnwrapField<Ts[Key]>> }
@@ -171,8 +170,6 @@ export function respectsProjection<T extends types.Type>(
     case types.Kind.String:
     case types.Kind.Custom:
       return result.ok(value)
-    case types.Kind.Reference:
-      return respectsProjection(concreteType.wrappedType as T, projection, value)
     case types.Kind.Nullable:
       return validateNullable(concreteType.wrappedType, projection, value)
     case types.Kind.Optional:
@@ -221,12 +218,12 @@ function validateUnion(
 }
 
 function validateObject(
-  fields: types.Types,
+  fields: types.Fields,
   projection: Projection,
   object: Record<string, any>,
 ): result.Result<any, projection.Error[]> {
   const requiredFields = getRequiredFields(fields, projection)
-  const validateField = ([fieldName, fieldType]: [string, types.Type]) =>
+  const validateField = ([fieldName, fieldType]: [string, types.Field]) =>
     validateRequestedField(fieldName, fieldType, projection, object)
   return result
     .tryEach(
@@ -242,16 +239,16 @@ function validateObject(
 
 function validateRequestedField(
   fieldName: string,
-  fieldType: types.Type,
+  fieldType: types.Field,
   projection: Projection,
   object: Record<string, any>,
 ): result.Result<[string, any][], projection.Error[]> {
   const fieldValue = object[fieldName]
   if (fieldValue === undefined) {
-    if (types.isOptional(fieldType)) {
+    if (types.isOptional(types.unwrapField(fieldType))) {
       //optional field
       return result.ok([])
-    } else if (projection === true && types.isReference(fieldType)) {
+    } else if (projection === true && 'virtual' in fieldType) {
       //reference field with projection 'true'
       return result.ok([])
     }
@@ -259,11 +256,11 @@ function validateRequestedField(
   }
 
   const fieldProjection = subProjection(projection, [fieldName] as never)
-  const res = respectsProjection(fieldType, fieldProjection, fieldValue as never)
+  const res = respectsProjection(types.unwrapField(fieldType), fieldProjection, fieldValue as never)
   return res.mapError((errors) => prependFieldToAll(errors, fieldName)).map((fieldValue) => [[fieldName, fieldValue]])
 }
 
-function getRequiredFields(fields: types.Types, projection: Projection): [string, types.Type][] {
+function getRequiredFields(fields: types.Fields, projection: Projection): [string, types.Field][] {
   if (projection === true) {
     return Object.entries(fields)
   } else {

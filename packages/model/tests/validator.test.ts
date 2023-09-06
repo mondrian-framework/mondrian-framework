@@ -228,13 +228,6 @@ describe.concurrent('validation.validate', () => {
     })
   })
 
-  describe.concurrent('on reference types', () => {
-    test.prop([gen.anything()])('validates the inner type', (value) => {
-      assertOk(alwaysSuccess.reference().validate(value))
-      checkError(alwaysFail.reference().validate(value), [{ got: value, path: path.empty() }])
-    })
-  })
-
   describe.concurrent('on array types', () => {
     test.prop([gen.array(gen.anything())])('validates its items', (array) => {
       assertOk(alwaysSuccess.array().validate(array))

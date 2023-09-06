@@ -68,11 +68,6 @@ describe.concurrent('projection.FromType', () => {
     expectTypeOf<projection.FromType<typeof nullableObject>>().toEqualTypeOf<Expected>()
     expectTypeOf<projection.FromType<typeof nullableNumber>>().toEqualTypeOf<true>()
 
-    const objectReference = model.reference()
-    const numberReference = types.number().reference()
-    expectTypeOf<projection.FromType<typeof objectReference>>().toEqualTypeOf<Expected>()
-    expectTypeOf<projection.FromType<typeof numberReference>>().toEqualTypeOf<true>()
-
     const objectArray = model.array()
     const numberArray = types.number().array()
     expectTypeOf<projection.FromType<typeof objectArray>>().toEqualTypeOf<Expected>()
@@ -241,15 +236,8 @@ describe.concurrent('projection.respectsProjection', () => {
 
     test('from objects with reference field', () => {
       const model = () =>
-        types.object({ field1: types.reference(model), field2: types.string().optional(), field3: types.string() })
+        types.object({ field1: { virtual: model }, field2: types.string().optional(), field3: types.string() })
       const result = projection.respectsProjection(model, true, { field3: 'ok' })
-      assertOk(result)
-    })
-
-    test('from union with reference field', () => {
-      const model = () =>
-        types.union({ field1: types.reference(model), field2: types.string().optional(), field3: types.string() })
-      const result = projection.respectsProjection(model, true, { field1: { field3: 'ok' } })
       assertOk(result)
     })
 

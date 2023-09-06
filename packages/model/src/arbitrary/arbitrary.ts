@@ -313,28 +313,6 @@ export function nullable<T extends types.Type>(
   })
 }
 
-/**
- * @returns A generator for reference types' options.
- *          All of its keys are optional and may be omitted in the generated options.
- */
-export function referenceTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ReferenceType<any>>> {
-  return baseOptions()
-}
-
-/**
- * @param wrappedTypeGenerator a generator for the type wrapped by the randomly generated reference type
- * @returns a generator for nullable types
- */
-export function reference<T extends types.Type>(
-  wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.ReferenceType<T>> {
-  return orUndefined(referenceTypeOptions()).chain((options) => {
-    return wrappedTypeGenerator.map((wrappedType) => {
-      return types.reference(wrappedType, options)
-    })
-  })
-}
-
 // TODO: add custom type generator
 
 /**
@@ -385,12 +363,9 @@ export function wrapperType(
   maxDepth: number = 3,
   wrappedType: gen.Arbitrary<types.Type> = type(maxDepth - 1),
 ): gen.Arbitrary<
-  | types.ReferenceType<types.Type>
-  | types.OptionalType<types.Type>
-  | types.NullableType<types.Type>
-  | types.ArrayType<types.Mutability, types.Type>
+  types.OptionalType<types.Type> | types.NullableType<types.Type> | types.ArrayType<types.Mutability, types.Type>
 > {
-  return gen.oneof(reference(wrappedType), optional(wrappedType), nullable(wrappedType), array(wrappedType))
+  return gen.oneof(optional(wrappedType), nullable(wrappedType), array(wrappedType))
 }
 
 /**

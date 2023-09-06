@@ -74,14 +74,11 @@ function typeToGqlTypeInternal(
   if (type.kind === types.Kind.Optional || type.kind === types.Kind.Nullable) {
     return typeToGqlType(type.wrappedType, typeMap, typeRef, isInput, true, name)
   }
-  if (type.kind === types.Kind.Reference) {
-    return typeToGqlType(type.wrappedType, typeMap, typeRef, isInput, isOptional, name)
-  }
   if (type.kind === types.Kind.Object) {
     name = name ?? 'NAME_NEEDED'
-    const fields = Object.entries(type.fields).map(([fieldName, fieldT]) => {
-      const fieldMType = types.concretise(fieldT as types.Type)
-      const fieldType = typeToGqlType(fieldT as types.Type, typeMap, typeRef, isInput, false, `${name}_${fieldName}`)
+    const fields = Object.entries(type.fields as types.Fields).map(([fieldName, field]) => {
+      const fieldMType = types.concretise(types.unwrapField(field))
+      const fieldType = typeToGqlType(field as types.Type, typeMap, typeRef, isInput, false, `${name}_${fieldName}`)
       const desc = fieldMType.options?.description ? `"""${fieldMType.options.description}"""\n` : ''
       return `${desc}${fieldName}: ${fieldType}`
     })

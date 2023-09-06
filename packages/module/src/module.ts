@@ -78,15 +78,13 @@ function assertUniqueNames(functions: functions.Functions) {
       }
       explored.add(type)
       const t = types.concretise(type)
-      if (
-        t.kind === types.Kind.Array ||
-        t.kind === types.Kind.Nullable ||
-        t.kind === types.Kind.Optional ||
-        t.kind === types.Kind.Reference
-      ) {
+      if (t.kind === types.Kind.Array || t.kind === types.Kind.Nullable || t.kind === types.Kind.Optional) {
         gatherTypes([t.wrappedType], explored)
       } else if (t.kind === types.Kind.Object) {
-        gatherTypes(Object.values(t.fields), explored)
+        gatherTypes(
+          Object.values(t.fields as types.Fields).map((v) => types.unwrapField(v)),
+          explored,
+        )
       } else if (t.kind === types.Kind.Union) {
         gatherTypes(Object.values(t.variants), explored)
       }

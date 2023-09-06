@@ -157,7 +157,9 @@ export function generateOpenapiInput({
   if (specification.method === 'get' || specification.method === 'delete') {
     if (t.kind === types.Kind.Object) {
       const parameters = generatePathParameters({ parameters: parametersInPath, type: t, typeMap, typeRef })
-      for (const [key, subtype] of Object.entries(t.fields).filter((v) => !parametersInPath.includes(v[0]))) {
+      for (const [key, subtype] of Object.entries(t.fields)
+        .map(([k, v]) => [k, types.unwrapField(v)] as const)
+        .filter(([k, _]) => !parametersInPath.includes(k))) {
         const { schema } = typeToSchemaObject(subtype, typeMap, typeRef, true)
         parameters.push({
           name: key,
@@ -469,18 +471,14 @@ function typeToSchemaObjectInternal(
     }
     return { name, schema: { anyOf: [schema, { const: null }] } }
   }
-  if (type.kind === types.Kind.Reference) {
-    const { name: subname, schema } = typeToSchemaObject(
-      type.wrappedType,
-      typeMap,
-      typeRef,
-      ignoreFirstLevelOptionality,
-    )
-    return { name: subname ?? name, schema: { anyOf: [schema, { type: 'null', description: 'optional' }] } }
-  }
   if (type.kind === types.Kind.Object) {
-    const fields = Object.entries(type.fields).map(([fieldName, fieldT]) => {
-      const { schema } = typeToSchemaObject(fieldT as types.Type, typeMap, typeRef)
+    const fields = Object.entries(type.fields as types.Fields).map(([fieldName, field]) => {
+      const fieldType = types.unwrapField(field)
+      const { schema } = typeToSchemaObject(
+        'virtual' in field ? types.optional(fieldType) : fieldType,
+        typeMap,
+        typeRef,
+      )
       return [fieldName, schema] as const
     })
     const isOptional: (
@@ -491,7 +489,7 @@ function typeToSchemaObjectInternal(
         : false
     const schema: OpenAPIV3_1.SchemaObject = {
       type: 'object',
-      required: fields.filter(([name, type]) => isOptional(type) === false).map((v) => v[0]),
+      required: fields.filter(([_, type]) => isOptional(type) === false).map((v) => v[0]),
       properties: Object.fromEntries(
         fields.map(([name, type]) => {
           const isOpt = isOptional(type)

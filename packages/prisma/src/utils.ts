@@ -20,8 +20,8 @@ function projectionToSelectionInternal<T extends Record<string, unknown>>(
   if (t.kind === types.Kind.Object) {
     if (projection === true || projection == null) {
       const selection = Object.fromEntries(
-        Object.entries(t.fields).flatMap(([k, t]) => {
-          if (types.isReference(t as types.Type)) {
+        Object.entries(t.fields as types.Fields).flatMap(([k, field]) => {
+          if ('virtual' in field) {
             return []
           }
           return [[k, true]]
@@ -30,14 +30,14 @@ function projectionToSelectionInternal<T extends Record<string, unknown>>(
       return { select: selection } as any
     }
     const selection = Object.fromEntries(
-      Object.entries(t.fields).flatMap(([k, t]) => {
-        const concreteType = types.unwrap(t as types.Type)
+      Object.entries(t.fields as types.Fields).flatMap(([k, field]) => {
+        const concreteType = types.unwrap(types.unwrapField(field))
         if (concreteType.kind === types.Kind.Union) {
           return []
         }
         if (projection[k]) {
-          const subSelection = projectionToSelectionInternal(t as types.Type, projection[k])
-          if (concreteType.kind === types.Kind.Object || types.isReference(t as types.Type)) {
+          const subSelection = projectionToSelectionInternal(field as types.Type, projection[k])
+          if (concreteType.kind === types.Kind.Object || 'virtual' in field) {
             return [[k, subSelection]]
           }
           return [[k, subSelection.select]]

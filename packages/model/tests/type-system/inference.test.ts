@@ -163,13 +163,15 @@ describe('Infer', () => {
     })
 
     test('omitted object references inferred as single field object', () => {
-      const model = types.omitReferences(types.object({ field1: types.string(), field2: { virtual: types.number() } }))
+      const model = types.omitVirtualFields(
+        types.object({ field1: types.string(), field2: { virtual: types.number() } }),
+      )
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
     })
 
     test('omitted object references inferred as mutable single field object', () => {
-      const model = types.omitReferences(
+      const model = types.omitVirtualFields(
         types.object({ field1: types.string(), field2: { virtual: types.number() } }),
         types.Mutability.Mutable,
       )

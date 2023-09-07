@@ -1851,9 +1851,12 @@ export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
       ) as PartialDeep<T>
     case Kind.Object:
       return types.object(
-        mapObject(concreteType.fields as Record<string, Type>, (_, fieldValue) =>
-          types.optional(partialDeep(fieldValue)),
-        ),
+        mapObject(concreteType.fields as Fields, (_, fieldValue) => {
+          if ('virtual' in fieldValue) {
+            return { virtual: types.optional(partialDeep(fieldValue.virtual)) }
+          }
+          return types.optional(partialDeep(fieldValue))
+        }),
       ) as PartialDeep<T>
     default:
       return type as PartialDeep<T>

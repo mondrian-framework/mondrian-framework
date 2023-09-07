@@ -23,7 +23,7 @@ export const api: rest.Api<ExposedFunctions> = {
 type Context = RegisterUserContext & LoginUserContext
 
 function inMemoryDb(): Context {
-  const idByUsernamePassword = new Map<[string, string], string>()
+  const passwordIdByUsername = new Map<string, [string, string]>()
   const usersById = new Map<string, User>()
   let id = 1
 
@@ -31,14 +31,16 @@ function inMemoryDb(): Context {
     async addUser(email, password, firstName, lastName, metadata) {
       const userId = id++
       const newUser = { id: `${userId}`, email, password, firstName, lastName, metadata, posts: [] }
-      idByUsernamePassword.set([email, password], `${userId}`)
+      // We're not trying to do anything sophisticated here, users just get overwritten if they
+      // have the same email
+      passwordIdByUsername.set(email, [password, `${userId}`])
       usersById.set(`${userId}`, newUser)
-      console.log(`added user`, newUser)
       return newUser
     },
 
     async findUser(email, password) {
-      return idByUsernamePassword.get([email, password])
+      const result = passwordIdByUsername.get(email)
+      return result?.[0] === password ? result[1] : undefined
     },
 
     async updateLoginTime(id, loginTime) {

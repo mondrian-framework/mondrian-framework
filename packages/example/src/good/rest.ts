@@ -1,4 +1,5 @@
-import { LoginUserContext, RegisterUserContext, User, loginUser, registerUser } from './user'
+import { newFakeInMemoryDB } from './fakeDB'
+import { loginUser, registerUser } from './user'
 import { module } from '@mondrian-framework/module'
 import { rest } from '@mondrian-framework/rest'
 import { server as restServer } from '@mondrian-framework/rest-fastify'
@@ -20,50 +21,13 @@ export const api: rest.Api<ExposedFunctions> = {
   options: { introspection: true },
 }
 
-type Context = RegisterUserContext & LoginUserContext
+const db = newFakeInMemoryDB()
 
-function inMemoryDb(): Context {
-  const passwordIdByUsername = new Map<string, [string, string]>()
-  const usersById = new Map<string, User>()
-  let id = 1
-
-  return {
-    async addUser(email, password, firstName, lastName, metadata) {
-      const userId = id++
-      const newUser = { id: `${userId}`, email, password, firstName, lastName, metadata, posts: [] }
-      // We're not trying to do anything sophisticated here, users just get overwritten if they
-      // have the same email
-      passwordIdByUsername.set(email, [password, `${userId}`])
-      usersById.set(`${userId}`, newUser)
-      return newUser
-    },
-
-    async findUser(email, password) {
-      const result = passwordIdByUsername.get(email)
-      return result?.[0] === password ? result[1] : undefined
-    },
-
-    async updateLoginTime(id, loginTime) {
-      const user = usersById.get(id)
-      if (user) {
-        const updatedUser = { ...user, metadata: { ...user.metadata, lastLogin: loginTime } }
-        usersById.set(id, updatedUser)
-        return updatedUser
-      } else {
-        return undefined
-      }
-    },
-  }
-}
-
-const db = inMemoryDb()
 const restModule = module.build({
   name: 'reddit',
   version: '2.0.0',
   functions: { registerUser, loginUser },
-  async context(): Promise<Context> {
-    return db
-  },
+  context: async () => db,
 })
 
 export function startServer(server: any) {
@@ -71,16 +35,15 @@ export function startServer(server: any) {
     server,
     module: restModule,
     api,
-    context: async ({ fastify }) => {
-      return { jwt: fastify.request.headers.authorization }
-    },
+    context: async ({ fastify }) => ({ jwt: fastify.request.headers.authorization }),
     async error({ error, logger, functionName }) {
       if (error instanceof Error) {
         logger.logError(error.message)
         if (functionName === 'loginUser') {
           return { status: 400, body: 'Unauthorized' }
+        } else {
+          return { status: 400, body: 'Bad request' }
         }
-        return { status: 400, body: 'Bad request' }
       }
     },
   })

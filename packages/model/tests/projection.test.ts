@@ -186,15 +186,18 @@ const baseTypeAndValue = arbitrary
 
 describe.concurrent('projection.respectsProjection', () => {
   test.prop([baseTypeAndValue])('works on base types', ([type, value]) => {
-    assertOk(projection.respectsProjection(type, true as never, value))
+    const result = assertOk(projection.respectsProjection(type, true as never, value))
+    expect(result).toBe(value)
   })
 
   test.prop([wrapperTypeAndValue])('works on wrapper types', ([type, value]) => {
-    assertOk(projection.respectsProjection(type, true as never, value))
+    const result = assertOk(projection.respectsProjection(type, true as never, value))
+    expect(result).toEqual(value)
   })
 
   test.prop([arbitrary.typeAndValue()])('always works on any type, if projection is true', ([type, value]) => {
-    assertOk(projection.respectsProjection(type, true as never, value))
+    const result = assertOk(projection.respectsProjection(type, true as never, value))
+    expect(result).toEqual(value)
   })
 
   test('fails with an internal error when called on an unhandled type', () => {

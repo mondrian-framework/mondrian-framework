@@ -1,7 +1,7 @@
 import { decoding, types, path, validation, result } from '../src'
-import { areSameArray } from '../src/utils'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
+import { areSameArray } from '@mondrian-framework/utils'
 import { describe, expect, vi } from 'vitest'
 
 function compareDecoderErrors(one: decoding.Error[], other: decoding.Error[]): boolean {

@@ -1,6 +1,7 @@
-import { areSameArray, failWithInternalError, filterMap, filterMapObject } from '../src/utils'
+import { failWithInternalError } from '../src/utils'
 import { expectToThrowErrorMatching } from './testing-utils'
 import { fc as gen, test } from '@fast-check/vitest'
+import { areSameArray, filterMap, filterMapObject } from '@mondrian-framework/utils'
 import { describe, expect } from 'vitest'
 
 describe.concurrent('filterMap', () => {

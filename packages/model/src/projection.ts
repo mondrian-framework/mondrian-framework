@@ -212,7 +212,9 @@ function validateUnion(
     variantProjection ?? (types.isScalar(variantType) ? true : {}),
     variantValue as never,
   )
-  return result.mapError((errors) => prependVariantToAll(errors, variantName))
+  return result
+    .mapError((errors) => prependVariantToAll(errors, variantName))
+    .map((value) => Object.fromEntries([[variantName, value]]))
 }
 
 function validateObject(

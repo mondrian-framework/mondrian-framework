@@ -214,10 +214,10 @@ function unionFromVariants(depth: number, variants: types.Types, customArbitrari
   return gen.oneof(...variantsGenerators)
 }
 
-function objectFromFields(depth: number, fields: types.Types, customArbitraries: CustomMapArgument<types.Type>) {
+function objectFromFields(depth: number, fields: types.Fields, customArbitraries: CustomMapArgument<types.Type>) {
   // prettier-ignore
-  const toEntryGenerator = ([fieldName, fieldType]: [string, types.Type]) =>
-    [fieldName, fromType(fieldType, customArbitraries, depth - 1)] as const
+  const toEntryGenerator = ([fieldName, fieldType]: [string, types.Field]) =>
+    [fieldName, fromType(types.unwrapField(fieldType), customArbitraries, depth - 1)] as const
   const entriesGenerators = Object.entries(fields).map(toEntryGenerator)
   return gen.record(Object.fromEntries(entriesGenerators))
 }

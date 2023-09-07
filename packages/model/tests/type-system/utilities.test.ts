@@ -1,7 +1,8 @@
-import { types, validation } from '../../src'
+import { arbitrary, types } from '../../src'
 import { object } from '../../src/types-exports'
 import { assertOk } from '../testing-utils'
-import { describe, expect, test } from 'vitest'
+import { fc as gen, test } from '@fast-check/vitest'
+import { describe, expect } from 'vitest'
 
 describe('merge', () => {
   test('Lazyness is supported', () => {
@@ -96,6 +97,11 @@ describe('Utilities', () => {
 })
 
 describe('partialDeep', () => {
+  test.prop([arbitrary.typeAndValue()])('with random types', ([model, value]) => {
+    const partialModel = types.concretise(types.partialDeep(model))
+    assertOk(partialModel.validate(value))
+  })
+
   test('validate with scalar', () => {
     const model = types.string().nullable().optional()
     const partialModel = types.partialDeep(model)

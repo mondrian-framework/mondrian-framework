@@ -63,21 +63,16 @@ test('Real example', async () => {
       if (user) {
         logger.logWarn(`Double register`, { email: input.email })
         return result.fail({ doubleRegister: input.email })
+      } else {
+        logger.logInfo(`Registered: ${input.email}`)
+        return result.ok(db.updateUser(input))
       }
-      logger.logInfo(`Registered: ${input.email}`)
-      return result.ok(db.updateUser(input))
     },
     middlewares: [
       {
         name: 'Avoid weak passwords',
-        apply: async (args, next) => {
-          const { input } = args
-          console.log('input:', input)
-          if (input.password === '123') {
-            return result.fail({ weakPassword: input.password })
-          }
-          return next(args)
-        },
+        apply: async (args, next) =>
+          args.input.password === '123' ? result.fail({ weakPassword: args.input.password }) : next(args),
       },
     ],
     options: { namespace: 'authentication' },

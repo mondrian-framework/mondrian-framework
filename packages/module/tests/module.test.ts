@@ -71,8 +71,10 @@ test('Real example', async () => {
       {
         name: 'Avoid weak passwords',
         apply: async (args, next) => {
-          if (args.input.password === '123') {
-            return result.fail({ weakPassword: args.input.password })
+          const { input } = args
+          console.log('input:', input)
+          if (input.password === '123') {
+            return result.fail({ weakPassword: input.password })
           }
           return next(args)
         },
@@ -134,16 +136,25 @@ test('Real example', async () => {
     },
   })
 
-  const res = await client.functions.register.apply({ email: 'admin@domain.com', password: '123' })
+  const res = await client.functions.register({ email: 'admin@domain.com', password: '123' })
   expect(res.isOk).toBe(false)
 
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
-  expect(failedRegisterResult).toBeNull()
+  expect(failedRegisterResult.isOk).toBe(false)
+  expect((failedRegisterResult as any).error).toEqual({ doubleRegister: 'admin@domain.com' })
+
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
-  expect(failedLoginResult).toBeNull()
+  expect(failedLoginResult.isOk).toBe(false)
+  expect((failedLoginResult as any).error).toEqual({ invalidUsernameOrPassword: 'admin@domain.com' })
+
   const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
-  expect(loginResult).toEqual({ user: { email: 'admin@domain.com', password: '****' }, jwt: 'admin@domain.com' })
+  expect(loginResult.isOk).toEqual(true)
+  expect((loginResult as any).value).toEqual({
+    user: { email: 'admin@domain.com', password: '****' },
+    jwt: 'admin@domain.com',
+  })
+
   await expect(
     async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),
   ).rejects.toThrowError('Unauthorized')
@@ -155,7 +166,7 @@ test('Real example', async () => {
       ),
   ).rejects.toThrow()
   if (loginResult) {
-    const authClient = client.withMetadata({ authorization: loginResult.jwt })
+    const authClient = client.withMetadata({ authorization: (loginResult as any).value.jwt })
     const myUser = await authClient.functions.completeProfile(
       { firstname: 'Pieter', lastname: 'Mondriaan' },
       { operationId: '123' },

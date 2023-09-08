@@ -35,14 +35,10 @@ export function startServer(server: any) {
     module: redditModule,
     api,
     context: async ({ fastify }) => ({ jwt: fastify.request.headers.authorization }),
-    async error({ error, logger, functionName }) {
+    async error({ error, logger }) {
       if (error instanceof Error) {
         logger.logError(error.message)
-        if (functionName === 'login') {
-          return { status: 400, body: 'Unauthorized' }
-        } else {
-          return { status: 400, body: 'Bad request' }
-        }
+        return { status: 500, body: 'Internal server error' }
       }
     },
   })

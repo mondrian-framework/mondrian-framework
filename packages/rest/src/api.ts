@@ -1,9 +1,10 @@
+import { types } from '@mondrian-framework/model'
 import { functions, logger } from '@mondrian-framework/module'
 import { OpenAPIV3_1 } from 'openapi-types'
 
 export type Api<F extends functions.Functions> = {
   functions: {
-    [K in keyof F]?: FunctionSpecifications | FunctionSpecifications[]
+    [K in keyof F]?: FunctionSpecifications<F[K]> | FunctionSpecifications<F[K]>[]
   }
   options?: {
     introspection?: boolean
@@ -42,7 +43,7 @@ export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
   } & RestContext,
 ) => Promise<Response | void>
 
-export type FunctionSpecifications = {
+export type FunctionSpecifications<F extends functions.FunctionInterface = functions.FunctionInterface> = {
   method: Method
   path?: string
   inputName?: string
@@ -51,6 +52,7 @@ export type FunctionSpecifications = {
     specification: NullableOperationObject
     input: (request: Request) => unknown
   }
+  errorCodes?: [F['error']] extends [types.UnionType<infer TS>] ? { [K in keyof TS]?: number } : never
   namespace?: string | null
 }
 

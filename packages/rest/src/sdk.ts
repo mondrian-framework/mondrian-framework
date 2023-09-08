@@ -19,6 +19,7 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type> = 
   options?: { projection?: P; headers?: Record<string, string | string[] | undefined> },
 ) => Promise<sdk.Project<OutputType, P>>
 
+//TODO: adapt to function error change
 export function build<const Fs extends functions.Functions, const API extends Api<Fs>>({
   module,
   api,

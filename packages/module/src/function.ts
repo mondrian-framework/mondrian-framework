@@ -1,11 +1,16 @@
 import { logger } from '.'
 import { BaseFunction } from './function/base'
+import { ErrorType } from './module'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
  * Mondrian function interface.
  */
-export interface FunctionInterface<I extends types.Type = types.Type, O extends types.Type = types.Type> {
+export interface FunctionInterface<
+  I extends types.Type = types.Type,
+  O extends types.Type = types.Type,
+  E extends ErrorType = ErrorType,
+> {
   /**
    * Function input {@link types.Type Type}.
    */
@@ -14,6 +19,10 @@ export interface FunctionInterface<I extends types.Type = types.Type, O extends 
    * Function output {@link types.Type Type}.
    */
   readonly output: O
+  /**
+   * The type describing the possible errors returned by the function.
+   */
+  readonly error: E
   /**
    * Function {@link FunctionOptions}
    */
@@ -26,8 +35,9 @@ export interface FunctionInterface<I extends types.Type = types.Type, O extends 
 export interface Function<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
+  E extends ErrorType = ErrorType,
   Context extends Record<string, unknown> = Record<string, unknown>,
-> extends FunctionInterface<I, O> {
+> extends FunctionInterface<I, O, E> {
   /**
    * Function body.
    */
@@ -35,7 +45,7 @@ export interface Function<
   /**
    * Function {@link Middleware Middlewares}
    */
-  readonly middlewares?: readonly Middleware<I, O, Context>[]
+  readonly middlewares?: readonly Middleware<I, O, E, Context>[]
 }
 
 /**
@@ -44,8 +54,9 @@ export interface Function<
 export interface FunctionImplementation<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
+  E extends ErrorType = ErrorType,
   Context extends Record<string, unknown> = Record<string, unknown>,
-> extends Function<I, O, Context> {
+> extends Function<I, O, E, Context> {
   /**
    * Function apply. This executes function's {@link Middleware} and function's body.
    */
@@ -107,7 +118,12 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
  * }
  * ```
  */
-export type Middleware<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>> = {
+export type Middleware<
+  I extends types.Type,
+  O extends types.Type,
+  E extends ErrorType,
+  Context extends Record<string, unknown>,
+> = {
   /**
    * Middleware descriptive name.
    */
@@ -122,7 +138,7 @@ export type Middleware<I extends types.Type, O extends types.Type, Context exten
   apply: (
     args: FunctionArguments<I, O, Context>,
     next: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>,
-    thisFunction: FunctionImplementation<I, O, Context>,
+    thisFunction: FunctionImplementation<I, O, E, Context>,
   ) => Promise<types.Infer<types.PartialDeep<O>>>
 }
 
@@ -130,7 +146,7 @@ export type Middleware<I extends types.Type, O extends types.Type, Context exten
  * A map of {@link FunctionImplementation}s.
  */
 export type Functions<Contexts extends Record<string, Record<string, unknown>> = Record<string, any>> = {
-  [K in keyof Contexts]: FunctionImplementation<types.Type, types.Type, Contexts[K]>
+  [K in keyof Contexts]: FunctionImplementation<types.Type, types.Type, ErrorType, Contexts[K]>
 }
 
 /**
@@ -157,9 +173,9 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
  * })
  * ```
  */
-export function build<const I extends types.Type, const O extends types.Type>(
-  func: Function<I, O, {}>,
-): FunctionImplementation<I, O, {}> {
+export function build<const I extends types.Type, const O extends types.Type, const E extends ErrorType>(
+  func: Function<I, O, E, {}>,
+): FunctionImplementation<I, O, E, {}> {
   return withContext().build(func)
 }
 
@@ -195,9 +211,9 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
    * Builds a Mondrian function.
    * @returns A Mondrian function.
    */
-  public build<const I extends types.Type, const O extends types.Type>(
-    func: Function<I, O, Context>,
-  ): FunctionImplementation<I, O, Context> {
+  public build<const I extends types.Type, const O extends types.Type, const E extends ErrorType>(
+    func: Function<I, O, E, Context>,
+  ): FunctionImplementation<I, O, E, Context> {
     return new BaseFunction(func)
   }
 }

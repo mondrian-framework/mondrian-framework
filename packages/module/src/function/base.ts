@@ -1,21 +1,28 @@
 import { functions } from '..'
 import { types } from '@mondrian-framework/model'
+import { ErrorType } from 'src/module'
 
 /**
  * Basic function implementation.
  */
-export class BaseFunction<I extends types.Type, O extends types.Type, Context extends Record<string, unknown>>
-  implements functions.FunctionImplementation<I, O, Context>
+export class BaseFunction<
+  I extends types.Type,
+  O extends types.Type,
+  E extends ErrorType,
+  Context extends Record<string, unknown>,
+> implements functions.FunctionImplementation<I, O, E, Context>
 {
   readonly input: I
   readonly output: O
+  readonly error: E
   readonly body: (args: functions.FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
-  readonly middlewares: readonly functions.Middleware<I, O, Context>[]
+  readonly middlewares: readonly functions.Middleware<I, O, E, Context>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
 
-  constructor(func: functions.Function<I, O, Context>) {
+  constructor(func: functions.Function<I, O, E, Context>) {
     this.input = func.input
     this.output = func.output
+    this.error = func.error
     this.body = func.body
     this.middlewares = func.middlewares ?? []
     this.options = func.options

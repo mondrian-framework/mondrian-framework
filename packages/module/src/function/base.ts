@@ -1,6 +1,6 @@
 import { functions } from '..'
 import { types } from '@mondrian-framework/model'
-import { ErrorType } from 'src/module'
+import { ErrorType, FunctionResult } from 'src/function'
 
 /**
  * Basic function implementation.
@@ -15,7 +15,7 @@ export class BaseFunction<
   readonly input: I
   readonly output: O
   readonly error: E
-  readonly body: (args: functions.FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  readonly body: (args: functions.FunctionArguments<I, O, Context>) => FunctionResult<O, E>
   readonly middlewares: readonly functions.Middleware<I, O, E, Context>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
 
@@ -28,14 +28,14 @@ export class BaseFunction<
     this.options = func.options
   }
 
-  public apply(args: functions.FunctionArguments<I, O, Context>): Promise<types.Infer<types.PartialDeep<O>>> {
+  public apply(args: functions.FunctionArguments<I, O, Context>): FunctionResult<O, E> {
     return this.execute(0, args)
   }
 
   private async execute(
     middlewareIndex: number,
     args: functions.FunctionArguments<I, O, Context>,
-  ): Promise<types.Infer<types.PartialDeep<O>>> {
+  ): FunctionResult<O, E> {
     if (middlewareIndex >= this.middlewares.length) {
       return this.body(args)
     }

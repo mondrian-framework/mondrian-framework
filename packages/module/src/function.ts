@@ -1,7 +1,6 @@
 import { logger } from '.'
 import { BaseFunction } from './function/base'
-import { ErrorType } from './module'
-import { projection, types } from '@mondrian-framework/model'
+import { projection, result, types } from '@mondrian-framework/model'
 
 /**
  * Mondrian function interface.
@@ -41,7 +40,7 @@ export interface Function<
   /**
    * Function body.
    */
-  readonly body: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  readonly body: (args: FunctionArguments<I, O, Context>) => FunctionResult<O, E>
   /**
    * Function {@link Middleware Middlewares}
    */
@@ -60,7 +59,7 @@ export interface FunctionImplementation<
   /**
    * Function apply. This executes function's {@link Middleware} and function's body.
    */
-  readonly apply: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>
+  readonly apply: (args: FunctionArguments<I, O, Context>) => FunctionResult<O, E>
 }
 
 /**
@@ -103,6 +102,12 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
   readonly logger: logger.MondrianLogger
 }
 
+export type ErrorType = types.UnionType<any> | types.NeverType
+
+export type FunctionResult<O extends types.Type, E extends ErrorType> = Promise<
+  result.Result<types.Infer<types.PartialDeep<O>>, types.Infer<E>>
+>
+
 /**
  * Mondrian function's middleware type. Applied before calling the {@link Function}'s body.
  * Usefull for trasforming the {@link FunctionArguments} or the result of a function.
@@ -137,9 +142,9 @@ export type Middleware<
    */
   apply: (
     args: FunctionArguments<I, O, Context>,
-    next: (args: FunctionArguments<I, O, Context>) => Promise<types.Infer<types.PartialDeep<O>>>,
+    next: (args: FunctionArguments<I, O, Context>) => FunctionResult<O, E>,
     thisFunction: FunctionImplementation<I, O, E, Context>,
-  ) => Promise<types.Infer<types.PartialDeep<O>>>
+  ) => FunctionResult<O, E>
 }
 
 /**

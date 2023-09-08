@@ -38,6 +38,7 @@ describe('Opentelemetry', () => {
     const dummy = functions.build({
       input: types.string(),
       output: types.string(),
+      error: types.never(),
       body: async ({ input, logger }) => {
         if (input !== 'ping') {
           logger.logError('Only "ping" is accepted', { received: input })

@@ -1,6 +1,7 @@
 import { functions } from '.'
 import { ErrorType } from './function'
 import { projection, types } from '@mondrian-framework/model'
+import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
 /**
@@ -66,10 +67,13 @@ export function checkOutputType(
           severityNumber: SeverityNumber.ERROR,
         })
 
-        if (onFailure === 'log') {
-          return res //return an invalid output is ok in this case
-        } else {
-          throw new Error(`Invalid output: ${errorsMessage}`)
+        switch (onFailure) {
+          case 'log':
+            return res
+          case 'throw':
+            throw new Error(`Invalid output: ${errorsMessage}`)
+          default:
+            assertNever(onFailure)
         }
       }
 

@@ -5,6 +5,8 @@ import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
+export type ErrorType = types.UnionType<Record<string, types.Type>> | types.NeverType
+
 /**
  * The Mondrian module type.
  */
@@ -149,11 +151,8 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
         const counter = myMeter.createCounter('task.invocation')
-        const wrappedFunction: functions.FunctionImplementation<types.Type, types.Type, {}> = new OpentelemetryFunction(
-          func,
-          functionName,
-          { histogram, tracer, counter },
-        )
+        const wrappedFunction: functions.FunctionImplementation<types.Type, types.Type, ErrorType, {}> =
+          new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
         return [functionName, wrappedFunction]
       } else {
         return [functionName, new BaseFunction(func)]

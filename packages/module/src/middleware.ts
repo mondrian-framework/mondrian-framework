@@ -1,4 +1,5 @@
 import { functions } from '.'
+import { ErrorType } from './module'
 import { projection, types } from '@mondrian-framework/model'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -6,7 +7,7 @@ import { SeverityNumber } from '@opentelemetry/api-logs'
  * This middleware checks if the requested projection does not exceed the maximum given depth.
  * @param maxDepth the maximum depth.
  */
-export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<types.Type, types.Type, {}> {
+export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<types.Type, types.Type, ErrorType, {}> {
   return {
     name: 'Check max projection depth',
     apply: (args, next) => {
@@ -34,7 +35,9 @@ export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<
  * Returning more fields than requested is allowed and the additional fields will be trimmed out.
  * @param onFailure the action to take on failure.
  */
-export function checkOutputType(onFailure: 'log' | 'throw'): functions.Middleware<types.Type, types.Type, {}> {
+export function checkOutputType(
+  onFailure: 'log' | 'throw',
+): functions.Middleware<types.Type, types.Type, ErrorType, {}> {
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {

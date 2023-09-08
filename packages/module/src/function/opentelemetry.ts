@@ -2,6 +2,7 @@ import { functions } from '..'
 import { BaseFunction } from './base'
 import { result, types } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
+import { ErrorType } from 'src/module'
 
 /**
  * Opentelemetry instrumented function.
@@ -9,15 +10,16 @@ import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@ope
 export class OpentelemetryFunction<
   I extends types.Type,
   O extends types.Type,
+  E extends ErrorType,
   Context extends Record<string, unknown>,
-> extends BaseFunction<I, O, Context> {
+> extends BaseFunction<I, O, E, Context> {
   private readonly name: string
   private readonly tracer: Tracer
   private readonly counter: Counter
   private readonly histogram: Histogram
 
   constructor(
-    func: functions.Function<I, O, Context>,
+    func: functions.Function<I, O, E, Context>,
     name: string,
     opentelemetry: {
       tracer: Tracer

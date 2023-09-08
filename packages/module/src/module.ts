@@ -93,7 +93,7 @@ function assertUniqueNames(functions: functions.Functions) {
     return [...explored.values()]
   }
 
-  const allTypes = gatherTypes(Object.values(functions).flatMap((f) => [f.input, f.output]))
+  const allTypes = gatherTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
   const allNames = allTypes
     .map((t) => types.concretise(t).options?.name)
     .flatMap((name) => (name != null ? [name] : []))

@@ -89,11 +89,22 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         operationId,
         logger: operationLogger,
       })
-      const encoded = partialOutputType.encodeWithoutValidation(result)
-      const response: Response = { status: 200, body: encoded, headers: responseHeaders }
-      operationLogger.logInfo('Completed.')
-      endSpanWithResponse({ span, response })
-      return response
+      if (result.isOk) {
+        const encoded = partialOutputType.encodeWithoutValidation(result.value)
+        const response: Response = { status: 200, body: encoded, headers: responseHeaders }
+        operationLogger.logInfo('Completed.')
+        endSpanWithResponse({ span, response })
+        return response
+      } else {
+        const codes = (specification.errorCodes ?? {}) as Record<string, number>
+        const key = Object.keys(result.error)[0]
+        const status = codes[key] ?? 400
+        const encoded = functionBody.error.encodeWithoutValidation(result.error)
+        const response: Response = { status, body: encoded, headers: responseHeaders }
+        operationLogger.logInfo('Completed with error.')
+        endSpanWithResponse({ span, response })
+        return response
+      }
     } catch (e) {
       span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, 500)
       if (e instanceof Error) {
@@ -214,6 +225,6 @@ function endSpanWithError({ span, failure }: { span?: Span; failure: result.Fail
 
 function endSpanWithResponse({ span, response }: { span?: Span; response: Response }): void {
   span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, response.status)
-  span?.setStatus({ code: SpanStatusCode.OK })
+  span?.setStatus({ code: response.status.toString().slice(0, 1) === '2' ? SpanStatusCode.OK : SpanStatusCode.ERROR })
   span?.end()
 }

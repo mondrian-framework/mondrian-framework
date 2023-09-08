@@ -37,6 +37,42 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
         typeRef,
       })
       const { schema } = typeToSchemaObject(functionBody.output, typeMap, typeRef)
+      const errorType = types.concretise(functionBody.error)
+      const errorMap: Record<string, (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject)[]> = {}
+      const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
+      if (errorType.kind === types.Kind.Union) {
+        for (const [variantName, variantType] of Object.entries(errorType.variants)) {
+          const code = (errorCodes[variantName] ?? 400).toString()
+          const ts = errorMap[code] ?? []
+          const { schema } = typeToSchemaObject(
+            types.object({ [variantName]: variantType as types.Type }),
+            typeMap,
+            typeRef,
+          )
+          ts.push(schema)
+          errorMap[code] = ts
+        }
+      }
+      const errorSchemas = Object.fromEntries(
+        Object.entries(errorMap).map(([key, schemas]) => {
+          if (schemas.length === 1) {
+            return [
+              key,
+              {
+                description: 'Error',
+                content: { 'application/json': { schema: schemas[0] } },
+              },
+            ] as const
+          }
+          return [
+            key,
+            {
+              description: 'Error',
+              content: { 'application/json': { schema: { anyOf: schemas } } },
+            },
+          ] as const
+        }),
+      )
       const operationObj: OpenAPIV3_1.OperationObject = {
         ...specification.openapi?.specification.parameters,
         parameters: parameters
@@ -51,9 +87,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
                   description: 'Success',
                   content: { 'application/json': { schema } },
                 },
-                '400': {
-                  description: 'Validation error',
-                },
+                ...errorSchemas,
               },
         description:
           specification.openapi?.specification.description === null

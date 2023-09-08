@@ -1,45 +1,44 @@
-import { newFakeInMemoryDB } from './fakeDB'
-import { loginUser, registerUser } from './user'
+import { adapters } from '../adapters'
+import { users } from '../core'
 import { module } from '@mondrian-framework/module'
 import { rest } from '@mondrian-framework/rest'
 import { server as restServer } from '@mondrian-framework/rest-fastify'
+import { PrismaClient } from '@prisma/client'
 
-type ExposedFunctions = {
-  loginUser: typeof loginUser
-  registerUser: typeof registerUser
-}
+const prismaClient = new PrismaClient()
+const context = adapters.prisma(prismaClient)
 
-export const api: rest.Api<ExposedFunctions> = {
+type Functions = typeof functions
+const functions = { register: users.actions.register, login: users.actions.login }
+export const redditModule = module.build({
+  name: 'reddit',
+  version: '2.0.0',
+  functions,
+  context: async () => context,
+})
+
+const api: rest.Api<Functions> = {
   version: 100,
   functions: {
-    registerUser: [
+    register: [
       { method: 'post', path: '/subscribe/{email}', version: { max: 1 } },
       { method: 'put', path: '/register', version: { min: 2 } },
     ],
-    loginUser: { method: 'get', version: { min: 1 } },
+    login: { method: 'get', version: { min: 1 } },
   },
   options: { introspection: true },
 }
 
-const db = newFakeInMemoryDB()
-
-const restModule = module.build({
-  name: 'reddit',
-  version: '2.0.0',
-  functions: { registerUser, loginUser },
-  context: async () => db,
-})
-
 export function startServer(server: any) {
   restServer.start({
     server,
-    module: restModule,
+    module: redditModule,
     api,
     context: async ({ fastify }) => ({ jwt: fastify.request.headers.authorization }),
     async error({ error, logger, functionName }) {
       if (error instanceof Error) {
         logger.logError(error.message)
-        if (functionName === 'loginUser') {
+        if (functionName === 'login') {
           return { status: 400, body: 'Unauthorized' }
         } else {
           return { status: 400, body: 'Bad request' }

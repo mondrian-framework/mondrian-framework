@@ -9,23 +9,25 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(auto()) @map("_id") @db.ObjectId
-  email    String  @unique
-  password String
-  name     String?
-  posts    Post[]
-  audit    Audit
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  email     String       @unique
+  password  String
+  firstName String
+  lastName  String
+  posts     Post[]
+  metadata  UserMetadata
+}
+
+type UserMetadata {
+  createdAt DateTime
+  lastLogin DateTime
 }
 
 model Post {
   id        String  @id @default(auto()) @map("_id") @db.ObjectId
   title     String
-  content   String?
+  content   String
   published Boolean @default(false)
   authorId  String  @db.ObjectId
   author    User    @relation(fields: [authorId], references: [id])
-}
-
-type Audit {
-  createdAt DateTime
 }

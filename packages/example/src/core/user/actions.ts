@@ -14,27 +14,23 @@ export const loginData = types.object({
   password: types.string().sensitive(),
 })
 
-export const loginResponse = types.union({
-  loggedIn: user,
-  failure: types.string(),
-})
-
 export const login = functions.withContext<LoginContext>().build({
   input: loginData,
-  output: loginResponse,
+  output: user,
+  error: aaa,
   body: async ({ input, context }) => {
     const { email, password } = input
     const userId = await context.findUser(email, password)
     if (!userId) {
-      return { failure: 'invalid username or password' }
+      return result.fail({ invalidLogin: 'invalid username or password' })
     }
 
     const now = new Date()
     const loggedUser = await context.updateLoginTime(userId, now)
     if (!loggedUser) {
-      return { failure: "couldn't log in user" }
+      return result.fail({ internalError: "couldn't log in user" })
     }
-    return { loggedIn: loggedUser }
+    return result.ok(loggedUser)
   },
 })
 

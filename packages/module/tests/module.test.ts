@@ -1,5 +1,5 @@
 import { module, functions, sdk } from '../src'
-import { types } from '@mondrian-framework/model'
+import { result, types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
 test('Real example', async () => {
@@ -29,22 +29,23 @@ test('Real example', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
+    error: types.union({ invalidUsernameOrPassword: types.string() }),
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
         logger.logWarn(`Invalid email or password: ${input.email}`)
-        return null
+        return result.fail({ invalidUsernameOrPassword: input.email })
       }
       logger.logInfo(`Logged in: ${input.email}`)
-      return { jwt: user.email, user }
+      return result.ok({ jwt: user.email, user })
     },
     middlewares: [
       {
         name: 'Hide password',
         apply: async (args, next) => {
           const result = await next(args)
-          if (result?.user?.password) {
-            return { ...result, user: { ...result.user, password: '****' } }
+          if (result.isOk && result.value?.user?.password) {
+            return { ...result, user: { ...result.value.user, password: '****' } }
           }
           return result
         },
@@ -52,24 +53,26 @@ test('Real example', async () => {
     ],
     options: { namespace: 'authentication' },
   })
+
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
-    output: types.nullable(User),
+    output: User().nullable(),
+    error: types.union({ weakPassword: types.string(), doubleRegister: types.string() }),
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
         logger.logWarn(`Double register`, { email: input.email })
-        return null
+        return result.fail({ doubleRegister: input.email })
       }
       logger.logInfo(`Registered: ${input.email}`)
-      return db.updateUser(input)
+      return result.ok(db.updateUser(input))
     },
     middlewares: [
       {
         name: 'Avoid weak passwords',
-        apply: (args, next) => {
+        apply: async (args, next) => {
           if (args.input.password === '123') {
-            throw new Error('Weak password')
+            return result.fail({ weakPassword: args.input.password })
           }
           return next(args)
         },
@@ -81,15 +84,16 @@ test('Real example', async () => {
   const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
     input: types.object({ firstname: types.string(), lastname: types.string() }),
     output: User,
+    error: types.union({ unauthorized: types.string() }),
     body: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
-        throw new Error('Unauthorized')
+        return result.fail({ unauthorized: 'unauthorized' })
       }
       const user = db.findUser({ email: authenticatedUser.email })
       if (!user) {
         throw new Error('Unrechable')
       }
-      return db.updateUser({ ...user, ...input })
+      return result.ok(db.updateUser({ ...user, ...input }))
     },
     options: { namespace: 'business-logic' },
   })
@@ -129,9 +133,10 @@ test('Real example', async () => {
       return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
     },
   })
-  await expect(
-    async () => await client.functions.register({ email: 'admin@domain.com', password: '123' }),
-  ).rejects.toThrow()
+
+  const res = await client.functions.register.apply({ email: 'admin@domain.com', password: '123' })
+  expect(res.isOk).toBe(false)
+
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   expect(failedRegisterResult).toBeNull()
@@ -169,10 +174,11 @@ describe('Unique type name', () => {
     const n = () => types.number().setName('Input')
     const input = types.number().setName('Input')
     const output = types.union({ n, v: input.setName('V') })
-
+    const error = types.never()
     const f = functions.build({
       input,
       output,
+      error,
       body: () => {
         throw 'Unreachable'
       },
@@ -194,11 +200,12 @@ describe('Default middlewares', () => {
     const dummy = functions.build({
       input: type,
       output: type,
+      error: types.never(),
       body: async ({ input }) => {
         if (input?.value === 'wrong') {
-          return {} //projection not respected sometimes!
+          return result.ok({}) //projection not respected sometimes!
         }
-        return input
+        return result.ok(input)
       },
     })
     const m = module.build({

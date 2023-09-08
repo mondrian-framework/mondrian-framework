@@ -1,5 +1,5 @@
 import { functions } from '.'
-import { ErrorType } from './module'
+import { ErrorType } from './function'
 import { projection, types } from '@mondrian-framework/model'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -41,7 +41,12 @@ export function checkOutputType(
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
-      const res = await next(args)
+      const nextRes = await next(args)
+      if (!nextRes.isOk) {
+        return nextRes
+      }
+      const res = nextRes.value
+
       const outputPartialDeepType = types.concretise(types.partialDeep(thisFunction.output))
       const checkResult = projection
         .respectsProjection(thisFunction.output, args.projection ?? (true as never), res)

@@ -1,5 +1,6 @@
 import { functions, module, utils } from '.'
 import { logger as mondrianLogger } from '.'
+import { ErrorType, FunctionResult } from './function'
 import { projection, types } from '@mondrian-framework/model'
 
 /**
@@ -11,15 +12,15 @@ export type Sdk<F extends functions.Functions, Metadata> = {
 }
 
 type SdkFunctions<F extends functions.Functions, Metadata> = {
-  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], Metadata>
+  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], F[K]['error'], Metadata>
 }
 
-type SdkFunction<InputType extends types.Type, OutputType extends types.Type, Metadata> = <
+type SdkFunction<InputType extends types.Type, OutputType extends types.Type, E extends ErrorType, Metadata> = <
   const P extends projection.FromType<OutputType>,
 >(
   input: types.Infer<InputType>,
   options?: { projection?: P; metadata?: Metadata; operationId?: string },
-) => Promise<Project<OutputType, P>>
+) => FunctionResult<OutputType, E>
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata

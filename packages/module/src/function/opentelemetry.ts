@@ -2,7 +2,7 @@ import { functions } from '..'
 import { BaseFunction } from './base'
 import { result, types } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
-import { ErrorType } from 'src/module'
+import { ErrorType, FunctionResult } from 'src/function'
 
 /**
  * Opentelemetry instrumented function.
@@ -34,7 +34,7 @@ export class OpentelemetryFunction<
     this.histogram = opentelemetry.histogram
   }
 
-  public async apply(args: functions.FunctionArguments<I, O, Context>): Promise<types.Infer<types.PartialDeep<O>>> {
+  public async apply(args: functions.FunctionArguments<I, O, Context>): FunctionResult<O, E> {
     this.counter.add(1)
     const startTime = new Date().getTime()
     const spanResult = await this.tracer.startActiveSpan(
@@ -51,7 +51,7 @@ export class OpentelemetryFunction<
           const applyResult = await this.executeWithinSpan(0, args, span)
           span.setStatus({ code: SpanStatusCode.OK })
           span.end()
-          return result.ok<types.Infer<types.PartialDeep<O>>, unknown>(applyResult)
+          return result.ok(applyResult)
         } catch (error) {
           const concreteInputType = types.concretise(this.input)
           span.setAttribute(
@@ -81,7 +81,7 @@ export class OpentelemetryFunction<
     middlewareIndex: number,
     args: functions.FunctionArguments<I, O, Context>,
     span: Span,
-  ): Promise<types.Infer<types.PartialDeep<O>>> {
+  ): FunctionResult<O, E> {
     if (middlewareIndex >= this.middlewares.length) {
       span.addEvent('execution', { type: 'body' })
       return this.body(args)

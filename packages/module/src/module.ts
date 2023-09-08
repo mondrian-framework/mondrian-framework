@@ -1,11 +1,10 @@
 import { functions, logger } from '.'
+import { ErrorType } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
-
-export type ErrorType = types.UnionType<Record<string, types.Type>> | types.NeverType
 
 /**
  * The Mondrian module type.

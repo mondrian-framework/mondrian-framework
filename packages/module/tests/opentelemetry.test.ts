@@ -1,5 +1,5 @@
 import { functions, module, sdk } from '../src'
-import { types } from '@mondrian-framework/model'
+import { result, types } from '@mondrian-framework/model'
 import logsAPI from '@opentelemetry/api-logs'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { Resource } from '@opentelemetry/resources'
@@ -38,13 +38,13 @@ describe('Opentelemetry', () => {
     const dummy = functions.build({
       input: types.string(),
       output: types.string(),
-      error: types.never(),
+      error: types.union({ unknownInput: types.string() }),
       body: async ({ input, logger }) => {
         if (input !== 'ping') {
           logger.logError('Only "ping" is accepted', { received: input })
-          throw new Error('Only "ping" is accepted')
+          return result.fail({ unknownInput: 'Only "ping" is accepted' })
         }
-        return 'pong'
+        return result.ok('pong')
       },
     })
     const m = module.build({

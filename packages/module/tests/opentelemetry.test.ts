@@ -66,7 +66,7 @@ describe('Opentelemetry', () => {
     })
 
     const result1 = await client.functions.dummy('ping', { projection: true })
-    expect(result1).toBe('pong')
+    expect(result1.isOk && result1.value).toBe('pong')
     try {
       await client.functions.dummy('pong', { projection: true })
     } catch {}

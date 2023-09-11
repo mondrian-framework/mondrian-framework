@@ -1,6 +1,6 @@
 import { functions } from '.'
 import { ErrorType } from './function'
-import { projection, types } from '@mondrian-framework/model'
+import { projection, result, types } from '@mondrian-framework/model'
 import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -77,7 +77,7 @@ export function checkOutputType(
         }
       }
 
-      return checkResult.value
+      return result.ok(checkResult.value)
     },
   }
 }

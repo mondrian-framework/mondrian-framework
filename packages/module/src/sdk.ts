@@ -1,7 +1,7 @@
 import { functions, module, utils } from '.'
 import { logger as mondrianLogger } from '.'
-import { ErrorType, FunctionResult } from './function'
-import { projection, types } from '@mondrian-framework/model'
+import { ErrorType } from './function'
+import { projection, result, types } from '@mondrian-framework/model'
 
 /**
  * Local SDK type.
@@ -20,7 +20,7 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type, E 
 >(
   input: types.Infer<InputType>,
   options?: { projection?: P; metadata?: Metadata; operationId?: string },
-) => FunctionResult<OutputType, E>
+) => Promise<result.Result<Project<OutputType, P>, types.Infer<E>>>
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata

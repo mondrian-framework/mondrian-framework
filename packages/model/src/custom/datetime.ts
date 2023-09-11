@@ -29,7 +29,7 @@ function decodeDateTime(
 ): decoding.Result<Date> {
   if (value instanceof Date) {
     return decoding.succeed(value)
-  } else if (typeof value === 'string' && decodingOptions?.typeCastingStrategy === 'expectExactTypes') {
+  } else if (typeof value === 'string') {
     return tryMakeDate(value)
   } else if (typeof value === 'number' && decodingOptions?.typeCastingStrategy === 'tryCasting') {
     return tryMakeDate(value)

@@ -272,7 +272,7 @@ function validateArray(type: types.Type, projection: Projection, array: any[]): 
   const validateItem = (item: any, index: number) =>
     respectsProjection(type, projection as never, item as never).mapError((errors) => prependIndexToAll(errors, index))
 
-  return result.tryEach(array, true, always(array), [] as projection.Error[], mergeArrays, validateItem)
+  return result.tryEach(array, [], always(array), [] as projection.Error[], mergeArrays, validateItem)
 }
 
 /**

@@ -43,11 +43,11 @@ test('Real example', async () => {
       {
         name: 'Hide password',
         apply: async (args, next) => {
-          const result = await next(args)
-          if (result.isOk && result.value?.user?.password) {
-            return { ...result, user: { ...result.value.user, password: '****' } }
+          const res = await next(args)
+          if (res.isOk && res.value?.user?.password) {
+            return result.ok({ ...res.value, user: { ...res.value.user, password: '****' } })
           }
-          return result
+          return res
         },
       },
     ],
@@ -142,22 +142,21 @@ test('Real example', async () => {
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   expect(failedRegisterResult.isOk).toBe(false)
-  expect((failedRegisterResult as any).error).toEqual({ doubleRegister: 'admin@domain.com' })
+  expect(!failedRegisterResult.isOk && failedRegisterResult.error).toEqual({ doubleRegister: 'admin@domain.com' })
 
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult.isOk).toBe(false)
-  expect((failedLoginResult as any).error).toEqual({ invalidUsernameOrPassword: 'admin@domain.com' })
+  expect(!failedLoginResult.isOk && failedLoginResult.error).toEqual({ invalidUsernameOrPassword: 'admin@domain.com' })
 
   const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
   expect(loginResult.isOk).toEqual(true)
-  expect((loginResult as any).value).toEqual({
+  expect(loginResult.isOk && loginResult.value).toEqual({
     user: { email: 'admin@domain.com', password: '****' },
     jwt: 'admin@domain.com',
   })
 
-  await expect(
-    async () => await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }),
-  ).rejects.toThrowError('Unauthorized')
+  const completeProfileResult = await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
+  expect(!completeProfileResult.isOk && completeProfileResult.error).toEqual({ unauthorized: 'unauthorized' })
   expect(
     async () =>
       await client.functions.completeProfile(
@@ -165,13 +164,13 @@ test('Real example', async () => {
         { metadata: { authorization: 'wrong' } },
       ),
   ).rejects.toThrow()
-  if (loginResult) {
-    const authClient = client.withMetadata({ authorization: (loginResult as any).value.jwt })
+  if (loginResult.isOk && loginResult.value) {
+    const authClient = client.withMetadata({ authorization: loginResult.value.jwt })
     const myUser = await authClient.functions.completeProfile(
       { firstname: 'Pieter', lastname: 'Mondriaan' },
       { operationId: '123' },
     )
-    expect(myUser).toEqual({
+    expect(myUser.isOk && myUser.value).toEqual({
       email: 'admin@domain.com',
       password: '1234',
       firstname: 'Pieter',
@@ -237,9 +236,9 @@ describe('Default middlewares', () => {
     })
 
     const result1 = await client.functions.dummy({ value: '123' })
-    expect(result1).toEqual({ value: '123' })
+    expect(result1.isOk && result1.value).toEqual({ value: '123' })
     const result2 = await client.functions.dummy({ value: '123' }, { projection: { type: { type: true } } })
-    expect(result2).toEqual({})
+    expect(result2.isOk && result2.value).toEqual({})
     expect(
       async () => await client.functions.dummy({ value: '123' }, { projection: { type: { type: { type: true } } } }),
     ).rejects.toThrowError('Max projection depth reached: requested projection have a depth of 3. The maximum is 2.')

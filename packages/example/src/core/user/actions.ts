@@ -1,6 +1,6 @@
-import { User, UserId, UserMetadata, user } from './model'
+import { User, UserId, UserMetadata, user, userMetadata } from './model'
 import advancedTypes from '@mondrian-framework/advanced-types'
-import { types } from '@mondrian-framework/model'
+import { result, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
 // User login
@@ -14,10 +14,15 @@ export const loginData = types.object({
   password: types.string().sensitive(),
 })
 
+export const loginError = types.union({
+  invalidLogin: types.string(),
+  internalError: types.string(),
+})
+
 export const login = functions.withContext<LoginContext>().build({
   input: loginData,
   output: user,
-  error: aaa,
+  error: loginError,
   body: async ({ input, context }) => {
     const { email, password } = input
     const userId = await context.findUser(email, password)
@@ -54,7 +59,8 @@ export const registerData = types.object({
 
 export const register = functions.withContext<RegisterContext>().build({
   input: registerData,
-  output: user,
+  output: types.omit(user, { posts: true })(),
+  error: types.never(),
   body: async ({ input, context }) => {
     const { email, password, firstName, lastName } = input
     const now = new Date()
@@ -62,6 +68,7 @@ export const register = functions.withContext<RegisterContext>().build({
       createdAt: now,
       lastLogin: now,
     }
-    return context.addUser(email, password, firstName, lastName, metadata)
+    const addedUser = await context.addUser(email, password, firstName, lastName, metadata)
+    return result.ok(addedUser)
   },
 })

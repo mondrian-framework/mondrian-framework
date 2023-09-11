@@ -303,7 +303,10 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
               operationId,
               logger: operationLogger,
             })
-            const encoded = types.concretise(partialOutputType).encodeWithoutValidation(result)
+            if (!result.isOk) {
+              throw new Error(result.error)
+            }
+            const encoded = types.concretise(partialOutputType).encodeWithoutValidation(result.value)
             //TODO: if union remove tag and set `__variant_${tag}`: true
             operationLogger.logInfo('Completed.')
             return encoded

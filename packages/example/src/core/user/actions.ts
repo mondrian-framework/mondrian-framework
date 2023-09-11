@@ -1,4 +1,4 @@
-import { User, UserId, UserMetadata, user, userMetadata } from './model'
+import { User, UserId, UserMetadata, user } from './model'
 import advancedTypes from '@mondrian-framework/advanced-types'
 import { result, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'

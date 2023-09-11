@@ -1,5 +1,5 @@
 import { Api, FunctionSpecifications, Request } from './api'
-import { decodeQueryObject } from './utils'
+import { decodeQueryObject, encodeQueryObject } from './utils'
 import { types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
@@ -136,6 +136,7 @@ export function generateOpenapiInput({
   parameters?: (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.ParameterObject)[]
   requestBody?: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.RequestBodyObject
   input: (request: Request) => unknown
+  request: (input: never) => { body?: unknown; params?: Record<string, string>; query?: string }
 } {
   if (specification.openapi) {
     return {
@@ -148,23 +149,28 @@ export function generateOpenapiInput({
           ? undefined
           : specification.openapi.specification.requestBody,
       input: specification.openapi.input,
+      request: (input) => {
+        if (specification.openapi?.request) {
+          return specification.openapi.request(input)
+        } else {
+          throw new Error(`Request builder is not declared!`)
+        }
+      },
     }
   }
   const parametersInPath = specification.path
     ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
     : []
-  const isScalar = types.isScalar(functionBody.input)
-  const isArray = types.isArray(functionBody.input)
-  const isRequired = isInputRequired(functionBody.input)
-  /*if (isVoidType(functionBody.input)) {
-    return { input: () => undefined }
-  }*/
-  const t = types.unwrap(functionBody.input)
+  const inputType = types.concretise(functionBody.input)
+  const isScalar = types.isScalar(inputType)
+  const isArray = types.isArray(inputType)
+  const isRequired = isInputRequired(inputType)
+  const t = types.unwrap(inputType)
   if (t.kind === types.Kind.Object) {
     for (const p of parametersInPath) {
-      if (!t.fields[p] || !types.isScalar(t.fields[p])) {
+      if (!t.fields[p] || !types.isScalar(t.fields[p]) || !isInputRequired(t.fields[p])) {
         throw new Error(
-          `Error while generating openapi input type. Path parameter ${p} can only be scalar type. Path ${specification.path}`,
+          `Error while generating openapi input type. Path parameter ${p} can only be scalar type and not nullable nor optional. Path ${specification.path}`,
         )
       }
     }
@@ -180,11 +186,15 @@ export function generateOpenapiInput({
     )
   }
   if (isScalar && parametersInPath.length === 1) {
-    const { schema } = typeToSchemaObject(functionBody.input, typeMap, typeRef, true)
+    const { schema } = typeToSchemaObject(inputType, typeMap, typeRef, true)
     return {
       parameters: [{ in: 'path', name: parametersInPath[0], schema: schema as any, required: true }],
       input: (request) => {
         return request.params[parametersInPath[0]]
+      },
+      request: (input) => {
+        const encoded = inputType.encodeWithoutValidation(input)
+        return { params: { [parametersInPath[0]]: `${encoded}` } }
       },
     }
   }
@@ -210,7 +220,9 @@ export function generateOpenapiInput({
           const object: Record<string, unknown> = Object.fromEntries(
             parametersInPath.map((p) => [p, request.params[p]]),
           )
-          for (const [key, subtype] of Object.entries(t.fields).filter((v) => !parametersInPath.includes(v[0]))) {
+          for (const [key, subtype] of Object.entries(t.fields).filter(
+            ([fieldName]) => !parametersInPath.includes(fieldName),
+          )) {
             if (types.isScalar(subtype)) {
               object[key] = request.query[key]
             } else {
@@ -219,10 +231,33 @@ export function generateOpenapiInput({
           }
           return object
         },
+        request: (input) => {
+          const params = Object.fromEntries(
+            Object.entries(t.fields)
+              .filter(([fieldName]) => parametersInPath.includes(fieldName))
+              .map(([fieldName, field]) => {
+                const fieldType = types.concretise(types.unwrapField(field))
+                const encoded = fieldType.encodeWithoutValidation(input[fieldName])
+                return [fieldName, `${encoded}`] as const
+              }),
+          )
+          const queries = Object.entries(t.fields)
+            .filter(([fieldName]) => !parametersInPath.includes(fieldName))
+            .map(([fieldName, field]) => {
+              const fieldType = types.concretise(types.unwrapField(field))
+              const encoded = fieldType.encodeWithoutValidation(input[fieldName])
+              if (types.isScalar(field)) {
+                return [fieldName, encoded]
+              } else {
+                return [fieldName, encodeQueryObject(encoded, fieldName)]
+              }
+            })
+          return { query: queries.map(([k, v]) => `${k}=${v}`).join('&'), params }
+        },
       }
     }
     if (parametersInPath.length === 0) {
-      const { schema } = typeToSchemaObject(functionBody.input, typeMap, typeRef, true)
+      const { schema } = typeToSchemaObject(inputType, typeMap, typeRef, true)
       return {
         parameters: [
           {
@@ -235,11 +270,16 @@ export function generateOpenapiInput({
           },
         ],
         input: (request: Request) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
+        request: (input) => {
+          const encoded = inputType.encodeWithoutValidation(input)
+          const query = encodeQueryObject(encoded, specification.inputName ?? 'input')
+          return { query }
+        },
       }
     }
   } else {
     //BODY CAN EXIST
-    const { schema } = typeToSchemaObject(functionBody.input, typeMap, typeRef)
+    const { schema } = typeToSchemaObject(inputType, typeMap, typeRef)
     if (parametersInPath.length === 0) {
       return {
         requestBody: {
@@ -250,6 +290,10 @@ export function generateOpenapiInput({
           },
         },
         input: (request) => request.body,
+        request: (input) => {
+          const body = inputType.encodeWithoutValidation(input)
+          return { body }
+        },
       }
     }
     if (t.kind === types.Kind.Object) {
@@ -267,14 +311,28 @@ export function generateOpenapiInput({
           }
           return result
         },
+        request: (input) => {
+          const params = Object.fromEntries(
+            Object.entries(t.fields)
+              .filter(([fieldName]) => parametersInPath.includes(fieldName))
+              .map(([fieldName, field]) => {
+                const fieldType = types.concretise(types.unwrapField(field))
+                const encoded = fieldType.encodeWithoutValidation(input[fieldName])
+                return [fieldName, `${encoded}`] as const
+              }),
+          )
+          const body = remainingObject.encodeWithoutValidation(input)
+          return { body, params }
+        },
       }
     }
   }
   throw new Error(`Error while generating openapi input type. Not supported. Path ${specification.path}`)
 }
 
-function isInputRequired(type: types.Type): boolean {
-  return !types.isNullable(type) && !types.isOptional(type)
+function isInputRequired(type: types.Type | types.Field): boolean {
+  const t = types.unwrapField(type)
+  return !types.isNullable(t) && !types.isOptional(t)
 }
 function generatePathParameters({
   parameters,

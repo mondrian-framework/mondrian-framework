@@ -1,5 +1,5 @@
-import { Api } from './api'
-import { encodeQueryObject } from './utils'
+import { Api, FunctionSpecifications, Request } from './api'
+import { generateOpenapiInput } from './openapi'
 import { projection, result, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 
@@ -18,6 +18,13 @@ type SdkFunction<InputType extends types.Type, ErrorType extends types.Type, Out
   input: types.Infer<InputType>,
   options?: { projection?: P; headers?: Record<string, string | string[] | undefined> },
 ) => Promise<result.Result<sdk.Project<OutputType, P>, types.Infer<ErrorType>>>
+
+function getRequestBuilder(args: {
+  specification: FunctionSpecifications
+  functionBody: functions.FunctionImplementation
+}) {
+  return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).request
+}
 
 //TODO: adapt to function error change
 export function build<const Fs extends functions.Functions, const API extends Api<Fs>>({
@@ -38,30 +45,23 @@ export function build<const Fs extends functions.Functions, const API extends Ap
       if (!specification) {
         return []
       }
-      const inputType = types.concretise(functionBody.input)
       const errorType = types.concretise(functionBody.error)
       const outputType = types.concretise(types.partialDeep(functionBody.output))
-      const resolver = async (input: any, options?: { headers?: any; projection: any }) => {
+      const requestBuilder = getRequestBuilder({ specification, functionBody })
+      const resolver = async (input: never, options?: { headers?: any; projection: any }) => {
         const url = `${endpoint}/${module.name}/api/v${specification.version?.max ?? specification.version?.min ?? 1}${
           specification.path ?? `/${functionName}`
         }`
-        //TODO: build input with openapi specification (not always all in body)
-        const encodedInput = inputType.encode(input as never)
-        if (!encodedInput.isOk) {
-          throw new Error(`Error while enconding input ${JSON.stringify(encodedInput.error)}`)
-        }
-        const realUrl =
-          specification.method === 'get' || specification.method === 'delete'
-            ? `${url}?${encodeQueryObject(encodedInput.value, specification.inputName ?? 'input')}`
-            : url
+        const request = requestBuilder(input)
+        const urlWithParam = Object.entries(request.params ?? {}).reduce((p, [key, param]) => {
+          return p.replaceAll(`{${key}}`, param)
+        }, url)
+        const finalUrl = request.query ? `${urlWithParam}?${request.query}` : urlWithParam
         const projectionHeader = options?.projection != null ? { projection: JSON.stringify(options.projection) } : {}
-        const response = await fetch(realUrl, {
+        const response = await fetch(finalUrl, {
           headers: { 'content-type': 'application/json', ...headers, ...options?.headers, ...projectionHeader },
           method: specification.method,
-          body:
-            specification.method !== 'get' && specification.method !== 'delete'
-              ? JSON.stringify(encodedInput.value)
-              : undefined,
+          body: request.body !== undefined ? JSON.stringify(request.body) : null,
         })
         const operationId = response.headers.get('operation-id')
         if (response.status === 200) {

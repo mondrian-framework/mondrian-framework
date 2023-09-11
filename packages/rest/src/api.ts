@@ -51,6 +51,11 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   openapi?: {
     specification: NullableOperationObject
     input: (request: Request) => unknown
+    request?: (input: types.Infer<F['input']>) => {
+      body?: unknown
+      params?: Record<string, string>
+      query?: string
+    }
   }
   errorCodes?: [F['error']] extends [types.UnionType<infer TS>] ? { [K in keyof TS]?: number } : never
   namespace?: string | null

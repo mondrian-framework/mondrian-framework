@@ -81,11 +81,15 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Fields>
   validate(value: types.Infer<types.ObjectType<M, Ts>>, validationOptions?: validation.Options): validation.Result {
     const options = { ...validation.defaultOptions, ...validationOptions }
     const entries = Object.entries(value)
-    const validateEntry = ([fieldName, fieldValue]: [string, unknown]) =>
-      types
-        .concretise(types.unwrapField(this.fields[fieldName]))
-        .validate(fieldValue as never, options)
-        .mapError((errors) => prependFieldToAll(errors, fieldName))
+    const validateEntry = ([fieldName, fieldValue]: [string, unknown]) => {
+      const fieldExistsInModel = fieldName in this.fields
+      return !fieldExistsInModel
+        ? validation.succeed()
+        : types
+            .concretise(types.unwrapField(this.fields[fieldName]))
+            .validate(fieldValue as never, options)
+            .mapError((errors) => prependFieldToAll(errors, fieldName))
+    }
 
     return options.errorReportingStrategy === 'stopAtFirstError'
       ? result.tryEachFailFast(entries, true, always(true), validateEntry)

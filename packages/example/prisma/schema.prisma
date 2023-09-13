@@ -24,10 +24,10 @@ type UserMetadata {
 }
 
 model Post {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  content   String
-  published Boolean @default(false)
-  authorId  String  @db.ObjectId
-  author    User    @relation(fields: [authorId], references: [id])
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  content     String
+  publishedAt DateTime
+  authorId    String   @db.ObjectId
+  author      User     @relation(fields: [authorId], references: [id])
 }

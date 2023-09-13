@@ -14,7 +14,7 @@ export const post = () =>
       id: postId,
       title: types.string(),
       content: types.string(),
-      published: types.dateTime(),
+      publishedAt: types.dateTime(),
       author: user,
     },
     { name: 'post' },

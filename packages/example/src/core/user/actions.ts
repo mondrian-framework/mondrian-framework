@@ -3,8 +3,10 @@ import advancedTypes from '@mondrian-framework/advanced-types'
 import { result, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
+export type Context = LoginContext & RegisterContext
+
 // User login
-export type LoginContext = {
+type LoginContext = {
   findUser(email: string, password: string): Promise<UserId | undefined>
   updateLoginTime(id: UserId, loginTime: Date): Promise<Omit<User, 'posts'> | undefined>
 }
@@ -40,7 +42,7 @@ export const login = functions.withContext<LoginContext>().build({
 })
 
 // User registration
-export type RegisterContext = {
+type RegisterContext = {
   addUser(
     email: string,
     password: string,

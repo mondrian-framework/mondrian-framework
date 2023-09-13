@@ -1,3 +1,3 @@
-import { users } from '.'
+import { posts, users } from '.'
 
-export type Context = users.actions.LoginContext & users.actions.RegisterContext
+export type Context = users.actions.Context & posts.actions.Context

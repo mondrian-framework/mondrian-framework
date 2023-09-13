@@ -1,61 +1,55 @@
 import { types, projection } from '@mondrian-framework/model'
-import { deepMerge } from '@mondrian-framework/utils'
+import { deepMerge, filterMapObject } from '@mondrian-framework/utils'
 
 export function projectionToSelection<T extends Record<string, unknown>>(
   type: types.Type,
   projection: projection.Projection | undefined,
   overrides?: T,
-): T {
-  const select = projectionToSelectionInternal<T>(type, projection)
-  if (overrides) {
-    return mergeSelections(select.select as T, overrides)
+): T | undefined {
+  if (projection === true || projection === undefined) {
+    return undefined
   }
-  return select.select as T
-}
-function projectionToSelectionInternal<T extends Record<string, unknown>>(
-  type: types.Type,
-  projection: projection.Projection | undefined,
-): T {
-  const t = types.concretise(type)
-  if (t.kind === types.Kind.Object) {
-    if (projection === true || projection == null) {
-      const selection = Object.fromEntries(
-        Object.entries(t.fields as types.Fields).flatMap(([k, field]) => {
-          if ('virtual' in field) {
-            return []
-          }
-          return [[k, true]]
-        }),
-      )
-      return { select: selection } as any
-    }
-    const selection = Object.fromEntries(
-      Object.entries(t.fields as types.Fields).flatMap(([k, field]) => {
-        const concreteType = types.unwrap(types.unwrapField(field))
-        if (concreteType.kind === types.Kind.Union) {
-          return []
-        }
-        if (projection[k]) {
-          const subSelection = projectionToSelectionInternal(field as types.Type, projection[k])
-          if (concreteType.kind === types.Kind.Object || 'virtual' in field) {
-            return [[k, subSelection]]
-          }
-          return [[k, subSelection.select]]
-        }
-        return []
-      }),
-    )
-    return { select: selection } as any
-  }
-  if ('wapperdType' in t) {
-    return projectionToSelectionInternal(t.wapperdType as types.Type, projection)
-  }
-  if (t.kind === types.Kind.Union) {
-    throw new Error('PrismaUtils does not support union type')
-  }
-  return { select: true } as any
+  const select = projectionToSelectionInternal(type, projection)
+  return (overrides ? deepMerge(select, overrides) : select) as T
 }
 
-export function mergeSelections<T extends Record<string, unknown>>(select: T, overrides: T): T {
-  return deepMerge(select, overrides) as T
+function projectionToSelectionInternal<T extends Record<string, unknown>>(
+  type: types.Type,
+  projection: projection.Projection,
+): T | undefined {
+  const concreteType = types.concretise(type)
+  switch (concreteType.kind) {
+    case types.Kind.Number:
+    case types.Kind.String:
+    case types.Kind.Boolean:
+    case types.Kind.Enum:
+    case types.Kind.Literal:
+    case types.Kind.Custom:
+      return undefined
+    case types.Kind.Union:
+      throw new Error('PrismaUtils does not support union types')
+    case types.Kind.Object:
+      return objectProjectionToSelection(concreteType, projection) as T
+    case types.Kind.Array:
+    case types.Kind.Optional:
+    case types.Kind.Nullable:
+      return projectionToSelectionInternal(concreteType.wrappedType, projection)
+    default:
+      return undefined
+  }
+}
+
+function objectProjectionToSelection(object: types.ObjectType<any, types.Fields>, projection: projection.Projection) {
+  console.log('projection for object', projection)
+  return projection
+    ? filterMapObject(object.fields, (_, fieldValue) => ('virtual' in fieldValue ? undefined : true))
+    : filterMapObject(object.fields, (fieldName, fieldValue) => {
+        const fieldType = types.unwrap(types.unwrapField(fieldValue))
+        console.log('field:', fieldName)
+        console.log('value:', fieldValue)
+        const subProjection = projection[fieldName]
+        return subProjection && fieldType.kind !== types.Kind.Union
+          ? projectionToSelectionInternal(fieldType, subProjection)
+          : undefined
+      })
 }

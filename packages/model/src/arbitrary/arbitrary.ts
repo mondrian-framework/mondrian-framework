@@ -176,8 +176,12 @@ export function objectTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ObjectT
  */
 export function object<Ts extends types.Fields>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.ObjectType<types.Mutability, Ts>> {
-  return gen.oneof(immutableObject(fieldsGenerators), mutableObject(fieldsGenerators))
+): gen.Arbitrary<types.ObjectType<types.Mutability, Ts> | (() => types.ObjectType<types.Mutability, Ts>)> {
+  const objectGenerator = gen.oneof(immutableObject(fieldsGenerators), mutableObject(fieldsGenerators))
+  const makeLazy = <A>(value: A) => {
+    return () => value
+  }
+  return withChanceOneIn(2, objectGenerator, makeLazy)
 }
 
 /**
@@ -320,10 +324,9 @@ export function nullable<T extends types.Type>(
  * @returns a generator for random types
  */
 export function type(maxDepth: number = 5): gen.Arbitrary<types.Type> {
-  const generatedType =
-    maxDepth <= 1 ? baseType() : gen.oneof(wrapperType(maxDepth), objectType(maxDepth), unionType(maxDepth), baseType())
-  const turnIntoLazyType = (type: types.Type) => () => type
-  return withChanceOneIn(12, generatedType, turnIntoLazyType)
+  return maxDepth <= 1
+    ? baseType()
+    : gen.oneof(wrapperType(maxDepth), objectType(maxDepth), unionType(maxDepth), baseType())
 }
 
 /**
@@ -397,7 +400,7 @@ function unionType(maxDepth: number): gen.Arbitrary<types.Type> {
  * @returns a new generator where, with a chance of 1 in `chances` its generated values will be trasformed
  *          using the provided `map` function
  */
-function withChanceOneIn<A>(chances: number, generator: gen.Arbitrary<A>, map: (_: A) => A): gen.Arbitrary<A> {
+function withChanceOneIn<A, B>(chances: number, generator: gen.Arbitrary<A>, map: (_: A) => B): gen.Arbitrary<A | B> {
   return generator.chain((value) => {
     return gen.integer({ min: 1, max: chances }).map((chance) => {
       return chance === 1 ? map(value) : value

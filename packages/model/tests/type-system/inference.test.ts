@@ -224,9 +224,9 @@ describe('Infer', () => {
   })
 
   test('Function returning type is inferred as the returned type', () => {
-    const model = () => types.number()
+    const model = () => types.object({ field: types.string() })
     type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<number>()
+    expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: string }>()
   })
 
   test('UnionType inferred as tagged union of types', () => {

@@ -40,7 +40,8 @@ export type Type =
   | OptionalType<any>
   | NullableType<any>
   | CustomType<any, {}, any>
-  | (() => Type)
+  | (() => ObjectType<any, any>)
+  | (() => UnionType<any>)
 
 /**
  * Utility type to turn any type into a possibly lazy version of itself
@@ -51,26 +52,12 @@ export type Type =
  *          do_something(() => 1)   // or a function that returns a number value
  *          ```
  */
-export type Lazy<T> = T | (() => Lazy<T>)
+export type Lazy<T> = T | (() => T)
 
 /**
  * A record of {@link Type `Type`s}
  */
 export type Types = Record<string, Type>
-
-/**
- * The same as type but doesn't include the lazy type definition: `() => Type`.
- * This type can be useful when you want to make sure that you're working with an actual type
- * and not a lazy definition
- *
- * @example ```ts
- *          const lazyModel = () => types.number().array()
- *          type ModelType = Concrete<typeof lazyModel>
- *          // ModelType = ArrayType<"immutable", NumberType>
- *          ```
- * @see {@link concretise} to turn a possibly-lazy type into a concrete type
- */
-export type Concrete<T extends Type> = [T] extends [() => infer T1 extends Type] ? Concrete<T1> : Exclude<T, () => any>
 
 /**
  * A type that turns a Mondrian {@link Type `Type`} into the equivalent TypeScript's type
@@ -186,7 +173,6 @@ export function unwrapField(field: types.Field): types.Type {
 type IsOptional<T extends Type> 
   = [T] extends [OptionalType<infer _T1>] ? true
   : [T] extends [NullableType<infer T1>] ? IsOptional<T1>
-  : [T] extends [() => infer T1 extends Type] ? IsOptional<T1>
   : false
 
 /**
@@ -222,6 +208,22 @@ export enum Mutability {
 }
 
 /**
+ * The same as type but doesn't include the lazy type definition: `() => Type`.
+ * This type can be useful when you want to make sure that you're working with an actual type
+ * and not a lazy definition
+ *
+ * @example ```ts
+ *          const lazyModel = () => types.number().array()
+ *          type ModelType = Concrete<typeof lazyModel>
+ *          // ModelType = ArrayType<"immutable", NumberType>
+ *          ```
+ * @see {@link concretise} to turn a possibly-lazy type into a concrete type
+ */
+export type Concrete<T extends Type> = [T] extends [() => infer T1 extends Exclude<T, () => any>]
+  ? T1
+  : Exclude<T, () => any>
+
+/**
  * @param type the possibly lazy {@link Type type} to turn into a concrete type
  * @returns a new {@link ConcreteType type} that is guaranteed to not be lazily defined
  * @example if you just work with your own types you will rarely need this function. However,
@@ -234,12 +236,7 @@ export enum Mutability {
  *          ```
  */
 export function concretise<T extends Type>(type: T): Concrete<T> {
-  //TODO: caching by function address?
-  let concreteType: any = type
-  while (typeof concreteType === 'function') {
-    concreteType = concreteType()
-  }
-  return concreteType
+  return typeof type === 'function' ? type() : (type as any)
 }
 
 /**
@@ -1820,7 +1817,7 @@ export type PartialDeep<T extends Type>
   : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
   : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
   : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>
-  : [T] extends [(() => infer T1 extends Type)] ? () => PartialDeep<T1>
+  : [T] extends [(() => infer T1 extends ObjectType<any, any>)] ? () => PartialDeep<T1>
   : T
 
 /**
@@ -1973,7 +1970,7 @@ export function isOptional(type: Type): boolean {
  * @param type the type to check
  * @returns true if the type is a nullable type
  */
-export function isNullable(type: Type): type is Lazy<NullableType<Type>> {
+export function isNullable(type: Type): type is NullableType<Type> {
   return hasWrapper(type, Kind.Nullable)
 }
 
@@ -1981,7 +1978,7 @@ export function isNullable(type: Type): type is Lazy<NullableType<Type>> {
  * @param type the type to check
  * @returns true if the type is an array type
  */
-export function isArray(type: Type): type is Lazy<ArrayType<Mutability, Type>> {
+export function isArray(type: Type): type is ArrayType<Mutability, Type> {
   return hasWrapper(type, Kind.Array)
 }
 

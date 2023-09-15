@@ -62,15 +62,15 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
   const objectModel = arbitrary.object({ age: arbitrary.number(), name: arbitrary.optional(arbitrary.string()) })
   const objectGenerator = gen.record({ age: number, name: gen.string() })
   test.prop([objectModel, objectGenerator])('encodes the fields of an object', (model, object) => {
-    expect(model.immutable().encodeWithoutValidation(object)).toEqual(object)
-    expect(model.mutable().encodeWithoutValidation(object)).toEqual(object)
+    expect(types.concretise(model).immutable().encodeWithoutValidation(object)).toEqual(object)
+    expect(types.concretise(model).mutable().encodeWithoutValidation(object)).toEqual(object)
   })
 
   test.prop([objectModel])('drops undefined fields when encoding object', (model) => {
-    expect(model.mutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
-    expect(model.immutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
-    expect(model.mutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
-    expect(model.immutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
+    expect(types.concretise(model).mutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
+    expect(types.concretise(model).immutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
+    expect(types.concretise(model).mutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
+    expect(types.concretise(model).immutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
   })
 
   test.prop([arbitrary.array(arbitrary.number()), gen.array(number)])(

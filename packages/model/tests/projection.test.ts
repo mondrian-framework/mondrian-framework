@@ -27,7 +27,7 @@ describe.concurrent('projection.FromType', () => {
   })
 
   test('is a correct object for ObjectType', () => {
-    const model = types.object({ field1: types.number, field2: types.number })
+    const model = types.object({ field1: types.number(), field2: types.number() })
     type Inferred = projection.FromType<typeof model>
     type Expected = true | { readonly field1?: true; readonly field2?: true }
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
@@ -41,21 +41,21 @@ describe.concurrent('projection.FromType', () => {
   })
 
   test('is a correct object for UnionType', () => {
-    const model = types.union({ variant1: types.number, variant2: types.string })
+    const model = types.union({ variant1: types.number(), variant2: types.string() })
     type Inferred = projection.FromType<typeof model>
     type Expected = true | { readonly variant1?: true; readonly variant2?: true }
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
   test('works on nested unions', () => {
-    const model = types.union({ variant1: types.number, variant2: types.union({ subvariant1: types.number() }) })
+    const model = types.union({ variant1: types.number(), variant2: types.union({ subvariant1: types.number() }) })
     type Inferred = projection.FromType<typeof model>
     type Expected = true | { readonly variant1?: true; readonly variant2?: true | { readonly subvariant1?: true } }
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
   test('is the same as the projection for a wrapped type', () => {
-    const model = types.object({ field1: types.number, field2: types.number })
+    const model = types.object({ field1: types.number(), field2: types.number() })
     type Expected = true | { readonly field1?: true; readonly field2?: true }
 
     const optionalObject = model.optional()
@@ -245,12 +245,11 @@ describe.concurrent('projection.respectsProjection', () => {
     })
 
     test('from union with empty object', () => {
-      const model = () =>
-        types.union({
-          field1: types.object({ field4: types.string() }),
-          field2: types.string().optional(),
-          field3: types.string(),
-        })
+      const model = types.union({
+        field1: types.object({ field4: types.string() }),
+        field2: types.string().optional(),
+        field3: types.string(),
+      })
       assertOk(projection.respectsProjection(model, {}, { field1: {} }))
       assertOk(projection.respectsProjection(model, {}, { field2: undefined }))
       assertOk(projection.respectsProjection(model, {}, { field3: 'asd' }))

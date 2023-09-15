@@ -6,11 +6,11 @@ import { describe, expect } from 'vitest'
 
 describe('merge', () => {
   test('Lazyness is supported', () => {
-    const t3 = () => types.merge(t1, t2)
-    const t4 = types.merge(t3, types.object({}))
     const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ n: 1, s: '1', t2: { s: '2' } })
+    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
+    const t3 = () => types.merge(t1, t2)
+    const t4 = () => types.merge(t3(), types.object({}))
+    const result = t4()().validate({ n: 1, s: '1', t2: { s: '2' } })
     expect(result.isOk).toBe(true)
   })
 })
@@ -18,10 +18,10 @@ describe('merge', () => {
 describe('pick', () => {
   test('Lazyness is supported', () => {
     const t3 = () => types.pick(t1, { t2: true })
-    const t4 = types.merge(t3, types.object({}))
+    const t4 = () => types.merge(t3(), types.object({}))
     const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
+    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
+    const result = t4()().validate({ t2: { s: '2' } })
     expect(result.isOk).toBe(true)
   })
 })
@@ -29,10 +29,10 @@ describe('pick', () => {
 describe('omit', () => {
   test('Lazyness is supported', () => {
     const t3 = () => types.omit(t1, { n: true })
-    const t4 = types.merge(t3, types.object({}))
+    const t4 = () => types.merge(t3(), types.object({}))
     const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
+    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
+    const result = t4()().validate({ t2: { s: '2' } })
     expect(result.isOk).toBe(true)
   })
 })
@@ -40,10 +40,10 @@ describe('omit', () => {
 describe('omitReferences', () => {
   test('Lazyness is supported', () => {
     const t3 = () => types.omitVirtualFields(t1)
-    const t4 = types.merge(t3, types.object({}))
+    const t4 = () => types.merge(t3(), types.object({}))
     const t1 = () => types.object({ n: { virtual: types.number() }, t2: types.optional(t2) })
-    const t2 = () => () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
+    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
+    const result = t4()().validate({ t2: { s: '2' } })
     expect(result.isOk).toBe(true)
   })
 })
@@ -51,10 +51,10 @@ describe('omitReferences', () => {
 describe('partial', () => {
   test('Lazyness is supported', () => {
     const t3 = () => types.partial(t1)
-    const t4 = types.merge(t3, types.object({}))
+    const t4 = () => types.merge(t3(), types.object({}))
     const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
+    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
+    const result = t4()().validate({ t2: { s: '2' } })
     expect(result.isOk).toBe(true)
   })
 })
@@ -73,14 +73,14 @@ describe('Utilities', () => {
     expect(types.isOptional(types.string().optional())).toBe(true)
     expect(types.isOptional(types.string().optional().nullable())).toBe(true)
     expect(types.isOptional(types.string().optional().array())).toBe(false)
-    expect(types.isOptional(types.string().optional().array().optional)).toBe(true)
+    expect(types.isOptional(types.string().optional().array().optional())).toBe(true)
   })
   test('isNullable', () => {
     expect(types.isNullable(types.string().array().nullable())).toBe(true)
     expect(types.isNullable(types.string().nullable())).toBe(true)
     expect(types.isNullable(types.string().nullable().optional())).toBe(true)
     expect(types.isNullable(types.string().nullable().array())).toBe(false)
-    expect(types.isNullable(types.string().nullable().array().nullable)).toBe(true)
+    expect(types.isNullable(types.string().nullable().array().nullable())).toBe(true)
   })
 
   test('isNullable', () => {

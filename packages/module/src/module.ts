@@ -4,6 +4,7 @@ import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
+import { assertNever, count } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
@@ -67,41 +68,83 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
  */
 type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 
+export function uniqueTypes(from: types.Type): Set<types.Type> {
+  return gatherUniqueTypes(new Set(), from)
+}
+
+export function allUniqueTypes(from: types.Type[]): Set<types.Type> {
+  return from.reduce(gatherUniqueTypes, new Set())
+}
+
+function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): Set<types.Type> {
+  if (inspectedTypes.has(type)) {
+    return inspectedTypes
+  } else {
+    inspectedTypes.add(type)
+  }
+
+  if (typeof type === 'function') {
+    const concreteType = type()
+    switch (concreteType.kind) {
+      case types.Kind.Union:
+        return gatherTypesReferencedByUnion(inspectedTypes, concreteType)
+      case types.Kind.Object:
+        return gatherTypesReferencedByObject(inspectedTypes, concreteType)
+      default:
+        assertNever(concreteType)
+    }
+  } else {
+    switch (type.kind) {
+      case types.Kind.Number:
+      case types.Kind.String:
+      case types.Kind.Boolean:
+      case types.Kind.Enum:
+      case types.Kind.Literal:
+      case types.Kind.Custom:
+        return inspectedTypes
+      case types.Kind.Array:
+      case types.Kind.Optional:
+      case types.Kind.Nullable:
+        return gatherUniqueTypes(inspectedTypes, type.wrappedType)
+      case types.Kind.Union:
+        return gatherTypesReferencedByUnion(inspectedTypes, type)
+      case types.Kind.Object:
+        return gatherTypesReferencedByObject(inspectedTypes, type)
+      default:
+        assertNever(type)
+    }
+  }
+}
+
+function gatherTypesReferencedByUnion(inspectedTypes: Set<types.Type>, type: types.UnionType<any>): Set<types.Type> {
+  const variants = type.variants as Record<string, types.Type>
+  return Object.values(variants).reduce(gatherUniqueTypes, inspectedTypes)
+}
+
+function gatherTypesReferencedByObject(
+  inspectedTypes: Set<types.Type>,
+  type: types.ObjectType<any, any>,
+): Set<types.Type> {
+  const fields = type.fields as Record<string, types.Field>
+  return Object.values(fields).reduce(gatherTypesReferencedByField, inspectedTypes)
+}
+
+function gatherTypesReferencedByField(inspectedTypes: Set<types.Type>, field: types.Field): Set<types.Type> {
+  return gatherUniqueTypes(inspectedTypes, types.unwrapField(field))
+}
+
 /**
  * Checks for name collisions.
  */
 function assertUniqueNames(functions: functions.Functions) {
-  function gatherTypes(ts: types.Type[], explored?: Set<types.Type>): types.Type[] {
-    explored = explored ?? new Set<types.Type>()
-    for (const type of ts) {
-      if (explored.has(type)) {
-        continue
-      }
-      explored.add(type)
-      const t = types.concretise(type)
-      if (t.kind === types.Kind.Array || t.kind === types.Kind.Nullable || t.kind === types.Kind.Optional) {
-        gatherTypes([t.wrappedType], explored)
-      } else if (t.kind === types.Kind.Object) {
-        gatherTypes(
-          Object.values(t.fields as types.Fields).map((v) => types.unwrapField(v)),
-          explored,
-        )
-      } else if (t.kind === types.Kind.Union) {
-        gatherTypes(Object.values(t.variants), explored)
-      }
-    }
-    return [...explored.values()]
-  }
-
-  const allTypes = gatherTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
-  const allNames = allTypes
+  const allTypes = allUniqueTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
+  const allNames = [...allTypes.values()]
     .map((t) => types.concretise(t).options?.name)
-    .flatMap((name) => (name != null ? [name] : []))
-  for (let i = 0; i < allNames.length; i++) {
-    if (allNames.indexOf(allNames[i]) !== i) {
-      throw new Error(`Duplicated type name "${allNames[i]}"`)
-    }
-  }
+    .filter((name) => name !== undefined)
+
+  count(allNames).forEach((value, key) => {
+    if (value > 1) throw new Error(`Duplicated type name "${key}"`)
+  })
 }
 
 /**

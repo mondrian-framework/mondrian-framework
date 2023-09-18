@@ -16,8 +16,6 @@ describe('Project', () => {
     expectTypeOf<Project<types.DateTimeType, true>>().toEqualTypeOf<Date>()
     expectTypeOf<Project<types.EnumType<['A']>, {}>>().toEqualTypeOf<'A'>()
     expectTypeOf<Project<types.EnumType<['A']>, true>>().toEqualTypeOf<'A'>()
-    expectTypeOf<Project<() => types.NumberType, {}>>().toEqualTypeOf<number>()
-    expectTypeOf<Project<() => types.NumberType, true>>().toEqualTypeOf<number>()
   })
 
   test('Infer scalar on scalar type with any projection with wrapper', () => {

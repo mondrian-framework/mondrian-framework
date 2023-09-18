@@ -170,3 +170,17 @@ export function areSameArray<A>(
 export function always<A>(value: A): (_: any) => A {
   return (_) => value
 }
+
+export function count<A>(values: A[]): Map<A, number> {
+  return values.reduce(increaseCount, new Map<A, number>())
+}
+
+function increaseCount<A>(map: Map<A, number>, key: A): Map<A, number> {
+  const value = map.get(key)
+  if (value) {
+    map.set(key, value + 1)
+  } else {
+    map.set(key, 1)
+  }
+  return map
+}

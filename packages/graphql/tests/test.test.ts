@@ -1,5 +1,5 @@
 import { graphql } from '../src'
-import { types } from '@mondrian-framework/model'
+import { result, types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { expect, test } from 'vitest'
 
@@ -10,8 +10,9 @@ const exampleModule = module.build({
     asd: functions.build({
       input: types.number(),
       output: types.string(),
+      error: types.never(),
       async body() {
-        return 'a'
+        return result.ok('a')
       },
     }),
   },

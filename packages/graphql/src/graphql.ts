@@ -494,7 +494,7 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
         ...mutationNamespacesResolvers,
       },
     })
-    //console.log(schemaDefs)
+
     console.log(printSchema(schema))
     return schema
   } catch (error) {

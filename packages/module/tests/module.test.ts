@@ -176,7 +176,7 @@ test('Real example', async () => {
 
 describe('Unique type name', () => {
   test('Two different type cannot have the same name', () => {
-    const n = () => types.number().setName('Input')
+    const n = types.number().setName('Input')
     const input = types.number().setName('Input')
     const output = types.union({ n, v: input.setName('V') })
     const error = types.never()
@@ -201,7 +201,7 @@ describe('Unique type name', () => {
 
 describe('Default middlewares', () => {
   test('Testing maximum projection depth and output type', async () => {
-    const type = () => types.object({ type, value: types.string() }).optional()
+    const type = () => types.object({ type: types.optional(type), value: types.string() })
     const dummy = functions.build({
       input: type,
       output: type,

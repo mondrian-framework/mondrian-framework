@@ -1251,7 +1251,9 @@ export type ArrayType<M extends Mutability, T extends Type> = {
 }
 
 /**
- * The options that can be used to define an {@link ArrayType `ArrayType`}.
+ * The options that can be used to define an {@link ArrayType `ArrayType`}:
+ * - `maxItems` is the meximum number of items (inclusive) an array can hold
+ * - `minItems` is the minimum number of items (inclusive) an array can hold
  */
 export type ArrayTypeOptions = BaseOptions & {
   readonly maxItems?: number

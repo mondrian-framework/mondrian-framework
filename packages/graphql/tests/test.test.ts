@@ -1,6 +1,16 @@
 import { graphql } from '../src'
 import { result, types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
+import {
+  printSchema,
+  GraphQLSchema,
+  GraphQLNamedType,
+  GraphQLObjectType,
+  GraphQLString,
+  GraphQLList,
+  GraphQLNonNull,
+  getNamedType,
+} from 'graphql'
 import { expect, test } from 'vitest'
 
 const exampleModule = module.build({
@@ -20,16 +30,29 @@ const exampleModule = module.build({
 })
 
 test.concurrent('typeToGqlType', () => {
-  const schema = graphql.fromModule({
-    module: exampleModule,
-    api: {
-      functions: {
-        asd: [{ type: 'query', name: 'a' }],
-      },
-    },
-    context: async () => {},
-    setHeader: () => {},
-  })
+  //const schema = graphql.fromModule({
+  //  module: exampleModule,
+  //  api: {
+  //    functions: {
+  //      asd: [{ type: 'query', name: 'a' }],
+  //    },
+  //  },
+  //  context: async () => {},
+  //  setHeader: () => {},
+  //})
+  // expect(1).toBe(2)
+})
 
+test('a', () => {
+  const ty = types.union({ prova: types.object({ field1: types.boolean() }), pippo: types.number() })
+  const t = getNamedType(graphql.typeToGraphQLType(ty))
+
+  console.log(
+    printSchema(
+      new GraphQLSchema({
+        types: [t],
+      }),
+    ),
+  )
   expect(1).toBe(2)
 })

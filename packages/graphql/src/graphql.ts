@@ -4,8 +4,26 @@ import { makeExecutableSchema } from '@graphql-tools/schema'
 import { createGraphQLError } from '@graphql-tools/utils'
 import { decoding, projection, types, validation } from '@mondrian-framework/model'
 import { module, utils, functions, logger } from '@mondrian-framework/module'
-import { assertNever, isArray } from '@mondrian-framework/utils'
-import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema, printSchema } from 'graphql'
+import { JSONType, assertNever, isArray, mapObject, toCamelCase } from '@mondrian-framework/utils'
+import {
+  GraphQLResolveInfo,
+  GraphQLScalarType,
+  GraphQLSchema,
+  GraphQLObjectType,
+  GraphQLEnumType,
+  GraphQLString,
+  GraphQLList,
+  GraphQLNonNull,
+  printSchema,
+  GraphQLBoolean,
+  GraphQLInt,
+  getNullableType,
+  GraphQLUnionType,
+  GraphQLType,
+  GraphQLOutputType,
+  GraphQLNamedType,
+  Kind,
+} from 'graphql'
 
 type GraphqlType =
   | { type: 'scalar'; description?: string; impl: types.CustomType<string, {}, any> }
@@ -17,6 +35,109 @@ type GraphqlType =
       is?: Record<string, undefined | ((v: unknown) => boolean)>
     }
 
+export function typeToGraphQLType(type: types.Type): GraphQLOutputType {
+  const concreteType = types.concretise(type)
+  switch (concreteType.kind) {
+    case types.Kind.Number:
+      return scalarOrDefault(concreteType, GraphQLInt)
+    case types.Kind.String:
+      return scalarOrDefault(concreteType, GraphQLString)
+    case types.Kind.Boolean:
+      return scalarOrDefault(concreteType, GraphQLBoolean)
+    case types.Kind.Enum:
+      return enumToGraphQLType(concreteType)
+    case types.Kind.Literal:
+      return literalToGraphQLType(concreteType)
+    case types.Kind.Union:
+      return unionToGraphQLType(concreteType)
+    case types.Kind.Object:
+      return objectToGraphQLType(concreteType)
+    case types.Kind.Array:
+      return arrayToGraphQLType(concreteType)
+    case types.Kind.Optional:
+    case types.Kind.Nullable:
+      return getNullableType(typeToGraphQLType(concreteType.wrappedType))
+    case types.Kind.Custom:
+      return scalarFromType(concreteType, 'TODO', concreteType.options?.description)
+    default:
+      assertNever(concreteType)
+  }
+}
+
+function scalarOrDefault<T extends types.Type>(type: T, defaultType: GraphQLOutputType) {
+  const concreteType = types.concretise(type)
+  const options = concreteType.options
+  return !options ? defaultType : scalarFromType(concreteType, options.name, options.description)
+}
+
+function scalarFromType<T extends types.Type>(
+  type: types.Concrete<T>,
+  name: string | undefined,
+  description: string | undefined,
+) {
+  return new GraphQLScalarType<types.Infer<T>, JSONType>({
+    name: 'TODO_SCALAR',
+    description,
+    serialize: (value) => {
+      if (!types.isType(type, value)) {
+        throw createGraphQLError('Unexpected type in serialize')
+      } else {
+        const result = type.encode(value as never)
+        if (result.isOk) {
+          return result.value
+        } else {
+          throw createGraphQLError('GraphQL serialization failed')
+        }
+      }
+    },
+  })
+}
+
+function enumToGraphQLType(enumeration: types.EnumType<readonly [string, ...string[]]>) {
+  const variants = enumeration.variants.map((variant, index) => [variant, { value: index }])
+  const values = Object.fromEntries(variants)
+  const name = 'TODO'
+  return new GraphQLEnumType({ name, values })
+}
+
+function literalToGraphQLType(literal: types.LiteralType<number | string | null | boolean>) {
+  const rawName = literal.literalValue?.toString().trim() ?? 'null'
+  const name = `Literal${toCamelCase(rawName)}`
+  const values = Object.fromEntries([[name, { value: 0 }]])
+  return new GraphQLEnumType({ name, values })
+}
+
+function arrayToGraphQLType(array: types.ArrayType<any, any>) {
+  const itemsType = typeToGraphQLType(array.wrappedType)
+  const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
+  return new GraphQLList(wrappedType)
+}
+
+function objectToGraphQLType(object: types.ObjectType<any, types.Types>) {
+  const fields = mapObject(object.fields, (_, fieldValue) => typeToGraphQLObjectField(fieldValue))
+  return new GraphQLObjectType({ name: 'TODO_OBJECT', fields })
+}
+
+function typeToGraphQLObjectField(type: types.Type): { type: GraphQLOutputType } {
+  const concreteType = types.concretise(type)
+  const graphQLType = typeToGraphQLType(concreteType)
+  const canBeMissing = types.isOptional(concreteType) || types.isNullable(concreteType)
+  return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
+}
+
+function unionToGraphQLType(union: types.UnionType<types.Types>) {
+  const variants = Object.entries(union.variants).map(
+    ([name, type]) =>
+      new GraphQLObjectType({
+        name,
+        fields: { value: { type: typeToGraphQLType(type) } },
+      }),
+  )
+
+  return new GraphQLUnionType({ name: 'TODO_UNION', types: variants })
+}
+
+/*
 function typeToGqlType(
   t: types.Type,
   typeMap: Record<string, GraphqlType>, //id -> definition
@@ -25,12 +146,11 @@ function typeToGqlType(
   isOptional: boolean,
   suggestedName?: string,
 ): string {
-  const isRequired = isOptional ? '' : '!'
   const mt = types.concretise(t)
   if (typeof t === 'function') {
     const id = typeRef.get(t)
     if (id) {
-      return `${isInput ? 'I' : ''}${id}${isRequired}`
+      return `${isInput ? 'I' : ''}${id}${isOptional ? '' : '!'}`
     }
     if (mt.options?.name) {
       typeRef.set(t, mt.options.name)
@@ -388,7 +508,7 @@ function generateQueryOrMutation<const ServerContext, const Fs extends functions
         return [`type ${operationType} {`, description, def, '}']
       })
     })
-    .flatMap((v) => (v != null ? [v] : []))
+    .filter((v) => v != null)
     .join('\n')
 
   const namespacesResolvers = Object.fromEntries(
@@ -495,10 +615,10 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
       },
     })
 
-    console.log(printSchema(schema))
     return schema
   } catch (error) {
     console.log(schemaDefs)
     throw error
   }
 }
+*/

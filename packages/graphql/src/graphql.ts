@@ -1,141 +1,197 @@
-import { ErrorHandler, Api } from './api'
-import { infoToProjection } from './utils'
-import { makeExecutableSchema } from '@graphql-tools/schema'
 import { createGraphQLError } from '@graphql-tools/utils'
-import { decoding, projection, types, validation } from '@mondrian-framework/model'
-import { module, utils, functions, logger } from '@mondrian-framework/module'
-import { JSONType, assertNever, isArray, mapObject, toCamelCase } from '@mondrian-framework/utils'
+import { types } from '@mondrian-framework/model'
+import { JSONType, assertNever, mapObject, toCamelCase } from '@mondrian-framework/utils'
 import {
-  GraphQLResolveInfo,
   GraphQLScalarType,
-  GraphQLSchema,
   GraphQLObjectType,
   GraphQLEnumType,
   GraphQLString,
   GraphQLList,
   GraphQLNonNull,
-  printSchema,
   GraphQLBoolean,
   GraphQLInt,
   getNullableType,
   GraphQLUnionType,
-  GraphQLType,
   GraphQLOutputType,
-  GraphQLNamedType,
-  Kind,
 } from 'graphql'
 
-type GraphqlType =
-  | { type: 'scalar'; description?: string; impl: types.CustomType<string, {}, any> }
-  | { type: 'type' | 'input' | 'enum'; definition?: string; description?: string }
-  | {
-      type: 'union'
-      definition: string
-      description?: string
-      is?: Record<string, undefined | ((v: unknown) => boolean)>
-    }
-
 export function typeToGraphQLType(type: types.Type): GraphQLOutputType {
+  return typeToGraphQLTypeInternal(types.concretise(type), new Set(), new Map(), undefined)
+}
+
+function generateName(type: types.Type, defaultName: string | undefined): string {
   const concreteType = types.concretise(type)
-  switch (concreteType.kind) {
-    case types.Kind.Number:
-      return scalarOrDefault(concreteType, GraphQLInt)
-    case types.Kind.String:
-      return scalarOrDefault(concreteType, GraphQLString)
-    case types.Kind.Boolean:
-      return scalarOrDefault(concreteType, GraphQLBoolean)
-    case types.Kind.Enum:
-      return enumToGraphQLType(concreteType)
-    case types.Kind.Literal:
-      return literalToGraphQLType(concreteType)
-    case types.Kind.Union:
-      return unionToGraphQLType(concreteType)
-    case types.Kind.Object:
-      return objectToGraphQLType(concreteType)
-    case types.Kind.Array:
-      return arrayToGraphQLType(concreteType)
-    case types.Kind.Optional:
-    case types.Kind.Nullable:
-      return getNullableType(typeToGraphQLType(concreteType.wrappedType))
-    case types.Kind.Custom:
-      return scalarFromType(concreteType, 'TODO', concreteType.options?.description)
-    default:
-      assertNever(concreteType)
+  return concreteType.options?.name ?? defaultName ?? 'TYPE_' + Math.floor(Math.random() * 100_000_000)
+}
+
+function typeToGraphQLTypeInternal(
+  type: types.Type,
+  inspectedTypes: Set<types.Type>,
+  knownTypes: Map<types.Type, GraphQLOutputType>,
+  defaultName: string | undefined,
+): GraphQLOutputType {
+  if (inspectedTypes.has(type)) {
+    return knownTypes.get(type)!!
+  } else {
+    inspectedTypes.add(type)
+    let graphQLType = undefined
+    const concreteType = types.concretise(type)
+    switch (concreteType.kind) {
+      case types.Kind.Number:
+        graphQLType = scalarOrDefault(concreteType, GraphQLInt, defaultName)
+        break
+      case types.Kind.String:
+        graphQLType = scalarOrDefault(concreteType, GraphQLString, defaultName)
+        break
+      case types.Kind.Boolean:
+        graphQLType = scalarOrDefault(concreteType, GraphQLBoolean, defaultName)
+        break
+      case types.Kind.Enum:
+        graphQLType = enumToGraphQLType(concreteType, defaultName)
+        break
+      case types.Kind.Literal:
+        graphQLType = literalToGraphQLType(concreteType, defaultName)
+        break
+      case types.Kind.Union:
+        graphQLType = unionToGraphQLType(concreteType, inspectedTypes, knownTypes, defaultName)
+        break
+      case types.Kind.Object:
+        graphQLType = objectToGraphQLType(concreteType, inspectedTypes, knownTypes, defaultName)
+        break
+      case types.Kind.Array:
+        graphQLType = arrayToGraphQLType(concreteType, inspectedTypes, knownTypes, defaultName)
+        break
+      case types.Kind.Optional:
+      case types.Kind.Nullable:
+        const type = typeToGraphQLTypeInternal(concreteType.wrappedType, inspectedTypes, knownTypes, defaultName)
+        graphQLType = getNullableType(type)
+        break
+      case types.Kind.Custom:
+        graphQLType = scalarFromType(concreteType, concreteType.options?.description, defaultName)
+        break
+      default:
+        assertNever(concreteType)
+    }
+    knownTypes.set(type, graphQLType)
+    return graphQLType
   }
 }
 
-function scalarOrDefault<T extends types.Type>(type: T, defaultType: GraphQLOutputType) {
+function scalarOrDefault<T extends types.Type>(
+  type: T,
+  defaultType: GraphQLOutputType,
+  defaultName: string | undefined,
+) {
   const concreteType = types.concretise(type)
   const options = concreteType.options
-  return !options ? defaultType : scalarFromType(concreteType, options.name, options.description)
+  return !options ? defaultType : scalarFromType(concreteType, options.description, defaultName)
 }
 
 function scalarFromType<T extends types.Type>(
   type: types.Concrete<T>,
-  name: string | undefined,
   description: string | undefined,
+  defaultName: string | undefined,
 ) {
-  return new GraphQLScalarType<types.Infer<T>, JSONType>({
-    name: 'TODO_SCALAR',
-    description,
-    serialize: (value) => {
-      if (!types.isType(type, value)) {
-        throw createGraphQLError('Unexpected type in serialize')
+  const name = generateName(type, defaultName)
+  const serialize = (value: unknown) => {
+    if (!types.isType(type, value)) {
+      throw createGraphQLError('Unexpected type in serialize')
+    } else {
+      const result = type.encode(value as never)
+      if (result.isOk) {
+        return result.value
       } else {
-        const result = type.encode(value as never)
-        if (result.isOk) {
-          return result.value
-        } else {
-          throw createGraphQLError('GraphQL serialization failed')
-        }
+        throw createGraphQLError('GraphQL serialization failed')
       }
-    },
-  })
+    }
+  }
+  return new GraphQLScalarType<types.Infer<T>, JSONType>({ name, description, serialize })
 }
 
-function enumToGraphQLType(enumeration: types.EnumType<readonly [string, ...string[]]>) {
+function enumToGraphQLType(
+  enumeration: types.EnumType<readonly [string, ...string[]]>,
+  defaultName: string | undefined,
+) {
+  const name = generateName(enumeration, defaultName)
   const variants = enumeration.variants.map((variant, index) => [variant, { value: index }])
   const values = Object.fromEntries(variants)
-  const name = 'TODO'
   return new GraphQLEnumType({ name, values })
 }
 
-function literalToGraphQLType(literal: types.LiteralType<number | string | null | boolean>) {
-  const rawName = literal.literalValue?.toString().trim() ?? 'null'
-  const name = `Literal${toCamelCase(rawName)}`
-  const values = Object.fromEntries([[name, { value: 0 }]])
+function literalToGraphQLType(
+  literal: types.LiteralType<number | string | null | boolean>,
+  defaultName: string | undefined,
+) {
+  const name = generateName(literal, defaultName)
+  const rawLiteralName = literal.literalValue?.toString().trim() ?? 'null'
+  const literalName = `Literal${toCamelCase(rawLiteralName)}`
+  const values = Object.fromEntries([[literalName, { value: 0 }]])
   return new GraphQLEnumType({ name, values })
 }
 
-function arrayToGraphQLType(array: types.ArrayType<any, any>) {
-  const itemsType = typeToGraphQLType(array.wrappedType)
+function arrayToGraphQLType(
+  array: types.ArrayType<any, any>,
+  inspectedTypes: Set<types.Type>,
+  knownTypes: Map<types.Type, GraphQLOutputType>,
+  defaultName: string | undefined,
+) {
+  const arrayName = generateName(array, defaultName)
+  const itemDefaultName = arrayName + '_item'
+  const itemsType = typeToGraphQLTypeInternal(array.wrappedType, inspectedTypes, knownTypes, itemDefaultName)
   const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
   return new GraphQLList(wrappedType)
 }
 
-function objectToGraphQLType(object: types.ObjectType<any, types.Types>) {
-  const fields = mapObject(object.fields, (_, fieldValue) => typeToGraphQLObjectField(fieldValue))
-  return new GraphQLObjectType({ name: 'TODO_OBJECT', fields })
+function objectToGraphQLType(
+  object: types.ObjectType<any, types.Types>,
+  inspectedTypes: Set<types.Type>,
+  knownTypes: Map<types.Type, GraphQLOutputType>,
+  defaultName: string | undefined,
+) {
+  const name = generateName(object, defaultName)
+  const fields = () => mapObject(object.fields, typeToGraphQLObjectField(inspectedTypes, knownTypes, name))
+  return new GraphQLObjectType({ name, fields })
 }
 
-function typeToGraphQLObjectField(type: types.Type): { type: GraphQLOutputType } {
-  const concreteType = types.concretise(type)
-  const graphQLType = typeToGraphQLType(concreteType)
-  const canBeMissing = types.isOptional(concreteType) || types.isNullable(concreteType)
-  return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
+function typeToGraphQLObjectField(
+  inspectedTypes: Set<types.Type>,
+  knownTypes: Map<types.Type, GraphQLOutputType>,
+  objectName: string,
+): (fieldName: string, fieldType: types.Type) => { type: GraphQLOutputType } {
+  return (fieldName, fieldType) => {
+    const fieldDefaultName = generateName(fieldType, objectName + '_' + fieldName)
+    const concreteType = types.concretise(fieldType)
+    const graphQLType = typeToGraphQLTypeInternal(concreteType, inspectedTypes, knownTypes, fieldDefaultName)
+    const canBeMissing = types.isOptional(concreteType) || types.isNullable(concreteType)
+    return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
+  }
 }
 
-function unionToGraphQLType(union: types.UnionType<types.Types>) {
-  const variants = Object.entries(union.variants).map(
-    ([name, type]) =>
-      new GraphQLObjectType({
-        name,
-        fields: { value: { type: typeToGraphQLType(type) } },
-      }),
-  )
-
-  return new GraphQLUnionType({ name: 'TODO_UNION', types: variants })
+function unionToGraphQLType(
+  union: types.UnionType<types.Types>,
+  inspectedTypes: Set<types.Type>,
+  knownTypes: Map<types.Type, GraphQLOutputType>,
+  defaultName: string | undefined,
+) {
+  const unionName = generateName(union, defaultName)
+  const types = Object.entries(union.variants).map(([name, variantType]) => {
+    const variantName = unionName + '_' + name
+    const variantValueDefaultName = name + '_value'
+    const value = typeToGraphQLTypeInternal(variantType, inspectedTypes, knownTypes, variantValueDefaultName)
+    return new GraphQLObjectType({ name: variantName, fields: { value: { type: value } } })
+  })
+  return new GraphQLUnionType({ name: unionName, types })
 }
+
+// type GraphqlType =
+//   | { type: 'scalar'; description?: string; impl: types.CustomType<string, {}, any> }
+//   | { type: 'type' | 'input' | 'enum'; definition?: string; description?: string }
+//   | {
+//       type: 'union'
+//       definition: string
+//       description?: string
+//       is?: Record<string, undefined | ((v: unknown) => boolean)>
+//     }
 
 /*
 function typeToGqlType(

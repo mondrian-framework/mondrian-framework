@@ -44,8 +44,8 @@ test.concurrent('typeToGqlType', () => {
 })
 
 test('a', () => {
-  const ty = types.union({ prova: types.object({ field1: types.boolean() }), pippo: types.number() })
-  const t = getNamedType(graphql.typeToGraphQLType(ty))
+  const optionalInt = types.union({ some: types.number(), none: types.unknown() }).setName('optional_int')
+  const t = getNamedType(graphql.typeToGraphQLType(optionalInt))
 
   console.log(
     printSchema(

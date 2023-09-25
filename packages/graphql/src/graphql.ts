@@ -93,6 +93,7 @@ function scalarFromType<T extends types.Type>(
   defaultName: string | undefined,
 ) {
   const name = generateName(type, defaultName)
+  // TODO: add parseValue and parseLiteral
   const serialize = (value: unknown) => {
     if (!types.isType(type, value)) {
       throw createGraphQLError('Unexpected type in serialize')
@@ -178,7 +179,8 @@ function unionToGraphQLType(
     const variantName = unionName + '_' + name
     const variantValueDefaultName = name + '_value'
     const value = typeToGraphQLTypeInternal(variantType, inspectedTypes, knownTypes, variantValueDefaultName)
-    return new GraphQLObjectType({ name: variantName, fields: { value: { type: value } } })
+    const field = Object.fromEntries([[name, { type: value }]])
+    return new GraphQLObjectType({ name: variantName, fields: field })
   })
   return new GraphQLUnionType({ name: unionName, types })
 }

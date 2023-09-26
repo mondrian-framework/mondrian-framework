@@ -49,41 +49,29 @@ function typeToGraphQLTypeInternal(type: types.Type, internalData: InternalData)
     inspectedTypes.add(type)
     let graphQLType = undefined
     const concreteType = types.concretise(type)
-    switch (concreteType.kind) {
-      case types.Kind.Number:
-        graphQLType = scalarOrDefault(concreteType, GraphQLInt, defaultName)
-        break
-      case types.Kind.String:
-        graphQLType = scalarOrDefault(concreteType, GraphQLString, defaultName)
-        break
-      case types.Kind.Boolean:
-        graphQLType = scalarOrDefault(concreteType, GraphQLBoolean, defaultName)
-        break
-      case types.Kind.Enum:
-        graphQLType = enumToGraphQLType(concreteType, defaultName)
-        break
-      case types.Kind.Literal:
-        graphQLType = literalToGraphQLType(concreteType, defaultName)
-        break
-      case types.Kind.Union:
-        graphQLType = unionToGraphQLType(concreteType, internalData)
-        break
-      case types.Kind.Object:
-        graphQLType = objectToGraphQLType(concreteType, internalData)
-        break
-      case types.Kind.Array:
-        graphQLType = arrayToGraphQLType(concreteType, internalData)
-        break
-      case types.Kind.Optional:
-      case types.Kind.Nullable:
-        const type = typeToGraphQLTypeInternal(concreteType.wrappedType, internalData)
-        graphQLType = getNullableType(type)
-        break
-      case types.Kind.Custom:
-        graphQLType = customTypeToGraphQLType(concreteType, internalData) //scalarFromType(concreteType, concreteType.options?.description, defaultName)
-        break
-      default:
-        assertNever(concreteType)
+    if (concreteType.kind === types.Kind.Number) {
+      graphQLType = scalarOrDefault(concreteType, GraphQLInt, defaultName)
+    } else if (concreteType.kind === types.Kind.String) {
+      graphQLType = scalarOrDefault(concreteType, GraphQLString, defaultName)
+    } else if (concreteType.kind === types.Kind.Boolean) {
+      graphQLType = scalarOrDefault(concreteType, GraphQLBoolean, defaultName)
+    } else if (concreteType.kind === types.Kind.Enum) {
+      graphQLType = enumToGraphQLType(concreteType, defaultName)
+    } else if (concreteType.kind === types.Kind.Literal) {
+      graphQLType = literalToGraphQLType(concreteType, defaultName)
+    } else if (concreteType.kind === types.Kind.Union) {
+      graphQLType = unionToGraphQLType(concreteType, internalData)
+    } else if (concreteType.kind === types.Kind.Object) {
+      graphQLType = objectToGraphQLType(concreteType, internalData)
+    } else if (concreteType.kind === types.Kind.Array) {
+      graphQLType = arrayToGraphQLType(concreteType, internalData)
+    } else if (concreteType.kind === types.Kind.Optional || concreteType.kind === types.Kind.Nullable) {
+      const type = typeToGraphQLTypeInternal(concreteType.wrappedType, internalData)
+      graphQLType = getNullableType(type)
+    } else if (concreteType.kind === types.Kind.Custom) {
+      graphQLType = customTypeToGraphQLType(concreteType, internalData) //scalarFromType(concreteType, concreteType.options?.description, defaultName)
+    } else {
+      assertNever(concreteType)
     }
     knownTypes.set(type, graphQLType)
     return graphQLType

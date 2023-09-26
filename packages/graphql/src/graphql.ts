@@ -31,7 +31,9 @@ export function typeToGraphQLType(type: types.Type): GraphQLOutputType {
 
 function generateName(type: types.Type, defaultName: string | undefined): string {
   const concreteType = types.concretise(type)
-  return concreteType.options?.name ?? defaultName ?? 'TYPE' + Math.floor(Math.random() * 100_000_000)
+  return concreteType.options?.name
+    ? capitalise(concreteType.options.name)
+    : defaultName ?? 'TYPE' + Math.floor(Math.random() * 100_000_000)
 }
 
 type InternalData = {

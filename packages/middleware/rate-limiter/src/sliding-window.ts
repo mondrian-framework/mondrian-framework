@@ -84,15 +84,6 @@ export class SlidingWindow {
         key: this.key,
       })
     this.slots.set(actualFrom, actualSlot)
-
-    //Remove expired slots reference
-    if (this.slots.size > 2) {
-      const slots = [...this.slots.values()].sort((slot1, slot2) => slot2.fromSecond - slot1.fromSecond)
-      for (let i = 2; i < slots.length; i++) {
-        this.slots.delete(slots[i].fromSecond)
-      }
-    }
-
     return [oldSlot, actualSlot]
   }
 
@@ -103,6 +94,8 @@ export class SlidingWindow {
     }
     this.rateLimitedUntil = undefined
     const [oldSlot, currentSlot] = this.getSlots()
+    //free memory after getting the current active slots
+    this.removeExpiredSlots()
     const oldValue = oldSlot.value()
     const currentValue = currentSlot.value()
     const oldPart = (this.samplingPeriodSeconds - (now - currentSlot.fromSecond)) / this.samplingPeriodSeconds
@@ -110,13 +103,27 @@ export class SlidingWindow {
     if (requests < this.rateLimit) {
       currentSlot.inc()
       return 'allowed'
+    } else {
+      this.rateLimitedUntil =
+        oldValue === 0
+          ? currentSlot.fromSecond + this.samplingPeriodSeconds
+          : ((currentValue - this.rateLimit) * this.samplingPeriodSeconds) / oldValue +
+            this.samplingPeriodSeconds +
+            currentSlot.fromSecond
+      return 'rate-limited'
     }
-    this.rateLimitedUntil =
-      oldValue === 0
-        ? currentSlot.fromSecond + this.samplingPeriodSeconds
-        : ((currentValue - this.rateLimit) * this.samplingPeriodSeconds) / oldValue +
-          this.samplingPeriodSeconds +
-          currentSlot.fromSecond
-    return 'rate-limited'
+  }
+
+  /**
+   * Removes all old slots in order to free some memory.
+   * Only the 2 current active slot are kept.
+   */
+  private removeExpiredSlots() {
+    if (this.slots.size > 2) {
+      const slots = [...this.slots.values()].sort((slot1, slot2) => slot2.fromSecond - slot1.fromSecond)
+      for (let i = 2; i < slots.length; i++) {
+        this.slots.delete(slots[i].fromSecond)
+      }
+    }
   }
 }

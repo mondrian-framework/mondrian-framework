@@ -1,0 +1,40 @@
+# Rate limiter
+
+Inspired by [Cloudflare](https://blog.cloudflare.com/counting-things-a-lot-of-different-things/)
+
+## Install
+
+```
+npm install @mondrian-framework/rate-limiter
+```
+
+## Usage
+
+```typescript
+import { functions } from '@mondrian-framework/module'
+import { rateLimitMiddleware } from '@mondrian-framework/rate-limiter'
+import { RedisSlotProvider, SlotProvider } from '@mondrian-framework/rate-limiter'
+import { createClient } from '@redis/client'
+
+const redisClient = process.env.REDIS_URL ? createClient() : undefined
+redisClient?.on('error', (err) => console.log('Redis Client Error', err))
+redisClient?.connect()
+export const slotProvider: SlotProvider | undefined = redisClient && new RedisSlotProvider(redisClient)
+
+
+const loginRateLimit = rateLimitMiddleware<typeof loginData, typeof user, typeof loginError, LoginContext>({
+  key: ({ input }) => input.email,
+  options: { rate: '10 requests in 10 minutes', slotProvider },
+  onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
+})
+
+export const login = functions.withContext<LoginContext>().build({
+  input: loginData,
+  output: user,
+  error: loginError,
+  body: async ({ input, context }) => {
+    // ...
+  },
+  middlewares: [loginRateLimit],
+})
+```

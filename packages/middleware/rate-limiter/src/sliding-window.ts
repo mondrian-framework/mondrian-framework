@@ -1,9 +1,5 @@
 import { Rate, RateLiteral, parseRate } from './rate'
 import { Slot, SlotProvider } from './slot'
-import { types } from '@mondrian-framework/model'
-import { functions } from '@mondrian-framework/module'
-
-//inspired by https://blog.cloudflare.com/counting-things-a-lot-of-different-things/
 
 /**
  * Rate limit at `rateLimit` in the `samplingPeriod`.

@@ -1,5 +1,5 @@
 import { InMemorySlotProvider } from './implementation/in-memory'
-import { Rate, RateLiteral } from './rate'
+import { Rate, RateLiteral, parseRate } from './rate'
 import { SlidingWindowProvider } from './sliding-window'
 import { SlotProvider } from './slot'
 import { types } from '@mondrian-framework/model'
@@ -40,7 +40,7 @@ export function rateLimitMiddleware<
   onLimit?: (args: functions.FunctionArguments<I, O, Context>) => functions.FunctionResult<O, E>
 }): functions.Middleware<I, O, E, Context> {
   const provider = new SlidingWindowProvider({
-    rate: options.rate,
+    rate: typeof options.rate === 'string' ? parseRate(options.rate) : options.rate,
     slotProvider: options.slotProvider ?? new InMemorySlotProvider(),
   })
   return {
@@ -50,7 +50,7 @@ export function rateLimitMiddleware<
       if (k === null) {
         return next(args)
       }
-      const window = provider.get({ key: k })
+      const window = provider.get(k)
       const res = window.inc()
       if (res === 'allowed') {
         return next(args)

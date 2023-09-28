@@ -1,4 +1,4 @@
-import { Rate, RateLiteral, parseRate } from './rate'
+import { Rate } from './rate'
 import { Slot, SlotProvider } from './slot'
 
 /**
@@ -13,12 +13,12 @@ export class SlidingWindowProvider {
   private readonly rate: Rate
   private readonly slotProvider: SlotProvider
 
-  constructor({ rate, slotProvider }: { rate: Rate | RateLiteral; slotProvider: SlotProvider }) {
-    this.rate = typeof rate === 'string' ? parseRate(rate) : rate
+  constructor({ rate, slotProvider }: { rate: Rate; slotProvider: SlotProvider }) {
+    this.rate = rate
     this.slotProvider = slotProvider
   }
 
-  get({ key }: { key: string }): SlidingWindow {
+  get(key: string): SlidingWindow {
     const slidingWindow = this.slidingWindows.get(key)
     if (slidingWindow) {
       return slidingWindow

@@ -24,6 +24,7 @@
       "@mondrian-framework/arbitrary": ["./packages/arbitrary"],
       "@mondrian-framework/advanced-types": ["./packages/advanced-types"],
       "@mondrian-framework/module": ["./packages/module"],
+      "@mondrian-framework/middleware/rate-limiter": ["./packages/middleware/rate-limiter"],
       "@mondrian-framework/prisma": ["./packages/prisma"],
       "@mondrian-framework/rest": ["./packages/rest"],
       "@mondrian-framework/rest-fastify": ["./packages/rest-fastify"],
@@ -51,6 +52,9 @@
     },
     {
       "path": "packages/module"
+    },
+    {
+      "path": "packages/middleware/rate-limiter"
     },
     {
       "path": "packages/prisma"

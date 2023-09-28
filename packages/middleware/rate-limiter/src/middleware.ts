@@ -7,7 +7,7 @@ import { functions } from '@mondrian-framework/module'
 
 /**
  * Limits a function execution with the given rate limit.
- * You can group different calls toghether by using the key function. If the key function returns `null` not rate limit is applied.
+ * You can group different calls toghether by using the key function. If the key function returns `null` no rate limiting is applied.
  * Example:
  * ```typescript
  * const rateLimitByIpEmail = rateLimitMiddleware<

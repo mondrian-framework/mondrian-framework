@@ -32,8 +32,9 @@ class RedisSlot implements Slot {
       .catch(() => console.error('REDIS: Failed to incr', this.key))
       .then((value) => {
         if (this.counter === 0) {
+          const expirationDate = new Date((this.fromSecond + this.durationSecond) * 1000)
           this.client
-            .expireAt(this.key, new Date((this.fromSecond + this.durationSecond + 60) * 1000), 'NX')
+            .expireAt(this.key, expirationDate, 'GT')
             .catch(() => console.error('REDIS: Failed to set expiration', this.key))
             .then(() => {})
         }
@@ -50,7 +51,7 @@ class RedisSlot implements Slot {
       .then((value) => {
         if (value != null) {
           const v = Number(value)
-          if (!Number.isNaN) {
+          if (!Number.isNaN(v)) {
             this.counter = v
           }
         }

@@ -1,7 +1,7 @@
 import { Rate, RateLiteral, parseRate } from './rate'
+import { Slot, SlotProvider } from './slot'
 import { types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { Slot, SlotProvider } from './slot'
 
 //inspired by https://blog.cloudflare.com/counting-things-a-lot-of-different-things/
 
@@ -32,8 +32,6 @@ export class SlidingWindowProvider {
     return newSlidingWindow
   }
 }
-
-
 
 export class SlidingWindow {
   private readonly samplingPeriodSeconds: number

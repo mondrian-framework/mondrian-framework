@@ -54,11 +54,11 @@ export function rateLimitMiddleware<
       const res = window.inc()
       if (res === 'allowed') {
         return next(args)
-      }
-      if (onLimit) {
+      } else if (onLimit) {
         return onLimit(args)
+      } else {
+        throw new Error(`Too many requests`)
       }
-      throw new Error(`Too many requests`)
     },
   }
 }

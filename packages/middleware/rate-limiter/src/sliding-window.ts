@@ -22,10 +22,11 @@ export class SlidingWindowProvider {
     const slidingWindow = this.slidingWindows.get(key)
     if (slidingWindow) {
       return slidingWindow
+    } else {
+      const newSlidingWindow = new SlidingWindow({ rate: this.rate, slotProvider: this.slotProvider, key })
+      this.slidingWindows.set(key, newSlidingWindow)
+      return newSlidingWindow
     }
-    const newSlidingWindow = new SlidingWindow({ rate: this.rate, slotProvider: this.slotProvider, key })
-    this.slidingWindows.set(key, newSlidingWindow)
-    return newSlidingWindow
   }
 }
 

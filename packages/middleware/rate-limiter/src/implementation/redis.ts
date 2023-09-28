@@ -62,7 +62,7 @@ class RedisSlot implements Slot {
 
 /**
  * Redis slot provider. Uses a redis client to provide rate limiting capabilities for any middleware.
- * It can be used when a service scale horizzontally.
+ * It can be used when a service needs to scale horizontally.
  */
 export class RedisSlotProvider implements SlotProvider {
   readonly client: RedisClientType<any, any, any>

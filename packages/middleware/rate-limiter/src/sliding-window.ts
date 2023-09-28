@@ -56,7 +56,7 @@ export class SlidingWindow {
     if (rate.requests < 0) {
       throw new Error('Rate limit must be a positive duration')
     }
-    this.samplingPeriodSeconds = rate.period * (rate.unit === 'hours' ? 3600 : rate.unit === 'minutes' ? 60 : 1)
+    this.samplingPeriodSeconds = rate.periodInSeconds
     this.rateLimit = rate.requests
     this.nowSeconds = nowSeconds ?? (() => new Date().getTime() / 1000.0)
     this.slotProvider = slotProvider

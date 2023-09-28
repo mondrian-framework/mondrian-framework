@@ -1,27 +1,32 @@
 import { InMemorySlotProvider } from '../src/implementation/in-memory'
-import { RedisSlotProvider } from '../src/implementation/redis'
+import { Rate } from '../src/rate'
 import { SlidingWindow } from '../src/sliding-window'
-import { createClient } from '@redis/client'
 import { describe, expect, test } from 'vitest'
 
 describe('Sliding window in memory', async () => {
   const slotProvider = new InMemorySlotProvider()
   test('errors', () => {
     expect(
-      () => new SlidingWindow({ rate: { requests: 10, period: 0.5, unit: 'seconds' }, slotProvider, key: '' }),
+      () =>
+        new SlidingWindow({ rate: new Rate({ requests: 10, period: 0.5, unit: 'seconds' }), slotProvider, key: '' }),
     ).toThrowError('Sampling period must be at least 1 second')
     expect(
-      () => new SlidingWindow({ rate: { requests: -10, period: 30, unit: 'seconds' }, slotProvider, key: '' }),
+      () =>
+        new SlidingWindow({ rate: new Rate({ requests: -10, period: 30, unit: 'seconds' }), slotProvider, key: '' }),
     ).toThrowError('Rate limit must be a positive duration')
   })
   test('0 rate limit', () => {
-    const window = new SlidingWindow({ rate: { requests: 0, period: 30, unit: 'seconds' }, slotProvider, key: '' })
+    const window = new SlidingWindow({
+      rate: new Rate({ requests: 0, period: 30, unit: 'seconds' }),
+      slotProvider,
+      key: '',
+    })
     expect(window.inc()).toBe('rate-limited')
   })
   test('rate limits', async () => {
     let now = 100
     const window = new SlidingWindow({
-      rate: { requests: 10, period: 30, unit: 'seconds' },
+      rate: new Rate({ requests: 10, period: 30, unit: 'seconds' }),
       nowSeconds: () => now,
       slotProvider,
       key: '',

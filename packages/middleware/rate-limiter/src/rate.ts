@@ -8,19 +8,29 @@ export type RateLiteral = `${number} requests in ${number} ${Unit}`
 /**
  * Rate description.
  */
-export type Rate = {
+export class Rate {
   /**
    * Maximum requests in the given period
    */
-  requests: number
+  readonly requests: number
   /**
    * Period size
    */
-  period: number
+  readonly period: number
   /**
    * Period unit.
    */
-  unit: Unit
+  readonly unit: Unit
+
+  constructor({ requests, period, unit }: { requests: number; period: number; unit: Unit }) {
+    this.requests = requests
+    this.period = period
+    this.unit = unit
+  }
+
+  get periodInSeconds(): number {
+    return this.period * (this.unit === 'hours' ? 3600 : this.unit === 'minutes' ? 60 : 1)
+  }
 }
 
 export function parseRate(rate: RateLiteral): Rate {
@@ -29,5 +39,5 @@ export function parseRate(rate: RateLiteral): Rate {
   const requests = Number(requestString)
   const period = Number(periodString)
   const unit = unitString as Unit
-  return { requests, period, unit }
+  return new Rate({ requests, period, unit })
 }

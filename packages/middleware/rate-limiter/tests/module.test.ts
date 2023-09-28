@@ -2,6 +2,7 @@ import { rateLimitMiddleware } from '../src/middleware'
 import { result, types } from '@mondrian-framework/model'
 import { module, functions, sdk } from '@mondrian-framework/module'
 import { expect, test } from 'vitest'
+import { Rate } from '../src/rate'
 
 test('Rate limiter middleware', async () => {
   const LoginInput = types
@@ -27,7 +28,7 @@ test('Rate limiter middleware', async () => {
   const rateLimitByEmail = rateLimitMiddleware<typeof LoginInput, typeof LoginOutput, typeof LoginError, SharedContext>(
     {
       key: ({ input }) => input.email,
-      options: { rate: { requests: 1, period: 1, unit: 'hours' } },
+      options: { rate: new Rate({ requests: 1, period: 1, unit: 'hours' }) },
     },
   )
 

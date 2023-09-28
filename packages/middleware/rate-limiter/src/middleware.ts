@@ -44,7 +44,7 @@ export function rateLimitMiddleware<
     slotProvider: options.slotProvider ?? new InMemorySlotProvider(),
   })
   return {
-    name: 'Rate limiter - Leacky bucket',
+    name: 'Rate limiter',
     apply(args, next) {
       const k = key(args)
       if (k === null) {

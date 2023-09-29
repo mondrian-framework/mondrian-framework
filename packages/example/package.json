@@ -35,7 +35,8 @@
     "serverless-plugin-monorepo": "0.11.0",
     "rest": "2.0.0",
     "@opentelemetry/sdk-node": "0.41.2",
-    "@opentelemetry/api-logs": "0.41.2"
+    "@opentelemetry/api-logs": "0.41.2",
+    "@redis/client": "1.5.11"
   },
   "devDependencies": {
     "dotenv": "16.0.3",

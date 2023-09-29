@@ -11,10 +11,8 @@
     "build": "tsc"
   },
   "keywords": [],
-  "dependencies": {
-    "@redis/client": "1.5.11"
-  },
   "peerDependencies": {
+    "@redis/client": "^1.5.0",
     "@mondrian-framework/model": "^1.0.7",
     "@mondrian-framework/module": "^1.0.9",
     "@mondrian-framework/utils": "^1.0.6",

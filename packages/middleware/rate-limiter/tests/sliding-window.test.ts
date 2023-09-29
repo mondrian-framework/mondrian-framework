@@ -8,60 +8,59 @@ describe('Sliding window in memory', async () => {
   test('errors', () => {
     expect(
       () =>
-        new SlidingWindow({ rate: new Rate({ requests: 10, period: 0.5, unit: 'seconds' }), slotProvider, key: '' }),
+        new SlidingWindow({ rate: new Rate({ requests: 10, period: 0.5, scale: 'second' }), slotProvider, key: '' }),
     ).toThrowError('Sampling period must be at least 1 second')
     expect(
       () =>
-        new SlidingWindow({ rate: new Rate({ requests: -10, period: 30, unit: 'seconds' }), slotProvider, key: '' }),
+        new SlidingWindow({ rate: new Rate({ requests: -10, period: 30, scale: 'second' }), slotProvider, key: '' }),
     ).toThrowError('Rate limit must be a positive duration')
   })
   test('0 rate limit', () => {
     const window = new SlidingWindow({
-      rate: new Rate({ requests: 0, period: 30, unit: 'seconds' }),
+      rate: new Rate({ requests: 0, period: 30, scale: 'second' }),
       slotProvider,
       key: '',
     })
-    expect(window.inc()).toBe('rate-limited')
+    expect(window.isRateLimited(new Date())).toBe('rate-limited')
   })
   test('rate limits', async () => {
-    let now = 100
+    let now = new Date(100000)
     const window = new SlidingWindow({
-      rate: new Rate({ requests: 10, period: 30, unit: 'seconds' }),
-      nowSeconds: () => now,
+      rate: new Rate({ requests: 10, period: 30, scale: 'second' }),
       slotProvider,
       key: '',
     })
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('rate-limited')
-    expect(window.inc()).toBe('rate-limited')
-    now = 120
-    expect(window.inc()).toBe('rate-limited')
-    now = 121
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('rate-limited')
-    now = 122.9
-    expect(window.inc()).toBe('rate-limited')
-    now = 123.01
-    expect(window.inc()).toBe('allowed')
-    now = 150
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('allowed')
-    expect(window.inc()).toBe('rate-limited')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+    now = new Date(120000)
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+    now = new Date(121000)
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+    now = new Date(122900)
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+    now = new Date(123010)
+    expect(window.isRateLimited(now)).toBe('allowed')
+    now = new Date(150000)
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('rate-limited')
   })
 })
 

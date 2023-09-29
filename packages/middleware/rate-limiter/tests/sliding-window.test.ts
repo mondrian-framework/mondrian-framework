@@ -2,7 +2,6 @@ import { InMemorySlotProvider } from '../src/implementation/in-memory'
 import { RedisSlotProvider } from '../src/implementation/redis'
 import { Rate } from '../src/rate'
 import { SlidingWindow } from '../src/sliding-window'
-import redis from 'redis-mock'
 import { describe, expect, test } from 'vitest'
 
 describe('Sliding window in memory', async () => {

@@ -55,18 +55,19 @@ class RedisSlot implements Slot {
       .incr(this.key)
       .catch(() => console.error('REDIS: Failed to incr', this.key))
       .then((value) => {
+        if (value == null) {
+          return
+        }
         // set the expiration time only one time
         if (this.counter === 0) {
           //set the expiration time of this value when this slot will be 3 slot older (* 3)
           const expirationDate = new Date((this.startingTimeSeconds + this.durationSeconds * 3) * 1000)
           this.client
-            .expireAt(this.key, expirationDate, 'GT')
-            .catch(() => console.error('REDIS: Failed to set expiration', this.key))
+            .expireAt(this.key, expirationDate)
+            .catch(() => console.error('REDIS: Failed to set expiration', this.key, 'NX'))
             .then(() => {})
         }
-        if (value != null) {
-          this.counter = value
-        }
+        this.counter = value
       })
   }
 

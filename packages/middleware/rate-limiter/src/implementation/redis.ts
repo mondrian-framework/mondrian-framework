@@ -84,7 +84,7 @@ export class RedisSlotProvider implements SlotProvider {
   readonly client: RedisClientType<any, any, any>
   readonly keyPrefix: string
 
-  constructor(client: RedisClientType<any, any, any>, keyPrefix: string = 'mondrian-rate-limiter:') {
+  constructor(client: RedisClientType<any, any, any>, keyPrefix: string = 'mondrian-rate-limiter') {
     this.client = client
     this.keyPrefix = keyPrefix
   }
@@ -99,7 +99,7 @@ export class RedisSlotProvider implements SlotProvider {
     // And so on...
     return new RedisSlot({
       ...args,
-      key: `${this.keyPrefix}${args.key}:${args.startingTimeSeconds}`,
+      key: `${this.keyPrefix}:${args.key}:${args.startingTimeSeconds}`,
       client: this.client,
     })
   }

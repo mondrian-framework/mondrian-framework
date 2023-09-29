@@ -26,8 +26,9 @@ export const loginError = types.union({
 
 const loginRateLimit = rateLimitMiddleware<typeof loginData, typeof user, typeof loginError, LoginContext>({
   key: ({ input }) => input.email,
-  options: { rate: '10 requests in 10 minutes', slotProvider },
+  rate: '2 requests in 5 seconds',
   onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
+  slotProvider,
 })
 
 export const login = functions.withContext<LoginContext>().build({

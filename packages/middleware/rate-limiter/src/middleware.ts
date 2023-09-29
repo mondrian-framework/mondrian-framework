@@ -37,8 +37,8 @@ type RateLimitMiddlewareInput<
   onLimit?: (args: functions.FunctionArguments<I, O, Context>) => functions.FunctionResult<O, E>
 
   /**
-   * The actual implementation of the rate limiter. If undefined is passed, then an {@link InMemorySlotProvider} is used.
-   * With {@link InMemorySlotProvider}, the counters are kept only on this machine.
+   * The actual implementation of the rate-limiter storage. If undefined is passed, then an {@link InMemorySlotProvider} is used.
+   * With {@link InMemorySlotProvider}, the counters are kept in memory only in this process.
    *
    * If the service scales across multiple machines, a {@link RedisSlotProvider} should be used to share the {@link Slot}'s counters.
    */
@@ -62,7 +62,7 @@ type RateLimitMiddlewareInput<
  * redisClient?.on('error', (err) => console.log('Redis Client Error', err))
  * redisClient?.connect()
  * export const slotProvider: SlotProvider | undefined = redisClient && new RedisSlotProvider(redisClient)
- * 
+ *
  * const rateLimitByIpEmail = rateLimitMiddleware<
  *   typeof LoginInput,
  *   typeof LoginOutput,

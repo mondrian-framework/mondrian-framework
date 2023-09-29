@@ -1,16 +1,24 @@
-import { Slot, SlotProvider } from '../slot'
+import { Slot } from '../slot'
+import { SlotProvider } from '../slot-provider'
 
+/**
+ * Dummy slot implementation. Used for testing purpose.
+ */
 class InMemorySlot implements Slot {
-  readonly fromSecond: number
+  readonly startingTimeSeconds: number
   private counter: number
 
-  constructor(fromSecond: number) {
+  constructor(startingTimeSeconds: number) {
     this.counter = 0
-    this.fromSecond = fromSecond
+    this.startingTimeSeconds = startingTimeSeconds
   }
 
   inc(): void {
-    this.counter++
+    if (this.counter === Number.MAX_SAFE_INTEGER) {
+      return
+    } else {
+      this.counter++
+    }
   }
 
   value(): number {
@@ -18,8 +26,12 @@ class InMemorySlot implements Slot {
   }
 }
 
+/**
+ * Dummy slot provider implementation. Used for testing purpose.
+ * Do not use this in production.
+ */
 export class InMemorySlotProvider implements SlotProvider {
-  create({ fromSecond }: { fromSecond: number }): Slot {
-    return new InMemorySlot(fromSecond)
+  create({ startingTimeSeconds }: { startingTimeSeconds: number }): Slot {
+    return new InMemorySlot(startingTimeSeconds)
   }
 }

@@ -24,8 +24,9 @@ export const slotProvider: SlotProvider | undefined = redisClient && new RedisSl
 
 const loginRateLimit = rateLimitMiddleware<typeof loginData, typeof user, typeof loginError, LoginContext>({
   key: ({ input }) => input.email,
-  options: { rate: '10 requests in 10 minutes', slotProvider },
+  rate: '100 requests in 1 hour',
   onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
+  slotProvider
 })
 
 export const login = functions.withContext<LoginContext>().build({

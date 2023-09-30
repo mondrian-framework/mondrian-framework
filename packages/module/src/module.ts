@@ -8,14 +8,24 @@ import { assertNever, count } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
- * The Mondrian module type.
+ * The Mondrian module interface.
+ * Contains only the function signatures, module name and version.
  */
-export interface Module<Fs extends functions.Functions = functions.Functions, ContextInput = unknown> {
+export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = functions.FunctionsInterfaces> {
   name: string
   version: string
   functions: Fs
-  functionOptions?: { [K in keyof Fs]?: { authentication?: AuthenticationMethod | 'NONE' } }
-  authentication?: AuthenticationMethod
+}
+
+/**
+ * The Mondrian module type.
+ * Contains all the module functions with also the implementation and how to build the context.
+ */
+export interface Module<Fs extends functions.Functions = functions.Functions, ContextInput = unknown>
+  extends ModuleInterface {
+  name: string
+  version: string
+  functions: Fs
   context: (
     input: ContextInput,
     args: {
@@ -63,16 +73,13 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
   }[keyof F]
 >
 
-/**
- * TODO: understand if this is needed
- */
-type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
-
-export function uniqueTypes(from: types.Type): Set<types.Type> {
+/*
+function uniqueTypes(from: types.Type): Set<types.Type> {
   return gatherUniqueTypes(new Set(), from)
 }
+*/
 
-export function allUniqueTypes(from: types.Type[]): Set<types.Type> {
+function allUniqueTypes(from: types.Type[]): Set<types.Type> {
   return from.reduce(gatherUniqueTypes, new Set())
 }
 
@@ -204,27 +211,13 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   return { ...module, functions: wrappedFunctions }
 }
 
-/*
-export interface ModuleInterface<FsI extends Record<string, functions.FunctionInterface>> {
-  name: string
-  version: string
-  functions: FsI
-}
-
-export function define<const Fs extends Record<string, functions.FunctionInterface>>(
+/**
+ * Define only the signature of the {@link Module} i.e. the {@link ModuleInterface}.
+ * @param module a map of {@link FunctionsInterfaces}, module name and module version.
+ * @returns the module interface
+ */
+export function define<const Fs extends functions.FunctionsInterfaces>(
   module: ModuleInterface<Fs>,
 ): ModuleInterface<Fs> {
   return module
 }
-
-export function ofDefinition<
-  const FsI extends Record<string, functions.FunctionInterface>,
-  const Fs extends { [K in keyof FsI]: functions.FunctionImplementation<FsI[K]['input'], FsI[K]['output'], any> },
-  const ContextInput = unknown,
->(
-  moduleInterface: ModuleInterface<FsI>,
-  module: Omit<Module<Fs, ContextInput>, 'name' | 'version'>,
-): Module<Fs, ContextInput> {
-  return { ...moduleInterface, ...module }
-}
-*/

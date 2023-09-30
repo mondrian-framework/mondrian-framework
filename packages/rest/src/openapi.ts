@@ -101,10 +101,10 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
             : functionBody.options?.namespace ?? specification.namespace
             ? [functionBody.options?.namespace ?? specification.namespace ?? '']
             : [],
-        security:
+        /*security:
           specification.openapi?.specification.security === null
             ? undefined
-            : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),
+            : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),*/
       }
       if (paths[path]) {
         ;(paths[path] as Record<string, unknown>)[specification.method.toLocaleLowerCase()] = operationObj
@@ -118,7 +118,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
     info: { version: module.version, title: module.name },
     servers: [{ url: `${`/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
     paths,
-    components: { ...components, securitySchemes: openapiSecuritySchemes({ module }) },
+    components: { ...components /*, securitySchemes: openapiSecuritySchemes({ module }) */ },
   }
 }
 
@@ -129,7 +129,7 @@ export function generateOpenapiInput({
   typeRef,
 }: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionImplementation
+  functionBody: functions.FunctionInterface
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): {
@@ -354,6 +354,7 @@ function generatePathParameters({
   return result
 }
 
+/*
 function openapiSecurityRequirements({
   module,
   functionName,
@@ -402,6 +403,7 @@ function openapiSecuritySchemes({
     ...(defaultSchema ? { _: defaultSchema } : {}),
   }
 }
+*/
 
 function openapiComponents<Fs extends functions.Functions, ContextInput>({
   module,

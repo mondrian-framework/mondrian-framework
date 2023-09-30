@@ -172,7 +172,11 @@ function typeToGqlTypeInternal(
   return assertNever(type)
 }
 
-function generateTypes({ module }: { module: module.Module<functions.Functions, any> }): {
+function generateTypes<Fs extends functions.Functions>({
+  module,
+}: {
+  module: module.Module<Fs, any>
+}): {
   typeMap: Record<string, GraphqlType>
   inputTypeMap: Record<string, GraphqlType>
 } {

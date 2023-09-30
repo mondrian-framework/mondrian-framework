@@ -14,7 +14,6 @@ import { SlotProvider } from './slot-provider'
 export class SlidingWindow {
   private readonly samplingPeriodSeconds: number
   private readonly rateLimit: number
-  private readonly slots: Map<number, Slot> //slot starting time -> slot
   private readonly slotProvider: SlotProvider
   private readonly key: string
   private rateLimitedUntilSeconds: number | null
@@ -31,25 +30,21 @@ export class SlidingWindow {
     this.rateLimit = rate.requests
     this.slotProvider = slotProvider
     this.key = key
-    this.slots = new Map()
   }
 
-  private getOrCreateSlot(slotStartingTimeSeconds: number): Slot {
-    const slot = this.slots.get(slotStartingTimeSeconds)
-    if (slot) {
-      return slot
-    } else {
-      const newSlot = this.slotProvider.create({
+  private getSlot(slotStartingTimeSeconds: number, now: Date): Slot {
+    return this.slotProvider.getOrCreateSlot(
+      {
         startingTimeSeconds: slotStartingTimeSeconds,
         durationSeconds: this.samplingPeriodSeconds,
         key: this.key,
-      })
-      this.slots.set(slotStartingTimeSeconds, newSlot)
-      return newSlot
-    }
+      },
+      now,
+    )
   }
 
-  private getSlots(nowSeconds: number): [Slot, Slot] {
+  private getSlots(now: Date): [Slot, Slot] {
+    const nowSeconds = now.getTime() / 1000.0
     //the time is divided in block of sampling period size
     //the actual slot starting time is the starting time of the slot we are inside (in time)
     //|----1----|----2----|----3----|.....
@@ -58,8 +53,8 @@ export class SlidingWindow {
     const actualSlotStartingTimeSecond = nowSeconds - (nowSeconds % this.samplingPeriodSeconds)
     //the old slot starting time is just the actual slot starting time minus the sampling period
     const oldSlotStartingTimeSecond = actualSlotStartingTimeSecond - this.samplingPeriodSeconds
-    const actualSlot = this.getOrCreateSlot(actualSlotStartingTimeSecond)
-    const oldSlot = this.getOrCreateSlot(oldSlotStartingTimeSecond)
+    const actualSlot = this.getSlot(actualSlotStartingTimeSecond, now)
+    const oldSlot = this.getSlot(oldSlotStartingTimeSecond, now)
     return [oldSlot, actualSlot]
   }
 
@@ -76,9 +71,7 @@ export class SlidingWindow {
       return 'rate-limited'
     }
     this.rateLimitedUntilSeconds = null
-    const [oldSlot, currentSlot] = this.getSlots(nowSeconds)
-    //free memory after getting the old slot and current slot
-    this.removeExpiredSlots()
+    const [oldSlot, currentSlot] = this.getSlots(now)
     const oldValue = oldSlot.value()
     const currentValue = currentSlot.value()
     /**
@@ -132,20 +125,6 @@ export class SlidingWindow {
       }
 
       return 'rate-limited'
-    }
-  }
-
-  /**
-   * Removes all old slots to free memory, keeping only the current slot and the previous slot (last two slots).
-   */
-  private removeExpiredSlots() {
-    if (this.slots.size > 2) {
-      const slots = [...this.slots.values()].sort(
-        (slot1, slot2) => slot2.startingTimeSeconds - slot1.startingTimeSeconds,
-      )
-      for (let i = 2; i < slots.length; i++) {
-        this.slots.delete(slots[i].startingTimeSeconds)
-      }
     }
   }
 }

@@ -2,15 +2,28 @@ import { Slot } from '../slot'
 import { SlotProvider } from '../slot-provider'
 
 /**
- * Dummy slot implementation. Used for testing purpose.
+ * This slot implementation uses a single counter.
+ * The counter is not shared between processes and should not be used in production.
  */
 class InMemorySlot implements Slot {
   readonly startingTimeSeconds: number
+  readonly durationSeconds: number
+  readonly key: string
   private counter: number
 
-  constructor(startingTimeSeconds: number) {
+  constructor({
+    startingTimeSeconds,
+    durationSeconds,
+    key,
+  }: {
+    startingTimeSeconds: number
+    durationSeconds: number
+    key: string
+  }) {
     this.counter = 0
     this.startingTimeSeconds = startingTimeSeconds
+    this.durationSeconds = durationSeconds
+    this.key = key
   }
 
   inc(): void {
@@ -27,11 +40,11 @@ class InMemorySlot implements Slot {
 }
 
 /**
- * Dummy slot provider implementation. Used for testing purpose.
- * Do not use this in production.
+ * This class provides only {@link InMemorySlot} slots.
+ * It should not be used in production.
  */
-export class InMemorySlotProvider implements SlotProvider {
-  create({ startingTimeSeconds }: { startingTimeSeconds: number }): Slot {
-    return new InMemorySlot(startingTimeSeconds)
+export class InMemorySlotProvider extends SlotProvider {
+  protected createSlot(args: { startingTimeSeconds: number; durationSeconds: number; key: string }): Slot {
+    return new InMemorySlot(args)
   }
 }

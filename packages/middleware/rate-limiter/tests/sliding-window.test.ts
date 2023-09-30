@@ -2,6 +2,7 @@ import { InMemorySlotProvider } from '../src/implementation/in-memory'
 import { RedisSlotProvider } from '../src/implementation/redis'
 import { Rate } from '../src/rate'
 import { SlidingWindow } from '../src/sliding-window'
+import { randomUUID } from 'crypto'
 import { describe, expect, test } from 'vitest'
 
 describe('Sliding window in memory', async () => {
@@ -9,18 +10,26 @@ describe('Sliding window in memory', async () => {
   test('errors', () => {
     expect(
       () =>
-        new SlidingWindow({ rate: new Rate({ requests: 10, period: 0.5, scale: 'second' }), slotProvider, key: '' }),
+        new SlidingWindow({
+          rate: new Rate({ requests: 10, period: 0.5, scale: 'second' }),
+          slotProvider,
+          key: randomUUID(),
+        }),
     ).toThrowError('Sampling period must be at least 1 second')
     expect(
       () =>
-        new SlidingWindow({ rate: new Rate({ requests: -10, period: 30, scale: 'second' }), slotProvider, key: '' }),
+        new SlidingWindow({
+          rate: new Rate({ requests: -10, period: 30, scale: 'second' }),
+          slotProvider,
+          key: randomUUID(),
+        }),
     ).toThrowError('Rate limit must be a positive duration')
   })
   test('0 rate limit', () => {
     const window = new SlidingWindow({
       rate: new Rate({ requests: 0, period: 30, scale: 'second' }),
       slotProvider,
-      key: '',
+      key: randomUUID(),
     })
     expect(window.isRateLimited(new Date())).toBe('rate-limited')
   })
@@ -29,7 +38,7 @@ describe('Sliding window in memory', async () => {
     const window = new SlidingWindow({
       rate: new Rate({ requests: 10, period: 30, scale: 'second' }),
       slotProvider,
-      key: '',
+      key: randomUUID(),
     })
     expect(window.isRateLimited(now)).toBe('allowed')
     expect(window.isRateLimited(now)).toBe('allowed')
@@ -62,6 +71,8 @@ describe('Sliding window in memory', async () => {
     expect(window.isRateLimited(now)).toBe('allowed')
     expect(window.isRateLimited(now)).toBe('allowed')
     expect(window.isRateLimited(now)).toBe('rate-limited')
+    now = new Date(1500000)
+    expect(window.isRateLimited(now)).toBe('allowed')
   })
 })
 
@@ -87,7 +98,7 @@ describe('Sliding window redis', async () => {
     const window = new SlidingWindow({
       rate: new Rate({ requests: 10, period: 30, scale: 'second' }),
       slotProvider,
-      key: '',
+      key: randomUUID(),
     })
     expect(window.isRateLimited(now)).toBe('allowed')
     await delay(1)
@@ -135,6 +146,6 @@ describe('Sliding window redis', async () => {
   })
 })
 
-function delay(time) {
+function delay(time: number) {
   return new Promise((resolve) => setTimeout(resolve, time))
 }

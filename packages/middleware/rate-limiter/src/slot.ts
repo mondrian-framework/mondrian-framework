@@ -8,6 +8,14 @@ export interface Slot {
    * Slot starting time in seconds.
    */
   readonly startingTimeSeconds: number
+  /**
+   * Slot duration in seconds. The end of useful life of this slot is startingTimeSeconds + durationSeconds * 2
+   */
+  readonly durationSeconds: number
+  /**
+   * Slot key. It indicates the temporal line (or logical group) to which this slot belongs.
+   */
+  readonly key: string
 
   /**
    * Increases the slot's internal counter value by one.

@@ -3,13 +3,13 @@ import { generateOpenapiInput } from './openapi'
 import { projection, result, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 
-export type Sdk<F extends functions.Functions> = {
-  functions: SdkFunctions<F>
-  withHeaders: (headers: Record<string, string | string[] | undefined>) => Sdk<F>
+export type Sdk<Fs extends functions.FunctionsInterfaces> = {
+  functions: SdkFunctions<Fs>
+  withHeaders: (headers: Record<string, string | string[] | undefined>) => Sdk<Fs>
 }
 
-type SdkFunctions<F extends functions.Functions> = {
-  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['error'], F[K]['output']>
+type SdkFunctions<Fs extends functions.FunctionsInterfaces> = {
+  [K in keyof Fs]: SdkFunction<Fs[K]['input'], Fs[K]['error'], Fs[K]['output']>
 }
 
 type SdkFunction<InputType extends types.Type, ErrorType extends types.Type, OutputType extends types.Type> = <
@@ -19,21 +19,18 @@ type SdkFunction<InputType extends types.Type, ErrorType extends types.Type, Out
   options?: { projection?: P; headers?: Record<string, string | string[] | undefined> },
 ) => Promise<result.Result<sdk.Project<OutputType, P>, types.Infer<ErrorType>>>
 
-function getRequestBuilder(args: {
-  specification: FunctionSpecifications
-  functionBody: functions.FunctionImplementation
-}) {
+function getRequestBuilder(args: { specification: FunctionSpecifications; functionBody: functions.FunctionInterface }) {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).request
 }
 
 //TODO: adapt to function error change
-export function build<const Fs extends functions.Functions, const API extends Api<Fs>>({
+export function build<const Fs extends functions.FunctionsInterfaces, const API extends Api<Fs>>({
   module,
   api,
   endpoint,
   headers,
 }: {
-  module: module.Module<Fs>
+  module: module.ModuleInterface<Fs>
   api: API
   endpoint: string
   headers?: Record<string, string | string[] | undefined>

@@ -242,3 +242,35 @@ describe('Default middlewares', () => {
     )
   })
 })
+
+test('Module interface definition', () => {
+  const stringToNumberI = functions.define({
+    input: types.string(),
+    output: types.number(),
+    error: types.never(),
+  })
+  const myModuleI = module.define({
+    name: 'test',
+    version: '0.0.0',
+    functions: { stringToNumber: stringToNumberI },
+  })
+
+  const stringToNumber = functions.build({
+    ...myModuleI.functions.stringToNumber,
+    async body({ input }) {
+      const n = Number.parseFloat(input)
+      return result.ok(n)
+    },
+  }) satisfies typeof stringToNumberI
+
+  const myModule = module.build({
+    ...myModuleI,
+    functions: { stringToNumber },
+    async context(input, args) {
+      return {}
+    },
+  }) satisfies typeof myModuleI
+
+  expect(myModuleI.functions.stringToNumber.input.kind).toBe(types.Kind.String)
+  expect(myModule.functions.stringToNumber.body).toBeTruthy()
+})

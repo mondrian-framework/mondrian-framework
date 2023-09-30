@@ -155,6 +155,13 @@ export type Functions<Contexts extends Record<string, Record<string, unknown>> =
 }
 
 /**
+ * A map of {@link FunctionInterface}s.
+ */
+export type FunctionsInterfaces = {
+  [K in string]: FunctionInterface<types.Type, types.Type, ErrorType>
+}
+
+/**
  * Builds a Mondrian function.
  *
  * Example:
@@ -223,10 +230,13 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
   }
 }
 
-/*
-export function define<const I extends types.Type, const O extends types.Type>(
-  func: FunctionInterface<I, O>,
-): FunctionInterface<I, O> {
+/**
+ * Build only the signature of a {@link Function} i.e. a {@link FunctionInterface}.
+ * @param func input, output, and possible errors of the function signature
+ * @returns the function interface
+ */
+export function define<const I extends types.Type, const O extends types.Type, const E extends ErrorType>(
+  func: FunctionInterface<I, O, E>,
+): FunctionInterface<I, O, E> {
   return func
 }
-*/

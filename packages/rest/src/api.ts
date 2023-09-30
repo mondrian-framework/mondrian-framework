@@ -2,7 +2,7 @@ import { types } from '@mondrian-framework/model'
 import { functions, logger } from '@mondrian-framework/module'
 import { OpenAPIV3_1 } from 'openapi-types'
 
-export type Api<F extends functions.Functions> = {
+export type Api<F extends functions.FunctionsInterfaces> = {
   functions: {
     [K in keyof F]?: FunctionSpecifications<F[K]> | FunctionSpecifications<F[K]>[]
   }

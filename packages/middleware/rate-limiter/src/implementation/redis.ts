@@ -80,16 +80,17 @@ class RedisSlot implements Slot {
  * Redis slot provider. Utilizes a Redis client to offer rate limiting capabilities for any middleware.
  * It is suitable for use when a service needs to scale horizontally since the slot's counters are shared between machines.
  */
-export class RedisSlotProvider implements SlotProvider {
+export class RedisSlotProvider extends SlotProvider {
   readonly client: RedisClientType<any, any, any>
   readonly keyPrefix: string
 
   constructor(client: RedisClientType<any, any, any>, keyPrefix: string = 'mondrian-rate-limiter') {
+    super()
     this.client = client
     this.keyPrefix = keyPrefix
   }
 
-  create(args: { startingTimeSeconds: number; durationSeconds: number; key: string }): Slot {
+  protected createSlot(args: { startingTimeSeconds: number; durationSeconds: number; key: string }): Slot {
     // The key of this slot is the concatenation of the prefix, the key given by the user, and the starting time of the slot.
     // Suppose we have a rate limiter middleware with 1 minute period and the key is the user IP.
     // We'll have the slot with this key:

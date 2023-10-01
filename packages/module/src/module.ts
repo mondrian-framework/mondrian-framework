@@ -4,7 +4,7 @@ import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { projection, types } from '@mondrian-framework/model'
-import { assertNever, count } from '@mondrian-framework/utils'
+import { JSONType, assertNever, count, mapObject } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
@@ -143,7 +143,7 @@ function gatherTypesReferencedByField(inspectedTypes: Set<types.Type>, field: ty
 /**
  * Checks for name collisions.
  */
-function assertUniqueNames(functions: functions.Functions) {
+function assertUniqueNames(functions: functions.FunctionsInterfaces) {
   const allTypes = allUniqueTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
   const allNames = [...allTypes.values()]
     .map((t) => types.concretise(t).options?.name)
@@ -219,5 +219,133 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 export function define<const Fs extends functions.FunctionsInterfaces>(
   module: ModuleInterface<Fs>,
 ): ModuleInterface<Fs> {
+  assertUniqueNames(module.functions)
   return module
+}
+
+export function serialize(m: ModuleInterface): JSONType {
+  const { typeMap, nameMap } = serializeTypes(m)
+  const { functionMap } = serializeFunctions(m, nameMap)
+  return {
+    name: m.name,
+    version: m.version,
+    types: typeMap,
+    functions: functionMap,
+  }
+}
+
+function serializeTypes(m: ModuleInterface): {
+  typeMap: Record<string, JSONType>
+  nameMap: Map<types.Type, string>
+} {
+  const allTypes = Object.values(m.functions).flatMap((f) => [f.input, f.output, f.error])
+  const uniqueTypes = allUniqueTypes(allTypes)
+  const nameMap: Map<types.Type, string> = new Map()
+  const typeMap: Record<string, JSONType> = {}
+  for (const t of uniqueTypes.values()) {
+    serializeType(t, nameMap, typeMap)
+  }
+  return { typeMap, nameMap }
+}
+
+function serializeType(t: types.Type, nameMap: Map<types.Type, string>, typeMap: Record<string, JSONType>, sourceType?: types.Type): string {
+  const cachedName = nameMap.get(t)
+  if (cachedName != null) {
+    return cachedName
+  }
+  if (typeof t === 'function') {
+    return serializeType(t(), nameMap, typeMap, t)
+  }
+  const name = t.options?.name ?? `__TYPE_${nameMap.size}__`
+  nameMap.set(sourceType ?? t, name)
+
+  function serializeTypeInternal(t: types.Concrete<types.Type>): JSONType {
+    switch (t.kind) {
+      case types.Kind.String:
+        return { kind: 'string', options: t.options as JSONType }
+      case types.Kind.Number:
+        return { kind: 'number', options: t.options as JSONType }
+      case types.Kind.Boolean:
+        return { kind: 'boolean', options: t.options as JSONType }
+      case types.Kind.Literal:
+        return { kind: 'literal', literalValue: t.literalValue, options: t.options as JSONType }
+      case types.Kind.Enum:
+        return { kind: 'enum', variants: t.variants, options: t.options as JSONType }
+      case types.Kind.Array:
+        return {
+          kind: 'array',
+          wrappedType: serializeType(t.wrappedType, nameMap, typeMap),
+          options: t.options as JSONType,
+        }
+      case types.Kind.Nullable:
+        return {
+          kind: 'nullable',
+          wrappedType: serializeType(t.wrappedType, nameMap, typeMap),
+          options: t.options as JSONType,
+        }
+      case types.Kind.Optional:
+        return {
+          kind: 'optional',
+          wrappedType: serializeType(t.wrappedType, nameMap, typeMap),
+          options: t.options as JSONType,
+        }
+      case types.Kind.Object:
+        return {
+          kind: 'object',
+          fields: mapObject(t.fields, (_, field: types.Field) => {
+            if ('virtual' in field) {
+              return { virtual: serializeType(field.virtual, nameMap, typeMap) }
+            } else {
+              return serializeType(field, nameMap, typeMap)
+            }
+          }),
+          options: t.options as JSONType,
+        }
+      case types.Kind.Union:
+        return {
+          kind: 'object',
+          variants: mapObject(t.variants, (_, variantType: types.Type) => serializeType(variantType, nameMap, typeMap)),
+          options: t.options as JSONType,
+        }
+      case types.Kind.Custom:
+        return {
+          kind: 'custom',
+          typeName: t.typeName,
+          options: t.options as JSONType,
+        }
+    }
+  }
+
+  const serializedType: JSONType = serializeTypeInternal(t)
+  typeMap[name] = serializedType
+  return name
+}
+
+function serializeFunctions(
+  m: ModuleInterface,
+  nameMap: Map<types.Type, string>,
+): {
+  functionMap: Record<string, JSONType>
+} {
+  const functionMap = mapObject(m.functions, (functionName, functionInterface) => {
+    const input = nameMap.get(functionInterface.input)
+    if (!input) {
+      throw new Error(`Input  typefor function ${functionName} not found in name map`)
+    }
+    const output = nameMap.get(functionInterface.output)
+    if (!output) {
+      throw new Error(`Output type for function ${functionName} not found in name map`)
+    }
+    const error = nameMap.get(functionInterface.error)
+    if (!error) {
+      throw new Error(`Error type for function ${functionName} not found in name map`)
+    }
+    return {
+      input,
+      output,
+      error,
+      options: functionInterface.options as JSONType,
+    } satisfies JSONType
+  })
+  return { functionMap }
 }

@@ -244,8 +244,18 @@ describe('Default middlewares', () => {
 })
 
 test('Module interface definition', () => {
+  const id = types.string({ name: 'ID' })
+  const input = () =>
+    types.object({
+      id,
+      other,
+    }).setName('Input')
+  const other = () =>
+    types.object({
+      input: types.optional(input),
+    }).setName('Other')
   const stringToNumberI = functions.define({
-    input: types.string(),
+    input,
     output: types.number(),
     error: types.never(),
   })
@@ -255,11 +265,13 @@ test('Module interface definition', () => {
     functions: { stringToNumber: stringToNumberI },
   })
 
+  const serialization = JSON.parse(JSON.stringify(module.serialize(myModuleI)))
+  expect(serialization).toBe({})
+
   const stringToNumber = functions.build({
     ...myModuleI.functions.stringToNumber,
     async body({ input }) {
-      const n = Number.parseFloat(input)
-      return result.ok(n)
+      throw new Error('Not implemented')
     },
   }) satisfies typeof stringToNumberI
 

@@ -143,7 +143,7 @@ function gatherTypesReferencedByField(inspectedTypes: Set<types.Type>, field: ty
 /**
  * Checks for name collisions.
  */
-function assertUniqueNames(functions: functions.Functions) {
+function assertUniqueNames(functions: functions.FunctionsInterfaces) {
   const allTypes = allUniqueTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
   const allNames = [...allTypes.values()]
     .map((t) => types.concretise(t).options?.name)
@@ -213,7 +213,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 
 /**
  * Define only the signature of the {@link Module} i.e. the {@link ModuleInterface}.
- * @param module a map of {@link FunctionsInterfaces}, module name and module version.
+ * @param module a map of {@link FunctionInterface}, module name and module version.
  * @returns the module interface
  */
 export function define<const Fs extends functions.FunctionsInterfaces>(

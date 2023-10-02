@@ -1,7 +1,9 @@
+import { slotProvider } from '../../rate-limiter'
 import { User, UserId, UserMetadata, user } from './model'
 import advancedTypes from '@mondrian-framework/advanced-types'
 import { result, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
+import { rateLimitMiddleware } from '@mondrian-framework/rate-limiter'
 
 export type Context = LoginContext & RegisterContext
 
@@ -19,6 +21,14 @@ export const loginData = types.object({
 export const loginError = types.union({
   invalidLogin: types.string(),
   internalError: types.string(),
+  tooManyRequests: types.string(),
+})
+
+const loginRateLimit = rateLimitMiddleware<typeof loginData, typeof user, typeof loginError, LoginContext>({
+  key: ({ input }) => input.email,
+  rate: '2 requests in 5 seconds',
+  onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
+  slotProvider,
 })
 
 export const login = functions.withContext<LoginContext>().build({
@@ -39,6 +49,7 @@ export const login = functions.withContext<LoginContext>().build({
     }
     return result.ok(loggedUser)
   },
+  middlewares: [loginRateLimit],
 })
 
 // User registration

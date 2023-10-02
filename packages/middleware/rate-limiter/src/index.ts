@@ -1,0 +1,5 @@
+export { rateLimitMiddleware } from './middleware'
+export { Slot } from './slot'
+export { SlotProvider } from './slot-provider'
+export { RedisSlotProvider } from './implementation/redis'
+export { Rate, RateLiteral, parseRate } from './rate'

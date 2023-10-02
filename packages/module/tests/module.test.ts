@@ -254,8 +254,9 @@ test('Module interface definition', () => {
     types.object({
       input: types.optional(input),
     }).setName('Other')
+  
   const stringToNumberI = functions.define({
-    input,
+    input: types.string(),
     output: types.number(),
     error: types.never(),
   })

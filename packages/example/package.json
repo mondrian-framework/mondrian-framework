@@ -24,6 +24,7 @@
     "@mondrian-framework/rest-fastify": "*",
     "@mondrian-framework/graphql-yoga": "*",
     "@mondrian-framework/prisma": "*",
+    "@mondrian-framework/rate-limiter": "*",
     "@prisma/client": "4.15.0",
     "prisma": "4.15.0",
     "@prisma/instrumentation": "5.2.0",
@@ -34,7 +35,8 @@
     "serverless-plugin-monorepo": "0.11.0",
     "rest": "2.0.0",
     "@opentelemetry/sdk-node": "0.41.2",
-    "@opentelemetry/api-logs": "0.41.2"
+    "@opentelemetry/api-logs": "0.41.2",
+    "@redis/client": "1.5.11"
   },
   "devDependencies": {
     "dotenv": "16.0.3",

@@ -3,8 +3,9 @@ import { ErrorType } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
+import { allUniqueTypes } from './utils'
 import { projection, types } from '@mondrian-framework/model'
-import { assertNever, count } from '@mondrian-framework/utils'
+import { UnionToIntersection, count } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
@@ -61,9 +62,6 @@ export type ModuleOptions = {
   opentelemetryInstrumentation?: boolean
 }
 
-//TODO: factorize UnionToIntersection to utils package
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
-
 /**
  * Intersection of all function's Contexts.
  */
@@ -72,73 +70,6 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
     [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, any, infer Context> ? Context : never
   }[keyof F]
 >
-
-/*
-function uniqueTypes(from: types.Type): Set<types.Type> {
-  return gatherUniqueTypes(new Set(), from)
-}
-*/
-
-function allUniqueTypes(from: types.Type[]): Set<types.Type> {
-  return from.reduce(gatherUniqueTypes, new Set())
-}
-
-function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): Set<types.Type> {
-  if (inspectedTypes.has(type)) {
-    return inspectedTypes
-  } else {
-    inspectedTypes.add(type)
-  }
-
-  if (typeof type === 'function') {
-    const concreteType = type()
-    switch (concreteType.kind) {
-      case types.Kind.Union:
-        return gatherTypesReferencedByUnion(inspectedTypes, concreteType)
-      case types.Kind.Object:
-        return gatherTypesReferencedByObject(inspectedTypes, concreteType)
-      default:
-        assertNever(concreteType)
-    }
-  } else {
-    switch (type.kind) {
-      case types.Kind.Number:
-      case types.Kind.String:
-      case types.Kind.Boolean:
-      case types.Kind.Enum:
-      case types.Kind.Literal:
-      case types.Kind.Custom:
-        return inspectedTypes
-      case types.Kind.Array:
-      case types.Kind.Optional:
-      case types.Kind.Nullable:
-        return gatherUniqueTypes(inspectedTypes, type.wrappedType)
-      case types.Kind.Union:
-        return gatherTypesReferencedByUnion(inspectedTypes, type)
-      case types.Kind.Object:
-        return gatherTypesReferencedByObject(inspectedTypes, type)
-      default:
-        assertNever(type)
-    }
-  }
-}
-
-function gatherTypesReferencedByUnion(inspectedTypes: Set<types.Type>, type: types.UnionType<any>): Set<types.Type> {
-  const variants = type.variants as Record<string, types.Type>
-  return Object.values(variants).reduce(gatherUniqueTypes, inspectedTypes)
-}
-
-function gatherTypesReferencedByObject(
-  inspectedTypes: Set<types.Type>,
-  type: types.ObjectType<any, any>,
-): Set<types.Type> {
-  const fields = type.fields as Record<string, types.Field>
-  return Object.values(fields).reduce(gatherTypesReferencedByField, inspectedTypes)
-}
-
-function gatherTypesReferencedByField(inspectedTypes: Set<types.Type>, field: types.Field): Set<types.Type> {
-  return gatherUniqueTypes(inspectedTypes, types.unwrapField(field))
-}
 
 /**
  * Checks for name collisions.
@@ -155,7 +86,7 @@ function assertUniqueNames(functions: functions.FunctionsInterfaces) {
 }
 
 /**
- * The module builder singleton. It's used to build any Mondrian module.
+ * Builds any Mondrian module.
  *
  * Example:
  * ```typescript
@@ -212,7 +143,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 }
 
 /**
- * Define only the signature of the {@link Module} i.e. the {@link ModuleInterface}.
+ * Defines only the signature of the {@link Module} i.e. the {@link ModuleInterface}.
  * @param module a map of {@link FunctionInterface}, module name and module version.
  * @returns the module interface
  */

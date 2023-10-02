@@ -184,3 +184,5 @@ function increaseCount<A>(map: Map<A, number>, key: A): Map<A, number> {
   }
   return map
 }
+
+export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never

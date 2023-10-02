@@ -1,5 +1,6 @@
 import { arbitrary, types } from '../index'
 import { assertNever, failWithInternalError } from '../utils'
+import { UnionToIntersection } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 // TODO: Missing doc
@@ -21,9 +22,6 @@ type CustomMapInternal<T extends types.Type, Visited extends types.Type[]>
   : [T] extends [types.CustomType<infer Name, infer Options, infer InferredAs>] ? { [K in Name]: (options?: Options) => gen.Arbitrary<InferredAs> }
   : [T] extends [(() => infer T1 extends types.Type)] ? WasAlredyVisited<Visited, T> extends false ? CustomMapInternal<T1, [...Visited, T]> : {}
   : {}
-
-// TODO: Missing doc
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 
 // TODO: Missing doc
 // prettier-ignore

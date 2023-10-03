@@ -113,7 +113,10 @@ describe('uniqueTypes', () => {
     })
     const LoginOutput = types.object({ jwt: types.string(), user: User }).nullable().setName('LoginOuput')
 
-    const asd = [...allUniqueTypes([User, LoginInput, LoginOutput, types.nullable(User)])].map(t => [types.concretise(t).options?.name, t])
+    const asd = [...allUniqueTypes([User, LoginInput, LoginOutput, types.nullable(User)])].map((t) => [
+      types.concretise(t).options?.name,
+      t,
+    ])
     const expected = new Set()
   })
 })

@@ -1,4 +1,12 @@
-export type JSONType = string | number | boolean | null | { [K in string]: JSONType } | JSONType[]
+export type JSONType =
+  | string
+  | number
+  | boolean
+  | null
+  | { readonly [K in string]?: JSONType }
+  | { [K in string]?: JSONType }
+  | JSONType[]
+  | readonly JSONType[]
 
 export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
 
@@ -186,3 +194,39 @@ function increaseCount<A>(map: Map<A, number>, key: A): Map<A, number> {
 }
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
+
+export function areJsonsEquals(left: JSONType, right: JSONType): boolean {
+  if (left === right) {
+    return true
+  }
+  if (typeof left === 'object' && typeof right === 'object') {
+    if (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((l, i) => areJsonsEquals(l, right[i]))
+    ) {
+      return true
+    }
+    if (left && right) {
+      //two objects
+      if (
+        Object.entries(left).filter((v) => v[1] !== undefined).length !==
+        Object.entries(right).filter((v) => v[1] !== undefined).length
+      ) {
+        return false
+      }
+      for (const [key, leftValue] of Object.entries(left)) {
+        const rightValue = (right as Record<string, JSONType>)[key]
+        if (leftValue === undefined && rightValue === undefined) {
+          continue
+        }
+        if (leftValue === undefined || rightValue === undefined || !areJsonsEquals(leftValue, rightValue)) {
+          return false
+        }
+      }
+      return true
+    }
+  }
+  return false
+}

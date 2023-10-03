@@ -1,4 +1,5 @@
-import { module, functions, sdk } from '../src'
+import { module, functions, sdk, serialization } from '../src'
+import { moduleSchema } from '../src/serialization'
 import { result, types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
@@ -11,6 +12,10 @@ test('Real example', async () => {
       firstname: types.string().optional(),
       lastname: types.string().optional(),
       friend: { virtual: types.optional(User) },
+      metadata: types
+        .record(types.string({ maxLength: 1024 }), { maxFieldsCount: 100 })
+        .setName('Metadata')
+        .optional(),
     })
   type User = types.Infer<typeof User>
   const LoginInput = types.pick(User, { email: true, password: true }, types.Mutability.Immutable, {
@@ -56,7 +61,7 @@ test('Real example', async () => {
 
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
-    output: User().nullable(),
+    output: types.nullable(User),
     error: types.union({ weakPassword: types.string(), doubleRegister: types.string() }),
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
@@ -241,49 +246,4 @@ describe('Default middlewares', () => {
       '[{"missingField":"value","path":{"fragments":[]}}]',
     )
   })
-})
-
-test('Module interface definition', () => {
-  const id = types.string({ name: 'ID' })
-  const input = () =>
-    types.object({
-      id,
-      other,
-    }).setName('Input')
-  const other = () =>
-    types.object({
-      input: types.optional(input),
-    }).setName('Other')
-  
-  const stringToNumberI = functions.define({
-    input: types.string(),
-    output: types.number(),
-    error: types.never(),
-  })
-  const myModuleI = module.define({
-    name: 'test',
-    version: '0.0.0',
-    functions: { stringToNumber: stringToNumberI },
-  })
-
-  const serialization = JSON.parse(JSON.stringify(module.serialize(myModuleI)))
-  expect(serialization).toBe({})
-
-  const stringToNumber = functions.build({
-    ...myModuleI.functions.stringToNumber,
-    async body({ input }) {
-      throw new Error('Not implemented')
-    },
-  }) satisfies typeof stringToNumberI
-
-  const myModule = module.build({
-    ...myModuleI,
-    functions: { stringToNumber },
-    async context(input, args) {
-      return {}
-    },
-  }) satisfies typeof myModuleI
-
-  expect(myModuleI.functions.stringToNumber.input.kind).toBe(types.Kind.String)
-  expect(myModule.functions.stringToNumber.body).toBeTruthy()
 })

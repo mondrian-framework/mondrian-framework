@@ -10,19 +10,22 @@ export type RecordType<T extends types.Type> = types.CustomType<'record', Record
 /**
  * Additional options for the Record CustomType
  */
-export type RecordOptions = { minFieldsCount?: number; maxFieldsCount?: number }
+export type RecordOptions = { minFieldsCount?: number; maxFieldsCount?: number; fieldsType: types.Type }
 
 /**
  * @param options the options used to create the new record custom type
  * @returns a {@link CustomType `CustomType`} representing a record
  */
-export function record<const T extends types.Type>(fieldsType: T, options?: RecordOptions): RecordType<T> {
+export function record<const T extends types.Type>(
+  fieldsType: T,
+  options?: Omit<RecordOptions, 'fieldsType'>,
+): RecordType<T> {
   return types.custom(
     'record',
     (value) => encodeRecord(fieldsType, value),
     (value, decodingOptions, options) => decodeRecord(fieldsType, value, decodingOptions, options),
     (value, validationOptions, options) => validateRecord(fieldsType, value, validationOptions, options),
-    options,
+    { ...options, fieldsType },
   )
 }
 

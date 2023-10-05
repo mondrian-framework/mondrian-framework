@@ -25,11 +25,16 @@ function encodeTimestamp(timestamp: Date): JSONType {
 
 function decodeTimestamp(
   value: unknown,
-  _decodingOptions?: decoding.Options,
-  _options?: types.OptionsOf<TimestampType>,
+  decodingOptions?: decoding.Options,
+  options?: types.OptionsOf<TimestampType>,
 ): decoding.Result<Date> {
   if (value instanceof Date) {
     return decoding.succeed(value)
+  }
+  if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
+    return decodeTimestamp(Number(value), decodingOptions, options).lazyOr(() =>
+      decodeTimestamp(new Date(value).getTime(), decodingOptions, options),
+    )
   }
   return typeof value === 'number' && -8640000000000000 <= value && value <= 8640000000000000
     ? decoding.succeed(new Date(value))
@@ -45,10 +50,10 @@ function validateTimestamp(
     return validation.succeed()
   }
   const { minimum, maximum } = options
-  if (maximum && input.getTime() > maximum.getTime()) {
+  if (maximum && (Number.isNaN(input.getTime()) || input.getTime() > maximum.getTime())) {
     return validation.fail(`Timestamp must be maximum ${maximum.toISOString()}`, input)
   }
-  if (minimum && input.getTime() < minimum.getTime()) {
+  if (minimum && (Number.isNaN(input.getTime()) || input.getTime() < minimum.getTime())) {
     return validation.fail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
   }
   return validation.succeed()

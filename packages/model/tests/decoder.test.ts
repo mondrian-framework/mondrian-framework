@@ -21,6 +21,17 @@ const nonNumber = gen.anything().filter((value) => typeof value !== 'number')
 const nonNull = gen.anything().filter((value) => value !== null)
 const nonArray = gen.anything().filter((value) => !(value instanceof Array))
 const nonObject = gen.anything().filter((value) => !(typeof value === 'object'))
+const nonDate = gen
+  .anything()
+  .filter(
+    (value) => !(value instanceof Date || (typeof value === 'string' && !Number.isNaN(new Date(value).valueOf()))),
+  )
+const nonTimestamp = gen
+  .anything()
+  .filter(
+    (value) =>
+      (typeof value !== 'number' || value > 8640000000000000 || value < -8640000000000000) && !(value instanceof Date),
+  )
 
 export function checkError(result: decoding.Result<any>, expectedError: decoding.Error[]): void {
   const error = assertFailure(result)
@@ -274,6 +285,155 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       const result = model.decodeWithoutValidation(value)
       const expectedError = [{ expected: 'enum ("one" | "two" | "three")', got: value, path: path.empty() }]
       checkError(result, expectedError)
+    })
+  })
+
+  describe.concurrent('datetime value', () => {
+    const model = types.dateTime()
+
+    describe.concurrent('without casting', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+
+      test.prop([nonDate])('fails on non dates', (value) => {
+        const result = model.decodeWithoutValidation(value, options)
+        const expectedError = [{ expected: 'ISO date', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+      test.prop([
+        gen.oneof(
+          gen.date(),
+          gen.date().map((d) => d.toISOString()),
+        ),
+      ])('can decode dates', (date) => {
+        const result = model.decodeWithoutValidation(date, options)
+        checkValue(result, typeof date === 'string' ? new Date(date) : date)
+      })
+    })
+
+    describe.concurrent('with casting', () => {
+      const options = { typeCastingStrategy: 'tryCasting' } as const
+      test.prop([
+        gen.oneof(
+          gen.date(),
+          gen.date().map((d) => d.toISOString()),
+          gen.date().map((d) => d.getTime().toString()),
+          gen.date().map((d) => d.getTime()),
+        ),
+      ])('can decode unixtime', (date) => {
+        const result = model.decodeWithoutValidation(date, options)
+        checkValue(
+          result,
+          date instanceof Date
+            ? date
+            : typeof date === 'number'
+            ? new Date(date)
+            : Number.isNaN(Number(date))
+            ? new Date(date)
+            : new Date(Number(date)),
+        )
+      })
+    })
+  })
+
+  describe.concurrent('timestamp value', () => {
+    const model = types.timestamp()
+
+    describe.concurrent('without casting', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+
+      test.prop([nonTimestamp])('fails on non timestamp', (value) => {
+        const result = model.decodeWithoutValidation(value, options)
+        const expectedError = [{ expected: 'timestamp', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+
+      test.prop([
+        gen.oneof(
+          gen.date(),
+          gen.date().map((d) => d.getTime()),
+        ),
+      ])('can decode dates', (date) => {
+        const result = model.decodeWithoutValidation(date, options)
+        checkValue(result, typeof date === 'number' ? new Date(date) : date)
+      })
+    })
+
+    describe.concurrent('with casting', () => {
+      const options = { typeCastingStrategy: 'tryCasting' } as const
+
+      test.prop([
+        gen.oneof(
+          gen.date(),
+          gen.date().map((d) => d.toISOString()),
+          gen.date().map((d) => d.getTime().toString()),
+          gen.date().map((d) => d.getTime()),
+        ),
+      ])('can decode unixtime', (date) => {
+        const result = model.decodeWithoutValidation(date, options)
+        checkValue(
+          result,
+          date instanceof Date
+            ? date
+            : typeof date === 'number'
+            ? new Date(date)
+            : Number.isNaN(Number(date))
+            ? new Date(date)
+            : new Date(Number(date)),
+        )
+      })
+    })
+  })
+
+  describe.concurrent('unknown value', () => {
+    const model = types.unknown()
+    test.prop([gen.anything()])('can always decode anything', (anything) => {
+      const result = model.decodeWithoutValidation(anything)
+      checkValue(result, anything)
+    })
+  })
+
+  describe.concurrent('never value', () => {
+    const model = types.never()
+    test.prop([gen.anything()])('can never decode anything', (anything) => {
+      expect(() => model.decodeWithoutValidation(anything)).toThrowError()
+    })
+  })
+
+  describe.concurrent('record value', () => {
+    const model = types.record(types.number())
+    describe.concurrent('without casting', () => {
+      const options = { typeCastingStrategy: 'expectExactTypes' } as const
+
+      test.prop([nonObject])('fails on non object', (value) => {
+        const result = model.decodeWithoutValidation(value, options)
+        const expectedError = [{ expected: 'object', got: value, path: path.empty() }]
+        checkError(result, expectedError)
+      })
+
+      test.prop([gen.array(gen.tuple(gen.string(), nonNumber), { minLength: 1 }).map(Object.fromEntries)])(
+        'fails on records of non number',
+        (value) => {
+          const result = model.decodeWithoutValidation(value, options)
+          expect(!result.isOk && result.error[0].expected).toBe('number')
+        },
+      )
+
+      test.prop([gen.array(gen.tuple(gen.string(), nonNumber), { minLength: 1 }).map(Object.fromEntries)])(
+        'fails on records of non number with every error',
+        (value) => {
+          const result = model.decodeWithoutValidation(value, { errorReportingStrategy: 'allErrors', ...options })
+          expect(!result.isOk && result.error[0].expected).toBe('number')
+          expect(!result.isOk && result.error.length).toBe(Object.keys(value).length)
+        },
+      )
+
+      test.prop([gen.array(gen.tuple(gen.string(), gen.double())).map(Object.fromEntries)])(
+        'can decode records',
+        (record) => {
+          const result = model.decodeWithoutValidation(record, options)
+          checkValue(result, record)
+        },
+      )
     })
   })
 

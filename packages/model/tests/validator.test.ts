@@ -17,7 +17,13 @@ function checkError(result: validation.Result, expected: { got: unknown; path: p
 
 function compareValidatorErrors(one: validation.Error[], other: { got: unknown; path: path.Path }[]): boolean {
   const compareSingleErrors = (one: { got: unknown; path: path.Path }, other: { got: unknown; path: path.Path }) => {
-    const gotAreEqual = one.got === other.got || (Number.isNaN(one.got) && Number.isNaN(other.got))
+    const gotAreEqual =
+      one.got === other.got ||
+      (Number.isNaN(one.got) && Number.isNaN(other.got)) ||
+      (one.got instanceof Date &&
+        other.got instanceof Date &&
+        (other.got.getTime() === one.got.getTime() ||
+          (Number.isNaN(other.got.getTime()) && Number.isNaN(one.got.getTime()))))
     const pathsAreEqual = one.path.equals(other.path)
     return gotAreEqual && pathsAreEqual
   }
@@ -201,6 +207,112 @@ describe.concurrent('validation.validate', () => {
     const literalValue = gen.oneof(gen.string(), gen.boolean(), gen.integer(), gen.float(), gen.constant(null))
     test.prop([arbitrary.literal(literalValue)])('always succeeds', (model) => {
       assertOk(model.validate(model.literalValue))
+    })
+  })
+
+  describe.concurrent('on datetime types', () => {
+    test.prop([gen.date()])('always succeeds if given no options', (date) => {
+      assertOk(types.dateTime().validate(date))
+    })
+
+    describe.concurrent('checks the datetime is >= than its minimum', () => {
+      const minimum = new Date()
+      const model = types.dateTime({ minimum })
+
+      const validValue = gen.date({ min: minimum })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(model.validate(number))
+      })
+
+      const invalidValue = gen.date({ max: new Date(minimum.getTime() - 1) })
+      test.prop([invalidValue])('failing cases', (date) => {
+        const expectedError = [{ got: date, path: path.empty() }]
+        checkError(model.validate(date), expectedError)
+      })
+      checkError(model.validate(new Date('')), [{ got: new Date(''), path: path.empty() }])
+    })
+
+    describe.concurrent('checks the datetime is <= than its maximum', () => {
+      const maximum = new Date()
+      const model = types.dateTime({ maximum })
+
+      const validValue = gen.date({ max: maximum })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(model.validate(number))
+      })
+
+      const invalidValue = gen.date({ min: new Date(maximum.getTime() + 1) })
+      test.prop([invalidValue])('failing cases', (date) => {
+        const expectedError = [{ got: date, path: path.empty() }]
+        checkError(model.validate(date), expectedError)
+      })
+      checkError(model.validate(new Date('')), [{ got: new Date(''), path: path.empty() }])
+    })
+  })
+
+  describe.concurrent('on timestamp types', () => {
+    test.prop([gen.date()])('always succeeds if given no options', (date) => {
+      assertOk(types.timestamp().validate(date))
+    })
+
+    describe.concurrent('checks the datetime is >= than its minimum', () => {
+      const minimum = new Date()
+      const model = types.timestamp({ minimum })
+
+      const validValue = gen.date({ min: minimum })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(model.validate(number))
+      })
+
+      const invalidValue = gen.date({ max: new Date(minimum.getTime() - 1) })
+      test.prop([invalidValue])('failing cases', (date) => {
+        const expectedError = [{ got: date, path: path.empty() }]
+        checkError(model.validate(date), expectedError)
+      })
+      checkError(model.validate(new Date('')), [{ got: new Date(''), path: path.empty() }])
+    })
+
+    describe.concurrent('checks the datetime is <= than its maximum', () => {
+      const maximum = new Date()
+      const model = types.timestamp({ maximum })
+
+      const validValue = gen.date({ max: maximum })
+      test.prop([validValue])('ok cases', (number) => {
+        assertOk(model.validate(number))
+      })
+
+      const invalidValue = gen.date({ min: new Date(maximum.getTime() + 1) })
+      test.prop([invalidValue])('failing cases', (date) => {
+        const expectedError = [{ got: date, path: path.empty() }]
+        checkError(model.validate(date), expectedError)
+      })
+      checkError(model.validate(new Date('')), [{ got: new Date(''), path: path.empty() }])
+    })
+  })
+
+  describe.concurrent('on unknown types', () => {
+    const model = types.unknown()
+    test.prop([gen.anything()])('always succeeds on anything', (anything) => {
+      assertOk(model.validate(anything))
+    })
+  })
+
+  describe.concurrent('on never types', () => {
+    const model = types.never()
+    test.prop([gen.anything()])('never succeeds on anything', (anything) => {
+      expect(() => model.validate(anything as never)).toThrowError()
+    })
+  })
+
+  describe.concurrent('on record types', () => {
+    const model = types.record(types.number({ minimum: 20, maximum: 30 }))
+    test.prop([
+      gen.array(gen.tuple(gen.string(), gen.double({ min: 0, max: 10 })), { minLength: 1 }).map(Object.fromEntries),
+    ])('always fails on wrong record fields', (record) => {
+      const result = model.validate(record)
+      expect(!result.isOk && result.error.length).toBe(1)
+      const result1 = model.validate(record, { errorReportingStrategy: 'allErrors' })
+      expect(!result1.isOk && result1.error.length).toBe(Object.keys(record).length)
     })
   })
 

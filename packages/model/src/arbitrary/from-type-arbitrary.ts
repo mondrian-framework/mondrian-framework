@@ -74,6 +74,13 @@ export function fromType<T extends types.Type>(
         customArbitraries,
       ) as gen.Arbitrary<types.Infer<T>>
     case types.Kind.Custom:
+      if (concreteType.typeName === 'record') {
+        return wrapInRecord(
+          maxDepth,
+          (concreteType.options as types.RecordOptions).fieldsType,
+          customArbitraries,
+        ) as gen.Arbitrary<types.Infer<T>>
+      }
       return generatorFromArbitrariesMap(
         concreteType.typeName,
         concreteType.options,
@@ -200,6 +207,19 @@ function wrapInNullable(depth: number, wrappedType: types.Type, customArbitrarie
   return depth <= 1
     ? gen.constant(null)
     : gen.oneof(gen.constant(null), fromType(wrappedType, customArbitraries, depth - 1))
+}
+
+function wrapInRecord(depth: number, wrappedType: types.Type, customArbitraries: CustomMapArgument<types.Type>) {
+  return depth <= 1
+    ? gen.constant({})
+    : gen
+        .array(
+          gen.tuple(
+            gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf'),
+            fromType(wrappedType, customArbitraries, depth - 1),
+          ),
+        )
+        .map(Object.fromEntries)
 }
 
 function unionFromVariants(depth: number, variants: types.Types, customArbitraries: CustomMapArgument<types.Type>) {

@@ -1,4 +1,4 @@
-import { types } from '../../'
+import { types } from '..'
 
 export type NeverType = types.CustomType<'never', {}, never>
 export function never(): NeverType {

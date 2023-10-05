@@ -10,16 +10,13 @@ export type RecordType<T extends types.Type> = types.CustomType<'record', Record
 /**
  * Additional options for the Record CustomType
  */
-export type RecordOptions = { minFieldsCount?: number; maxFieldsCount?: number; fieldsType: types.Type }
+export type RecordOptions = { fieldsType: types.Type }
 
 /**
  * @param options the options used to create the new record custom type
  * @returns a {@link CustomType `CustomType`} representing a record
  */
-export function record<const T extends types.Type>(
-  fieldsType: T,
-  options?: Omit<RecordOptions, 'fieldsType'>,
-): RecordType<T> {
+export function record<const T extends types.Type>(fieldsType: T, options?: types.BaseOptions): RecordType<T> {
   return types.custom(
     'record',
     (value) => encodeRecord(fieldsType, value),
@@ -52,9 +49,9 @@ function decodeRecord<T extends types.Type>(
       entries.push([key, result.value])
     } else {
       if (decodingOptions?.errorReportingStrategy === 'allErrors') {
-        return result.mapError((error) => prependFieldToAll(error, key))
-      } else {
         errors.push(...prependFieldToAll(result.error, key))
+      } else {
+        return result.mapError((error) => prependFieldToAll(error, key))
       }
     }
   }
@@ -72,21 +69,14 @@ function validateRecord<T extends types.Type>(
   options?: RecordOptions,
 ): validation.Result {
   const concreteFieldsType = types.concretise(fieldsType)
-  const entries = Object.entries(value)
-  if (options?.minFieldsCount != null && entries.length < options.minFieldsCount) {
-    return validation.fail(`not less than ${options.minFieldsCount} fields`, value)
-  }
-  if (options?.maxFieldsCount != null && entries.length > options.maxFieldsCount) {
-    return validation.fail(`not more than ${options.maxFieldsCount} fields`, value)
-  }
   const errors: validation.Error[] = []
-  for (const [key, v] of entries) {
+  for (const [key, v] of Object.entries(value)) {
     const result = concreteFieldsType.validate(v as never, validationOptions)
     if (!result.isOk) {
       if (validationOptions?.errorReportingStrategy === 'allErrors') {
-        return result.mapError((error) => prependFieldToAll(error, key))
-      } else {
         errors.push(...prependFieldToAll(result.error, key))
+      } else {
+        return result.mapError((error) => prependFieldToAll(error, key))
       }
     }
   }

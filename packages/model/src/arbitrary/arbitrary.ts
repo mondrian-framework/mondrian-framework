@@ -132,6 +132,71 @@ export function enumeration<Vs extends readonly [string, ...string[]]>(
 }
 
 /**
+ * @returns A generator for datetime types' options.
+ *          All of its keys are optional and may be omitted in the generated options.
+ */
+export function dateTimeTypeOptions(): gen.Arbitrary<types.OptionsOf<types.DateTimeType>> {
+  return gen
+    .record(
+      {
+        ...baseOptionsGeneratorsRecord(),
+        minimum: orUndefined(gen.date()),
+        maximum: orUndefined(gen.date()),
+      },
+      { withDeletedKeys: true },
+    )
+    .map((options) => {
+      if (options.maximum && options.minimum && options.maximum.getTime() < options.minimum.getTime()) {
+        return { ...options, maximum: options.minimum, minimum: options.minimum }
+      }
+      return options
+    })
+}
+
+/**
+ * @returns A generator for datetime types.
+ */
+export function dateTime(): gen.Arbitrary<types.DateTimeType> {
+  return orUndefined(dateTimeTypeOptions()).map(types.dateTime)
+}
+
+/**
+ * @returns A generator for timestamp types' options.
+ *          All of its keys are optional and may be omitted in the generated options.
+ */
+export function timestampTypeOptions(): gen.Arbitrary<types.OptionsOf<types.TimestampType>> {
+  return gen
+    .record(
+      {
+        ...baseOptionsGeneratorsRecord(),
+        minimum: orUndefined(gen.date()),
+        maximum: orUndefined(gen.date()),
+      },
+      { withDeletedKeys: true },
+    )
+    .map((options) => {
+      if (options.maximum && options.minimum && options.maximum.getTime() < options.minimum.getTime()) {
+        return { ...options, maximum: options.minimum, minimum: options.minimum }
+      }
+      return options
+    })
+}
+
+/**
+ * @returns A generator for timestamp types.
+ */
+export function timestamp(): gen.Arbitrary<types.TimestampType> {
+  return orUndefined(timestampTypeOptions()).map(types.timestamp)
+}
+
+/**
+ * @returns A generator for record types.
+ */
+export function record<T extends types.Type>(fieldTypeGen: gen.Arbitrary<T>): gen.Arbitrary<types.RecordType<T>> {
+  return fieldTypeGen.map(types.record)
+}
+
+/**
  * Turns a record into a record of generators: each of its fields is wrapped in an Arbitrary.
  * @example ```ts
  *          GeneratorsRecord<{ field1: number, field2: string }>
@@ -366,9 +431,12 @@ export function wrapperType(
   maxDepth: number = 3,
   wrappedType: gen.Arbitrary<types.Type> = type(maxDepth - 1),
 ): gen.Arbitrary<
-  types.OptionalType<types.Type> | types.NullableType<types.Type> | types.ArrayType<types.Mutability, types.Type>
+  | types.OptionalType<types.Type>
+  | types.NullableType<types.Type>
+  | types.RecordType<types.Type>
+  | types.ArrayType<types.Mutability, types.Type>
 > {
-  return gen.oneof(optional(wrappedType), nullable(wrappedType), array(wrappedType))
+  return gen.oneof(optional(wrappedType), nullable(wrappedType), array(wrappedType), record(wrappedType))
 }
 
 /**

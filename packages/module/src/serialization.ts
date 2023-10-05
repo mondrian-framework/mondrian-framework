@@ -1,6 +1,43 @@
 import { module, utils } from '.'
-import { decoding, types, validation } from '@mondrian-framework/model'
-import { areJsonsEquals, mapObject } from '@mondrian-framework/utils'
+import { result, types, validation } from '@mondrian-framework/model'
+import { JSONType, areJsonsEquals, assertNever, mapObject } from '@mondrian-framework/utils'
+
+/**
+ * Specify how a custom type should be serialized.
+ */
+export type CustomSerializer = (
+  /**
+   * type to serialize
+   */
+  custom: types.CustomType<any, any, any>,
+  /**
+   * this utility resolve any sub-type if needed.
+   * Takes the sub-type(s) of this custom type and returns the reference name.
+   */
+  resolve: (type: types.Type) => string,
+) => JSONType
+export type CustomSerializers = { readonly [key in string]?: CustomSerializer }
+
+/**
+ * Default custom serializer for known types.
+ */
+const defaultCustomSerializers: CustomSerializers = {
+  record: (custom: types.RecordType<types.Type>, resolve) => ({
+    wrappedType: resolve(custom.options!.fieldsType),
+  }),
+  datetime: (custom: types.DateTimeType) => ({
+    customOptions: {
+      minimum: custom.options?.minimum?.getTime(),
+      maximum: custom.options?.maximum?.getTime(),
+    },
+  }),
+  timestamp: (custom: types.TimestampType) => ({
+    customOptions: {
+      minimum: custom.options?.minimum?.getTime(),
+      maximum: custom.options?.maximum?.getTime(),
+    },
+  }),
+}
 
 /**
  * Converts a {@link module.ModuleInterface ModuleInterface} to a {@link ModuleSchema}.
@@ -8,8 +45,11 @@ import { areJsonsEquals, mapObject } from '@mondrian-framework/utils'
  * @param moduleInterface the module interface.
  * @returns the module interface schema.
  */
-export function serialize(moduleInterface: module.ModuleInterface): ModuleSchema {
-  const { typeMap, nameMap } = serializeTypes(moduleInterface)
+export function serialize(
+  moduleInterface: module.ModuleInterface,
+  customSerializers?: CustomSerializers,
+): ModuleSchema {
+  const { typeMap, nameMap } = serializeTypes(moduleInterface, customSerializers ?? defaultCustomSerializers)
   const functionMap = serializeFunctions(moduleInterface, nameMap)
   return {
     name: moduleInterface.name,
@@ -23,7 +63,10 @@ export function serialize(moduleInterface: module.ModuleInterface): ModuleSchema
  * Serialize all types in a map [type name] -> [type schema].
  * For types without names an incremental name is used: `ANONYMOUS_TYPE_${n}`
  */
-function serializeTypes(moduleInterface: module.ModuleInterface): {
+function serializeTypes(
+  moduleInterface: module.ModuleInterface,
+  customSerializers: CustomSerializers,
+): {
   typeMap: Record<string, TypeSchema>
   nameMap: Map<types.Type, string>
 } {
@@ -32,7 +75,7 @@ function serializeTypes(moduleInterface: module.ModuleInterface): {
   const nameMap: Map<types.Type, string> = new Map()
   const typeMap: Record<string, TypeSchema> = {}
   for (const t of uniqueTypes.values()) {
-    resolveTypeSerialization(t, nameMap, typeMap)
+    resolveTypeSerialization(t, nameMap, typeMap, customSerializers)
   }
   return { typeMap, nameMap }
 }
@@ -45,6 +88,7 @@ function resolveTypeSerialization(
   type: types.Type,
   nameMap: Map<types.Type, string>,
   typeMap: Record<string, TypeSchema>,
+  customSerializers: CustomSerializers,
 ): string {
   const cachedName = nameMap.get(type)
   if (cachedName !== undefined) {
@@ -55,7 +99,11 @@ function resolveTypeSerialization(
     concreteType.options?.name ??
     `ANONYMOUS_TYPE_${Object.keys(typeMap).filter((k) => k.startsWith('ANONYMOUS_TYPE_')).length}`
   nameMap.set(type, name)
-  const serializedType = serializeType(type, (subType) => resolveTypeSerialization(subType, nameMap, typeMap))
+  const serializedType = serializeType(
+    type,
+    (subType) => resolveTypeSerialization(subType, nameMap, typeMap, customSerializers),
+    customSerializers,
+  )
   const existingType = Object.entries(typeMap).find(([_, type]) => areJsonsEquals(type, serializedType))
   if (existingType) {
     const [existingTypeName] = existingType
@@ -72,7 +120,11 @@ function resolveTypeSerialization(
  * @param type the type to serialize
  * @param resolve this function must be like a map [type] -> [type name]
  */
-function serializeType(type: types.Type, resolve: (subType: types.Type) => string): TypeSchema {
+function serializeType(
+  type: types.Type,
+  resolve: (subType: types.Type) => string,
+  customSerializers: CustomSerializers,
+): TypeSchema {
   const concreteType = types.concretise(type)
   switch (concreteType.kind) {
     case types.Kind.String:
@@ -91,7 +143,15 @@ function serializeType(type: types.Type, resolve: (subType: types.Type) => strin
     case types.Kind.Boolean:
       return { boolean: { options: concreteType.options } }
     case types.Kind.Literal:
-      return { literal: { literalValue: concreteType.literalValue, options: concreteType.options } }
+      const literalValue =
+        concreteType.literalValue === null
+          ? { null: null }
+          : typeof concreteType.literalValue === 'string'
+          ? { string: concreteType.literalValue }
+          : typeof concreteType.literalValue === 'number'
+          ? { number: concreteType.literalValue }
+          : { boolean: concreteType.literalValue as boolean }
+      return { literal: { literalValue, options: concreteType.options } }
     case types.Kind.Enum:
       return { enumerator: { variants: concreteType.variants, options: concreteType.options } }
     case types.Kind.Array:
@@ -119,6 +179,8 @@ function serializeType(type: types.Type, resolve: (subType: types.Type) => strin
         },
       }
     case types.Kind.Custom:
+      const customSerializer = customSerializers[concreteType.typeName]
+      const customSerialization = customSerializer ? customSerializer(concreteType, (type) => resolve(type)) : undefined
       return {
         custom: {
           typeName: concreteType.typeName,
@@ -127,10 +189,13 @@ function serializeType(type: types.Type, resolve: (subType: types.Type) => strin
                 name: concreteType.options.name,
                 description: concreteType.options.description,
                 sensitive: concreteType.options.sensitive,
-              } //TODO: at the moment every other options is erased. How to resolve?
+              }
             : undefined,
+          custom: customSerialization,
         },
       }
+    default:
+      assertNever(concreteType)
   }
 }
 
@@ -182,18 +247,12 @@ const booleanTypeSchema = types.object({
   options: types.object(baseOptionsFields).optional(),
 })
 const literalTypeSchema = types.object({
-  literalValue: types.custom<'literal-value', {}, string | number | boolean | null>(
-    'literal-value',
-    (v) => v,
-    (v) => {
-      if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean' || v === null) {
-        return decoding.succeed(v)
-      } else {
-        return decoding.fail('string, number, boolean or null', v)
-      }
-    },
-    (v) => validation.succeed(),
-  ),
+  literalValue: types.union({
+    null: types.literal(null),
+    string: types.string(),
+    boolean: types.boolean(),
+    number: types.number(),
+  }),
   options: types.object(baseOptionsFields).optional(),
 })
 const enumTypeSchema = types.object({
@@ -231,6 +290,14 @@ const unionTypeSchema = types.object({
 const customTypeSchema = types.object({
   typeName: types.string(),
   options: types.object(baseOptionsFields).optional(),
+  custom: types
+    .custom<'json', {}, JSONType>(
+      'json',
+      (v) => v,
+      (v) => (v === undefined ? result.ok(null) : result.ok(v as JSONType)),
+      (v) => validation.succeed(),
+    )
+    .optional(),
 })
 const typeSchema = types.union({
   string: stringTypeSchema,

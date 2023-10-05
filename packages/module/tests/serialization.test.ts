@@ -27,15 +27,68 @@ describe('Module interface to schema', () => {
     })
   })
 
+  test('Simple module with custom types', () => {
+    const f = functions.define({
+      input: types.record(types.dateTime({ maximum: new Date(234), minimum: new Date(123) })).setName('Input'),
+      output: types.timestamp({ maximum: new Date(2340), minimum: new Date(1230) }).setName('Output'),
+      error: types.never(),
+    })
+    const m = module.define({
+      name: 'test',
+      version: '0.0.0',
+      functions: { f },
+    })
+    const schema1 = JSON.parse(JSON.stringify(serialization.serialize(m, {})))
+    expect(schema1).toEqual({
+      name: 'test',
+      version: '0.0.0',
+      types: {
+        Input: { custom: { typeName: 'record', options: { name: 'Input' } } },
+        Output: { custom: { typeName: 'timestamp', options: { name: 'Output' } } },
+        ANONYMOUS_TYPE_0: { custom: { typeName: 'never' } },
+      },
+      functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_0' } },
+    })
+    const schema2 = JSON.parse(JSON.stringify(serialization.serialize(m)))
+    expect(schema2).toEqual({
+      name: 'test',
+      version: '0.0.0',
+      types: {
+        ANONYMOUS_TYPE_0: {
+          custom: { typeName: 'datetime', options: {}, custom: { customOptions: { maximum: 234, minimum: 123 } } },
+        },
+        Input: {
+          custom: { typeName: 'record', options: { name: 'Input' }, custom: { wrappedType: 'ANONYMOUS_TYPE_0' } },
+        },
+        Output: {
+          custom: {
+            typeName: 'timestamp',
+            options: { name: 'Output' },
+            custom: { customOptions: { minimum: 1230, maximum: 2340 } },
+          },
+        },
+        ANONYMOUS_TYPE_1: { custom: { typeName: 'never' } },
+      },
+      functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_1' } },
+    })
+  })
+
   test('Module with all types', () => {
     const str = types.string({ regex: /asd/ }).setName('String')
     const num = types.number().setName('Number')
     const bool = types.boolean().setName('Bool')
-    const lit = types.literal(123).setName('Literal')
+    const lit1 = types.literal(123).setName('Literal1')
+    const lit2 = types.literal('123').setName('Literal2')
+    const lit3 = types.literal(true).setName('Literal3')
+    const lit4 = types.literal(null).setName('Literal4')
     const enumerator = types.enumeration(['A', 'B']).setName('Enum')
     const datetime = types.dateTime().setName('DateTime')
+    const timestamp = types.dateTime().setName('Timestamp')
+    const record = types.record(types.string()).setName('Record')
     const f = functions.define({
-      input: types.object({ str, num, bool, lit, enumerator, datetime }).setName('Input'),
+      input: types
+        .object({ str, num, bool, lit1, lit2, lit3, lit4, enumerator, datetime, timestamp, record })
+        .setName('Input'),
       output: str.optional().setName('Output'),
       error: types
         .union({ error1: str.nullable().setName('Error1'), error2: str.array().setName('Error2') })
@@ -54,18 +107,31 @@ describe('Module interface to schema', () => {
         String: { string: { options: { regex: 'asd', name: 'String' } } },
         Number: { number: { options: { name: 'Number' } } },
         Bool: { boolean: { options: { name: 'Bool' } } },
-        Literal: { literal: { literalValue: 123, options: { name: 'Literal' } } },
+        Literal1: { literal: { literalValue: { number: 123 }, options: { name: 'Literal1' } } },
+        Literal2: { literal: { literalValue: { string: '123' }, options: { name: 'Literal2' } } },
+        Literal3: { literal: { literalValue: { boolean: true }, options: { name: 'Literal3' } } },
+        Literal4: { literal: { literalValue: { null: null }, options: { name: 'Literal4' } } },
         Enum: { enumerator: { variants: ['A', 'B'], options: { name: 'Enum' } } },
-        DateTime: { custom: { typeName: 'datetime', options: { name: 'DateTime' } } },
+        DateTime: { custom: { typeName: 'datetime', options: { name: 'DateTime' }, custom: { customOptions: {} } } },
+        Timestamp: { custom: { typeName: 'datetime', options: { name: 'Timestamp' }, custom: { customOptions: {} } } },
+        ANONYMOUS_TYPE_0: { string: {} },
+        Record: {
+          custom: { typeName: 'record', options: { name: 'Record' }, custom: { wrappedType: 'ANONYMOUS_TYPE_0' } },
+        },
         Input: {
           object: {
             fields: {
               str: { type: 'String' },
               num: { type: 'Number' },
               bool: { type: 'Bool' },
-              lit: { type: 'Literal' },
+              lit1: { type: 'Literal1' },
+              lit2: { type: 'Literal2' },
+              lit3: { type: 'Literal3' },
+              lit4: { type: 'Literal4' },
               enumerator: { type: 'Enum' },
               datetime: { type: 'DateTime' },
+              timestamp: { type: 'Timestamp' },
+              record: { type: 'Record' },
             },
             options: { name: 'Input' },
           },
@@ -223,31 +289,12 @@ test('Decode schema', () => {
     version: '0.0.0',
     functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_0' } },
     types: {
-      Input: { literal: { literalValue: null, options: { name: 'Input' } } },
-      Output: { literal: { literalValue: '123', options: { name: 'Output' } } },
-      ANONYMOUS_TYPE_1: { literal: { literalValue: 123 } },
-      ANONYMOUS_TYPE_2: { literal: { literalValue: true } },
+      Input: { literal: { literalValue: { null: null }, options: { name: 'Input' } } },
+      Output: { literal: { literalValue: { string: '123' }, options: { name: 'Output' } } },
+      ANONYMOUS_TYPE_1: { literal: { literalValue: { number: 123 } } },
+      ANONYMOUS_TYPE_2: { literal: { literalValue: { boolean: true } } },
       ANONYMOUS_TYPE_0: { custom: { typeName: 'never' } },
     },
   })
   expect(result1.isOk).toBe(true)
-
-  const result2 = serialization.moduleSchema.decode({
-    name: 'test',
-    version: '0.0.0',
-    functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_0' } },
-    types: {
-      Input: { literal: { literalValue: {}, options: { name: 'Input' } } },
-      Output: { literal: { literalValue: '123', options: { name: 'Output' } } },
-      ANONYMOUS_TYPE_1: { literal: { literalValue: 123 } },
-      ANONYMOUS_TYPE_2: { literal: { literalValue: true } },
-      ANONYMOUS_TYPE_0: { custom: { typeName: 'never' } },
-    },
-  })
-  expect(result2.isOk).toBe(false)
-  expect(!result2.isOk && result2.error[0].got).toEqual({})
-  expect(!result2.isOk && 'expected' in result2.error[0] && result2.error[0].expected).toEqual(
-    'string, number, boolean or null',
-  )
-  expect(!result2.isOk && result2.error[0].path.format()).toEqual('$.types.Input.literal.literalValue')
 })

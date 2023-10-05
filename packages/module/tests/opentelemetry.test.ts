@@ -4,12 +4,7 @@ import logsAPI from '@opentelemetry/api-logs'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { Resource } from '@opentelemetry/resources'
 import { LoggerProvider, SimpleLogRecordProcessor, ConsoleLogRecordExporter } from '@opentelemetry/sdk-logs'
-import {
-  BasicTracerProvider,
-  SimpleSpanProcessor,
-  ConsoleSpanExporter,
-  InMemorySpanExporter,
-} from '@opentelemetry/sdk-trace-base'
+import { SimpleSpanProcessor, ConsoleSpanExporter, InMemorySpanExporter } from '@opentelemetry/sdk-trace-base'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { describe, expect, test } from 'vitest'
@@ -17,7 +12,7 @@ import { describe, expect, test } from 'vitest'
 describe('Opentelemetry', () => {
   test('should produce spans', async () => {
     const loggerProvider = new LoggerProvider()
-    loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(new ConsoleLogRecordExporter()))
+    //loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(new ConsoleLogRecordExporter()))
     logsAPI.logs.setGlobalLoggerProvider(loggerProvider)
     const provider = new NodeTracerProvider({
       resource: new Resource({
@@ -25,7 +20,7 @@ describe('Opentelemetry', () => {
         [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
       }),
     })
-    provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
+    //provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
     const spanExporter = new InMemorySpanExporter()
     provider.addSpanProcessor(new SimpleSpanProcessor(spanExporter))
     const exporter = new OTLPTraceExporter({

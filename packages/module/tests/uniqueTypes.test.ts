@@ -94,29 +94,4 @@ describe('uniqueTypes', () => {
     expectSameSets(expected, uniqueTypes(model1))
     expectSameSets(expected, uniqueTypes(model2))
   })
-
-  test('asd', () => {
-    const User = () =>
-      types.object({
-        email: types.string(),
-        password: types.string(),
-        firstname: types.string().optional(),
-        lastname: types.string().optional(),
-        friend: { virtual: types.optional(User) },
-        metadata: types
-          .record(types.string({ maxLength: 1024 }), { maxFieldsCount: 100 })
-          .setName('Metadata')
-          .optional(),
-      })
-    const LoginInput = types.pick(User, { email: true, password: true }, types.Mutability.Immutable, {
-      name: 'LoginInput',
-    })
-    const LoginOutput = types.object({ jwt: types.string(), user: User }).nullable().setName('LoginOuput')
-
-    const asd = [...allUniqueTypes([User, LoginInput, LoginOutput, types.nullable(User)])].map((t) => [
-      types.concretise(t).options?.name,
-      t,
-    ])
-    const expected = new Set()
-  })
 })

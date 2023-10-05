@@ -5,7 +5,7 @@ import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
 import { projection, types } from '@mondrian-framework/model'
-import { UnionToIntersection, count, JSONType, mapObject } from '@mondrian-framework/utils'
+import { UnionToIntersection, count } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**

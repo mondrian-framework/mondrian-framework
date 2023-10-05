@@ -70,9 +70,10 @@ export const registerData = types.object({
   lastName: types.string(),
 })
 
+const registerOutput = () => types.omit(user(), { posts: true }).setName('RegisterOutput')
 export const register = functions.withContext<RegisterContext>().build({
   input: registerData,
-  output: types.omit(user, { posts: true })(),
+  output: registerOutput,
   error: types.never(),
   body: async ({ input, context }) => {
     const { email, password, firstName, lastName } = input

@@ -13,14 +13,15 @@ test('Real example', async () => {
       lastname: types.string().optional(),
       friend: { virtual: types.optional(User) },
       metadata: types
-        .record(types.string({ maxLength: 1024 }), { maxFieldsCount: 100 })
+        .record(types.string({ maxLength: 1024 }))
         .setName('Metadata')
         .optional(),
     })
   type User = types.Infer<typeof User>
-  const LoginInput = types.pick(User, { email: true, password: true }, types.Mutability.Immutable, {
-    name: 'LoginInput',
-  })
+  const LoginInput = () =>
+    types.pick(User(), { email: true, password: true }, types.Mutability.Immutable, {
+      name: 'LoginInput',
+    })
   const LoginOutput = types.object({ jwt: types.string(), user: User }).nullable().setName('LoginOuput')
 
   //Functions

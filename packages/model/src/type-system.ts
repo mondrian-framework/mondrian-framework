@@ -1621,18 +1621,14 @@ export type CustomTypeOptions<AdditionalOptions extends Record<string, unknown>>
  *          ```
  */
 export function merge<Ts1 extends Fields, Ts2 extends Fields, M extends Mutability = Mutability.Immutable>(
-  one: Lazy<ObjectType<any, Ts1>>,
-  other: Lazy<ObjectType<any, Ts2>>,
+  one: ObjectType<any, Ts1>,
+  other: ObjectType<any, Ts2>,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, MergeObjectFields<Ts1, Ts2>>>,
-): () => ObjectType<M, MergeObjectFields<Ts1, Ts2>> {
-  if (typeof one === 'function' || typeof other === 'function') {
-    return () =>
-      merge(concretise(one) as ObjectType<any, Ts1>, concretise(other) as ObjectType<any, Ts2>, mutable, options)()
-  }
+): ObjectType<M, MergeObjectFields<Ts1, Ts2>> {
   const mergedFields = { ...one.fields, ...other.fields }
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(mergedFields, options) as unknown as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
+  return constructor(mergedFields, options) as unknown as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
 }
 
 type MergeObjectFields<Ts1 extends Fields, Ts2 extends Fields> = {
@@ -1662,17 +1658,14 @@ export function pick<
   const PickedFields extends { [K in keyof Ts]?: true },
   M extends Mutability = Mutability.Immutable,
 >(
-  obj: Lazy<ObjectType<any, Ts>>,
+  obj: ObjectType<any, Ts>,
   fields: PickedFields,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
-): () => ObjectType<M, PickObjectFields<Ts, PickedFields>> {
-  if (typeof obj === 'function') {
-    return () => pick(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
-  }
+): ObjectType<M, PickObjectFields<Ts, PickedFields>> {
   const pickedFields = filterMapObject(obj.fields, (k, t) => (k in fields && fields[k] === true ? t : undefined))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(pickedFields, options) as unknown as ObjectType<M, PickObjectFields<Ts, PickedFields>>
+  return constructor(pickedFields, options) as unknown as ObjectType<M, PickObjectFields<Ts, PickedFields>>
 }
 
 type PickObjectFields<Ts extends Fields, PickedFields extends { [K in keyof Ts]?: true }> = {
@@ -1701,19 +1694,16 @@ type PickObjectFields<Ts extends Fields, PickedFields extends { [K in keyof Ts]?
 export function omit<
   const Ts extends Fields,
   const OmittedFields extends { [K in keyof Ts]?: true },
-  M extends Mutability = Mutability.Immutable,
+  const M extends Mutability = Mutability.Immutable,
 >(
-  obj: Lazy<ObjectType<any, Ts>>,
+  obj: ObjectType<any, Ts>,
   fields: OmittedFields,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
-): () => ObjectType<M, OmitObjectFields<Ts, OmittedFields>> {
-  if (typeof obj === 'function') {
-    return () => omit(concretise(obj) as ObjectType<any, Ts>, fields, mutable, options)()
-  }
+): ObjectType<M, OmitObjectFields<Ts, OmittedFields>> {
   const pickedFields = filterMapObject(obj.fields, (k, t) => (!(k in fields) || fields[k] !== true ? t : undefined))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(pickedFields, options) as unknown as ObjectType<M, OmitObjectFields<Ts, OmittedFields>>
+  return constructor(pickedFields, options) as unknown as ObjectType<M, OmitObjectFields<Ts, OmittedFields>>
 }
 
 type OmitObjectFields<Ts extends Fields, OmittedFields extends { [K in keyof Ts]?: true }> = {
@@ -1742,16 +1732,13 @@ type OmitObjectFields<Ts extends Fields, OmittedFields extends { [K in keyof Ts]
  *          ```
  */
 export function omitVirtualFields<const Ts extends Fields, M extends Mutability = Mutability.Immutable>(
-  obj: Lazy<ObjectType<any, Ts>>,
+  obj: ObjectType<any, Ts>,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
-): () => ObjectType<M, OmitReferenceObjectFields<Ts>> {
-  if (typeof obj === 'function') {
-    return () => omitVirtualFields(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
-  }
+): ObjectType<M, OmitReferenceObjectFields<Ts>> {
   const pickedFields = filterMapObject(obj.fields, (_, t) => ('virtual' in t ? undefined : t))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(pickedFields, options) as unknown as ObjectType<M, OmitReferenceObjectFields<Ts>>
+  return constructor(pickedFields, options) as unknown as ObjectType<M, OmitReferenceObjectFields<Ts>>
 }
 
 type OmitReferenceObjectFields<Ts extends Fields> = {
@@ -1775,16 +1762,13 @@ type OmitReferenceObjectFields<Ts extends Fields> = {
  *          ```
  */
 export function partial<const Ts extends Fields, M extends Mutability = Mutability.Immutable>(
-  obj: Lazy<ObjectType<any, Ts>>,
+  obj: ObjectType<any, Ts>,
   mutable?: M,
   options?: OptionsOf<ObjectType<M, Ts>>,
-): () => ObjectType<M, PartialObjectFields<Ts>> {
-  if (typeof obj === 'function') {
-    return () => partial(concretise(obj) as ObjectType<any, Ts>, mutable, options)()
-  }
+): ObjectType<M, PartialObjectFields<Ts>> {
   const mappedFields = filterMapObject(obj.fields, (_, t) => ('virtual' in t ? t : types.optional(t)))
   const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return () => constructor(mappedFields, options) as unknown as ObjectType<M, PartialObjectFields<Ts>>
+  return constructor(mappedFields, options) as unknown as ObjectType<M, PartialObjectFields<Ts>>
 }
 
 type PartialObjectFields<Ts extends Fields> = {

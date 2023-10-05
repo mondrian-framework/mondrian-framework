@@ -20,7 +20,7 @@ type WriteContext = {
   addPost: (title: string, content: string, publishedAt: Date, authorId: string) => Promise<Omit<Post, 'author'>>
 }
 
-const postWithNoAuthor = types.omit(post, { author: true })()
+const postWithNoAuthor = () => types.omit(post(), { author: true })
 
 export const write = functions.withContext<WriteContext>().build({
   input: writeInput,
@@ -51,7 +51,7 @@ export const readInput = types.object({ authorId: users.userId })
 
 export const read = functions.withContext<ReadContext>().build({
   input: readInput,
-  output: types.partialDeep(postWithNoAuthor).array(),
+  output: types.array(types.partialDeep(postWithNoAuthor)),
   error: types.never(),
   body: async ({ input, context, projection }) => {
     const { authorId } = input

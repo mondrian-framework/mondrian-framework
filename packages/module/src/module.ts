@@ -79,9 +79,11 @@ function assertUniqueNames(functions: functions.FunctionsInterfaces) {
   const allNames = [...allTypes.values()]
     .map((t) => types.concretise(t).options?.name)
     .filter((name) => name !== undefined)
-
-  count(allNames).forEach((value, key) => {
-    if (value > 1) throw new Error(`Duplicated type name "${key}"`)
+  const namesCount = count(allNames)
+  namesCount.forEach((value, key) => {
+    if (value > 1) {
+      throw new Error(`Duplicated type name "${key}"`)
+    }
   })
 }
 
@@ -150,5 +152,6 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 export function define<const Fs extends functions.FunctionsInterfaces>(
   module: ModuleInterface<Fs>,
 ): ModuleInterface<Fs> {
+  assertUniqueNames(module.functions)
   return module
 }

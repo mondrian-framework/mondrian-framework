@@ -1595,7 +1595,7 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
 /**
  * The options used to define a {@link CustomTypeOptions `CustomTypeOptions`}.
  */
-export type CustomTypeOptions<AdditionalOptions> = BaseOptions & AdditionalOptions
+export type CustomTypeOptions<AdditionalOptions extends Record<string, unknown>> = BaseOptions & AdditionalOptions
 
 /**
  * @param one the first `ObjectType` to merge

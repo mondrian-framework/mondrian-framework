@@ -43,7 +43,7 @@ type CustomValidator<Name extends string, Options extends Record<string, any>, I
  *          can pick whatever best suits your needs as long as you can encode/decode it
  *          to a JSON type
  */
-export function custom<Name extends string, Options extends Record<string, any>, InferredAs>(
+export function custom<Name extends string, Options extends Record<string, unknown>, InferredAs>(
   typeName: Name,
   encodeWithoutValidation: CustomEncoder<Name, Options, InferredAs>,
   decoder: CustomDecoder<Name, Options, InferredAs>,

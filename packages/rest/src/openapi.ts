@@ -484,6 +484,7 @@ function typeToSchemaObjectInternal(
 ): { name: string | undefined; schema: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } {
   const type = types.concretise(t)
   const name: string | undefined = type.options?.name
+  const description = type.options?.description
   if (type.kind === types.Kind.String) {
     return {
       name,
@@ -492,18 +493,25 @@ function typeToSchemaObjectInternal(
         pattern: type.options?.regex?.source,
         minLength: type.options?.minLength,
         maxLength: type.options?.maxLength,
+        description,
       },
     }
   }
   if (type.kind === types.Kind.Custom) {
-    const t = typeToSchemaObject(types.unknown(), typeMap, typeRef) //TODO: type.encodedAs or this conversion require a custom Map CustomType -> OpenAPIV3_1.SchemaObject
-    return {
-      name: name ?? type.typeName,
-      schema: { ...t, description: type.options?.description ?? type.options?.name }, //format: type.format?
+    //convert known types based on name
+    if (type.typeName === types.record(types.unknown()).typeName) {
+      const fieldsType = typeToSchemaObject((type.options as types.RecordOptions).fieldsType, typeMap, typeRef)
+      return { name, schema: { type: 'object', additionalProperties: fieldsType.schema, description } }
+    } else if (type.typeName === types.dateTime().typeName) {
+      return { name, schema: { type: 'string', format: 'date-time', description } }
+    } else if (type.typeName === types.timestamp().typeName) {
+      return { name, schema: { type: 'integer', description: description ?? 'unix timestamp' } }
     }
+    //otherwise don't known how to convert this type to openapi
+    return { name, schema: { description } }
   }
   if (type.kind === types.Kind.Boolean) {
-    return { name, schema: { type: 'boolean' } }
+    return { name, schema: { type: 'boolean', description } }
   }
   if (type.kind === types.Kind.Number) {
     return {
@@ -514,7 +522,7 @@ function typeToSchemaObjectInternal(
         minimum: type.options?.minimum,
         exclusiveMaximum: type.options?.exclusiveMaximum,
         exclusiveMinimum: type.options?.exclusiveMinimum,
-        description: type.options?.description,
+        description,
       },
     }
   }
@@ -522,7 +530,7 @@ function typeToSchemaObjectInternal(
     const t = typeof type.literalValue
     const tp = t === 'boolean' ? t : t === 'number' ? t : t === 'string' ? t : null
     if (type.literalValue === null) {
-      return { name, schema: { type: 'null', const: 'null' } }
+      return { name, schema: { type: 'null', const: 'null', description } }
     }
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
@@ -533,13 +541,13 @@ function typeToSchemaObjectInternal(
         type: tp,
         const: type.literalValue,
         example: type.literalValue,
-        description: type.options?.description,
+        description,
       },
     }
   }
   if (type.kind === types.Kind.Array) {
     const { schema } = typeToSchemaObject(type.wrappedType, typeMap, typeRef)
-    return { name, schema: { type: 'array', items: schema } }
+    return { name, schema: { type: 'array', items: schema, description } }
   }
   if (type.kind === types.Kind.Optional) {
     const { name: subname, schema } = typeToSchemaObject(
@@ -551,7 +559,7 @@ function typeToSchemaObjectInternal(
     if (ignoreFirstLevelOptionality) {
       return { name: subname, schema }
     }
-    return { name, schema: { anyOf: [schema, { type: 'null', description: 'optional' }] } }
+    return { name, schema: { anyOf: [schema, { type: 'null', description: 'optional' }], description } }
   }
   if (type.kind === types.Kind.Nullable) {
     const { name: subname, schema } = typeToSchemaObject(
@@ -563,7 +571,7 @@ function typeToSchemaObjectInternal(
     if (ignoreFirstLevelOptionality) {
       return { name: subname, schema }
     }
-    return { name, schema: { anyOf: [schema, { const: null }] } }
+    return { name, schema: { anyOf: [schema, { const: null }], description } }
   }
   if (type.kind === types.Kind.Object) {
     const fields = Object.entries(type.fields as types.Fields).map(([fieldName, field]) => {
@@ -593,7 +601,7 @@ function typeToSchemaObjectInternal(
           return [name, type]
         }),
       ),
-      description: type.options?.description,
+      description,
     }
     return { name, schema }
   }
@@ -603,7 +611,7 @@ function typeToSchemaObjectInternal(
       schema: {
         type: 'string',
         enum: type.variants,
-        description: type.options?.description,
+        description,
       } as const,
     }
   }
@@ -611,7 +619,7 @@ function typeToSchemaObjectInternal(
     const uniontypes = Object.entries(type.variants).map(
       ([k, t]) => typeToSchemaObject(types.object({ [k]: t as types.Type }), typeMap, typeRef).schema,
     )
-    return { name, schema: { anyOf: uniontypes, description: type.options?.description } }
+    return { name, schema: { anyOf: uniontypes, description } }
   }
   return assertNever(type)
 }

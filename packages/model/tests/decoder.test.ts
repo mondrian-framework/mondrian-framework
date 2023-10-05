@@ -592,6 +592,16 @@ describe.concurrent('timestamp value', () => {
   })
 })
 
+describe.concurrent('record value', () => {
+  const model = types.record(types.unknown())
+  test.prop([gen.array(gen.tuple(gen.string(), gen.anything())).map(Object.fromEntries)])(
+    'can decode record',
+    (record) => {
+      checkValue(model.decodeWithoutValidation(record), record)
+    },
+  )
+})
+
 describe.concurrent('errorToString', () => {
   test('prints the error and its path', () => {
     const error = { expected: 'expected', got: '1', path: path.empty() }

@@ -1,4 +1,4 @@
-import { allUniqueTypes, uniqueTypes } from '../src/utils'
+import { uniqueTypes } from '../src/utils'
 import { test } from '@fast-check/vitest'
 import { arbitrary, types } from '@mondrian-framework/model'
 import { describe, expect } from 'vitest'

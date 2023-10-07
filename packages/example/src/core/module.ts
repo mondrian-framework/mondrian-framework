@@ -1,8 +1,8 @@
 import { posts, users } from '.'
+import { InvalidJwtError } from './errors'
 import { module } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
-import { InvalidJwtError } from './errors'
 
 export type Functions = typeof functions
 export const functions = {

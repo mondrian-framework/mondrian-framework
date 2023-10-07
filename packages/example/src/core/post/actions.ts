@@ -1,61 +1,101 @@
-import { users } from '..'
-import { Post, post } from './model'
-import { projection, result, types } from '@mondrian-framework/model'
+import { LoggedUserContext } from '..'
+import { idType, unauthorizedType } from '../common/model'
+import { postType } from './model'
+import { result, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
+import { utils as prismaUtils } from '@mondrian-framework/prisma'
+import { Prisma } from '@prisma/client'
 
-export type Context = WriteContext & ReadContext
-
-export const writeInput = types.object({
-  title: types.string(),
-  content: types.string(),
-  authorId: types.string(),
-})
-
-export const writeError = types.union({
-  invalidAuthor: types.string(),
-})
-
-type WriteContext = {
-  doesUserExist: (id: users.UserId) => Promise<boolean>
-  addPost: (title: string, content: string, publishedAt: Date, authorId: string) => Promise<Omit<Post, 'author'>>
-}
-
-const postWithNoAuthor = () => types.omit(post(), { author: true })
-
-export const write = functions.withContext<WriteContext>().build({
-  input: writeInput,
-  output: postWithNoAuthor,
-  error: writeError,
-  body: async ({ input, context }) => {
-    const { title, content, authorId } = input
-
-    const userExists = await context.doesUserExist(authorId)
-    if (!userExists) {
-      return result.fail({ invalidAuthor: 'the provided author is invalid' })
+const writePostInput = () =>
+  types.pick(postType(), { content: true, title: true, visibility: true }).setName('WritePostInput')
+export const writePost = functions.withContext<LoggedUserContext>().build({
+  input: writePostInput,
+  output: postType,
+  error: unauthorizedType,
+  body: async ({ input, projection, context }) => {
+    if (!context.userId) {
+      return result.fail({ notLoggedIn: 'Invalid authentication' as const })
     }
-
-    const now = new Date()
-    const newPost = await context.addPost(title, content, now, authorId)
+    const select = prismaUtils.projectionToSelection<Prisma.PostSelect>(postType, projection)
+    const newPost = await context.prisma.post.create({
+      data: {
+        ...input,
+        publishedAt: new Date(),
+        authorId: context.userId,
+      },
+      select,
+    })
     return result.ok(newPost)
   },
+  options: { namespace: 'post' },
 })
 
-type ReadContext = {
-  findPostsByAuthor: (
-    authorId: users.UserId,
-    projection: projection.FromType<typeof post> | undefined,
-  ) => Promise<Partial<Omit<Post, 'author'>>[]>
-}
-
-export const readInput = types.object({ authorId: users.userId })
-
-export const read = functions.withContext<ReadContext>().build({
-  input: readInput,
-  output: types.array(types.partialDeep(postWithNoAuthor)),
+const readPostInput = types.object({ authorId: idType }).setName('ReadPostsInput')
+export const readPosts = functions.withContext<LoggedUserContext>().build({
+  input: readPostInput,
+  output: types.array(postType),
   error: types.never(),
   body: async ({ input, context, projection }) => {
-    const { authorId } = input
-    const posts = await context.findPostsByAuthor(authorId, projection)
+    const select = prismaUtils.projectionToSelection<Prisma.PostSelect>(postType, projection)
+    const posts = await context.prisma.post.findMany({
+      where: {
+        authorId: input.authorId,
+        OR: [
+          { visibility: 'PUBLIC' },
+          ...(context.userId
+            ? ([
+                { visibility: 'FOLLOWERS', author: { followers: { some: { followerId: context.userId } } } },
+                { visibility: 'PRIVATE', authorId: context.userId },
+              ] as const)
+            : []),
+        ],
+      },
+      select,
+    })
     return result.ok(posts)
   },
+  options: { namespace: 'post' },
+})
+
+const likePostInput = types.object({ postId: idType })
+export const likePost = functions.withContext<LoggedUserContext>().build({
+  input: likePostInput,
+  output: postType,
+  error: types.union({ ...unauthorizedType.variants, postNotFound: idType }),
+  body: async ({ input, projection, context }) => {
+    if (!context.userId) {
+      return result.fail({ notLoggedIn: 'Invalid authentication' as const })
+    }
+    const canViewPost = await context.prisma.post.findFirst({
+      where: {
+        id: input.postId,
+        OR: [
+          { visibility: 'PUBLIC' },
+          { visibility: 'FOLLOWERS', author: { followers: { some: { followerId: context.userId } } } },
+          { visibility: 'PRIVATE', authorId: context.userId },
+        ],
+      },
+    })
+    if (!canViewPost) {
+      return result.fail({ postNotFound: input.postId })
+    }
+    await context.prisma.like.upsert({
+      create: {
+        createdAt: new Date(),
+        postId: input.postId,
+        userId: context.userId,
+      },
+      where: {
+        userId_postId: {
+          postId: input.postId,
+          userId: context.userId,
+        },
+      },
+      update: {},
+    })
+    const select = prismaUtils.projectionToSelection<Prisma.PostSelect>(postType, projection)
+    const post = await context.prisma.post.findFirstOrThrow({ where: { id: input.postId }, select })
+    return result.ok(post)
+  },
+  options: { namespace: 'post' },
 })

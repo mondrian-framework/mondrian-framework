@@ -9,13 +9,16 @@ datasource db {
 }
 
 model User {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
-  email     String       @unique
-  password  String
-  firstName String
-  lastName  String
-  posts     Post[]
-  metadata  UserMetadata
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  email      String       @unique
+  password   String
+  firstName  String
+  lastName   String
+  posts      Post[]
+  metadata   UserMetadata
+  followeds  Follower[]   @relation(name: "follower")
+  followers  Follower[]   @relation(name: "followed")
+  givenLikes Like[]
 }
 
 type UserMetadata {
@@ -23,11 +26,40 @@ type UserMetadata {
   lastLogin DateTime
 }
 
+model Follower {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  followedId String @db.ObjectId
+  followed   User   @relation(fields: [followedId], references: [id], name: "followed")
+  followerId String @db.ObjectId
+  follower   User   @relation(fields: [followerId], references: [id], name: "follower")
+
+  @@unique([followedId, followerId])
+}
+
+enum PostVisibility {
+  PRIVATE
+  FOLLOWERS
+  PUBLIC
+}
+
 model Post {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   content     String
   publishedAt DateTime
-  authorId    String   @db.ObjectId
-  author      User     @relation(fields: [authorId], references: [id])
+  visibility  PostVisibility
+  authorId    String         @db.ObjectId
+  author      User           @relation(fields: [authorId], references: [id])
+  likes       Like[]
+}
+
+model Like {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  postId    String   @db.ObjectId
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@unique([userId, postId])
 }

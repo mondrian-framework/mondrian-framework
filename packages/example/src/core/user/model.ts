@@ -1,29 +1,37 @@
-import { post } from '../post/model'
+import { idType } from '../common/model'
+import { likeType, postType } from '../post/model'
 import advancedTypes from '@mondrian-framework/advanced-types'
 import { types } from '@mondrian-framework/model'
 
-export type UserId = types.Infer<typeof userId>
-export const userId = types.string({
-  name: 'userId',
-  description: 'an id that uniquely identifies a user',
-})
-
-export type UserMetadata = types.Infer<typeof userMetadata>
-export const userMetadata = types.object({
-  createdAt: types.dateTime(),
-  lastLogin: types.dateTime(),
-})
-
-export type User = types.Infer<typeof user>
-export const user = () =>
+export type UserType = types.Infer<typeof userType>
+export const userType = () =>
   types.object(
     {
-      id: userId,
+      id: idType,
       firstName: types.string(),
       lastName: types.string(),
       email: advancedTypes.email(),
-      posts: { virtual: types.array(post) },
-      metadata: userMetadata,
+      posts: { virtual: types.array(postType) },
+      givenLikes: { virtual: types.array(likeType) },
+      followers: { virtual: types.array(followerType) },
+      followeds: { virtual: types.array(followerType) },
+      metadata: types
+        .object({
+          createdAt: types.dateTime(),
+          lastLogin: types.dateTime(),
+        })
+        .setName('UserMetadata'),
     },
-    { name: 'user' },
+    { name: 'User' },
+  )
+
+export type FollowerType = types.Infer<typeof userType>
+export const followerType = () =>
+  types.object(
+    {
+      id: idType,
+      followed: { virtual: userType },
+      follower: { virtual: userType },
+    },
+    { name: 'Follower' },
   )

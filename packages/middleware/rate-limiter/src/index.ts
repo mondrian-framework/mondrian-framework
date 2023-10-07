@@ -1,4 +1,4 @@
-export { rateLimitMiddleware } from './middleware'
+export * as rateLimiter from './exports'
 export { Slot } from './slot'
 export { SlotProvider } from './slot-provider'
 export { RedisSlotProvider } from './implementation/redis'

@@ -1,0 +1,32 @@
+import { posts, users } from '.'
+import { module } from '@mondrian-framework/module'
+import { PrismaClient } from '@prisma/client'
+import jsonwebtoken from 'jsonwebtoken'
+import { InvalidJwtError } from './errors'
+
+export type Functions = typeof functions
+export const functions = {
+  ...users.actions,
+  ...posts.actions,
+}
+
+const prisma = new PrismaClient()
+export const instance = module.build({
+  name: 'reddit',
+  version: '2.0.0',
+  functions,
+  context: async ({ authorization }: { authorization?: string }) => {
+    if (authorization) {
+      const secret = process.env.JWT_SECRET ?? 'secret'
+      try {
+        const jwt = jsonwebtoken.verify(authorization.replace('Bearer ', ''), secret, { complete: true })
+        if (typeof jwt.payload === 'object' && jwt.payload.sub) {
+          return { prisma, userId: jwt.payload.sub }
+        }
+      } catch {
+        throw new InvalidJwtError('Invalid jwt')
+      }
+    }
+    return { prisma }
+  },
+})

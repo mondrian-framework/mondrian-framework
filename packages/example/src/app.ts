@@ -1,9 +1,10 @@
+import { module } from './core'
 import { opentelemetry } from './opentelemetry'
 import { rest } from './rest'
 import { fastify } from 'fastify'
 
 async function main() {
-  opentelemetry.setup(rest.redditModule.name, rest.redditModule.version)
+  opentelemetry.setup(module.instance.name, module.instance.version)
   const server = fastify()
   rest.startServer(server)
   const address = await server.listen({ port: 4000 })

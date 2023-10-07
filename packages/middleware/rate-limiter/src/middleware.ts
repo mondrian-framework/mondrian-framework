@@ -75,7 +75,7 @@ type RateLimitMiddlewareInput<
  * })
  * ```
  */
-export function rateLimitMiddleware<
+export function build<
   const I extends types.Type,
   const O extends types.Type,
   const E extends functions.ErrorType,

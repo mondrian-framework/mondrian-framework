@@ -1,21 +1,33 @@
-import { user } from '../user/model'
+import { idType } from '../common/model'
+import { userType } from '../user/model'
 import { types } from '@mondrian-framework/model'
 
-export type PostId = types.Infer<typeof postId>
-export const postId = types.string({
-  name: 'postId',
-  description: 'an id that uniquely identifies a post',
-})
+export type PostVisibilityType = types.Infer<typeof postVisibilityType>
+export const postVisibilityType = types.enumeration(['PUBLIC', 'PRIVATE', 'FOLLOWERS']).setName('PostVisibility')
 
-export type Post = types.Infer<typeof post>
-export const post = () =>
+export type PostType = types.Infer<typeof postType>
+export const postType = () =>
   types.object(
     {
-      id: postId,
+      id: idType,
       title: types.string(),
       content: types.string(),
       publishedAt: types.dateTime(),
-      author: user,
+      author: { virtual: userType },
+      likes: { virtual: types.array(likeType) },
+      visibility: postVisibilityType,
     },
-    { name: 'post' },
+    { name: 'Post' },
+  )
+
+export type LikeType = types.Infer<typeof likeType>
+export const likeType = () =>
+  types.object(
+    {
+      id: idType,
+      post: { virtual: postType },
+      user: { virtual: userType },
+      createdAt: types.dateTime(),
+    },
+    { name: 'Like' },
   )

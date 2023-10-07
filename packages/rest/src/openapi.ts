@@ -118,7 +118,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
     info: { version: module.version, title: module.name },
     servers: [{ url: `${`/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
     paths,
-    components: { ...components /*, securitySchemes: openapiSecuritySchemes({ module }) */ },
+    components: { ...components, securitySchemes: { _: { type: 'http', scheme: 'bearer' }} /*, securitySchemes: openapiSecuritySchemes({ module }) */ },
   }
 }
 

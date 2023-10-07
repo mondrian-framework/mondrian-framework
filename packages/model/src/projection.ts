@@ -264,7 +264,9 @@ function getRequiredFields(fields: types.Fields, projection: Projection): [strin
   if (projection === true) {
     return Object.entries(fields)
   } else {
-    return Object.entries(filterMapObject(projection, (fieldName, _) => fields[fieldName]))
+    return Object.entries(
+      filterMapObject(projection, (fieldName, projectionValue) => projectionValue && fields[fieldName]),
+    )
   }
 }
 
@@ -314,8 +316,8 @@ export function decode<T extends types.Type>(
       accumulator.push([fieldName, value])
       return accumulator
     }
-    const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
-      decode(fieldType, (value as Record<string, unknown>)[fieldName], options)
+    const decodeEntry = ([fieldName, fieldType]: [string, types.Field]) =>
+      decode(types.unwrapField(fieldType), (value as Record<string, unknown>)[fieldName], options)
         .map((value) => [fieldName, value] as const)
         .mapError((errors) => prependFieldToAll(errors, fieldName))
     const entries = Object.entries(unwrapped.kind === types.Kind.Object ? unwrapped.fields : unwrapped.variants).filter(

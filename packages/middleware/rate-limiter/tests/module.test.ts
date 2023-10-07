@@ -1,4 +1,4 @@
-import { rateLimitMiddleware } from '../src/middleware'
+import { rateLimiter } from '../src'
 import { Rate } from '../src/rate'
 import { result, types } from '@mondrian-framework/model'
 import { module, functions, sdk } from '@mondrian-framework/module'
@@ -14,23 +14,18 @@ test('Rate limiter middleware', async () => {
   const LoginOutput = types.object({ jwt: types.string() }).nullable().setName('LoginOuput')
   type SharedContext = { ip: string }
   const LoginError = types.union({ invalidUsernameOrPassword: types.string(), tooManyRequests: types.string() })
-  const rateLimitByIpEmail = rateLimitMiddleware<
-    typeof LoginInput,
-    typeof LoginOutput,
-    typeof LoginError,
-    SharedContext
-  >({
-    key: ({ context, input }) => (input.email === 'admin@domain.com' ? null : `${context.ip}-${input.email}`),
-    rate: '1 requests in 1 minutes',
-    onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
-  })
-
-  const rateLimitByEmail = rateLimitMiddleware<typeof LoginInput, typeof LoginOutput, typeof LoginError, SharedContext>(
+  const rateLimitByIpEmail = rateLimiter.build<typeof LoginInput, typeof LoginOutput, typeof LoginError, SharedContext>(
     {
-      key: ({ input }) => input.email,
-      rate: new Rate({ requests: 1, period: 1, scale: 'hour' }),
+      key: ({ context, input }) => (input.email === 'admin@domain.com' ? null : `${context.ip}-${input.email}`),
+      rate: '1 requests in 1 minutes',
+      onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
     },
   )
+
+  const rateLimitByEmail = rateLimiter.build<typeof LoginInput, typeof LoginOutput, typeof LoginError, SharedContext>({
+    key: ({ input }) => input.email,
+    rate: new Rate({ requests: 1, period: 1, scale: 'hour' }),
+  })
 
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,

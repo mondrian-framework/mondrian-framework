@@ -1,3 +1,5 @@
-import { posts, users } from '.'
+import { IdType } from './common/model'
+import { PrismaClient } from '@prisma/client'
 
-export type Context = users.actions.Context & posts.actions.Context
+export type Context = { prisma: PrismaClient }
+export type LoggedUserContext = { prisma: PrismaClient; userId?: IdType }

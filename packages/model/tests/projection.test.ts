@@ -237,6 +237,12 @@ describe.concurrent('projection.respectsProjection', () => {
       checkErrors(expectedError, actualError)
     })
 
+    test('from objects with undefined projection', () => {
+      const model = types.object({ field1: types.number(), field2: types.string() })
+      const result = projection.respectsProjection(model, { field1: true, field2: undefined }, { field1: 1 })
+      assertOk(result)
+    })
+
     test('from objects with reference field', () => {
       const model = () =>
         types.object({ field1: { virtual: model }, field2: types.string().optional(), field3: types.string() })

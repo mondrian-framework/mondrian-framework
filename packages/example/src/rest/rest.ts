@@ -1,38 +1,20 @@
-import { adapters } from '../adapters'
-import { posts, users } from '../core'
-import { module } from '@mondrian-framework/module'
+import { module } from '../core'
+import { InvalidJwtError } from '../core/errors'
 import { rest } from '@mondrian-framework/rest'
 import { server as restServer } from '@mondrian-framework/rest-fastify'
-import { PrismaClient } from '@prisma/client'
 
-const prismaClient = new PrismaClient()
-const context = adapters.prisma(prismaClient)
-
-type Functions = typeof functions
-const functions = {
-  register: users.actions.register,
-  login: users.actions.login,
-  write: posts.actions.write,
-  read: posts.actions.read,
-}
-
-export const redditModule = module.build({
-  name: 'reddit',
-  version: '2.0.0',
-  functions,
-  context: async () => context,
-})
-
-const api: rest.Api<Functions> = {
-  version: 100,
+const api: rest.Api<module.Functions> = {
+  version: 2,
   functions: {
     register: [
       { method: 'post', path: '/subscribe/{email}', version: { max: 1 } },
-      { method: 'put', path: '/register', version: { min: 2 } },
+      { method: 'put', path: '/user' },
     ],
-    login: { method: 'get', version: { min: 1 }, errorCodes: { invalidLogin: 401, internalError: 500 } },
-    write: { method: 'post', path: '/posts/write' },
-    read: { method: 'get', path: '/posts/read/{authorId}' },
+    login: { method: 'get', path: '/user/jwt', errorCodes: { invalidLogin: 401 } },
+    follow: { method: 'put', path: '/user/{userId}/follow' },
+    writePost: { method: 'post', path: '/post' },
+    readPosts: { method: 'get', path: '/user/{authorId}/posts' },
+    likePost: { method: 'put', path: '/post/{postId}/like' },
   },
   options: { introspection: true },
 }
@@ -40,12 +22,16 @@ const api: rest.Api<Functions> = {
 export function startServer(server: any) {
   restServer.start({
     server,
-    module: redditModule,
+    module: module.instance,
     api,
-    context: async ({ fastify }) => ({ jwt: fastify.request.headers.authorization }),
+    context: async ({ fastify }) => ({ authorization: fastify.request.headers.authorization }),
     async error({ error, logger }) {
+      if (error instanceof InvalidJwtError) {
+        return { status: 400, body: error.message }
+      }
       if (error instanceof Error) {
         logger.logError(error.message)
+        //Hide error details
         return { status: 500, body: 'Internal server error' }
       }
     },

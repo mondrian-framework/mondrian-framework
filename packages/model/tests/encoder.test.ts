@@ -107,17 +107,29 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
 
     test.prop([unionModel, gen.double()])('encodes a variant', (model, number) => {
       const variant = { variant1: number }
-      expect(model.encodeWithoutValidation(variant)).toEqual(variant)
+      if (model.isTaggedUnion()) {
+        expect(model.encodeWithoutValidation(variant)).toEqual(variant)
+      } else {
+        expect(model.encodeWithoutValidation(variant)).toEqual(number)
+      }
     })
 
     test.prop([unionModel, gen.string()])('encodes the other variant', (model, string) => {
       const variant = { variant2: string }
-      expect(model.encodeWithoutValidation(variant)).toEqual(variant)
+      if (model.isTaggedUnion()) {
+        expect(model.encodeWithoutValidation(variant)).toEqual(variant)
+      } else {
+        expect(model.encodeWithoutValidation(variant)).toEqual(string)
+      }
     })
 
     test.prop([unionModel])('encodes a variant with only optional undefined field', (model) => {
       const variant = { variant2: undefined }
-      expect(model.encodeWithoutValidation(variant)).toEqual({ variant2: null })
+      if (model.isTaggedUnion()) {
+        expect(model.encodeWithoutValidation(variant)).toEqual({ variant2: null })
+      } else {
+        expect(model.encodeWithoutValidation(variant)).toEqual(null)
+      }
     })
 
     test.prop([unionModel])('fails if called with unhandled variant', (model) => {

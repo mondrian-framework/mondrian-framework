@@ -210,7 +210,10 @@ export type GeneratorsRecord<R extends Record<string, any>> = { [Key in keyof R]
  *         All of its keys are optional and may be omitted in the generated options.
  */
 export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionType<any>>> {
-  return baseOptions()
+  return gen.record({
+    ...baseOptions,
+    useTags: orUndefined(gen.boolean()),
+  })
 }
 
 /**

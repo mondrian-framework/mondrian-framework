@@ -621,10 +621,18 @@ function typeToSchemaObjectInternal(
     }
   }
   if (type.kind === types.Kind.Union) {
-    const uniontypes = Object.entries(type.variants).map(
-      ([k, t]) => typeToSchemaObject(types.object({ [k]: t as types.Type }), typeMap, typeRef).schema,
-    )
-    return { name, schema: { anyOf: uniontypes, description } }
+    if (type.isTaggedUnion()) {
+      const taggedUnionTypes = Object.entries(type.variants).map(
+        ([k, t]) => typeToSchemaObject(types.object({ [k]: t as types.Type }), typeMap, typeRef).schema,
+      )
+      return { name, schema: { anyOf: taggedUnionTypes, description } }
+    } else {
+      const untaggedUnionTypes
+       = Object.values(type.variants).map(
+        (t) => typeToSchemaObject(t as types.Type, typeMap, typeRef).schema,
+      )
+      return { name, schema: { anyOf: untaggedUnionTypes, description } }
+    }
   }
   return assertNever(type)
 }

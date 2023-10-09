@@ -676,6 +676,49 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
     })
   })
 
+  describe.concurrent('untagged union value', () => {
+    const model = types.union({ variant1: types.number(), variant2: types.string().optional() }, { useTags: false })
+
+    test.prop([number.filter((n) => n % 2 === 0)])('can decode its tagged variant', (number) => {
+      checkValue(model.decodeWithoutValidation(number), { variant1: number })
+    })
+
+    test.prop([gen.string()])('can decode its other tagged variant', (string) => {
+      checkValue(model.decodeWithoutValidation(string), { variant2: string })
+    })
+
+    test('can decode its other missing variant', () => {
+      checkValue(model.decodeWithoutValidation(null), { variant2: undefined })
+    })
+
+    test('fails with non correct value', () => {
+      const result = model.decodeWithoutValidation({})
+      expect(!result.isOk && result.error.length).toBe(2)
+    })
+
+    test('get the correct variant with ambiguos (but correct) value', () => {
+      const model = types.union(
+        {
+          v1: types.number({ minimum: 0, maximum: 10 }),
+          v2: types.number({ minimum: 20, maximum: 30 }),
+        },
+        { useTags: false },
+      )
+      checkValue(model.decodeWithoutValidation(25), { v2: 25 })
+    })
+
+    test('get the first variant with ambiguos value', () => {
+      const model = types.union(
+        {
+          v1: types.number({ minimum: 0, maximum: 10 }),
+          v2: types.number({ minimum: 20, maximum: 30 }),
+        },
+        { useTags: false },
+      )
+      checkValue(model.decodeWithoutValidation(40), { v1: 40 })
+    })
+  })
+
   describe.concurrent('custom type', () => {
     const options = {
       typeCastingStrategy: 'tryCasting',

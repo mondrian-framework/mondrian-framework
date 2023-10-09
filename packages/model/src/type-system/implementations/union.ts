@@ -49,7 +49,7 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
   encodeWithNoChecks(value: types.Infer<types.UnionType<Ts>>): JSONType {
     const failureMessage =
       'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system'
-    const variantName = Object.keys(value)[0]
+    const variantName = singleKeyFromObject(value)
     if (variantName === undefined) {
       failWithInternalError(failureMessage)
     } else {
@@ -60,7 +60,11 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
         const concreteVariantType = types.concretise(variantType)
         const rawVariantValue = value[variantName]
         const encoded = concreteVariantType.encodeWithoutValidation(rawVariantValue as never)
-        return Object.fromEntries([[variantName, encoded]])
+        if (this.isTaggedUnion()) {
+          return Object.fromEntries([[variantName, encoded]])
+        } else {
+          return encoded
+        }
       }
     }
   }
@@ -86,19 +90,49 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
     value: unknown,
     decodingOptions?: decoding.Options,
   ): decoding.Result<types.Infer<types.UnionType<Ts>>> {
-    if (typeof value === 'object' && value) {
-      const object = value as Record<string, any>
-      const variantName = singleKeyFromObject(object)
-      if (variantName !== undefined && Object.keys(this.variants).includes(variantName)) {
-        return types
-          .concretise(this.variants[variantName])
-          .decodeWithoutValidation(object[variantName], decodingOptions)
-          .map((value) => Object.fromEntries([[variantName, value]]) as types.Infer<types.UnionType<Ts>>)
-          .mapError((errors) => prependVariantToAll(errors, variantName))
+    if (this.isTaggedUnion()) {
+      if (typeof value === 'object' && value) {
+        const object = value as Record<string, any>
+        const variantName = singleKeyFromObject(object)
+        if (variantName !== undefined && Object.keys(this.variants).includes(variantName)) {
+          return types
+            .concretise(this.variants[variantName])
+            .decodeWithoutValidation(object[variantName], decodingOptions)
+            .map((value) => Object.fromEntries([[variantName, value]]) as types.Infer<types.UnionType<Ts>>)
+            .mapError((errors) => prependVariantToAll(errors, variantName))
+        }
       }
+      const prettyVariants = Object.keys(this.variants).join(' | ')
+      return decoding.fail(`union (${prettyVariants})`, value)
+    } else {
+      const errors: decoding.Error[] = []
+      let potentialDecoded: types.Infer<types.UnionType<Ts>> | null = null
+      for (const [variantName, variantType] of Object.entries(this.variants)) {
+        const concrete = types.concretise(variantType)
+        const result = concrete.decodeWithoutValidation(value, decodingOptions)
+        if (result.isOk) {
+          //look ahead with `validate` in order to get a correct variant if possible
+          const validateResult = concrete.validate(result.value as never)
+          if (validateResult.isOk) {
+            return result.map((v) => ({ [variantName]: v } as types.Infer<types.UnionType<Ts>>))
+          } else if (potentialDecoded === null) {
+            //keep this as potential variant but it will not validate
+            potentialDecoded = { [variantName]: result.value } as types.Infer<types.UnionType<Ts>>
+          }
+        } else {
+          errors.push(...result.error)
+        }
+      }
+      if (potentialDecoded !== null) {
+        //returns the non validating variant
+        return decoding.succeed(potentialDecoded)
+      }
+      return decoding.failWithErrors(errors)
     }
-    const prettyVariants = Object.keys(this.variants).join(' | ')
-    return decoding.fail(`union (${prettyVariants})`, value)
+  }
+
+  isTaggedUnion(): boolean {
+    return this.options?.useTags === true || this.options?.useTags === undefined
   }
 }
 

@@ -990,12 +990,13 @@ export type UnionType<Ts extends Types> = {
   updateOptions(options: UnionTypeOptions): UnionType<Ts>
   setName(name: string): UnionType<Ts>
   sensitive(): UnionType<Ts>
+  isTaggedUnion(): boolean
 }
 
 /**
  * The options that can be used to define a {@link UnionType `UnionType`}.
  */
-export type UnionTypeOptions = BaseOptions
+export type UnionTypeOptions = BaseOptions & { useTags?: boolean }
 
 export type Field = Type | { virtual: Type }
 export type Fields = Record<string, Field>

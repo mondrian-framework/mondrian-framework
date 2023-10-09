@@ -24,7 +24,10 @@ export function startServer(server: any) {
     server,
     module: module.instance,
     api,
-    context: async ({ fastify }) => ({ authorization: fastify.request.headers.authorization }),
+    context: async ({ fastify }) => ({
+      authorization: fastify.request.headers.authorization,
+      ip: fastify.request.ip,
+    }),
     async error({ error, logger }) {
       if (error instanceof InvalidJwtError) {
         return { status: 400, body: error.message }

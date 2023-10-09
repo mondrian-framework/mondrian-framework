@@ -10,20 +10,29 @@ import { rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
-const loginInputType = types
-  .object({
+const loginInputType = types.object(
+  {
     email: advancedTypes.email(),
     password: types.string().sensitive(),
-  })
-  .setName('LoginInput')
-
-const loginOutputType = types.object({ user: userType, jwt: types.string() }).setName('LoginOutput')
-const loginErrorType = types
-  .union({
+  },
+  { name: 'LoginInput' },
+)
+const loginOutputType = types.object(
+  {
+    user: userType,
+    jwt: types.string(),
+  },
+  { name: 'LoginOutput' },
+)
+const loginErrorType = types.union(
+  {
     invalidLogin: types.string(),
     tooManyRequests: types.string(),
-  })
-  .setName('LoginError')
+  },
+  {
+    name: 'LoginError',
+  },
+)
 
 const loginRateLimiter = rateLimiter.build<
   typeof loginInputType,
@@ -32,8 +41,11 @@ const loginRateLimiter = rateLimiter.build<
   Context
 >({
   key: ({ input }) => input.email,
-  rate: '2 requests in 5 seconds',
-  onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
+  rate: '10 requests in 1 minute',
+  onLimit: async () => {
+    //TODO: warn the user, maybe block the account
+    return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
+  },
   slotProvider,
 })
 
@@ -62,20 +74,25 @@ export const login = functions.withContext<Context>().build({
   options: { namespace: 'user' },
 })
 
-const registerInputType = types
-  .object({
+const registerInputType = types.object(
+  {
     password: types.string().sensitive(),
     email: advancedTypes.email(),
     firstName: types.string(),
     lastName: types.string(),
-  })
-  .setName('RegisterInput')
-
-const registerErrorType = types
-  .union({
+  },
+  {
+    name: 'RegisterInput',
+  },
+)
+const registerErrorType = types.union(
+  {
     emailAlreadyTaken: types.string(),
-  })
-  .setName('RegisterError')
+  },
+  {
+    name: 'RegisterError',
+  },
+)
 
 export const register = functions.withContext<Context>().build({
   input: registerInputType,

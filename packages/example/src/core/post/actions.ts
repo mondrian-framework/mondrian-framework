@@ -30,7 +30,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
   options: { namespace: 'post' },
 })
 
-const readPostInput = types.object({ authorId: idType }).setName('ReadPostsInput')
+const readPostInput = types.object({ authorId: idType }, { name: 'ReadPostsInput' })
 export const readPosts = functions.withContext<LoggedUserContext>().build({
   input: readPostInput,
   output: types.array(postType),
@@ -57,11 +57,11 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
   options: { namespace: 'post' },
 })
 
-const likePostInput = types.object({ postId: idType })
+const likePostInput = types.object({ postId: idType }, { name: 'LikePostInput' })
 export const likePost = functions.withContext<LoggedUserContext>().build({
   input: likePostInput,
   output: postType,
-  error: types.union({ ...unauthorizedType.variants, postNotFound: idType }),
+  error: types.union({ ...unauthorizedType.variants, postNotFound: idType }, { name: 'LikePostError' }),
   body: async ({ input, projection, context }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' as const })

@@ -72,10 +72,87 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
 >
 
 /**
- * Checks for name collisions.
+ * TODO: understand if this is needed
  */
-function assertUniqueNames(functions: functions.FunctionsInterfaces) {
-  const allTypes = allUniqueTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
+type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
+
+export function uniqueTypes(from: types.Type): Set<types.Type> {
+  return gatherUniqueTypes(new Set(), from)
+}
+
+export function allUniqueTypes(from: types.Type[]): Set<types.Type> {
+  return from.reduce(gatherUniqueTypes, new Set())
+}
+
+function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): Set<types.Type> {
+  if (inspectedTypes.has(type)) {
+    return inspectedTypes
+  } else {
+    inspectedTypes.add(type)
+  }
+
+  if (typeof type === 'function') {
+    const concreteType = type()
+    switch (concreteType.kind) {
+      case types.Kind.Union:
+        return gatherTypesReferencedByUnion(inspectedTypes, concreteType)
+      case types.Kind.Object:
+        return gatherTypesReferencedByObject(inspectedTypes, concreteType)
+      default:
+        assertNever(concreteType)
+    }
+  } else {
+    switch (type.kind) {
+      case types.Kind.Number:
+      case types.Kind.String:
+      case types.Kind.Boolean:
+      case types.Kind.Enum:
+      case types.Kind.Literal:
+      case types.Kind.Custom:
+        return inspectedTypes
+      case types.Kind.Array:
+      case types.Kind.Optional:
+      case types.Kind.Nullable:
+        return gatherUniqueTypes(inspectedTypes, type.wrappedType)
+      case types.Kind.Union:
+        return gatherTypesReferencedByUnion(inspectedTypes, type)
+      case types.Kind.Object:
+        return gatherTypesReferencedByObject(inspectedTypes, type)
+      default:
+        assertNever(type)
+    }
+  }
+}
+
+function gatherTypesReferencedByUnion(inspectedTypes: Set<types.Type>, type: types.UnionType<any>): Set<types.Type> {
+  const variants = type.variants as Record<string, types.Type>
+  return Object.values(variants).reduce(gatherUniqueTypes, inspectedTypes)
+}
+
+function gatherTypesReferencedByObject(
+  inspectedTypes: Set<types.Type>,
+  type: types.ObjectType<any, any>,
+): Set<types.Type> {
+  const fields = type.fields as Record<string, types.Field>
+  return Object.values(fields).reduce(gatherTypesReferencedByField, inspectedTypes)
+}
+
+function gatherTypesReferencedByField(inspectedTypes: Set<types.Type>, field: types.Field): Set<types.Type> {
+  return gatherUniqueTypes(inspectedTypes, types.unwrapField(field))
+}
+
+/**
+ * Checks for name collisions in the types that appear in the given function's signature.
+ * If there's at least two different types sharing the same name, this function will throw
+ * an error.
+ */
+function assertUniqueNames(functions: functions.Functions) {
+  const functionTypes = Object.values(functions).flatMap((f) => {
+    const hasError = f.error !== undefined
+    return hasError ? [f.input, f.output, f.error] : [f.input, f.output]
+  })
+
+  const allTypes = allUniqueTypes(functionTypes)
   const allNames = [...allTypes.values()]
     .map((t) => types.concretise(t).options?.name)
     .filter((name) => name !== undefined)
@@ -120,7 +197,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const func: functions.FunctionImplementation = {
+      const func: functions.FunctionImplementation<types.Type, types.Type, ErrorType, {}> = {
         ...functionBody,
         middlewares: [
           ...maxProjectionDepthMiddleware,

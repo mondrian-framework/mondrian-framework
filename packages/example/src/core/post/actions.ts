@@ -27,32 +27,25 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
     })
     return result.ok(newPost)
   },
-  options: { namespace: 'post' },
 })
 
-const readPostInput = types.object({ authorId: idType }, { name: 'ReadPostsInput' })
-export const readPosts = functions.withContext<LoggedUserContext>().build({
-  input: readPostInput,
-  output: types.array(postType),
-  error: types.never(),
+type ReadContext = {
+  findPostsByAuthor: (
+    authorId: users.UserId,
+    projection: projection.FromType<typeof post> | undefined,
+  ) => Promise<Partial<Omit<Post, 'author'>>[]>
+}
+
+export const readInput = types.object({ authorId: users.userId })
+
+export const read = functions.withContext<ReadContext>().build({
+  input: readInput,
+  output: types.partialDeep(postWithNoAuthor).array(),
+  error: undefined,
   body: async ({ input, context, projection }) => {
-    const select = prismaUtils.projectionToSelection<Prisma.PostSelect>(postType, projection)
-    const posts = await context.prisma.post.findMany({
-      where: {
-        authorId: input.authorId,
-        OR: [
-          { visibility: 'PUBLIC' },
-          ...(context.userId
-            ? ([
-                { visibility: 'FOLLOWERS', author: { followers: { some: { followerId: context.userId } } } },
-                { visibility: 'PRIVATE', authorId: context.userId },
-              ] as const)
-            : []),
-        ],
-      },
-      select,
-    })
-    return result.ok(posts)
+    const { authorId } = input
+    const posts = await context.findPostsByAuthor(authorId, projection)
+    return posts
   },
   options: { namespace: 'post' },
 })

@@ -20,7 +20,13 @@ type SdkFunction<InputType extends types.Type, OutputType extends types.Type, E 
 >(
   input: types.Infer<InputType>,
   options?: { projection?: P; metadata?: Metadata; operationId?: string },
-) => Promise<result.Result<Project<OutputType, P>, types.Infer<E>>>
+) => Promise<SdkFunctionInternal<OutputType, E, P>>
+
+type SdkFunctionInternal<O extends types.Type, E extends ErrorType, P extends projection.FromType<O>> = [E] extends [
+  types.UnionType<infer _>,
+]
+  ? result.Result<Project<O, P>, types.Infer<E>>
+  : Project<O, P>
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata

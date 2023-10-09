@@ -8,7 +8,7 @@ import { projection, result, types } from '@mondrian-framework/model'
 export interface FunctionInterface<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
-  E extends ErrorType = ErrorType,
+  E extends ErrorType = undefined,
 > {
   /**
    * Function input {@link types.Type Type}.
@@ -34,7 +34,7 @@ export interface FunctionInterface<
 export interface Function<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
-  E extends ErrorType = ErrorType,
+  E extends ErrorType = undefined,
   Context extends Record<string, unknown> = Record<string, unknown>,
 > extends FunctionInterface<I, O, E> {
   /**
@@ -53,7 +53,7 @@ export interface Function<
 export interface FunctionImplementation<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
-  E extends ErrorType = ErrorType,
+  E extends ErrorType = undefined,
   Context extends Record<string, unknown> = Record<string, unknown>,
 > extends Function<I, O, E, Context> {
   /**
@@ -102,11 +102,17 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
   readonly logger: logger.MondrianLogger
 }
 
-export type ErrorType = types.UnionType<any> | types.NeverType
+export type ErrorType = types.UnionType<any> | undefined
 
-export type FunctionResult<O extends types.Type, E extends ErrorType> = Promise<
-  result.Result<types.Infer<types.PartialDeep<O>>, types.Infer<E>>
->
+export type FunctionResult<O extends types.Type, E extends ErrorType> = Promise<FunctionResultInternal<O, E>>
+
+type A = FunctionResult<types.Type, ErrorType>
+
+type FunctionResultInternal<O extends types.Type, E extends ErrorType> = [E] extends [types.UnionType<infer _>]
+  ? result.Result<types.Infer<types.PartialDeep<O>>, types.Infer<E>>
+  : [E] extends [undefined]
+  ? types.Infer<types.PartialDeep<O>>
+  : never
 
 /**
  * Mondrian function's middleware type. Applied before calling the {@link Function}'s body.
@@ -223,7 +229,7 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
    * Builds a Mondrian function.
    * @returns A Mondrian function.
    */
-  public build<const I extends types.Type, const O extends types.Type, const E extends ErrorType>(
+  public build<const I extends types.Type, const O extends types.Type, const E extends ErrorType = undefined>(
     func: Function<I, O, E, Context>,
   ): FunctionImplementation<I, O, E, Context> {
     return new BaseFunction(func)

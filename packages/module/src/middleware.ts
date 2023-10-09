@@ -1,6 +1,6 @@
 import { functions } from '.'
 import { ErrorType } from './function'
-import { projection, result, types } from '@mondrian-framework/model'
+import { projection, types } from '@mondrian-framework/model'
 import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -42,15 +42,19 @@ export function checkOutputType(
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
-      const nextRes = await next(args)
-      if (!nextRes.isOk) {
-        return nextRes
+      const nextRes: any = await next(args)
+      let res
+      if (thisFunction.error && !nextRes.isOk) {
+        return nextRes as never
+      } else if (thisFunction.error) {
+        res = nextRes.value
+      } else {
+        res = nextRes
       }
-      const res = nextRes.value
 
       const outputPartialDeepType = types.concretise(types.partialDeep(thisFunction.output))
       const checkResult = projection
-        .respectsProjection(thisFunction.output, args.projection ?? (true as never), res)
+        .respectsProjection(thisFunction.output, args.projection ?? (true as never), res as never)
         .chain((trimmed) => outputPartialDeepType.validate(trimmed).replace(trimmed))
 
       if (!checkResult.isOk) {
@@ -60,7 +64,7 @@ export function checkOutputType(
           attributes: {
             projection: JSON.stringify(projection),
             output: JSON.stringify(
-              outputPartialDeepType.encodeWithoutValidation(res, { sensitiveInformationStrategy: 'hide' }),
+              outputPartialDeepType.encodeWithoutValidation(res as never, { sensitiveInformationStrategy: 'hide' }),
             ),
             errors: errorsMessage,
           },
@@ -69,15 +73,15 @@ export function checkOutputType(
 
         switch (onFailure) {
           case 'log':
-            return res
+            return res as never
           case 'throw':
             throw new Error(`Invalid output: ${errorsMessage}`)
           default:
             assertNever(onFailure)
         }
       }
-
-      return result.ok(checkResult.value)
+      // Swrappare
+      return checkResult as never
     },
   }
 }

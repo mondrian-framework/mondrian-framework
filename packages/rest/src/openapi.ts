@@ -627,8 +627,7 @@ function typeToSchemaObjectInternal(
       )
       return { name, schema: { anyOf: taggedUnionTypes, description } }
     } else {
-      const untaggedUnionTypes
-       = Object.values(type.variants).map(
+      const untaggedUnionTypes = Object.values(type.variants).map(
         (t) => typeToSchemaObject(t as types.Type, typeMap, typeRef).schema,
       )
       return { name, schema: { anyOf: untaggedUnionTypes, description } }

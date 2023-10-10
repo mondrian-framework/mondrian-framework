@@ -8,7 +8,7 @@ import { projection, result, types } from '@mondrian-framework/model'
 export interface FunctionInterface<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
-  E extends ErrorType = undefined,
+  E extends ErrorType = ErrorType,
 > {
   /**
    * Function input {@link types.Type Type}.

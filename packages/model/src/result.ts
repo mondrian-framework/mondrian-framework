@@ -282,3 +282,7 @@ export function tryEachFailFast<A, R, R1, E>(
   }
   return ok(valuesAccumulator)
 }
+
+export function isResult(value: unknown): value is Result<unknown, unknown> {
+  return value instanceof OkImpl || value instanceof FailureImpl
+}

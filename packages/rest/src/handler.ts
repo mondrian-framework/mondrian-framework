@@ -3,6 +3,7 @@ import { generateOpenapiInput } from './openapi'
 import { completeProjection } from './utils'
 import { decoding, projection, result, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
+import { ErrorType } from '@mondrian-framework/module/src/function'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
@@ -17,7 +18,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }: {
   functionName: string
   module: module.Module<Fs, ContextInput>
-  functionBody: functions.FunctionImplementation
+  functionBody: functions.FunctionImplementation<types.Type, types.Type, ErrorType, Record<string, unknown>>
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   globalMaxVersion: number
@@ -46,16 +47,17 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     const responseHeaders = { 'operation-id': operationId }
 
     //Check version
-    const version = checkVersion({ request, minVersion, maxVersion })
+    const version = checkVersion(request, minVersion, maxVersion)
     if (!version.isOk) {
       operationLogger.logError('Bad request. (version)')
       endSpanWithError({ span, failure: version })
       return addHeadersToResponse(version.error, responseHeaders)
     }
+    span?.addEvent('Version checked')
 
     //Decode input
     const input = specification.openapi ? specification.openapi.input(request) : inputExtractor(request)
-    const decoded = decodeInput({ input, inputType: functionBody.input })
+    const decoded = decodeInput(input, functionBody.input)
     if (!decoded.isOk) {
       operationLogger.logError('Bad request. (input)')
       endSpanWithError({ span, failure: decoded })
@@ -64,15 +66,15 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     span?.addEvent('Input decoded')
 
     //Decode projection
-    const decodedProjection = decodeProjection({ request, outputType: functionBody.output })
+    const decodedProjection = decodeProjection(request, functionBody.output)
     if (!decodedProjection.isOk) {
       operationLogger.logError('Bad request. (projection)')
       endSpanWithError({ span, failure: decodedProjection })
       return addHeadersToResponse(decodedProjection.error, responseHeaders)
     }
-    const givenProjection = completeProjection(decodedProjection.value, functionBody.output)
     span?.addEvent('Projection decoded')
 
+    const givenProjection = completeProjection(decodedProjection.value, functionBody.output)
     let moduleContext
     try {
       const contextInput = await context(serverContext)
@@ -82,26 +84,36 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         operationId,
         logger: operationLogger,
       })
-      const result = await functionBody.apply({
-        projection: givenProjection as projection.FromType<types.Type>,
+      const res = (await functionBody.apply({
+        projection: givenProjection as never,
         context: moduleContext as Record<string, unknown>,
         input: decoded.value as never,
         operationId,
         logger: operationLogger,
-      })
-      if (result.isOk) {
-        const encoded = partialOutputType.encodeWithoutValidation(result.value)
+      })) as any
+
+      if (result.isResult(res) && !res.isOk) {
+        const codes = (specification.errorCodes ?? {}) as Record<string, number>
+        const key = res.error ? Object.keys(res.error)[0] : undefined
+        const status = key ? codes[key] ?? 400 : 400
+        if (functionBody.error) {
+          const encoded = functionBody.error.encodeWithoutValidation(res.error as any)
+          const response: Response = { status, body: encoded, headers: responseHeaders }
+          operationLogger.logInfo('Completed with error.')
+          endSpanWithResponse({ span, response })
+          return response
+        } else {
+          const reason =
+            "Function failed with an error but it explicitly stated it couldn't fail since its error field is undefined"
+          const failure = result.fail({ status: 500, body: { reason } })
+          endSpanWithError({ span, failure })
+          return addHeadersToResponse(failure.error, responseHeaders)
+        }
+      } else {
+        let value = result.isResult(res) && res.isOk ? res.value : res
+        const encoded = partialOutputType.encodeWithoutValidation(value as never)
         const response: Response = { status: 200, body: encoded, headers: responseHeaders }
         operationLogger.logInfo('Completed.')
-        endSpanWithResponse({ span, response })
-        return response
-      } else {
-        const codes = (specification.errorCodes ?? {}) as Record<string, number>
-        const key = Object.keys(result.error)[0]
-        const status = codes[key] ?? 400
-        const encoded = functionBody.error.encodeWithoutValidation(result.error)
-        const response: Response = { status, body: encoded, headers: responseHeaders }
-        operationLogger.logInfo('Completed with error.')
         endSpanWithResponse({ span, response })
         return response
       }
@@ -157,60 +169,50 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
 function getInputExtractor(args: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionImplementation
+  functionBody: functions.FunctionImplementation<types.Type, types.Type, ErrorType, Record<string, unknown>>
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }
 
-function checkVersion({
-  request,
-  minVersion,
-  maxVersion,
-}: {
-  request: Request
-  minVersion: number
-  maxVersion: number
-}): result.Result<number, Response> {
-  const v = (request.params as Record<string, string>).v
-  const version = Number(v ? v.replace('v', '') : Number.NaN)
-  if (Number.isNaN(version) || version < minVersion || version > maxVersion) {
-    return result.fail({
-      status: 404,
-      body: { error: 'Invalid version', minVersion: `v${minVersion}`, maxVersion: `v${maxVersion}`, got: version },
-      headers: {},
-    })
-  }
-  return result.ok(version)
+function checkVersion(request: Request, minVersion: number, maxVersion: number): result.Result<number, Response> {
+  const rawVersion = request.params.v ?? ''
+  return parseVersion(rawVersion)
+    .mapError(toHttpError(404, 'Not a version number'))
+    .chain((v) => checkVersionBounds(v, minVersion, maxVersion).mapError(toHttpError(404, 'Invalid version')))
 }
 
-function decodeInput({
-  input,
-  inputType,
-}: {
-  input: unknown
-  inputType: types.Type
-}): result.Result<unknown, Response> {
-  const decoded = types.concretise(inputType).decode(input, { typeCastingStrategy: 'tryCasting' })
-  return decoded.mapError((error) => ({ status: 400, body: { errors: error }, headers: {} }))
+function checkVersionBounds(
+  version: number,
+  minVersion: number,
+  maxVersion: number,
+): result.Result<number, { minVersion: number; maxVersion: number }> {
+  const isInBounds = minVersion <= version && version <= maxVersion
+  return isInBounds ? result.ok(version) : result.fail({ minVersion, maxVersion })
 }
 
-function decodeProjection({
-  request,
-  outputType,
-}: {
-  request: Request
-  outputType: types.Type
-}): result.Result<projection.Projection, Response> {
-  const projectionHeader = request.headers.projection
-  const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
-  const givenProjection = projection.decode(outputType, projectionObject != null ? projectionObject : true, {
-    typeCastingStrategy: 'tryCasting',
-  }) as decoding.Result<projection.Projection>
-  return givenProjection.mapError((error) => ({
-    status: 400,
-    body: { errors: error, message: "On 'projection' header" },
-    headers: {},
-  }))
+function parseVersion(rawVersion: string): result.Result<number, string> {
+  const isValidVersion = /^v?\d+$/.test(rawVersion)
+  return isValidVersion ? result.ok(Number(rawVersion)) : result.fail(`invalid version: ${rawVersion}`)
+}
+
+function decodeInput(input: unknown, inputType: types.Type): result.Result<unknown, Response> {
+  return types.concretise(inputType).decode(input, { typeCastingStrategy: 'tryCasting' }).mapError(toHttpError(400))
+}
+
+function decodeProjection(request: Request, outputType: types.Type): result.Result<projection.Projection, Response> {
+  const rawProjection = request.headers.projection
+  const projectionObject = typeof rawProjection === 'string' ? JSON.parse(rawProjection) : true
+  return projection
+    .decode(outputType, projectionObject, { typeCastingStrategy: 'tryCasting' })
+    .mapError(toHttpError(400, "On 'projection' header"))
+}
+
+function toHttpError(
+  status: number,
+  message?: string,
+  additionalBody: Record<string, string> = {},
+): (errors: any) => Response {
+  return (errors) => ({ body: { errors, message, ...additionalBody }, status, headers: {} })
 }
 
 function addHeadersToResponse(response: Response, headers: Response['headers']): Response {
@@ -225,6 +227,8 @@ function endSpanWithError({ span, failure }: { span?: Span; failure: result.Fail
 
 function endSpanWithResponse({ span, response }: { span?: Span; response: Response }): void {
   span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, response.status)
-  span?.setStatus({ code: response.status.toString().slice(0, 1) === '2' ? SpanStatusCode.OK : SpanStatusCode.ERROR })
+  const responseHasSuccessStatusCode = 200 <= response.status && response.status <= 299
+  const spanStatusCode = responseHasSuccessStatusCode ? SpanStatusCode.OK : SpanStatusCode.ERROR
+  span?.setStatus({ code: spanStatusCode })
   span?.end()
 }

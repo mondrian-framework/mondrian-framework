@@ -18,7 +18,7 @@ function decodeDate(value: unknown): decoding.Result<Date> {
     return decoding.fail('Invalid date format (expected: yyyy-mm-dd)', value)
   }
   const date = new Date(Date.parse(value))
-  return isNaN(date.valueOf()) ? decoding.fail('Invalid date', value) : decoding.succeed(date)
+  return Number.isNaN(date.valueOf()) ? decoding.fail('Invalid date', value) : decoding.succeed(date)
 }
 
 function validateDate(

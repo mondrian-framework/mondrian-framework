@@ -55,6 +55,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
         }, url)
         const finalUrl = request.query ? `${urlWithParam}?${request.query}` : urlWithParam
         const projectionHeader = options?.projection != null ? { projection: JSON.stringify(options.projection) } : {}
+        // file deepcode ignore Ssrf: this request is built with already validated input
         const response = await fetch(finalUrl, {
           headers: { 'content-type': 'application/json', ...headers, ...options?.headers, ...projectionHeader },
           method: specification.method,

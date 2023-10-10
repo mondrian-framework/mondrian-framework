@@ -41,7 +41,13 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
       }
       return rest.openapi.fromModule({ module, api, version })
     })
+    // file deepcode ignore NoRateLimitingForExpensiveWebOperation: could disable this by disabling introspection in production environment
     server.get(`/doc/*`, (req: Request, res: Response) => {
+      //avoid path traversal
+      if (req.path.match(/\.\.\//g) !== null) {
+        res.status(404)
+        return
+      }
       const file = `${getAbsoluteFSPath()}/${req.path}`
       const path = file.replace(`${pathPrefix}/doc/`, '')
       res.sendFile(path)

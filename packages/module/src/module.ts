@@ -3,9 +3,8 @@ import { ErrorType } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
-import { allUniqueTypes } from './utils'
 import { projection, types } from '@mondrian-framework/model'
-import { UnionToIntersection, count } from '@mondrian-framework/utils'
+import { UnionToIntersection, assertNever, count } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**

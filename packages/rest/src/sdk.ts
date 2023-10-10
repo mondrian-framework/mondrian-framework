@@ -12,12 +12,22 @@ type SdkFunctions<Fs extends functions.FunctionsInterfaces> = {
   [K in keyof Fs]: SdkFunction<Fs[K]['input'], Fs[K]['error'], Fs[K]['output']>
 }
 
-type SdkFunction<InputType extends types.Type, ErrorType extends types.Type, OutputType extends types.Type> = <
+type SdkFunction<InputType extends types.Type, ErrorType extends functions.ErrorType, OutputType extends types.Type> = <
   const P extends projection.FromType<OutputType>,
 >(
   input: types.Infer<InputType>,
   options?: { projection?: P; headers?: Record<string, string | string[] | undefined> },
-) => Promise<result.Result<sdk.Project<OutputType, P>, types.Infer<ErrorType>>>
+) => Promise<SdkFunctionResult<ErrorType, OutputType, P>>
+
+type SdkFunctionResult<
+  ErrorType extends functions.ErrorType,
+  OutputType extends types.Type,
+  P extends projection.FromType<OutputType>,
+> = [ErrorType] extends [undefined]
+  ? sdk.Project<OutputType, P>
+  : [ErrorType] extends [types.UnionType<any>]
+  ? result.Result<sdk.Project<OutputType, P>, types.Infer<ErrorType>>
+  : never
 
 function getRequestBuilder(args: { specification: FunctionSpecifications; functionBody: functions.FunctionInterface }) {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).request
@@ -42,7 +52,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
       if (!specification) {
         return []
       }
-      const errorType = types.concretise(functionBody.error)
+      const errorType = functionBody.error ? types.concretise(functionBody.error) : undefined
       const outputType = types.concretise(types.partialDeep(functionBody.output))
       const requestBuilder = getRequestBuilder({ specification, functionBody })
       const resolver = async (input: never, options?: { headers?: any; projection: any }) => {
@@ -79,7 +89,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
             throw new Error(JSON.stringify(projectionRespected.error))
           }
           return result.ok(projectionRespected.value)
-        } else if (errorType.kind === types.Kind.Union) {
+        } else if (errorType) {
           const json = await response.json()
           const error = errorType.decode(json, { typeCastingStrategy: 'tryCasting' })
           if (!error.isOk) {

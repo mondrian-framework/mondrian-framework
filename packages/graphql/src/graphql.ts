@@ -20,6 +20,10 @@ import {
  *
  */
 
+/**
+ * Turns a Mondrian type into an equivalent GraphQL type that can be used to
+ * define GraphQL schemas.
+ */
 export function typeToGraphQLType(type: types.Type): GraphQLOutputType {
   return typeToGraphQLTypeInternal(types.concretise(type), {
     inspectedTypes: new Set(),
@@ -29,6 +33,12 @@ export function typeToGraphQLType(type: types.Type): GraphQLOutputType {
   })
 }
 
+/**
+ * Generates a name for the given type with the following algorithm:
+ * - If the type has a name uses that, otherwise
+ * - If the default name is defined uses that, otherwise
+ * - Generates a random name in the form "TYPE{N}" where "N" is a random integer
+ */
 function generateName(type: types.Type, defaultName: string | undefined): string {
   const concreteType = types.concretise(type)
   return concreteType.options?.name
@@ -36,19 +46,36 @@ function generateName(type: types.Type, defaultName: string | undefined): string
     : defaultName ?? 'TYPE' + Math.floor(Math.random() * 100_000_000)
 }
 
+// Data used in the recursive calls of `typeToGraphQLTypeInternal` to store
+// all relevant information that has to be used throughout the recursive calls.
 type InternalData = {
+  // A set of all the types that have already been explored
   inspectedTypes: Set<types.Type>
+  // A map from <explored type> to already generated output type
   knownTypes: Map<types.Type, GraphQLOutputType>
+  // A map for all custom types that have already been explored. Here we just
+  // save their name
   knownCustomTypes: Map<string, GraphQLScalarType>
+  // The default name to assign to the current type in the iteration process
   defaultName: string | undefined
 }
 
 function typeToGraphQLTypeInternal(type: types.Type, internalData: InternalData): GraphQLOutputType {
   const { inspectedTypes, knownTypes, defaultName } = internalData
+  // If the type has already been explored, then return the output type that has
+  // already been generated
   if (inspectedTypes.has(type)) {
+    // ⚠️ Possible pain point: `typeToGraphQLTypeInternal` relies on the fact
+    // that _every single type_ that appears in `inspectedTypes` must also have
+    // an associated generated type here
     return knownTypes.get(type)!!
   } else {
     inspectedTypes.add(type)
+    // ⚠️ Possible pain point: here the invariant that a type inside `exporedTypes`
+    // must have a counterpart in the `knownTypes` map is broken and cannot be used
+    // by the inner functions! This is unavoidable since this kind of caching is
+    // only used by this top level function and the other inner functions should
+    // not be aware of that.
     let graphQLType = undefined
     const concreteType = types.concretise(type)
     if (concreteType.kind === types.Kind.Number) {
@@ -71,15 +98,22 @@ function typeToGraphQLTypeInternal(type: types.Type, internalData: InternalData)
       const type = typeToGraphQLTypeInternal(concreteType.wrappedType, internalData)
       graphQLType = getNullableType(type)
     } else if (concreteType.kind === types.Kind.Custom) {
-      graphQLType = customTypeToGraphQLType(concreteType, internalData) //scalarFromType(concreteType, concreteType.options?.description, defaultName)
+      graphQLType = customTypeToGraphQLType(concreteType, internalData)
     } else {
       assertNever(concreteType)
     }
+    // Add the generated type to the map of explored types to make the invariant
+    // valid once again
     knownTypes.set(type, graphQLType)
     return graphQLType
   }
 }
 
+// If the given type has some options then it is turned into a scalar (we assume
+// that, since it has some options, it must be considered as a unique and distinct
+// type from all others)
+// If the type doesn't have any options then this function returns the provided
+// default type
 function scalarOrDefault<T extends types.Type>(
   type: T,
   defaultType: GraphQLOutputType,
@@ -90,13 +124,13 @@ function scalarOrDefault<T extends types.Type>(
   return !options ? defaultType : scalarFromType(concreteType, options.description, defaultName)
 }
 
+// Turns a type into a GraphQL scalar type
 function scalarFromType<T extends types.Type>(
   type: types.Concrete<T>,
   description: string | undefined,
   defaultName: string | undefined,
 ): GraphQLScalarType<types.Infer<T>, JSONType> {
   const name = generateName(type, defaultName)
-  // TODO: add parseValue and parseLiteral
   const serialize = (value: unknown) => {
     if (!types.isType(type, value)) {
       throw createGraphQLError('Unexpected type in serialize')
@@ -109,6 +143,7 @@ function scalarFromType<T extends types.Type>(
       }
     }
   }
+  // TODO: add parseValue and parseLiteral
   return new GraphQLScalarType<types.Infer<T>, JSONType>({ name, description, serialize })
 }
 
@@ -122,6 +157,8 @@ function enumToGraphQLType(
   return new GraphQLEnumType({ name, values })
 }
 
+// Turns a literal into a GraphQL enum with a single value that represents the
+// given literal value.
 function literalToGraphQLType(
   literal: types.LiteralType<number | string | null | boolean>,
   defaultName: string | undefined,

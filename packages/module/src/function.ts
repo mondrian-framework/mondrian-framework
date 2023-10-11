@@ -106,8 +106,12 @@ export type ErrorType = types.UnionType<any> | undefined
 
 export type FunctionResult<O extends types.Type, E extends ErrorType> = Promise<FunctionResultInternal<O, E>>
 
-type A = FunctionResult<types.Type, ErrorType>
-
+/**
+ * Turns input/output/error into a function's result:
+ * - if the error is undefined then the function is assumed to never fail and just returns the
+ *   partial version of the inferred value
+ * - if the error is a union then the function will return a `Result` that can fail with the given error
+ */
 type FunctionResultInternal<O extends types.Type, E extends ErrorType> = [E] extends [types.UnionType<infer _>]
   ? result.Result<types.Infer<types.PartialDeep<O>>, types.Infer<E>>
   : [E] extends [undefined]

@@ -137,7 +137,7 @@ export function generateOpenapiInput({
   typeRef,
 }: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionImplementation<types.Type, types.Type, ErrorType, Record<string, unknown>>
+  functionBody: functions.FunctionInterface<types.Type, types.Type, ErrorType>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): {

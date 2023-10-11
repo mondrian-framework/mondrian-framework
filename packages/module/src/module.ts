@@ -145,7 +145,7 @@ function gatherTypesReferencedByField(inspectedTypes: Set<types.Type>, field: ty
  * If there's at least two different types sharing the same name, this function will throw
  * an error.
  */
-function assertUniqueNames(functions: functions.Functions) {
+function assertUniqueNames(functions: functions.FunctionsInterfaces) {
   const functionTypes = Object.values(functions).flatMap((f) => {
     const hasError = f.error !== undefined
     return hasError ? [f.input, f.output, f.error] : [f.input, f.output]

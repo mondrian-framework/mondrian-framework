@@ -75,22 +75,39 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
  */
 type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
 
+/**
+ * Return a set with all the unique types referenced by the given type.
+ *
+ * @example For example if the given type is an object the resulting set will
+ *          contain not only the object type itself, but also the types of its
+ *          fields
+ */
 export function uniqueTypes(from: types.Type): Set<types.Type> {
   return gatherUniqueTypes(new Set(), from)
 }
 
+/**
+ * Retruns a set with all the unique types referenced by the given list of types.
+ */
 export function allUniqueTypes(from: types.Type[]): Set<types.Type> {
   return from.reduce(gatherUniqueTypes, new Set())
 }
 
+// Returns a set of unique types referenced by the given type. The first argument
+// is a set that contains the types that have already been inspected and is updated
+// _in place_!
 function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): Set<types.Type> {
   if (inspectedTypes.has(type)) {
+    // If the type was already inspected then we're done
     return inspectedTypes
   } else {
+    // ...otherwise it is added to the inspected types
     inspectedTypes.add(type)
   }
 
   if (typeof type === 'function') {
+    // If the type is a function we first concretise it and then get the
+    // referenced types
     const concreteType = type()
     switch (concreteType.kind) {
       case types.Kind.Union:
@@ -102,6 +119,7 @@ function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): S
     }
   } else {
     switch (type.kind) {
+      // If the type is a base one we're done
       case types.Kind.Number:
       case types.Kind.String:
       case types.Kind.Boolean:
@@ -109,10 +127,12 @@ function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): S
       case types.Kind.Literal:
       case types.Kind.Custom:
         return inspectedTypes
+      // If it wraps another type we inspect that one as well
       case types.Kind.Array:
       case types.Kind.Optional:
       case types.Kind.Nullable:
         return gatherUniqueTypes(inspectedTypes, type.wrappedType)
+      // If it wraps more types we inspect those as well
       case types.Kind.Union:
         return gatherTypesReferencedByUnion(inspectedTypes, type)
       case types.Kind.Object:

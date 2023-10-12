@@ -18,12 +18,12 @@ describe('Module interface to schema', () => {
     expect(schema).toEqual({
       name: 'test',
       version: '0.0.0',
-      functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_0' } },
       types: {
-        Input: { string: { options: { name: 'Input' } } },
-        Output: { number: { options: { name: 'Output' } } },
-        ANONYMOUS_TYPE_0: { custom: { typeName: 'never' } },
+        Input: { string: { type: 'string', options: { name: 'Input' } } },
+        Output: { number: { type: 'number', options: { name: 'Output' } } },
+        ANONYMOUS_TYPE_0: { custom: { type: 'custom', typeName: 'never' } },
       },
+      functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_0' } },
     })
   })
 
@@ -43,9 +43,9 @@ describe('Module interface to schema', () => {
       name: 'test',
       version: '0.0.0',
       types: {
-        Input: { custom: { typeName: 'record', options: { name: 'Input' } } },
-        Output: { custom: { typeName: 'timestamp', options: { name: 'Output' } } },
-        ANONYMOUS_TYPE_0: { custom: { typeName: 'never' } },
+        Input: { custom: { type: 'custom', typeName: 'record', options: { name: 'Input' } } },
+        Output: { custom: { type: 'custom', typeName: 'timestamp', options: { name: 'Output' } } },
+        ANONYMOUS_TYPE_0: { custom: { type: 'custom', typeName: 'never' } },
       },
       functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_0' } },
     })
@@ -55,19 +55,30 @@ describe('Module interface to schema', () => {
       version: '0.0.0',
       types: {
         ANONYMOUS_TYPE_0: {
-          custom: { typeName: 'datetime', options: {}, custom: { customOptions: { maximum: 234, minimum: 123 } } },
+          custom: {
+            type: 'custom',
+            typeName: 'datetime',
+            options: {},
+            custom: { customOptions: { maximum: 234, minimum: 123 } },
+          },
         },
         Input: {
-          custom: { typeName: 'record', options: { name: 'Input' }, custom: { wrappedType: 'ANONYMOUS_TYPE_0' } },
+          custom: {
+            type: 'custom',
+            typeName: 'record',
+            options: { name: 'Input' },
+            custom: { wrappedType: 'ANONYMOUS_TYPE_0' },
+          },
         },
         Output: {
           custom: {
+            type: 'custom',
             typeName: 'timestamp',
             options: { name: 'Output' },
             custom: { customOptions: { minimum: 1230, maximum: 2340 } },
           },
         },
-        ANONYMOUS_TYPE_1: { custom: { typeName: 'never' } },
+        ANONYMOUS_TYPE_1: { custom: { type: 'custom', typeName: 'never' } },
       },
       functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_1' } },
     })
@@ -104,22 +115,42 @@ describe('Module interface to schema', () => {
       name: 'test',
       version: '0.0.0',
       types: {
-        String: { string: { options: { regex: 'asd', name: 'String' } } },
-        Number: { number: { options: { name: 'Number' } } },
-        Bool: { boolean: { options: { name: 'Bool' } } },
-        Literal1: { literal: { literalValue: { number: 123 }, options: { name: 'Literal1' } } },
-        Literal2: { literal: { literalValue: { string: '123' }, options: { name: 'Literal2' } } },
-        Literal3: { literal: { literalValue: { boolean: true }, options: { name: 'Literal3' } } },
-        Literal4: { literal: { literalValue: { null: null }, options: { name: 'Literal4' } } },
-        Enum: { enumerator: { variants: ['A', 'B'], options: { name: 'Enum' } } },
-        DateTime: { custom: { typeName: 'datetime', options: { name: 'DateTime' }, custom: { customOptions: {} } } },
-        Timestamp: { custom: { typeName: 'datetime', options: { name: 'Timestamp' }, custom: { customOptions: {} } } },
-        ANONYMOUS_TYPE_0: { string: {} },
+        String: { string: { type: 'string', options: { regex: 'asd', name: 'String' } } },
+        Number: { number: { type: 'number', options: { name: 'Number' } } },
+        Bool: { boolean: { type: 'boolean', options: { name: 'Bool' } } },
+        Literal1: { literal: { type: 'literal', literalValue: { number: 123 }, options: { name: 'Literal1' } } },
+        Literal2: { literal: { type: 'literal', literalValue: { string: '123' }, options: { name: 'Literal2' } } },
+        Literal3: { literal: { type: 'literal', literalValue: { boolean: true }, options: { name: 'Literal3' } } },
+        Literal4: { literal: { type: 'literal', literalValue: { null: null }, options: { name: 'Literal4' } } },
+        Enum: { enumeration: { type: 'enumeration', variants: ['A', 'B'], options: { name: 'Enum' } } },
+        DateTime: {
+          custom: {
+            type: 'custom',
+            typeName: 'datetime',
+            options: { name: 'DateTime' },
+            custom: { customOptions: {} },
+          },
+        },
+        Timestamp: {
+          custom: {
+            type: 'custom',
+            typeName: 'datetime',
+            options: { name: 'Timestamp' },
+            custom: { customOptions: {} },
+          },
+        },
+        ANONYMOUS_TYPE_0: { string: { type: 'string' } },
         Record: {
-          custom: { typeName: 'record', options: { name: 'Record' }, custom: { wrappedType: 'ANONYMOUS_TYPE_0' } },
+          custom: {
+            type: 'custom',
+            typeName: 'record',
+            options: { name: 'Record' },
+            custom: { wrappedType: 'ANONYMOUS_TYPE_0' },
+          },
         },
         Input: {
           object: {
+            type: 'object',
             fields: {
               str: { type: 'String' },
               num: { type: 'Number' },
@@ -136,11 +167,15 @@ describe('Module interface to schema', () => {
             options: { name: 'Input' },
           },
         },
-        Output: { optional: { wrappedType: 'String', options: { name: 'Output' } } },
-        Error1: { nullable: { wrappedType: 'String', options: { name: 'Error1' } } },
-        Error2: { array: { wrappedType: 'String', options: { name: 'Error2' } } },
+        Output: { optional: { type: 'optional', wrappedType: 'String', options: { name: 'Output' } } },
+        Error1: { nullable: { type: 'nullable', wrappedType: 'String', options: { name: 'Error1' } } },
+        Error2: { array: { type: 'array', wrappedType: 'String', options: { name: 'Error2' } } },
         Error: {
-          union: { variants: { error1: { type: 'Error1' }, error2: { type: 'Error2' } }, options: { name: 'Error' } },
+          union: {
+            type: 'union',
+            variants: { error1: { type: 'Error1' }, error2: { type: 'Error2' } },
+            options: { name: 'Error' },
+          },
         },
       },
       functions: { f: { input: 'Input', output: 'Output', error: 'Error' } },
@@ -183,15 +218,20 @@ describe('Module interface to schema', () => {
       name: 'test',
       version: '0.0.0',
       types: {
-        ANONYMOUS_TYPE_0: { string: {} },
-        ANONYMOUS_TYPE_1: { optional: { wrappedType: 'ANONYMOUS_TYPE_0' } },
-        ANONYMOUS_TYPE_2: { nullable: { wrappedType: 'ANONYMOUS_TYPE_0' } },
-        ANONYMOUS_TYPE_3: { array: { wrappedType: 'ANONYMOUS_TYPE_0' } },
+        ANONYMOUS_TYPE_0: { string: { type: 'string' } },
+        ANONYMOUS_TYPE_1: { optional: { type: 'optional', wrappedType: 'ANONYMOUS_TYPE_0' } },
+        ANONYMOUS_TYPE_2: { nullable: { type: 'nullable', wrappedType: 'ANONYMOUS_TYPE_0' } },
+        ANONYMOUS_TYPE_3: { array: { type: 'array', wrappedType: 'ANONYMOUS_TYPE_0' } },
         ANONYMOUS_TYPE_4: {
-          union: { variants: { u1: { type: 'ANONYMOUS_TYPE_0' }, u2: { type: 'ANONYMOUS_TYPE_4' } }, lazy: true },
+          union: {
+            type: 'union',
+            variants: { u1: { type: 'ANONYMOUS_TYPE_0' }, u2: { type: 'ANONYMOUS_TYPE_4' } },
+            lazy: true,
+          },
         },
         Input: {
           object: {
+            type: 'object',
             fields: {
               t1: { type: 'ANONYMOUS_TYPE_0' },
               t2: { type: 'ANONYMOUS_TYPE_1' },
@@ -204,9 +244,10 @@ describe('Module interface to schema', () => {
             lazy: true,
           },
         },
-        ANONYMOUS_TYPE_5: { number: {} },
+        ANONYMOUS_TYPE_5: { number: { type: 'number' } },
         Output: {
           object: {
+            type: 'object',
             fields: {
               t1: { type: 'ANONYMOUS_TYPE_0' },
               t2: { type: 'ANONYMOUS_TYPE_1' },
@@ -218,7 +259,7 @@ describe('Module interface to schema', () => {
             options: { name: 'Output' },
           },
         },
-        Error: { custom: { typeName: 'never', options: { name: 'Error' } } },
+        Error: { custom: { type: 'custom', typeName: 'never', options: { name: 'Error' } } },
       },
       functions: { f: { input: 'Input', output: 'Output', error: 'Error' } },
     })
@@ -260,12 +301,13 @@ describe('Module interface to schema', () => {
       name: 'test',
       version: '0.0.0',
       types: {
-        ANONYMOUS_TYPE_0: { string: {} },
+        ANONYMOUS_TYPE_0: { string: { type: 'string' } },
         ANONYMOUS_TYPE_1: {
-          object: { fields: { s: { type: 'ANONYMOUS_TYPE_0' }, input: { type: 'Input' } }, lazy: true },
+          object: { type: 'object', fields: { s: { type: 'ANONYMOUS_TYPE_0' }, input: { type: 'Input' } }, lazy: true },
         },
         Input: {
           object: {
+            type: 'object',
             fields: {
               s: { type: 'ANONYMOUS_TYPE_0' },
               other: { type: 'ANONYMOUS_TYPE_1' },
@@ -275,8 +317,8 @@ describe('Module interface to schema', () => {
             lazy: true,
           },
         },
-        Output: { number: { options: { name: 'Output' } } },
-        ANONYMOUS_TYPE_2: { custom: { typeName: 'never' } },
+        Output: { number: { type: 'number', options: { name: 'Output' } } },
+        ANONYMOUS_TYPE_2: { custom: { type: 'custom', typeName: 'never' } },
       },
       functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_2' } },
     })
@@ -289,11 +331,11 @@ test('Decode schema', () => {
     version: '0.0.0',
     functions: { f: { input: 'Input', output: 'Output', error: 'ANONYMOUS_TYPE_0' } },
     types: {
-      Input: { literal: { literalValue: { null: null }, options: { name: 'Input' } } },
-      Output: { literal: { literalValue: { string: '123' }, options: { name: 'Output' } } },
-      ANONYMOUS_TYPE_1: { literal: { literalValue: { number: 123 } } },
-      ANONYMOUS_TYPE_2: { literal: { literalValue: { boolean: true } } },
-      ANONYMOUS_TYPE_0: { custom: { typeName: 'never' } },
+      Input: { type: 'literal', literalValue: { null: null }, options: { name: 'Input' } },
+      Output: { type: 'literal', literalValue: { string: '123' }, options: { name: 'Output' } },
+      ANONYMOUS_TYPE_1: { type: 'literal', literalValue: { number: 123 } },
+      ANONYMOUS_TYPE_2: { type: 'literal', literalValue: { boolean: true } },
+      ANONYMOUS_TYPE_0: { type: 'custom', typeName: 'never' },
     },
   })
   expect(result1.isOk).toBe(true)

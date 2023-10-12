@@ -105,6 +105,16 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
       const prettyVariants = Object.keys(this.variants).join(' | ')
       return decoding.fail(`union (${prettyVariants})`, value)
     } else {
+      if (decodingOptions?.typeCastingStrategy === 'tryCasting') {
+        //before using casting try to decode without casting in order to select the corret variant
+        const resultWithNoCasting = this.decodeWithoutValidation(value, {
+          ...decodingOptions,
+          typeCastingStrategy: 'expectExactTypes',
+        })
+        if (resultWithNoCasting.isOk) {
+          return resultWithNoCasting
+        }
+      }
       const errors: decoding.Error[] = []
       let potentialDecoded: types.Infer<types.UnionType<Ts>> | null = null
       for (const [variantName, variantType] of Object.entries(this.variants)) {

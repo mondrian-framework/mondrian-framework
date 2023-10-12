@@ -717,6 +717,29 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       )
       checkValue(model.decodeWithoutValidation(40), { v1: 40 })
     })
+
+    test('do to not cast if a variant can decode without casting', () => {
+      const model = types.union(
+        {
+          v1: types.number(),
+          v2: types.string(),
+        },
+        { useTags: false },
+      )
+      checkValue(model.decodeWithoutValidation('25', { typeCastingStrategy: 'tryCasting' }), { v2: '25' })
+    })
+
+    test('cast if no variants can decode without casting', () => {
+      const model = types.union(
+        {
+          v0: types.boolean(),
+          v1: types.number(),
+          v2: types.integer(),
+        },
+        { useTags: false },
+      )
+      checkValue(model.decodeWithoutValidation('25', { typeCastingStrategy: 'tryCasting' }), { v1: 25 })
+    })
   })
 
   describe.concurrent('custom type', () => {

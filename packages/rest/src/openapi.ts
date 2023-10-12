@@ -5,12 +5,12 @@ import { functions, module } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
-export function fromModule<Fs extends functions.Functions, ContextInput>({
+export function fromModule<Fs extends functions.FunctionsInterfaces>({
   module,
   api,
   version,
 }: {
-  module: module.Module<Fs, ContextInput>
+  module: module.ModuleInterface<Fs>
   api: Api<Fs>
   version: number
 }): OpenAPIV3_1.Document {
@@ -410,12 +410,12 @@ function openapiSecuritySchemes({
 }
 */
 
-function openapiComponents<Fs extends functions.Functions, ContextInput>({
+function openapiComponents<Fs extends functions.FunctionsInterfaces>({
   module,
   version,
   api,
 }: {
-  module: module.Module<Fs, ContextInput>
+  module: module.ModuleInterface<Fs>
   version: number
   api: Api<Fs>
 }): {
@@ -453,42 +453,40 @@ function openapiComponents<Fs extends functions.Functions, ContextInput>({
 }
 
 function typeToSchemaObject(
-  t: types.Type,
+  type: types.Type,
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
   ignoreFirstLevelOptionality?: boolean,
 ): { name: string | undefined; schema: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } {
-  const type = types.concretise(t)
-  if (type.kind === types.Kind.Custom && type.typeName === 'unknown') {
-    return { name: 'unknown', schema: {} }
-  }
-  if (typeof t === 'function') {
-    const n = typeRef.get(t)
-    if (n) {
-      return { name: n, schema: { $ref: `#/components/schemas/${n}` } }
+  let lazyTypeName: string | null = null
+  if (typeof type === 'function') {
+    const alreadyConvertedTypeName = typeRef.get(type)
+    if (alreadyConvertedTypeName) {
+      return { name: alreadyConvertedTypeName, schema: { $ref: `#/components/schemas/${alreadyConvertedTypeName}` } }
     }
-    if (type.options?.name) {
-      typeRef.set(t, type.options.name)
-    }
+    lazyTypeName = type().options?.name ?? `ANONYMOUS_TYPE_${typeRef.size}`
+    typeRef.set(type, lazyTypeName)
   }
-  const { name, schema } = typeToSchemaObjectInternal(t, typeMap, typeRef, ignoreFirstLevelOptionality)
+  const { name, schema } = typeToSchemaObjectInternal(type, lazyTypeName, typeMap, typeRef, ignoreFirstLevelOptionality)
   if (name) {
     if (!typeMap[name]) {
       typeMap[name] = schema
     }
     return { name, schema: { $ref: `#/components/schemas/${name}` } }
+  } else {
+    return { name: undefined, schema }
   }
-  return { name: undefined, schema }
 }
 
 function typeToSchemaObjectInternal(
   t: types.Type,
+  nameOverride: string | null,
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
   ignoreFirstLevelOptionality?: boolean,
 ): { name: string | undefined; schema: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } {
   const type = types.concretise(t)
-  const name: string | undefined = type.options?.name
+  const name: string | undefined = nameOverride ?? type.options?.name
   const description = type.options?.description
   if (type.kind === types.Kind.String) {
     return {
@@ -540,15 +538,7 @@ function typeToSchemaObjectInternal(
     if (tp === null) {
       throw new Error(`Unknown literal type: ${tp}`)
     }
-    return {
-      name,
-      schema: {
-        type: tp,
-        const: type.literalValue,
-        example: type.literalValue,
-        description,
-      },
-    }
+    return { name, schema: { type: tp, const: type.literalValue, example: type.literalValue, description } }
   }
   if (type.kind === types.Kind.Array) {
     const { schema } = typeToSchemaObject(type.wrappedType, typeMap, typeRef)

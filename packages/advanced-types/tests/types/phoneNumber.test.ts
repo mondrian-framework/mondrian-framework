@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from './property-helper'
+import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { describe } from 'vitest'
 
 const knownValidValues = ['+393283456888', '+393283456']
@@ -20,8 +20,10 @@ const knownInvalidValues = [
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(m.phoneNumber, {
+  testTypeEncodingAndDecoding(m.phoneNumber(), {
     knownInvalidValues,
     knownValidValues,
   }),
 )
+
+describe('arbitrary based test', testWithArbitrary(m.phoneNumber()))

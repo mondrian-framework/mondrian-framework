@@ -250,6 +250,9 @@ describe('Infer', () => {
       () => null,
       () => decoding.fail('test', 'test'),
       () => validation.fail('test', 'test'),
+      () => {
+        throw 'error'
+      },
     )
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

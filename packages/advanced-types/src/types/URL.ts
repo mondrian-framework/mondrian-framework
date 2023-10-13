@@ -1,4 +1,5 @@
 import { decoding, m, validation } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 export type URLType = m.CustomType<'URL', {}, URL>
 
@@ -8,6 +9,7 @@ export function url(options?: m.BaseOptions): URLType {
     (value) => value.toString(),
     decodeUrl,
     (_url) => validation.succeed(),
+    () => gen.webUrl().map((v) => new URL(v)),
     options,
   )
 }

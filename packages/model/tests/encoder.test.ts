@@ -151,10 +151,13 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
       validate: () => {
         throw 'test'
       },
+      arbitrary: () => {
+        throw 'test'
+      },
     }
 
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, customOptions)
+    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, customOptions)
     expect(model.encodeWithoutValidation(value)).toEqual(value)
     expect(encodeSpy).toHaveBeenCalledTimes(1)
   })
@@ -191,10 +194,13 @@ describe.concurrent('encoder.encode', () => {
         expect(innerOptions).toEqual(options)
         return validation.succeed()
       },
+      arbitrary: () => {
+        throw 'test'
+      },
     }
     const validateSpy = vi.spyOn(mocks, 'validate')
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
+    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, options)
     assertOk(model.encode(value, undefined, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
     expect(encodeSpy).toBeCalledTimes(1)

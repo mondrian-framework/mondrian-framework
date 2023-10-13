@@ -2,6 +2,7 @@ import { decoding, result, types, validation } from '../../'
 import { prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType, always, filterMapObject, mergeArrays } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param types an object where each field is itself a {@link types.Type}, used to determine the structure of the
@@ -103,6 +104,16 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Fields>
     return castToObject(value, decodingOptions).chain((object) =>
       decodeObjectProperties(this.fields, object, decodingOptions),
     )
+  }
+
+  arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<types.ObjectType<M, Ts>>> {
+    const entriesGenerators = Object.fromEntries(
+      Object.entries(this.fields).map(
+        ([fieldName, fieldType]: [string, types.Field]) =>
+          [fieldName, types.concretise(types.unwrapField(fieldType)).arbitrary(maxDepth - 1)] as const,
+      ),
+    )
+    return gen.record(entriesGenerators) as gen.Arbitrary<types.Infer<types.ObjectType<M, Ts>>>
   }
 }
 

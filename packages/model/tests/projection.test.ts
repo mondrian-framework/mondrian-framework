@@ -11,6 +11,9 @@ const exampleCustom = types.custom(
   () => null,
   () => decoding.fail('test', 'test'),
   () => validation.fail('test', 'test'),
+  () => {
+    throw 'error'
+  },
 )
 
 describe.concurrent('projection.FromType', () => {
@@ -170,7 +173,7 @@ const wrapperTypeAndValue = arbitrary
   .wrapperType(3, arbitrary.baseType())
   .filter(arbitrary.canGenerateValueFrom)
   .chain((type) => {
-    return arbitrary.fromType(type, {}).map((value) => {
+    return type.arbitrary(3).map((value) => {
       return [type, value] as const
     })
   })
@@ -179,19 +182,19 @@ const baseTypeAndValue = arbitrary
   .baseType()
   .filter(arbitrary.canGenerateValueFrom)
   .chain((type) => {
-    return arbitrary.fromType(type, {}).map((value) => {
+    return type.arbitrary(3).map((value) => {
       return [type, value] as const
     })
   })
 
 describe.concurrent('projection.respectsProjection', () => {
   test.prop([baseTypeAndValue])('works on base types', ([type, value]) => {
-    const result = assertOk(projection.respectsProjection(type, true as never, value))
+    const result = assertOk(projection.respectsProjection(type, true as never, value as never))
     expect(result).toBe(value)
   })
 
   test.prop([wrapperTypeAndValue])('works on wrapper types', ([type, value]) => {
-    const result = assertOk(projection.respectsProjection(type, true as never, value))
+    const result = assertOk(projection.respectsProjection(type, true as never, value as never))
     expect(result).toEqual(value)
   })
 

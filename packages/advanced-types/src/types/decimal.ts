@@ -1,6 +1,7 @@
-import { decoding, m, validation } from '@mondrian-framework/model'
+import { decoding, m, types, validation } from '@mondrian-framework/model'
 import { result } from '@mondrian-framework/model'
 import BigNumber from 'bignumber.js'
+import gen from 'fast-check'
 
 export type DecimalTypeAdditionalOptions = {
   multipleOf?: BigNumber | number
@@ -21,7 +22,7 @@ export function decimal(options?: m.OptionsOf<DecimalType>): DecimalType {
   ) {
     throw new Error('Invalid decimals, must be and integer between 0 and 100')
   }
-  return m.custom('decimal', encodeDecimal, decodeDecimal, validateDecimal, options)
+  return m.custom('decimal', encodeDecimal, decodeDecimal, validateDecimal, decimalArbitrary, options)
 }
 
 function encodeDecimal(value: BigNumber, options?: m.OptionsOf<DecimalType>): string {
@@ -72,4 +73,9 @@ function validateDecimal(
     return validation.fail(`decimal must be multiple of ${options.multipleOf}`, value)
   }
   return validation.succeed()
+}
+
+function decimalArbitrary(_maxDepth: number, options?: types.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {
+  //TODO Implement of decimal arbitrary needed 🙏
+  throw new Error('Arbitrary of `decimal` type not implemented yet!')
 }

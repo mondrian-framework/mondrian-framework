@@ -1,5 +1,6 @@
-import { result, types, decoding, validation } from '../index'
+import { types, decoding, validation } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * The type of unknown, defined as a custom type.
@@ -20,7 +21,7 @@ export type UnknownOptions = {}
  * @returns a {@link CustomType `CustomType`} representing a unknown
  */
 export function unknown(options?: types.OptionsOf<UnknownType>): UnknownType {
-  return types.custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, options)
+  return types.custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, unknownArbitrary, options)
 }
 
 function encodeUnknown(value: unknown): JSONType {
@@ -44,4 +45,8 @@ function validateUnknown(
   _options?: types.OptionsOf<UnknownType>,
 ): validation.Result {
   return validation.succeed()
+}
+
+function unknownArbitrary(): gen.Arbitrary<unknown> {
+  return gen.anything()
 }

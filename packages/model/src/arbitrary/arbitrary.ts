@@ -18,17 +18,26 @@ export function baseOptions(): gen.Arbitrary<types.BaseOptions> {
 export function stringTypeOptions(): gen.Arbitrary<types.OptionsOf<types.StringType>> {
   return gen.integer({ min: 0, max: 500 }).chain((min) => {
     return gen.integer({ min, max: 500 }).chain((max) => {
-      return gen.record(
-        {
-          ...baseOptionsGeneratorsRecord(),
-          // ⚠️ possible pain point: there is no generator for regexes so we only
-          // generate a regex that matches all inputs.
-          // For now this is already enough to cover some test cases
-          regex: gen.constantFrom(/.*/, undefined),
-          minLength: gen.constant(min),
-          maxLength: gen.constant(max),
-        },
-        { withDeletedKeys: true },
+      return gen.oneof(
+        gen.record(
+          {
+            ...baseOptionsGeneratorsRecord(),
+
+            minLength: gen.constant(min),
+            maxLength: gen.constant(max),
+          },
+          { withDeletedKeys: true },
+        ),
+        gen.record(
+          {
+            ...baseOptionsGeneratorsRecord(),
+            // ⚠️ possible pain point: there is no generator for regexes so we only
+            // generate a regex that matches all inputs.
+            // For now this is already enough to cover some test cases
+            regex: gen.constantFrom(/.*/, undefined),
+          },
+          { withDeletedKeys: true },
+        ),
       )
     })
   })
@@ -496,4 +505,29 @@ function baseOptionsGeneratorsRecord() {
  */
 function orUndefined<A>(generator: gen.Arbitrary<A>): gen.Arbitrary<A | undefined> {
   return gen.oneof(gen.constant(undefined), generator)
+}
+
+export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[types.Type, never]> {
+  return type(typeDepth)
+    .filter(canGenerateValueFrom)
+    .chain((type) => {
+      return types
+        .concretise(type)
+        .arbitrary(valueDepth)
+        .map((value) => {
+          return [type, value as never]
+        })
+    })
+}
+
+// TODO: doc
+export function canGenerateValueFrom(type: types.Type): boolean {
+  // This is just an ugly hack for now but really effective! If the constructor does not throw then I can
+  // generate a type for it
+  try {
+    types.concretise(type).arbitrary(1)
+    return true
+  } catch {
+    return false
+  }
 }

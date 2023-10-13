@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from './property-helper'
+import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import t from '@mondrian-framework/model'
 import { describe } from 'vitest'
 
@@ -22,15 +22,15 @@ const knownInvalidValues: readonly unknown[] = [
   { sub: '1234567890', name: 'John Doe', iat: 1516239022 },
 ]
 
+const model = m.jwt('login', t.object({ sub: t.string(), name: t.string(), iat: t.integer() }), 'your-256-bit-secret', {
+  algorithm: 'HS256',
+})
 describe(
   'hs standard property based tests',
-  testTypeEncodingAndDecoding(
-    m.jwt('login', t.object({ sub: t.string(), name: t.string(), iat: t.integer() }), 'your-256-bit-secret', {
-      algorithm: 'HS256',
-    }),
-    {
-      knownValidValues,
-      knownInvalidValues,
-    },
-  ),
+  testTypeEncodingAndDecoding(model, {
+    knownValidValues,
+    knownInvalidValues,
+  }),
 )
+
+describe('arbitrary based test', testWithArbitrary(model))

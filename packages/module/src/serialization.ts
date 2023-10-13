@@ -1,6 +1,7 @@
 import { module, utils } from '.'
 import { result, types, validation } from '@mondrian-framework/model'
 import { JSONType, areJsonsEquals, assertNever, mapObject } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * Specify how a custom type should be serialized.
@@ -314,7 +315,8 @@ const customTypeSchema = types.object({
       'json',
       (v) => v,
       (v) => (v === undefined ? result.ok(null) : result.ok(v as JSONType)),
-      (v) => validation.succeed(),
+      () => validation.succeed(),
+      () => gen.constant({}),
     )
     .optional(),
 })

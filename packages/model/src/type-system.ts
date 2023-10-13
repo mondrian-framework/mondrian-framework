@@ -1,5 +1,6 @@
 import { decoding, validation, types, result, encoding } from './index'
 import { JSONType, filterMapObject, mapObject } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * The possible kinds of types modelled by the Mondrian Framework
@@ -366,7 +367,23 @@ export type StringType = {
   setOptions(options: StringTypeOptions): StringType
   updateOptions(options: StringTypeOptions): StringType
   setName(name: string): StringType
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): StringType
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(): gen.Arbitrary<string>
+  /**
+   * @param args optional argument:
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { seed?: number }): string
 }
 
 /**
@@ -493,7 +510,23 @@ export type NumberType = {
   setOptions(options: NumberTypeOptions): NumberType
   updateOptions(options: NumberTypeOptions): NumberType
   setName(name: string): NumberType
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): NumberType
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(): gen.Arbitrary<number>
+  /**
+   * @param args optional argument:
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { seed?: number }): number
 }
 
 /**
@@ -620,7 +653,23 @@ export type BooleanType = {
   setOptions(options: BooleanTypeOptions): BooleanType
   updateOptions(options: BooleanTypeOptions): BooleanType
   setName(name: string): BooleanType
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): BooleanType
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(): gen.Arbitrary<boolean>
+  /**
+   * @param args optional argument:
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { seed?: number }): boolean
 }
 
 /**
@@ -743,7 +792,23 @@ export type EnumType<Vs extends readonly [string, ...string[]]> = {
   setOptions(options: EnumTypeOptions): EnumType<Vs>
   updateOptions(options: EnumTypeOptions): EnumType<Vs>
   setName(name: string): EnumType<Vs>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): EnumType<Vs>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(): gen.Arbitrary<Vs[number]>
+  /**
+   * @param args optional argument:
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { seed?: number }): Vs[number]
 }
 
 /**
@@ -865,7 +930,23 @@ export type LiteralType<L extends number | string | boolean | null> = {
   setOptions(options: LiteralTypeOptions): LiteralType<L>
   updateOptions(options: LiteralTypeOptions): LiteralType<L>
   setName(name: string): LiteralType<L>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): LiteralType<L>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(): gen.Arbitrary<L>
+  /**
+   * @param args optional argument:
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { seed?: number }): L
 }
 
 /**
@@ -989,7 +1070,26 @@ export type UnionType<Ts extends Types> = {
   setOptions(options: UnionTypeOptions): UnionType<Ts>
   updateOptions(options: UnionTypeOptions): UnionType<Ts>
   setName(name: string): UnionType<Ts>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): UnionType<Ts>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @param maxDepth - Controls the maximum depth for value generation.
+   *                   Generation is truncated respecting the type definition when this depth is reached.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(maxDepth: number): gen.Arbitrary<InferUnion<Ts>>
+  /**
+   * @param args optional arguments:
+   *   - `maxDepth`: controls the maximum depth for this value generation.
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { maxDepth?: number; seed?: number }): InferUnion<Ts>
   isTaggedUnion(): boolean
 }
 
@@ -1120,7 +1220,26 @@ export type ObjectType<M extends Mutability, Ts extends Fields> = {
   setOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   updateOptions(options: ObjectTypeOptions): ObjectType<M, Ts>
   setName(name: string): ObjectType<M, Ts>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): ObjectType<M, Ts>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @param maxDepth - Controls the maximum depth for value generation.
+   *                   Generation is truncated respecting the type definition when this depth is reached.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(maxDepth: number): gen.Arbitrary<InferObject<M, Ts>>
+  /**
+   * @param args optional arguments:
+   *   - `maxDepth`: controls the maximum depth for this value generation.
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { maxDepth?: number; seed?: number }): InferObject<M, Ts>
 }
 
 /**
@@ -1247,7 +1366,26 @@ export type ArrayType<M extends Mutability, T extends Type> = {
   setOptions(options: ArrayTypeOptions): ArrayType<M, T>
   updateOptions(options: ArrayTypeOptions): ArrayType<M, T>
   setName(name: string): ArrayType<M, T>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): ArrayType<M, T>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @param maxDepth - Controls the maximum depth for value generation.
+   *                   Generation is truncated respecting the type definition when this depth is reached.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(maxDepth: number): gen.Arbitrary<InferArray<M, T>>
+  /**
+   * @param args optional arguments:
+   *   - `maxDepth`: controls the maximum depth for this value generation.
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { maxDepth?: number; seed?: number }): InferArray<M, T>
 }
 
 /**
@@ -1364,7 +1502,26 @@ export type OptionalType<T extends Type> = {
   setOptions(options: OptionalTypeOptions): OptionalType<T>
   updateOptions(options: OptionalTypeOptions): OptionalType<T>
   setName(name: string): OptionalType<T>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): OptionalType<T>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @param maxDepth - Controls the maximum depth for value generation.
+   *                   Generation is truncated respecting the type definition when this depth is reached.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(maxDepth: number): gen.Arbitrary<undefined | Infer<T>>
+  /**
+   * @param args optional arguments:
+   *   - `maxDepth`: controls the maximum depth for this value generation.
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { maxDepth?: number; seed?: number }): undefined | Infer<T>
 }
 
 /**
@@ -1478,7 +1635,26 @@ export type NullableType<T extends Type> = {
   setOptions(options: NullableTypeOptions): NullableType<T>
   updateOptions(options: NullableTypeOptions): NullableType<T>
   setName(name: string): NullableType<T>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): NullableType<T>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @param maxDepth - Controls the maximum depth for value generation.
+   *                   Generation is truncated respecting the type definition when this depth is reached.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(maxDepth: number): gen.Arbitrary<null | Infer<T>>
+  /**
+   * @param args optional arguments:
+   *   - `maxDepth`: controls the maximum depth for this value generation.
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { maxDepth?: number; seed?: number }): null | Infer<T>
 }
 
 /**
@@ -1590,7 +1766,26 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
   setOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
   updateOptions(options: CustomTypeOptions<Options>): CustomType<Name, Options, InferredAs>
   setName(name: string): CustomType<Name, Options, InferredAs>
+
+  /**
+   * Flags this type as sensitive. A sensitive type will not be displayed during logging.
+   * @returns a copy of this type with the sensitive option set to `true`
+   */
   sensitive(): CustomType<Name, Options, InferredAs>
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @param maxDepth - Controls the maximum depth for value generation.
+   *                   Generation is truncated respecting the type definition when this depth is reached.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(maxDepth: number): gen.Arbitrary<InferredAs>
+  /**
+   * @param args optional arguments:
+   *   - `maxDepth`: controls the maximum depth for this value generation.
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { maxDepth?: number; seed?: number }): InferredAs
 }
 
 /**

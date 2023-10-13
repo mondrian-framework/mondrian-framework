@@ -1,6 +1,7 @@
 import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param variants a non empty array of string values used to define the new `EnumType`'s variants
@@ -53,5 +54,9 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
     return typeof value === 'string' && this.variants.includes(value)
       ? decoding.succeed(value)
       : decoding.fail(`enum (${this.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
+  }
+
+  arbitrary(): gen.Arbitrary<Vs[number]> {
+    return gen.constantFrom(...this.variants)
   }
 }

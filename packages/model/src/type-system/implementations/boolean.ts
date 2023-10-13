@@ -1,6 +1,7 @@
 import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param options the {@link types.BooleanTypeOptions} used to define the new `BooleanType`
@@ -52,5 +53,9 @@ class BooleanTypeImpl extends DefaultMethods<types.BooleanType> implements types
     } else {
       return decoding.fail('boolean', value)
     }
+  }
+
+  arbitrary(): gen.Arbitrary<boolean> {
+    return gen.boolean()
   }
 }

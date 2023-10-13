@@ -1,4 +1,5 @@
 import { decoding, m, validation } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 const MIN_PORT_NUMBER = 1
 const MAX_PORT_NUMBER = 65535
@@ -14,6 +15,7 @@ export function port(options?: m.BaseOptions): PortType {
         ? decoding.succeed(value)
         : decoding.fail('Expected a TCP port number', value),
     validatePort,
+    () => gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER }),
     options,
   )
 }

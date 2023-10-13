@@ -1,4 +1,5 @@
 import { decoding, m, validation } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 export type TimezoneType = m.CustomType<'timezone', {}, string>
 
@@ -9,6 +10,8 @@ export function timezone(options?: m.BaseOptions): TimezoneType {
     (value) =>
       typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a string timezone', value),
     validateTimezone,
+    () =>
+      gen.constantFrom('Europe/Rome', 'europe/rome', 'europe/Rome', 'EUROPE/ROME', 'Africa/Cairo', 'America/Halifax'),
     options,
   )
 }

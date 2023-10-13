@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from './property-helper'
+import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { describe } from 'vitest'
 
 const knownValidValues = ['rgb(255,255,255)', 'rgb(0,0,0)', 'rgb(127,12,33)', 'rgb(127 , 12, 33)']
@@ -18,8 +18,10 @@ const knownInvalidValues = [
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(m.rgb, {
+  testTypeEncodingAndDecoding(m.rgb(), {
     knownValidValues,
     knownInvalidValues,
   }),
 )
+
+describe('arbitrary based test', testWithArbitrary(m.rgb()))

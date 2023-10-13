@@ -1,6 +1,7 @@
 import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param options the {@link types.StringTypeOptions} used to define the new `StringType`
@@ -81,6 +82,20 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
       return decoding.succeed(value.toString())
     } else {
       return decoding.fail('string', value)
+    }
+  }
+
+  arbitrary(): gen.Arbitrary<string> {
+    if (!this.options) {
+      return gen.string()
+    } else {
+      const { regex, minLength, maxLength } = this.options
+      if ((regex && minLength) || (regex && maxLength)) {
+        const message = 'I cannot generate values from string types that have both a regex and min/max length defined'
+        throw new Error(message)
+      } else {
+        return !regex ? gen.string({ maxLength, minLength }) : gen.stringMatching(regex)
+      }
     }
   }
 }

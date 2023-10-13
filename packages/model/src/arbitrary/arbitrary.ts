@@ -170,6 +170,13 @@ export function dateTime(): gen.Arbitrary<types.DateTimeType> {
 }
 
 /**
+ * @returns A generator for datetime types.
+ */
+export function unknown(): gen.Arbitrary<types.UnknownType> {
+  return gen.constant(types.unknown())
+}
+
+/**
  * @returns A generator for timestamp types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
@@ -403,7 +410,7 @@ export function nullable<T extends types.Type>(
 export function type(maxDepth: number = 5): gen.Arbitrary<types.Type> {
   return maxDepth <= 1
     ? baseType()
-    : gen.oneof(wrapperType(maxDepth), objectType(maxDepth), unionType(maxDepth), baseType())
+    : gen.oneof(recordType(maxDepth), wrapperType(maxDepth), objectType(maxDepth), unionType(maxDepth), baseType())
 }
 
 /**
@@ -432,8 +439,18 @@ export function baseType(): gen.Arbitrary<
   | types.BooleanType
   | types.EnumType<[string, ...string[]]>
   | types.LiteralType<boolean | string | number | null>
+  | types.CustomType<string, any, any>
 > {
-  return gen.oneof(number(), string(), boolean(), enumeration(nonEmptyStringArray()), literal(literalValue()))
+  return gen.oneof(
+    number(),
+    string(),
+    boolean(),
+    enumeration(nonEmptyStringArray()),
+    literal(literalValue()),
+    dateTime(),
+    timestamp(),
+    unknown(),
+  )
 }
 
 /**
@@ -462,6 +479,13 @@ function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
     type(maxDepth - 1),
   )
   return gen.dictionary(fieldName, gen.constant(fields)).chain(object)
+}
+
+/**
+ * Generator for a generic record type.
+ */
+function recordType(maxDepth: number): gen.Arbitrary<types.Type> {
+  return record(type(maxDepth - 1))
 }
 
 /**

@@ -199,8 +199,9 @@ describe.concurrent('projection.respectsProjection', () => {
   })
 
   test.prop([arbitrary.typeAndValue()])('always works on any type, if projection is true', ([type, value]) => {
-    const result = assertOk(projection.respectsProjection(type, true as never, value))
-    expect(result).toEqual(value)
+    const reuslt = projection.respectsProjection(type, true as never, value)
+    const resultValue = assertOk(reuslt)
+    expect(resultValue).toEqual(value)
   })
 
   test('fails with an internal error when called on an unhandled type', () => {

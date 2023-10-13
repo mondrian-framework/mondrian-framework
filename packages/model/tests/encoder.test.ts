@@ -100,10 +100,13 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
   )
 
   describe.concurrent('on union values', () => {
-    const unionModel = arbitrary.union({
-      variant1: arbitrary.number(),
-      variant2: arbitrary.optional(arbitrary.string()),
-    })
+    const unionModel = arbitrary.union(
+      {
+        variant1: arbitrary.number(),
+        variant2: arbitrary.optional(arbitrary.string()),
+      },
+      gen.boolean(),
+    )
 
     test.prop([unionModel, gen.double()])('encodes a variant', (model, number) => {
       const variant = { variant1: number }

@@ -48,5 +48,5 @@ function validateUnknown(
 }
 
 function unknownArbitrary(): gen.Arbitrary<unknown> {
-  return gen.anything()
+  return gen.jsonValue()
 }

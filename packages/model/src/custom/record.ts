@@ -38,7 +38,7 @@ function decodeRecord<T extends types.Type>(
   value: unknown,
   decodingOptions?: decoding.Options,
 ): decoding.Result<Record<string, types.Infer<T>>> {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return decoding.fail('object', value)
   }
   const concreteFieldsType = types.concretise(fieldsType)

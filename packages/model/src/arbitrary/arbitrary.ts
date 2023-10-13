@@ -225,10 +225,18 @@ export type GeneratorsRecord<R extends Record<string, any>> = { [Key in keyof R]
  * @return A generator for union types' options.
  *         All of its keys are optional and may be omitted in the generated options.
  */
-export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionType<any>>> {
+export function unionTypeOptions(
+  useTags?: gen.Arbitrary<boolean>,
+): gen.Arbitrary<types.OptionsOf<types.UnionType<any>>> {
   return gen.record({
     ...baseOptions,
-    useTags: orUndefined(gen.boolean()),
+
+    useTags: orUndefined(useTags ?? gen.constant(true)), //Disabled if not explicitly defined
+    // This can cause problem on tests like 'encoding is the inverse of decoding' because with untagged union
+    // this is not always true. Take for example this type:
+    // types.union({ v1: types.object({}), v2: types.object({ a:types.number() }) }, { useTags:false })
+    // the encoding of { v2: { a: 1 } } is { a: 1 }, the decoding of { a: 1 } is { v1: {} }
+    // this is because object type does not strictly checks for additional properties
   })
 }
 
@@ -238,8 +246,9 @@ export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionTyp
  */
 export function union<Vs extends types.Types>(
   variantsGenerators: GeneratorsRecord<Vs>,
+  useTags?: gen.Arbitrary<boolean>,
 ): gen.Arbitrary<types.UnionType<Vs>> {
-  return orUndefined(unionTypeOptions()).chain((options) => {
+  return orUndefined(unionTypeOptions(useTags)).chain((options) => {
     return gen.record(variantsGenerators).map((variants) => {
       return types.union(variants, options)
     })
@@ -410,7 +419,7 @@ export function nullable<T extends types.Type>(
 export function type(maxDepth: number = 5): gen.Arbitrary<types.Type> {
   return maxDepth <= 1
     ? baseType()
-    : gen.oneof(recordType(maxDepth), wrapperType(maxDepth), objectType(maxDepth), unionType(maxDepth), baseType())
+    : gen.oneof(wrapperType(maxDepth), objectType(maxDepth), unionType(maxDepth), baseType())
 }
 
 /**
@@ -479,13 +488,6 @@ function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
     type(maxDepth - 1),
   )
   return gen.dictionary(fieldName, gen.constant(fields)).chain(object)
-}
-
-/**
- * Generator for a generic record type.
- */
-function recordType(maxDepth: number): gen.Arbitrary<types.Type> {
-  return record(type(maxDepth - 1))
 }
 
 /**

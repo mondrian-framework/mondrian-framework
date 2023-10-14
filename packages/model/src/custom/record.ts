@@ -1,6 +1,7 @@
 import { types, decoding, validation } from '../index'
 import { prependFieldToAll } from '../utils'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * The type of a record, defined as a custom type.
@@ -20,8 +21,9 @@ export function record<const T extends types.Type>(fieldsType: T, options?: type
   return types.custom(
     'record',
     (value) => encodeRecord(fieldsType, value),
-    (value, decodingOptions, options) => decodeRecord(fieldsType, value, decodingOptions, options),
-    (value, validationOptions, options) => validateRecord(fieldsType, value, validationOptions, options),
+    (value, decodingOptions) => decodeRecord(fieldsType, value, decodingOptions),
+    (value, validationOptions) => validateRecord(fieldsType, value, validationOptions),
+    (maxDepth) => recordArbitrary(fieldsType, maxDepth),
     { ...options, fieldsType },
   )
 }
@@ -35,9 +37,8 @@ function decodeRecord<T extends types.Type>(
   fieldsType: T,
   value: unknown,
   decodingOptions?: decoding.Options,
-  _options?: RecordOptions,
 ): decoding.Result<Record<string, types.Infer<T>>> {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return decoding.fail('object', value)
   }
   const concreteFieldsType = types.concretise(fieldsType)
@@ -66,7 +67,6 @@ function validateRecord<T extends types.Type>(
   fieldsType: T,
   value: Record<string, types.Infer<T>>,
   validationOptions?: validation.Options,
-  options?: RecordOptions,
 ): validation.Result {
   const concreteFieldsType = types.concretise(fieldsType)
   const errors: validation.Error[] = []
@@ -84,5 +84,24 @@ function validateRecord<T extends types.Type>(
     return validation.failWithErrors(errors)
   } else {
     return validation.succeed()
+  }
+}
+
+function recordArbitrary<T extends types.Type>(
+  fieldsType: T,
+  maxDepth: number,
+): gen.Arbitrary<Record<string, types.Infer<T>>> {
+  if (maxDepth <= 0) {
+    return gen.constant({})
+  } else {
+    const concreteType = types.concretise(fieldsType)
+    return gen
+      .array(
+        gen.tuple(
+          gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf'),
+          concreteType.arbitrary(maxDepth - 1),
+        ),
+      )
+      .map(Object.fromEntries)
   }
 }

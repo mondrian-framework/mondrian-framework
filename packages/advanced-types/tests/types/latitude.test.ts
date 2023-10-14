@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from './property-helper'
+import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
@@ -13,9 +13,11 @@ const knownInvalidValues = [-200, 200, 10.00000000001, null, undefined, { field:
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(m.latitude, {
+  testTypeEncodingAndDecoding(m.latitude(), {
     validValues,
     invalidValues,
     knownInvalidValues,
   }),
 )
+
+describe('arbitrary based test', testWithArbitrary(m.latitude()))

@@ -1,6 +1,7 @@
 import { types, decoding, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param value the literal value held by the new `LiteralType`
@@ -65,5 +66,9 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
     } else {
       return decoding.fail(`literal (${this.literalValue})`, value)
     }
+  }
+
+  arbitrary(): gen.Arbitrary<L> {
+    return gen.constant(this.literalValue)
   }
 }

@@ -1,6 +1,7 @@
 import { types, decoding, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param options the {@link NumberTypeOptions options} used to define the new `NumberType`
@@ -105,6 +106,73 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
       return numberFromString(value)
     } else {
       return decoding.fail('number', value)
+    }
+  }
+
+  arbitrary(): gen.Arbitrary<number> {
+    function doubleMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.Arbitrary<number> {
+      const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
+      const min = selectMinimum(minimum, exclusiveMinimum)
+      const max = selectMaximum(maximum, exclusiveMaximum)
+      return gen.double({ ...min, ...max, noNaN: true })
+    }
+
+    function integerMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.Arbitrary<number> {
+      const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
+      if (
+        (minimum && !Number.isInteger(minimum)) ||
+        (maximum && !Number.isInteger(maximum)) ||
+        (exclusiveMinimum && !Number.isInteger(exclusiveMinimum)) ||
+        (exclusiveMaximum && !Number.isInteger(exclusiveMaximum))
+      ) {
+        throw new Error('I cannot generate values from integer number types whose max/min are not integer numbers')
+      }
+      const min = selectMinimum(minimum, exclusiveMinimum)
+      const max = selectMaximum(maximum, exclusiveMaximum)
+      return gen.integer({ ...min, ...max })
+    }
+
+    function selectMinimum(
+      inclusive: number | undefined,
+      exclusive: number | undefined,
+    ): { minExcluded: boolean; min: number } | undefined {
+      if (inclusive && exclusive) {
+        if (inclusive > exclusive) {
+          return { minExcluded: false, min: inclusive }
+        } else {
+          return { minExcluded: true, min: exclusive }
+        }
+      } else if (inclusive) {
+        return { minExcluded: false, min: inclusive }
+      } else if (exclusive) {
+        return { minExcluded: true, min: exclusive }
+      } else {
+        return undefined
+      }
+    }
+
+    function selectMaximum(
+      inclusive: number | undefined,
+      exclusive: number | undefined,
+    ): { maxExcluded: boolean; max: number } | undefined {
+      if (inclusive && exclusive) {
+        if (inclusive < exclusive) {
+          return { maxExcluded: false, max: inclusive }
+        } else {
+          return { maxExcluded: true, max: exclusive }
+        }
+      } else if (inclusive) {
+        return { maxExcluded: false, max: inclusive }
+      } else if (exclusive) {
+        return { maxExcluded: true, max: exclusive }
+      } else {
+        return undefined
+      }
+    }
+    if (this.options) {
+      return this.options.isInteger ? integerMatchingOptions(this.options) : doubleMatchingOptions(this.options)
+    } else {
+      return gen.double()
     }
   }
 }

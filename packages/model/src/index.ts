@@ -7,7 +7,7 @@ export * as validation from './validation'
 export * as retrieve from './retrieve'
 export * as result from './result'
 export * as path from './path'
-export * as arbitrary from './arbitrary/exports'
+export * as arbitrary from './arbitrary/arbitrary'
 
 export { m }
 export default m

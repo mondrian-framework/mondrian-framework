@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeDecodingAndEncoding } from './property-helper'
+import { testTypeDecodingAndEncoding, testWithArbitrary } from './property-helper'
 import BigNumber from 'bignumber.js'
 import { describe } from 'vitest'
 
@@ -77,3 +77,5 @@ describe(
     },
   ),
 )
+
+describe('arbitrary based test', testWithArbitrary(m.decimal(), false))

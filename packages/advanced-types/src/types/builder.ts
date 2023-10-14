@@ -1,13 +1,22 @@
 import { m, decoding, validation } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 export function fromRegexes<Name extends string, Options extends Record<string, any>>(
   typeName: Name,
   errorMessage: string,
   options: m.OptionsOf<m.CustomType<Name, Options, string>> | undefined,
+  arbitrary: gen.Arbitrary<string> | undefined,
   regex: RegExp,
   ...regexes: RegExp[]
 ): m.CustomType<Name, Options, string> {
-  return m.custom(typeName, encode, decode, (input) => validate(input, errorMessage, [regex, ...regexes]), options)
+  return m.custom(
+    typeName,
+    encode,
+    decode,
+    (input) => validate(input, errorMessage, [regex, ...regexes]),
+    () => arbitrary ?? gen.stringMatching(regex),
+    options,
+  )
 }
 
 function encode(string: string): string {

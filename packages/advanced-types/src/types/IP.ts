@@ -9,5 +9,5 @@ const IPV6_REGEX =
 export type IPType = m.CustomType<'IP', {}, string>
 
 export function ip(options?: m.BaseOptions): IPType {
-  return fromRegexes('IP', 'Invalid IPv4 or IPv6 address', options, IPV4_REGEX, IPV6_REGEX)
+  return fromRegexes('IP', 'Invalid IPv4 or IPv6 address', options, undefined, IPV4_REGEX, IPV6_REGEX)
 }

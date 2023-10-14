@@ -5,6 +5,7 @@ import { createGraphQLError } from '@graphql-tools/utils'
 import { decoding, projection, types, validation } from '@mondrian-framework/model'
 import { module, utils, functions, logger } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
 
 type GraphqlType =
@@ -160,6 +161,7 @@ function typeToGqlTypeInternal(
             }
             return validation.fail('Expected null', input)
           },
+          () => gen.constant(null),
         ),
       }
       return 'Null'

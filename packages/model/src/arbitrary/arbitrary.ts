@@ -18,17 +18,26 @@ export function baseOptions(): gen.Arbitrary<types.BaseOptions> {
 export function stringTypeOptions(): gen.Arbitrary<types.OptionsOf<types.StringType>> {
   return gen.integer({ min: 0, max: 500 }).chain((min) => {
     return gen.integer({ min, max: 500 }).chain((max) => {
-      return gen.record(
-        {
-          ...baseOptionsGeneratorsRecord(),
-          // ⚠️ possible pain point: there is no generator for regexes so we only
-          // generate a regex that matches all inputs.
-          // For now this is already enough to cover some test cases
-          regex: gen.constantFrom(/.*/, undefined),
-          minLength: gen.constant(min),
-          maxLength: gen.constant(max),
-        },
-        { withDeletedKeys: true },
+      return gen.oneof(
+        gen.record(
+          {
+            ...baseOptionsGeneratorsRecord(),
+
+            minLength: gen.constant(min),
+            maxLength: gen.constant(max),
+          },
+          { withDeletedKeys: true },
+        ),
+        gen.record(
+          {
+            ...baseOptionsGeneratorsRecord(),
+            // ⚠️ possible pain point: there is no generator for regexes so we only
+            // generate a regex that matches all inputs.
+            // For now this is already enough to cover some test cases
+            regex: gen.constantFrom(/.*/, undefined),
+          },
+          { withDeletedKeys: true },
+        ),
       )
     })
   })
@@ -161,6 +170,13 @@ export function dateTime(): gen.Arbitrary<types.DateTimeType> {
 }
 
 /**
+ * @returns A generator for datetime types.
+ */
+export function unknown(): gen.Arbitrary<types.UnknownType> {
+  return gen.constant(types.unknown())
+}
+
+/**
  * @returns A generator for timestamp types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
@@ -209,10 +225,18 @@ export type GeneratorsRecord<R extends Record<string, any>> = { [Key in keyof R]
  * @return A generator for union types' options.
  *         All of its keys are optional and may be omitted in the generated options.
  */
-export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionType<any>>> {
+export function unionTypeOptions(
+  useTags?: gen.Arbitrary<boolean>,
+): gen.Arbitrary<types.OptionsOf<types.UnionType<any>>> {
   return gen.record({
     ...baseOptions,
-    useTags: orUndefined(gen.boolean()),
+
+    useTags: orUndefined(useTags ?? gen.constant(true)), //Disabled if not explicitly defined
+    // This can cause problem on tests like 'encoding is the inverse of decoding' because with untagged union
+    // this is not always true. Take for example this type:
+    // types.union({ v1: types.object({}), v2: types.object({ a:types.number() }) }, { useTags:false })
+    // the encoding of { v2: { a: 1 } } is { a: 1 }, the decoding of { a: 1 } is { v1: {} }
+    // this is because object type does not strictly checks for additional properties
   })
 }
 
@@ -222,8 +246,9 @@ export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionTyp
  */
 export function union<Vs extends types.Types>(
   variantsGenerators: GeneratorsRecord<Vs>,
+  useTags?: gen.Arbitrary<boolean>,
 ): gen.Arbitrary<types.UnionType<Vs>> {
-  return orUndefined(unionTypeOptions()).chain((options) => {
+  return orUndefined(unionTypeOptions(useTags)).chain((options) => {
     return gen.record(variantsGenerators).map((variants) => {
       return types.union(variants, options)
     })
@@ -423,8 +448,18 @@ export function baseType(): gen.Arbitrary<
   | types.BooleanType
   | types.EnumType<[string, ...string[]]>
   | types.LiteralType<boolean | string | number | null>
+  | types.CustomType<string, any, any>
 > {
-  return gen.oneof(number(), string(), boolean(), enumeration(nonEmptyStringArray()), literal(literalValue()))
+  return gen.oneof(
+    number(),
+    string(),
+    boolean(),
+    enumeration(nonEmptyStringArray()),
+    literal(literalValue()),
+    dateTime(),
+    timestamp(),
+    unknown(),
+  )
 }
 
 /**
@@ -496,4 +531,29 @@ function baseOptionsGeneratorsRecord() {
  */
 function orUndefined<A>(generator: gen.Arbitrary<A>): gen.Arbitrary<A | undefined> {
   return gen.oneof(gen.constant(undefined), generator)
+}
+
+export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[types.Type, never]> {
+  return type(typeDepth)
+    .filter(canGenerateValueFrom)
+    .chain((type) => {
+      return types
+        .concretise(type)
+        .arbitrary(valueDepth)
+        .map((value) => {
+          return [type, value as never]
+        })
+    })
+}
+
+// TODO: doc
+export function canGenerateValueFrom(type: types.Type): boolean {
+  // This is just an ugly hack for now but really effective! If the constructor does not throw then I can
+  // generate a type for it
+  try {
+    types.concretise(type).arbitrary(1)
+    return true
+  } catch {
+    return false
+  }
 }

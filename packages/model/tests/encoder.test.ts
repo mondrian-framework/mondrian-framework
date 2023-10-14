@@ -100,10 +100,13 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
   )
 
   describe.concurrent('on union values', () => {
-    const unionModel = arbitrary.union({
-      variant1: arbitrary.number(),
-      variant2: arbitrary.optional(arbitrary.string()),
-    })
+    const unionModel = arbitrary.union(
+      {
+        variant1: arbitrary.number(),
+        variant2: arbitrary.optional(arbitrary.string()),
+      },
+      gen.boolean(),
+    )
 
     test.prop([unionModel, gen.double()])('encodes a variant', (model, number) => {
       const variant = { variant1: number }
@@ -151,10 +154,13 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
       validate: () => {
         throw 'test'
       },
+      arbitrary: () => {
+        throw 'test'
+      },
     }
 
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, customOptions)
+    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, customOptions)
     expect(model.encodeWithoutValidation(value)).toEqual(value)
     expect(encodeSpy).toHaveBeenCalledTimes(1)
   })
@@ -191,10 +197,13 @@ describe.concurrent('encoder.encode', () => {
         expect(innerOptions).toEqual(options)
         return validation.succeed()
       },
+      arbitrary: () => {
+        throw 'test'
+      },
     }
     const validateSpy = vi.spyOn(mocks, 'validate')
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, options)
+    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, options)
     assertOk(model.encode(value, undefined, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
     expect(encodeSpy).toBeCalledTimes(1)

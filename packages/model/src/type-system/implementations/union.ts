@@ -2,6 +2,7 @@ import { decoding, types, validation } from '../../'
 import { failWithInternalError, prependVariantToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param variants a record with the different variants of the union
@@ -139,6 +140,18 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
       }
       return decoding.failWithErrors(errors)
     }
+  }
+
+  arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<types.UnionType<Ts>>> {
+    const variantsGenerators = Object.entries(this.variants).map(([variantName, variantType]: [string, types.Type]) =>
+      types
+        .concretise(variantType)
+        .arbitrary(maxDepth - 1)
+        .map((variantValue) => {
+          return Object.fromEntries([[variantName, variantValue]])
+        }),
+    )
+    return gen.oneof(...variantsGenerators) as gen.Arbitrary<types.Infer<types.UnionType<Ts>>>
   }
 
   isTaggedUnion(): boolean {

@@ -1,6 +1,7 @@
 import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 type CustomEncoder<Name extends string, Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
@@ -18,6 +19,11 @@ type CustomValidator<Name extends string, Options extends Record<string, any>, I
   validationOptions?: validation.Options,
   options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
 ) => validation.Result
+
+type CustomArbitrary<Name extends string, Options extends Record<string, any>, InferredAs> = (
+  maxDepth: number,
+  options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
+) => gen.Arbitrary<InferredAs>
 
 /**
  * @param typeName the name of the custom type to be created
@@ -48,9 +54,10 @@ export function custom<Name extends string, Options extends Record<string, unkno
   encodeWithoutValidation: CustomEncoder<Name, Options, InferredAs>,
   decoder: CustomDecoder<Name, Options, InferredAs>,
   validator: CustomValidator<Name, Options, InferredAs>,
+  arbitrary: CustomArbitrary<Name, Options, InferredAs>,
   options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
 ): types.CustomType<Name, Options, InferredAs> {
-  return new CustomTypeImpl(typeName, encodeWithoutValidation, decoder, validator, options)
+  return new CustomTypeImpl(typeName, encodeWithoutValidation, decoder, validator, arbitrary, options)
 }
 
 class CustomTypeImpl<Name extends string, Options extends Record<string, any>, InferredAs>
@@ -62,16 +69,18 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
   readonly encoder: CustomEncoder<Name, Options, InferredAs>
   readonly decoder: CustomDecoder<Name, Options, InferredAs>
   readonly validator: CustomValidator<Name, Options, InferredAs>
+  readonly arbitraryFromOptions: CustomArbitrary<Name, Options, InferredAs>
 
   getThis = () => this
   fromOptions = (options: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>) =>
-    custom(this.typeName, this.encodeWithNoChecks, this.decoder, this.validator, options)
+    custom(this.typeName, this.encodeWithNoChecks, this.decoder, this.validator, this.arbitrary, options)
 
   constructor(
     typeName: Name,
     encoder: CustomEncoder<Name, Options, InferredAs>,
     decoder: CustomDecoder<Name, Options, InferredAs>,
     validator: CustomValidator<Name, Options, InferredAs>,
+    arbitrary: CustomArbitrary<Name, Options, InferredAs>,
     options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
   ) {
     super(options)
@@ -79,6 +88,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     this.encoder = encoder
     this.decoder = decoder
     this.validator = validator
+    this.arbitraryFromOptions = arbitrary
   }
 
   encodeWithNoChecks(value: types.Infer<types.CustomType<Name, Options, InferredAs>>): JSONType {
@@ -94,5 +104,9 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
 
   decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options | undefined): decoding.Result<InferredAs> {
     return this.decoder(value, decodingOptions, this.options)
+  }
+
+  arbitrary(maxDepth: number): gen.Arbitrary<InferredAs> {
+    return this.arbitraryFromOptions(maxDepth, this.options)
   }
 }

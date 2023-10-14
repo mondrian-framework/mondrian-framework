@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from './property-helper'
+import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
@@ -14,3 +14,5 @@ describe(
     knownInvalidValues: [null, undefined, 11, 11.2],
   }),
 )
+
+describe('arbitrary based test', testWithArbitrary(currency))

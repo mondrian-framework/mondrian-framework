@@ -135,11 +135,24 @@ export function mapObject<A, B>(
   mapper: (fieldName: string, fieldValue: A) => B,
 ): Record<string, B> {
   return Object.fromEntries(
-    Object.entries(object).flatMap(([fieldName, fieldValue]) => {
+    Object.entries(object).map(([fieldName, fieldValue]) => {
       const mappedValue = mapper(fieldName, fieldValue)
-      return [[fieldName, mappedValue]]
+      return [fieldName, mappedValue]
     }),
   )
+}
+
+/**
+ * @param object the object to flatmap over
+ * @param mapper a mapping function that takes as input the name of a field and the corresponding value and maps it to
+ *               an array of name & value of type `B`
+ * @returns a new object with the mapped fields
+ */
+export function flatMapObject<A, B>(
+  object: Record<string, A>,
+  mapper: (fieldName: string, fieldValue: A) => [string, B][],
+): Record<string, B> {
+  return Object.fromEntries(Object.entries(object).flatMap(([fieldName, fieldValue]) => mapper(fieldName, fieldValue)))
 }
 
 /**

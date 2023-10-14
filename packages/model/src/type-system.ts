@@ -14,6 +14,7 @@ export enum Kind {
   Literal,
   Union,
   Object,
+  Entity,
   Array,
   Optional,
   Nullable,
@@ -36,6 +37,7 @@ export type Type =
   | LiteralType<any>
   | UnionType<any>
   | ObjectType<any, any>
+  | EntityType<any, any>
   | ArrayType<any, any>
   | OptionalType<any>
   | NullableType<any>
@@ -93,16 +95,24 @@ export type Infer<T extends Type>
   : [T] extends [NullableType<infer T1>] ? null | Infer<T1>
   : [T] extends [ArrayType<infer M, infer T1>] ? InferArray<M, T1>
   : [T] extends [ObjectType<infer M, infer Ts>] ? InferObject<M, Ts>
+  : [T] extends [EntityType<infer M, infer Ts>] ? InferEntity<M, Ts>
   : [T] extends [UnionType<infer Ts>] ? InferUnion<Ts>
   : [T] extends [(() => infer T1 extends Type)] ? Infer<T1>
   : never
 
 // prettier-ignore
-type InferObject<M extends Mutability, Ts extends Fields> =
+type InferObject<M extends Mutability, Ts extends Types> =
   ApplyObjectMutability<M,
-    { [Key in NonOptionalKeys<Ts>]: Infer<UnwrapField<Ts[Key]>> } &
-    { [Key in OptionalKeys<Ts>]?: Infer<UnwrapField<Ts[Key]>> }
+    { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
+    { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   >
+
+// prettier-ignore
+type InferEntity<M extends Mutability, Ts extends Types> =
+ApplyObjectMutability<M,
+  { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
+  { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
+>
 
 // prettier-ignore
 type InferUnion<Ts extends Types> = { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
@@ -123,8 +133,8 @@ type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknow
  *          OptionalKeys<typeof model> // "bar" | "baz"
  *          ```
  */
-type OptionalKeys<T extends Fields> = {
-  [K in keyof T]: IsOptional<UnwrapField<T[K]>> extends true ? K : never
+type OptionalKeys<T extends Types> = {
+  [K in keyof T]: IsOptional<T[K]> extends true ? K : never
 }[keyof T]
 
 /**
@@ -139,15 +149,9 @@ type OptionalKeys<T extends Fields> = {
  *          OptionalKeys<typeof model> // "foo" | "baz"
  *          ```
  */
-type NonOptionalKeys<T extends Fields> = {
-  [K in keyof T]: IsOptional<UnwrapField<T[K]>> extends true ? never : K
+type NonOptionalKeys<T extends Types> = {
+  [K in keyof T]: IsOptional<T[K]> extends true ? never : K
 }[keyof T]
-
-export type UnwrapField<F extends Field> = F extends { virtual: infer T extends Type } ? T : F extends Type ? F : never
-
-export function unwrapField(field: types.Field): types.Type {
-  return 'virtual' in field ? field.virtual : field
-}
 
 /**
  * Returns the literal type `true` for any {@link Type} that is optional. That is, if the type has a top-level
@@ -998,13 +1002,10 @@ export type UnionType<Ts extends Types> = {
  */
 export type UnionTypeOptions = BaseOptions & { useTags?: boolean }
 
-export type Field = Type | { virtual: Type }
-export type Fields = Record<string, Field>
-
 /**
  * The model of an object in the Mondrian framework.
  */
-export type ObjectType<M extends Mutability, Ts extends Fields> = {
+export type ObjectType<M extends Mutability, Ts extends Types> = {
   readonly kind: Kind.Object
   readonly mutability: M
   readonly fields: Ts
@@ -1127,6 +1128,133 @@ export type ObjectType<M extends Mutability, Ts extends Fields> = {
  * The options that can be used to define an {@link ObjectType `ObjectType`}.
  */
 export type ObjectTypeOptions = BaseOptions
+
+/**
+ * The model of an object in the Mondrian framework.
+ */
+export type EntityType<M extends Mutability, Ts extends Types> = {
+  readonly kind: Kind.Entity
+  readonly mutability: M
+  readonly fields: Ts
+  readonly options?: EntityTypeOptions
+
+  immutable(): EntityType<Mutability.Immutable, Ts>
+  mutable(): EntityType<Mutability.Mutable, Ts>
+
+  /**
+   * Turns this type into an optional version of itself
+   *
+   * @example ```ts
+   *          const model = types.object({ field: types.number() }).optional()
+   *          types.Infer<typeof model> // { readonly field: number } | undefined
+   *          ```
+   */
+  optional(options?: OptionalTypeOptions): OptionalType<EntityType<M, Ts>>
+
+  /**
+   * Turns this type into a nullable version of itself
+   *
+   * @example ```ts
+   *          const model = types.object({ field: types.number() }).nullable()
+   *          types.Infer<typeof model> // { readonly field: number } | null
+   *          ```
+   */
+  nullable(options?: NullableTypeOptions): NullableType<EntityType<M, Ts>>
+
+  /**
+   * Turns this type into an array of elements of this type
+   *
+   * @example ```ts
+   *          const model = types.object({ field: types.number() }).array()
+   *          types.Infer<typeof model> // { readonly field: number }[]
+   *          ```
+   */
+  array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, EntityType<M, Ts>>
+
+  /**
+   * @param value
+   * @param decodingOptions
+   * @param validationOptions
+   * @example ```ts
+   *          const model = types.object({ field: types.number() })
+   *          model.decode({ field: 1 }) // succeeds with value: { field: 1 }
+   *          model.decode({ field: "foo" }) // fails: expected a number in `field`, got a string
+   *          model.decode({}) // fails: `field` missing
+   *          ```
+   */
+  decode(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<InferEntity<M, Ts>, validation.Error[] | decoding.Error[]>
+
+  /**
+   * ⚠️ Pay attention when using this function since it does not perform validation on the decoded
+   * type and this may lead to hard-to-debug bugs! You should never use this function unless you're
+   * 100% sure you don't need to perform validation.
+   *
+   * In normal circumstances you will never need this function and should use `decode` instead
+   *
+   * @param value the value to decode
+   * @param decodingOptions the options used during the decoding process
+   * @returns a {@link result decoding.Result} which holds the decoded value if the decoding process was successful
+   */
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<InferEntity<M, Ts>>
+
+  /**
+   * @param value the value which will be validated
+   * @param validationOptions the options to use for the validation process
+   * @returns the {@link validation.Result result} of the validation process. It is a successful result
+   *          if the provided value pass all the validation checks, a failure otherwise
+   */
+  validate(value: InferEntity<M, Ts>, validationOptions?: validation.Options): validation.Result
+
+  /**
+   * @param value the value to encode into a {@link JSONType}
+   * @param validationOptions the options used when validating the value to encode
+   * @returns an ok {@link result.Result result} if the value to encode is valid (passes the validation
+   *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
+   *          and a failing result with the {@link validation.Error validation errors} is returned
+   * @example ```ts
+   *          const model = types.object({ field: types.number() })
+   *          model.encode({ field: 1 }) // succeeds with value: { field: 1 }
+   *          ```
+   */
+  encode(
+    value: InferEntity<M, Ts>,
+    encodingOptions?: encoding.Options,
+    validationOptions?: validation.Options,
+  ): result.Result<JSONType, validation.Error[]>
+
+  /**
+   * ⚠️ Pay attention when using this function since it does not perform validation on the value before
+   * encoding it and this may lead to encoding and passing around values that are not valid! You should
+   * never use this function unless you're 100% sure you don't need to perform validation.
+   *
+   * In normal circumstances you will never need this function and should use `encode` instead
+   *
+   * @param value the value to encode into a {@link JSONType}
+   * @returns the value encoded as a `JSONType`
+   */
+  encodeWithoutValidation(value: InferEntity<M, Ts>, encodingOptions?: encoding.Options): JSONType
+
+  /**
+   * @param other the type this will get compared to
+   * @returns true if the other type is equal to this one, that is
+   *          it is of the same kind and has the same options
+   */
+  equals(other: Type): boolean
+
+  setOptions(options: EntityTypeOptions): EntityType<M, Ts>
+  updateOptions(options: EntityTypeOptions): EntityType<M, Ts>
+  setName(name: string): EntityType<M, Ts>
+  sensitive(): EntityType<M, Ts>
+}
+
+/**
+ * The options that can be used to define an {@link EntityType `EntityType`}.
+ */
+export type EntityTypeOptions = BaseOptions
 
 /**
  * The model of a sequence of elements in the Mondrian framework.
@@ -1599,186 +1727,6 @@ export type CustomType<Name extends string, Options extends Record<string, any>,
 export type CustomTypeOptions<AdditionalOptions extends Record<string, unknown>> = BaseOptions & AdditionalOptions
 
 /**
- * @param one the first `ObjectType` to merge
- * @param other the second `ObjectType` to merge
- * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
- *                The options of the merged objects are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is Mutability.Immutable.
- * @returns a new {@link ObjectType `ObjectType`} obtained by merging `one` with `other`.
- *          If both objects define a field with the same name, the type of the resulting field is the one defined by
- *          `other`.
- * @example ```ts
- *          const book = object({ name: string(), publishedIn: integer() })
- *          const description = object({ shortDescription: string(), fullDescription: string() })
- *          const bookWithDescription = merge(book, description)
- *          type BookWithDescription = Infer<typeof bookWithDescription>
- *
- *          const exampleBook: BookWithDescription = {
- *            name: "Example book",
- *            publishedIn: 2023,
- *            shortDescription: "...",
- *            fullDescription: "...",
- *          }
- *          ```
- */
-export function merge<Ts1 extends Fields, Ts2 extends Fields, M extends Mutability = Mutability.Immutable>(
-  one: ObjectType<any, Ts1>,
-  other: ObjectType<any, Ts2>,
-  mutable?: M,
-  options?: OptionsOf<ObjectType<M, MergeObjectFields<Ts1, Ts2>>>,
-): ObjectType<M, MergeObjectFields<Ts1, Ts2>> {
-  const mergedFields = { ...one.fields, ...other.fields }
-  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return constructor(mergedFields, options) as unknown as ObjectType<M, MergeObjectFields<Ts1, Ts2>>
-}
-
-type MergeObjectFields<Ts1 extends Fields, Ts2 extends Fields> = {
-  [K in keyof Ts1 | keyof Ts2]: K extends keyof Ts2 ? Ts2[K] : K extends keyof Ts1 ? Ts1[K] : never
-}
-
-/**
- * @param obj the `ObjectType` to pick
- * @param fields the fields to pick
- * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
- *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is Mutability.Immutable.
- * @returns a new {@link ObjectType `ObjectType`} obtained by picking only the wanted fields.
- * @example ```ts
- *          const book = object({ name: string(), description: string(), publishedIn: integer() })
- *          const bookWithoutDescription = pick(book, { name: true, publishedIn: true })
- *          type BookWithoutDescription = Infer<typeof bookWithoutDescription>
- *
- *          const exampleBook: BookWithoutDescription = {
- *            name: "Example book",
- *            publishedIn: 2023,
- *          }
- *          ```
- */
-export function pick<
-  const Ts extends Fields,
-  const PickedFields extends { [K in keyof Ts]?: true },
-  M extends Mutability = Mutability.Immutable,
->(
-  obj: ObjectType<any, Ts>,
-  fields: PickedFields,
-  mutable?: M,
-  options?: OptionsOf<ObjectType<M, Ts>>,
-): ObjectType<M, PickObjectFields<Ts, PickedFields>> {
-  const pickedFields = filterMapObject(obj.fields, (k, t) => (k in fields && fields[k] === true ? t : undefined))
-  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return constructor(pickedFields, options) as unknown as ObjectType<M, PickObjectFields<Ts, PickedFields>>
-}
-
-type PickObjectFields<Ts extends Fields, PickedFields extends { [K in keyof Ts]?: true }> = {
-  [K in keyof Ts &
-    { [FK in keyof PickedFields]: PickedFields[FK] extends true ? FK : never }[keyof PickedFields]]: Ts[K]
-}
-
-/**
- * @param obj the `ObjectType` to pick
- * @param fields the fields to omit
- * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
- *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is Mutability.Immutable.
- * @returns a new {@link ObjectType `ObjectType`} obtained by omitting the specified fields.
- * @example ```ts
- *          const book = object({ name: string(), description: string(), publishedIn: integer() })
- *          const bookWithoutDescription = omit(book, { description: true })
- *          type BookWithoutDescription = Infer<typeof bookWithoutDescription>
- *
- *          const exampleBook: BookWithoutDescription = {
- *            name: "Example book",
- *            publishedIn: 2023,
- *          }
- *          ```
- */
-export function omit<
-  const Ts extends Fields,
-  const OmittedFields extends { [K in keyof Ts]?: true },
-  const M extends Mutability = Mutability.Immutable,
->(
-  obj: ObjectType<any, Ts>,
-  fields: OmittedFields,
-  mutable?: M,
-  options?: OptionsOf<ObjectType<M, Ts>>,
-): ObjectType<M, OmitObjectFields<Ts, OmittedFields>> {
-  const pickedFields = filterMapObject(obj.fields, (k, t) => (!(k in fields) || fields[k] !== true ? t : undefined))
-  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return constructor(pickedFields, options) as unknown as ObjectType<M, OmitObjectFields<Ts, OmittedFields>>
-}
-
-type OmitObjectFields<Ts extends Fields, OmittedFields extends { [K in keyof Ts]?: true }> = {
-  [K in Exclude<
-    keyof Ts,
-    { [FK in keyof OmittedFields]: OmittedFields[FK] extends true ? FK : never }[keyof OmittedFields]
-  >]: Ts[K]
-}
-
-/**
- * @param obj the `ObjectType` to remove all reference fields
- * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
- *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is Mutability.Immutable.
- * @returns a new {@link ObjectType `ObjectType`} obtained by omitting all the reference fields.
- * @example ```ts
- *          const author = object({ id: string() })
- *          const book = object({ name: string(), publishedIn: integer(), author: Author.reference() })
- *          const bookWithoutAuthor = omitReference(book)
- *          type BookWithoutAuthor = Infer<typeof bookWithoutAuthor>
- *
- *          const exampleBook: BookWithoutAuthor = {
- *            name: "Example book",
- *            publishedIn: 2023,
- *          }
- *          ```
- */
-export function omitVirtualFields<const Ts extends Fields, M extends Mutability = Mutability.Immutable>(
-  obj: ObjectType<any, Ts>,
-  mutable?: M,
-  options?: OptionsOf<ObjectType<M, Ts>>,
-): ObjectType<M, OmitReferenceObjectFields<Ts>> {
-  const pickedFields = filterMapObject(obj.fields, (_, t) => ('virtual' in t ? undefined : t))
-  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return constructor(pickedFields, options) as unknown as ObjectType<M, OmitReferenceObjectFields<Ts>>
-}
-
-type OmitReferenceObjectFields<Ts extends Fields> = {
-  [K in { [FK in keyof Ts]: IsReference<Ts[FK]> extends true ? never : FK }[keyof Ts]]: Ts[K]
-}
-
-/**
- * @param obj the `ObjectType` to transform
- * @param options the {@link ObjectTypeOptions options} for the new `ObjectType`.
- *                The options of the result object are always ignored, even if this property is set to `undefined`
- * @param mutable result object's mutability. Default is Mutability.Immutable.
- * @returns a new {@link ObjectType `ObjectType`} where every fields is optional.
- * @example ```ts
- *          const book = object({ name: string(), description: string(), publishedIn: integer() })
- *          const partialBook = partial(book)
- *          type PartialBook = Infer<typeof partialBook>
- *
- *          const exampleBook: PartialBook = {
- *            name: undefined,
- *          }
- *          ```
- */
-export function partial<const Ts extends Fields, M extends Mutability = Mutability.Immutable>(
-  obj: ObjectType<any, Ts>,
-  mutable?: M,
-  options?: OptionsOf<ObjectType<M, Ts>>,
-): ObjectType<M, PartialObjectFields<Ts>> {
-  const mappedFields = filterMapObject(obj.fields, (_, t) => ('virtual' in t ? t : types.optional(t)))
-  const constructor = mutable === Mutability.Mutable ? types.mutableObject : types.object
-  return constructor(mappedFields, options) as unknown as ObjectType<M, PartialObjectFields<Ts>>
-}
-
-type PartialObjectFields<Ts extends Fields> = {
-  [K in keyof Ts]: IsReference<Ts[K]> extends true ? Ts[K] : OptionalType<UnwrapField<Ts[K]>>
-}
-
-type IsReference<F extends Field> = F extends { virtual: infer _ } ? true : false
-
-/**
  * Given a {@link Type} returns a new type where all the fields of object types are turned into
  * optional fields
  *
@@ -1798,7 +1746,8 @@ type IsReference<F extends Field> = F extends { virtual: infer _ } ? true : fals
 //prettier-ignore
 export type PartialDeep<T extends Type> 
   = [T] extends [UnionType<infer Ts>] ? UnionType<{ [Key in keyof Ts]: PartialDeep<Ts[Key]> }>
-  : [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<UnwrapField<Ts[Key]>>> }>
+  : [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<Ts[Key]>> }>
+  : [T] extends [EntityType<infer Mutability, infer Ts>] ? EntityType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<Ts[Key]>> }>
   : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
   : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
   : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>
@@ -1833,12 +1782,11 @@ export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
       ) as PartialDeep<T>
     case Kind.Object:
       return types.object(
-        mapObject(concreteType.fields as Fields, (_, fieldValue) => {
-          if ('virtual' in fieldValue) {
-            return { virtual: types.optional(partialDeep(fieldValue.virtual)) }
-          }
-          return types.optional(partialDeep(fieldValue))
-        }),
+        mapObject(concreteType.fields as Types, (_, fieldValue) => types.optional(partialDeep(fieldValue))),
+      ) as PartialDeep<T>
+    case Kind.Entity:
+      return types.entity(
+        mapObject(concreteType.fields as Types, (_, fieldValue) => types.optional(partialDeep(fieldValue))),
       ) as PartialDeep<T>
     default:
       return type as PartialDeep<T>
@@ -1982,7 +1930,8 @@ export function unwrap(
   | BooleanType
   | CustomType<string, {}, unknown>
   | LiteralType<any>
-  | ObjectType<Mutability, Fields>
+  | ObjectType<Mutability, Types>
+  | EntityType<Mutability, Types>
   | UnionType<Types> {
   const concreteType = concretise(type)
   return 'wrappedType' in concreteType ? unwrap(concreteType.wrappedType) : concreteType
@@ -1993,9 +1942,9 @@ export function unwrap(
  * @param type the type to check
  * @returns false only for {@link ObjectType}, {@link UnionType}, {@link ArrayType}
  */
-export function isScalar(type: Type | Field): boolean {
-  const t = unwrapField(type)
-  const unwrapped = unwrap(t)
-  const notUnionOrObject = unwrapped.kind !== Kind.Union && unwrapped.kind !== Kind.Object
-  return !isArray(t) && notUnionOrObject
+export function isScalar(type: Type): boolean {
+  const unwrapped = unwrap(type)
+  const notUnionOrObjectOrEntity =
+    unwrapped.kind !== Kind.Union && unwrapped.kind !== Kind.Object && unwrapped.kind !== Kind.Entity
+  return !isArray(type) && notUnionOrObjectOrEntity
 }

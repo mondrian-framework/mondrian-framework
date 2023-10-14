@@ -63,6 +63,14 @@ export const likePost = functions.withContext<LoggedUserContext>().build({
   output: postType,
   error: types.union({ ...unauthorizedType.variants, postNotFound: idType }, { name: 'LikePostError' }),
   body: async ({ input, projection, context }) => {
+    const asd = await context.prisma.post.findFirst({
+      where: {
+        id: { },
+        scalars: { },
+        author: { posts: { }}
+      },
+      orderBy: [{ id: 'desc']
+    })
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' as const })
     }

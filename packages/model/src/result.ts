@@ -290,3 +290,11 @@ export function tryEachFailFast<A, R, R1, E>(
 export function isResult(value: unknown): value is Result<unknown, unknown> {
   return value instanceof OkImpl || value instanceof FailureImpl
 }
+
+export function isOkResult(value: unknown): value is Ok<unknown, unknown> {
+  return isResult(value) && value.isOk
+}
+
+export function isFailureResult(value: unknown): value is Failure<unknown, unknown> {
+  return isResult(value) && !value.isOk
+}

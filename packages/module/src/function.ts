@@ -53,7 +53,7 @@ export interface Function<
 export interface FunctionImplementation<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
-  E extends ErrorType = undefined,
+  E extends ErrorType = ErrorType,
   Context extends Record<string, unknown> = Record<string, unknown>,
 > extends Function<I, O, E, Context> {
   /**

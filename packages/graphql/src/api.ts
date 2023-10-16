@@ -1,7 +1,7 @@
 import { functions, logger } from '@mondrian-framework/module'
 import { GraphQLErrorOptions } from 'graphql'
 
-type FunctionSpecifications = {
+export type FunctionSpecifications = {
   type: 'query' | 'mutation'
   name?: string
   inputName?: string

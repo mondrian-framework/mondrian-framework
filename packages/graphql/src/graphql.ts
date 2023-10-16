@@ -240,6 +240,9 @@ function customTypeToGraphQLType(
   }
 }
 
+/**
+ * TODO: add doc
+ */
 export type FromModuleInput<ServerContext, Fs extends functions.Functions, ContextInput> = {
   module: module.Module<Fs, ContextInput>
   api: Api<Fs>
@@ -248,6 +251,11 @@ export type FromModuleInput<ServerContext, Fs extends functions.Functions, Conte
   errorHandler?: ErrorHandler<Fs, ServerContext>
 }
 
+/**
+ * Creates a new `GraphQLSchema` from the given module.
+ * Each function appearing in the module's API is either turned into a query or a mutation according to the
+ * provided specification.
+ */
 export function fromModule<const ServerContext, const Fs extends functions.Functions, const ContextInput>(
   input: FromModuleInput<ServerContext, Fs, ContextInput>,
 ): GraphQLSchema {
@@ -340,10 +348,17 @@ function asSpecs(
   }
 }
 
+/**
+ * Creates a tuple with the operation name and a configuration for a resolver for the given operation.
+ *
+ * The operation is created according to the given function's input and output types.
+ * `setHeader`, `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
+ * somehow needed by the resolver implementation.
+ */
 function makeOperation(
   operationType: 'query' | 'mutation',
   moduleName: string,
-  queryName: string,
+  operationName: string,
   fun: functions.FunctionImplementation,
   setHeader: (server: any, name: string, value: string) => void,
   getContextInput: (server: any, info: GraphQLResolveInfo) => Promise<any>,
@@ -358,7 +373,7 @@ function makeOperation(
   ) => {
     // Setup logging
     const operationId = utils.randomOperationId()
-    const logger = logging.build({ moduleName, operationId, operationType, operationName: queryName, server: 'GQL' })
+    const logger = logging.build({ moduleName, operationId, operationType, operationName, server: 'GQL' })
     setHeader(serverContext, 'operation-id', operationId)
 
     // Decode all the needed bits to call the function
@@ -373,16 +388,21 @@ function makeOperation(
 
     // Call the function and handle a possible failure
     const contexts = { serverContext, context }
-    const handlerInput = { logger, operationId, functionName: queryName, projection, input, errorHandler, ...contexts }
+    const operationData = { operationId, functionName: operationName, projection, input }
+    const handlerInput = { logger, ...operationData, errorHandler, ...contexts }
     return fun
       .apply({ context: context, projection, input, operationId, logger })
       .then((res) => handleFunctionResult(res, partialOutputType, handlerInput))
       .catch((error) => handleFunctionError({ ...handlerInput, error }))
   }
 
-  return [queryName, { type: typeToGraphQLType(fun.output), resolve }]
+  return [operationName, { type: typeToGraphQLType(fun.output), resolve }]
 }
 
+/**
+ * Tries to decode the given raw input, throwing a graphql error if the process fails.
+ * A logger is needed to perform additional logging and keep track of the decoding result.
+ */
 function decodeInput(inputType: types.Type, rawInput: unknown, log: MondrianLogger) {
   const decoded = types.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
   if (decoded.isOk) {
@@ -405,6 +425,11 @@ function decodeProjection(fun: functions.FunctionImplementation, proj: projectio
   }
 }
 
+/**
+ * Given the result of the execution of a function's body it tries to handle it accordingly.
+ * If the result is an `Ok` value (or a barebone non-result value) it is unwrapped, encoded and returned.
+ * If the result is an `Error` then the `errorHandler` function is called and an error is thrown.
+ */
 function handleFunctionResult(
   res: result.Result<any, any>,
   partialOutputType: types.Type,
@@ -432,6 +457,11 @@ type HandleErrorInput = {
   error: unknown
 }
 
+/**
+ * Handles a failing result. If an `errorHandler` is not defined, the error value is simply rethrown.
+ * If an `errorHandler` is defined, the error and other additional context is passed to it.
+ */
+// TODO: chiedere a edo cosa fa un error handler per poter documentare meglio l'intento
 async function handleFunctionError(handleErrorInput: HandleErrorInput) {
   const { error, logger: log, errorHandler } = handleErrorInput
   log.logError('Failed with error.')

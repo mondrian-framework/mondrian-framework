@@ -16,6 +16,6 @@
     "@mondrian-framework/module": "*",
     "@mondrian-framework/utils": "*",
     "aws-lambda": "1.0.7",
-    "@types/aws-lambda": "8.10.124"
+    "@types/aws-lambda": "8.10.125"
   }
 }

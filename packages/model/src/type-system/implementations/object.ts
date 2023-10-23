@@ -109,8 +109,8 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
   arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<types.ObjectType<M, Ts>>> {
     const entriesGenerators = Object.fromEntries(
       Object.entries(this.fields).map(
-        ([fieldName, fieldType]: [string, types.Field]) =>
-          [fieldName, types.concretise(types.unwrapField(fieldType)).arbitrary(maxDepth - 1)] as const,
+        ([fieldName, fieldType]: [string, types.Type]) =>
+          [fieldName, types.concretise(fieldType).arbitrary(maxDepth - 1)] as const,
       ),
     )
     return gen.record(entriesGenerators) as gen.Arbitrary<types.Infer<types.ObjectType<M, Ts>>>

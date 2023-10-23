@@ -1,6 +1,6 @@
 import { functions } from '.'
 import { ErrorType } from './function'
-import { projection, result, types } from '@mondrian-framework/model'
+import { retrieve, result, types } from '@mondrian-framework/model'
 import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -12,13 +12,13 @@ export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<
   return {
     name: 'Check max projection depth',
     apply: (args, next) => {
-      const depth = projection.depth(args.projection ?? true)
+      const depth = retrieve.selectionDepth(args.retrieve ?? {})
       if (depth > maxDepth) {
         const errorMessage = `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxDepth}.`
         args.logger.emit({
           body: errorMessage,
           attributes: {
-            projection: JSON.stringify(projection),
+            projection: JSON.stringify(retrieve),
             depth,
             maxDepth,
           },
@@ -49,16 +49,16 @@ export function checkOutputType(
       const res = nextRes.value
 
       const outputPartialDeepType = types.concretise(types.partialDeep(thisFunction.output))
-      const checkResult = projection
-        .respectsProjection(thisFunction.output, args.projection ?? (true as never), res)
-        .chain((trimmed) => outputPartialDeepType.validate(trimmed).replace(trimmed))
+      const checkResult = retrieve
+        .isRespected(thisFunction.output, args.retrieve ?? {}, res)
+        .chain(({ trimmedValue }) => outputPartialDeepType.validate(trimmedValue).replace(trimmedValue))
 
       if (!checkResult.isOk) {
         const errorsMessage = JSON.stringify(checkResult.error)
         args.logger.emit({
           body: 'Invalid output',
           attributes: {
-            projection: JSON.stringify(projection),
+            retrieve: JSON.stringify(retrieve),
             output: JSON.stringify(
               outputPartialDeepType.encodeWithoutValidation(res, { sensitiveInformationStrategy: 'hide' }),
             ),

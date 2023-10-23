@@ -267,7 +267,7 @@ export function objectTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ObjectT
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
  * @returns a generator for an object type that can either be mutable or immutable
  */
-export function object<Ts extends types.Fields>(
+export function object<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
 ): gen.Arbitrary<types.ObjectType<types.Mutability, Ts> | (() => types.ObjectType<types.Mutability, Ts>)> {
   const objectGenerator = gen.oneof(immutableObject(fieldsGenerators), mutableObject(fieldsGenerators))
@@ -281,7 +281,7 @@ export function object<Ts extends types.Fields>(
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
  * @returns a generator for an immutable object type
  */
-export function immutableObject<Ts extends types.Fields>(
+export function immutableObject<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
 ): gen.Arbitrary<types.ObjectType<types.Mutability.Immutable, Ts>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
@@ -295,7 +295,7 @@ export function immutableObject<Ts extends types.Fields>(
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
  * @returns a generator for a mutable object type
  */
-export function mutableObject<Ts extends types.Fields>(
+export function mutableObject<Ts extends types.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
 ): gen.Arbitrary<types.ObjectType<types.Mutability.Mutable, Ts>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
@@ -482,12 +482,7 @@ export function wrapperType(
  */
 function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
   const fieldName = gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf')
-
-  const fields: gen.Arbitrary<types.Field> = gen.oneof(
-    type(maxDepth - 1).map((value) => ({ virtual: value })),
-    type(maxDepth - 1),
-  )
-  return gen.dictionary(fieldName, gen.constant(fields)).chain(object)
+  return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain(object)
 }
 
 /**

@@ -52,10 +52,9 @@ model Post {
   author      User           @relation(fields: [authorId], references: [id])
   likes       Like[]
 
-  embedded  ExampleType
-  embeddeds ExampleType[]
-  scalars   Int[]
-  optional  Int?
+  //embedded  ExampleType
+  //embeddeds ExampleType[]
+  //optional  Int?
 }
 
 model Like {

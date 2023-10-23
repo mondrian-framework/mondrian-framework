@@ -1,4 +1,4 @@
-import { path } from 'src'
+import { path, types } from '.'
 
 /**
  * @param message the message to display in the error
@@ -82,4 +82,37 @@ export function prependVariantToAll<Data extends Record<string, any>, T extends 
   variantName: string,
 ): T[] {
   return values.map((value) => ({ ...value, path: value.path.prependVariant(variantName) }))
+}
+
+type TypeTransformer<T extends types.Type> = (type: T) => types.Type
+export function memoizeTypeTransformation<T extends types.Type>(mapper: TypeTransformer<T>): TypeTransformer<T> {
+  const cache = new Map<types.Type, types.Type>()
+  return (type: T) => {
+    const cachedResult = cache.get(type)
+    if (cachedResult) {
+      return cachedResult
+    }
+    if (typeof type === 'function') {
+      const lazyResult = () => mapper(types.concretise(type))
+      cache.set(type, lazyResult)
+      return lazyResult
+    }
+    const result = mapper(type)
+    cache.set(type, result)
+    return result
+  }
+}
+
+export function memoizeTransformation<T, R>(mapper: (t: T) => R): (t: T) => R {
+  const cache: Map<T, R> = new Map()
+  function f(t: T): R {
+    const cachedResult = cache.get(t)
+    if (cachedResult) {
+      return cachedResult
+    }
+    const result = mapper(t)
+    cache.set(t, result)
+    return result
+  }
+  return f
 }

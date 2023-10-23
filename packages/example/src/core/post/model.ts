@@ -7,14 +7,14 @@ export const postVisibilityType = types.enumeration(['PUBLIC', 'PRIVATE', 'FOLLO
 
 export type PostType = types.Infer<typeof postType>
 export const postType = () =>
-  types.object(
+  types.entity(
     {
       id: idType,
       title: types.string(),
       content: types.string(),
       publishedAt: types.dateTime(),
-      author: { virtual: userType },
-      likes: { virtual: types.array(likeType) },
+      author: userType,
+      likes: types.array(likeType),
       visibility: postVisibilityType,
     },
     { name: 'Post' },
@@ -22,11 +22,11 @@ export const postType = () =>
 
 export type LikeType = types.Infer<typeof likeType>
 export const likeType = () =>
-  types.object(
+  types.entity(
     {
       id: idType,
-      post: { virtual: postType },
-      user: { virtual: userType },
+      post: postType,
+      user: userType,
       createdAt: types.dateTime(),
     },
     { name: 'Like' },

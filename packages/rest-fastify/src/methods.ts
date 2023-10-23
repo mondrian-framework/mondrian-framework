@@ -27,7 +27,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
       const path = utils.getPathFromSpecification(functionName, specification, pathPrefix).replace(/{(.*?)}/g, ':$1')
-      const generateHandler = rest.handler.fromFunction<Fs, server.Context, ContextInput>({
+      const functionRestHandler = rest.handler.fromFunction<Fs, server.Context, ContextInput>({
         module,
         context,
         specification,
@@ -37,7 +37,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
         error,
       })
       server[specification.method](path, async (request, reply) => {
-        const result = await generateHandler({
+        const result = await functionRestHandler({
           serverContext: { fastify: { request, reply } },
           request: {
             body: request.body as string,

@@ -1,7 +1,6 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
-import { generateOpenapiInput } from './openapi'
-import { completeProjection } from './utils'
-import { decoding, projection, result, types } from '@mondrian-framework/model'
+import { generateInputType, generateOpenapiInput, splitInputAndRetrieve } from './openapi'
+import { result, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -25,7 +24,10 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }): (args: { request: Request; serverContext: ServerContext }) => Promise<Response> {
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
-  const inputExtractor = getInputExtractor({ functionBody, specification })
+  const getInputFromRequest = specification.openapi
+    ? specification.openapi.input
+    : generateGetInputFromRequest({ functionBody, specification })
+  const inputType = generateInputType(functionBody)
   const partialOutputType = types.concretise(types.partialDeep(functionBody.output))
 
   const thisLogger = logger.build({
@@ -54,8 +56,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     }
 
     //Decode input
-    const input = specification.openapi ? specification.openapi.input(request) : inputExtractor(request)
-    const decoded = decodeInput({ input, inputType: functionBody.input })
+    const rawInput = getInputFromRequest(request)
+    const decoded = decodeRawInput({ rawInput, inputType })
     if (!decoded.isOk) {
       operationLogger.logError('Bad request. (input)')
       endSpanWithError({ span, failure: decoded })
@@ -63,29 +65,22 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     }
     span?.addEvent('Input decoded')
 
-    //Decode projection
-    const decodedProjection = decodeProjection({ request, outputType: functionBody.output })
-    if (!decodedProjection.isOk) {
-      operationLogger.logError('Bad request. (projection)')
-      endSpanWithError({ span, failure: decodedProjection })
-      return addHeadersToResponse(decodedProjection.error, responseHeaders)
-    }
-    const givenProjection = completeProjection(decodedProjection.value, functionBody.output)
-    span?.addEvent('Projection decoded')
+    //Split retrieve and input
+    const { input, retrieve } = splitInputAndRetrieve(decoded.value, functionBody)
 
     let moduleContext
     try {
       const contextInput = await context(serverContext)
       moduleContext = await module.context(contextInput, {
-        projection: givenProjection,
-        input: decoded.value,
+        retrieve,
+        input,
         operationId,
         logger: operationLogger,
       })
       const result = await functionBody.apply({
-        projection: givenProjection as projection.FromType<types.Type>,
+        retrieve: retrieve,
+        input: input as never,
         context: moduleContext as Record<string, unknown>,
-        input: decoded.value as never,
         operationId,
         logger: operationLogger,
       })
@@ -118,10 +113,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           functionName,
           operationId,
           context: moduleContext,
-          functionArgs: {
-            projection: decodedProjection.value,
-            input: decoded.value,
-          },
+          functionArgs: { input, retrieve },
           ...serverContext,
         })
         if (result !== undefined) {
@@ -134,9 +126,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
       throw e
     }
   }
-
-  return async ({ request, serverContext }) => {
-    if (tracer) {
+  if (tracer) {
+    return async ({ request, serverContext }) => {
       return tracer.startActiveSpan(
         `mondrian:rest-handler:${functionName}`,
         {
@@ -149,13 +140,13 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         },
         (span) => handler(request, serverContext, span),
       )
-    } else {
-      return handler(request, serverContext)
     }
+  } else {
+    return ({ request, serverContext }) => handler(request, serverContext)
   }
 }
 
-function getInputExtractor(args: {
+function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
@@ -183,34 +174,15 @@ function checkVersion({
   return result.ok(version)
 }
 
-function decodeInput({
-  input,
+function decodeRawInput({
+  rawInput,
   inputType,
 }: {
-  input: unknown
+  rawInput: unknown
   inputType: types.Type
 }): result.Result<unknown, Response> {
-  const decoded = types.concretise(inputType).decode(input, { typeCastingStrategy: 'tryCasting' })
+  const decoded = types.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
   return decoded.mapError((error) => ({ status: 400, body: { errors: error }, headers: {} }))
-}
-
-function decodeProjection({
-  request,
-  outputType,
-}: {
-  request: Request
-  outputType: types.Type
-}): result.Result<projection.Projection, Response> {
-  const projectionHeader = request.headers.projection
-  const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
-  const givenProjection = projection.decode(outputType, projectionObject != null ? projectionObject : true, {
-    typeCastingStrategy: 'tryCasting',
-  }) as decoding.Result<projection.Projection>
-  return givenProjection.mapError((error) => ({
-    status: 400,
-    body: { errors: error, message: "On 'projection' header" },
-    headers: {},
-  }))
 }
 
 function addHeadersToResponse(response: Response, headers: Response['headers']): Response {

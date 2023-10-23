@@ -4,7 +4,7 @@ import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
-import { projection, types } from '@mondrian-framework/model'
+import { retrieve, types } from '@mondrian-framework/model'
 import { UnionToIntersection, count } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
@@ -31,7 +31,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
     input: ContextInput,
     args: {
       input: unknown
-      projection: projection.Projection | undefined
+      retrieve: retrieve.GenericRetrieve | undefined
       operationId: string
       logger: logger.MondrianLogger
     },

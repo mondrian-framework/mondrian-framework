@@ -1,5 +1,5 @@
 import { Api, FunctionSpecifications } from './api'
-import { projection, types } from '@mondrian-framework/model'
+import { retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { JSONType, isArray, setTraversingValue, mapObject } from '@mondrian-framework/utils'
 
@@ -63,28 +63,9 @@ export function getMaxApiVersion(api: Api<functions.Functions>): number {
 }
 
 /**
- * Add all non-virtual fields that was excluded in the projection.
+ * Add all non-entity fields that was excluded in the selection will be included.
  */
-export function completeProjection(projection: projection.Projection, type: types.Type): projection.Projection {
-  if (projection === true) {
-    return true
-  }
-  const t = types.concretise(type)
-  if (t.kind === types.Kind.Object) {
-    const allNonVirtual = mapObject(t.fields as types.Fields, (_, fieldType) =>
-      'virtual' in fieldType ? undefined : true,
-    )
-    const previousSelected = mapObject(projection, (fieldName, fieldProjection) =>
-      fieldProjection ? completeProjection(fieldProjection, types.unwrapField(t.fields[fieldName])) : undefined,
-    )
-    return { ...allNonVirtual, ...previousSelected }
-  } else if (t.kind === types.Kind.Union) {
-    return mapObject(t.variants, (variantName, variantType) => {
-      const p = projection[variantName]
-      return p ? completeProjection(p, variantType as types.Type) : true
-    })
-  } else if ('wrappedType' in t) {
-    return completeProjection(projection, t.wrappedType)
-  }
-  return projection
+export function completeRetrieve(retrieve: retrieve.GenericRetrieve, type: types.Type): retrieve.GenericRetrieve {
+  //TODO
+  return retrieve
 }

@@ -1,6 +1,6 @@
 import { logger } from '.'
 import { BaseFunction } from './function/base'
-import { projection, result, types } from '@mondrian-framework/model'
+import { result, retrieve, types } from '@mondrian-framework/model'
 
 /**
  * Mondrian function interface.
@@ -85,9 +85,9 @@ export type FunctionArguments<I extends types.Type, O extends types.Type, Contex
    */
   readonly input: types.Infer<I>
   /**
-   * Wanted output projection. The return value must respects this projection.
+   * Wanted retrieve. The return value must respects this retrieve object.
    */
-  readonly projection: projection.FromType<O> | undefined
+  readonly retrieve: retrieve.FromType<O> | undefined
   /**
    * Operation ID.
    */

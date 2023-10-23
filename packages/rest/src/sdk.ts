@@ -1,4 +1,4 @@
-import { Api, FunctionSpecifications, Request } from './api'
+/*import { Api, FunctionSpecifications, Request } from './api'
 import { generateOpenapiInput } from './openapi'
 import { projection, result, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
@@ -100,3 +100,4 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
     withHeaders: (headers: Record<string, string | string[] | undefined>) => build({ api, endpoint, module, headers }),
   }
 }
+*/

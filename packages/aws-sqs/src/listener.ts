@@ -127,13 +127,13 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
       const contextInput = await context({ message: m })
       const ctx = await module.context(contextInput, {
         input: decoded.value,
-        projection: undefined,
+        retrieve: undefined,
         operationId,
         logger: operationLogger,
       })
       await functionBody.apply({
         input: decoded.value as never,
-        projection: undefined,
+        retrieve: undefined,
         operationId,
         context: ctx,
         logger: operationLogger,

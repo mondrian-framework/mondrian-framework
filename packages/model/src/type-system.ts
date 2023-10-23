@@ -1,4 +1,6 @@
 import { decoding, validation, types, result, encoding } from './index'
+import { NeverType } from './types-exports'
+import { memoizeTypeTransformation, memoizeTransformation, failWithInternalError } from './utils'
 import { JSONType, filterMapObject, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -30,32 +32,21 @@ export enum Kind {
  * @see To learn more about the Mondrian model, read the
  * [online documentation](https://twinlogix.github.io/mondrian-framework/docs/docs/model)
  */
-export type Type =
+export type Type = ConcreteType | (() => Type)
+
+export type ConcreteType =
   | NumberType
   | StringType
   | BooleanType
-  | EnumType<any>
-  | LiteralType<any>
-  | UnionType<any>
-  | ObjectType<any, any>
-  | EntityType<any, any>
-  | ArrayType<any, any>
+  | EnumType
+  | LiteralType<any> //TODO: remove any breaks things
+  | UnionType<{}>
+  | ObjectType<Mutability, {}>
+  | EntityType<Mutability, {}>
+  | ArrayType<Mutability, any>
   | OptionalType<any>
   | NullableType<any>
-  | CustomType<any, {}, any>
-  | (() => ObjectType<any, any>)
-  | (() => UnionType<any>)
-
-/**
- * Utility type to turn any type into a possibly lazy version of itself
- *
- * @example ```ts
- *          function do_something(arg: Lazy<number>) { ... }
- *          do_something(1)         // Since the argument is lazy it can either be a number value
- *          do_something(() => 1)   // or a function that returns a number value
- *          ```
- */
-export type Lazy<T> = T | (() => T)
+  | CustomType
 
 /**
  * A record of {@link Type `Type`s}
@@ -197,6 +188,7 @@ export type OptionsOf<T extends Type>
   : [T] extends [LiteralType<infer L>] ? NonNullable<LiteralType<L>['options']>
   : [T] extends [UnionType<infer Ts>] ? NonNullable<UnionType<Ts>['options']>
   : [T] extends [ObjectType<infer Ts, infer Mutable>] ? NonNullable<ObjectType<Ts, Mutable>['options']>
+  : [T] extends [EntityType<infer Ts, infer Mutable>] ? NonNullable<EntityType<Ts, Mutable>['options']>
   : [T] extends [ArrayType<infer M, infer T1>] ? NonNullable<ArrayType<M, T1>['options']>
   : [T] extends [OptionalType<infer T1>] ? NonNullable<OptionalType<T1>['options']>
   : [T] extends [NullableType<infer T1>] ? NonNullable<NullableType<T1>['options']>
@@ -213,22 +205,6 @@ export enum Mutability {
 }
 
 /**
- * The same as type but doesn't include the lazy type definition: `() => Type`.
- * This type can be useful when you want to make sure that you're working with an actual type
- * and not a lazy definition
- *
- * @example ```ts
- *          const lazyModel = () => types.number().array()
- *          type ModelType = Concrete<typeof lazyModel>
- *          // ModelType = ArrayType<"immutable", NumberType>
- *          ```
- * @see {@link concretise} to turn a possibly-lazy type into a concrete type
- */
-export type Concrete<T extends Type> = [T] extends [() => infer T1 extends Exclude<T, () => any>]
-  ? T1
-  : Exclude<T, () => any>
-
-/**
  * @param type the possibly lazy {@link Type type} to turn into a concrete type
  * @returns a new {@link ConcreteType type} that is guaranteed to not be lazily defined
  * @example if you just work with your own types you will rarely need this function. However,
@@ -240,8 +216,10 @@ export type Concrete<T extends Type> = [T] extends [() => infer T1 extends Exclu
  *          }
  *          ```
  */
-export function concretise<T extends Type>(type: T): Concrete<T> {
-  return typeof type === 'function' ? type() : (type as any)
+export const concretise = memoizeTransformation(concretiseInternal)
+type Concrete<T extends Type> = Exclude<T, () => any>
+function concretiseInternal<T extends Type>(type: T): Concrete<T> {
+  return typeof type === 'function' ? concretise(type() as T) : (type as Concrete<T>)
 }
 
 /**
@@ -684,7 +662,7 @@ export type BooleanTypeOptions = BaseOptions
 /**
  * The model of an enumeration in the Mondrian framework.
  */
-export type EnumType<Vs extends readonly [string, ...string[]]> = {
+export type EnumType<Vs extends readonly [string, ...string[]] = readonly [string, ...string[]]> = {
   readonly kind: Kind.Enum
   readonly variants: Vs
   readonly options?: EnumTypeOptions
@@ -823,7 +801,7 @@ export type EnumTypeOptions = BaseOptions
 /**
  * The model of a literal type in the Mondrian framework.
  */
-export type LiteralType<L extends number | string | boolean | null> = {
+export type LiteralType<L extends number | string | boolean | null = number | string | boolean | null> = {
   readonly kind: Kind.Literal
   readonly literalValue: L
   readonly options?: LiteralTypeOptions
@@ -1368,6 +1346,21 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
   updateOptions(options: EntityTypeOptions): EntityType<M, Ts>
   setName(name: string): EntityType<M, Ts>
   sensitive(): EntityType<M, Ts>
+
+  /**
+   * Gets an {@link gen.Arbitrary Arbitrary} generator that respects the semantic of this type.
+   * @param maxDepth - Controls the maximum depth for value generation.
+   *                   Generation is truncated respecting the type definition when this depth is reached.
+   * @returns an arbitrary generator for this specific type.
+   */
+  arbitrary(maxDepth: number): gen.Arbitrary<InferEntity<M, Ts>>
+  /**
+   * @param args optional arguments:
+   *   - `maxDepth`: controls the maximum depth for this value generation.
+   *   - `seed`: seed for controlling random generation.
+   * @returns a random example value that match this type. Useful for mocking purposes.
+   */
+  example(args?: { maxDepth?: number; seed?: number }): InferEntity<M, Ts>
 }
 
 /**
@@ -1793,7 +1786,7 @@ export type NullableTypeOptions = BaseOptions
 /**
  * The model for a custom-defined type.
  */
-export type CustomType<Name extends string, Options extends Record<string, any>, InferredAs> = {
+export type CustomType<Name extends string = string, Options extends Record<string, any> = {}, InferredAs = unknown> = {
   kind: Kind.Custom
   typeName: Name
   options?: CustomTypeOptions<Options>
@@ -1946,7 +1939,7 @@ export type PartialDeep<T extends Type>
   : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
   : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
   : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>
-  : [T] extends [(() => infer T1 extends ObjectType<any, any>)] ? () => PartialDeep<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? PartialDeep<T1>
   : T
 
 /**
@@ -1960,33 +1953,19 @@ export type PartialDeep<T extends Type>
  *          ```
  */
 export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
-  if (typeof type === 'function') {
-    return (() => partialDeep(type())) as PartialDeep<T>
-  }
-  const concreteType = concretise(type)
-  switch (concreteType.kind) {
-    case Kind.Nullable:
-      return types.nullable(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
-    case Kind.Optional:
-      return types.optional(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
-    case Kind.Array:
-      return types.array(partialDeep(concreteType.wrappedType)) as PartialDeep<T>
-    case Kind.Union:
-      return types.union(
-        mapObject(concreteType.variants as Record<string, Type>, (_, fieldValue) => partialDeep(fieldValue)),
-      ) as PartialDeep<T>
-    case Kind.Object:
-      return types.object(
-        mapObject(concreteType.fields as Types, (_, fieldValue) => types.optional(partialDeep(fieldValue))),
-      ) as PartialDeep<T>
-    case Kind.Entity:
-      return types.entity(
-        mapObject(concreteType.fields as Types, (_, fieldValue) => types.optional(partialDeep(fieldValue))),
-      ) as PartialDeep<T>
-    default:
-      return type as PartialDeep<T>
-  }
+  return partialDeepInternal(type) as PartialDeep<T>
 }
+const partialDeepInternal = memoizeTypeTransformation(
+  matcher({
+    nullable: ({ wrappedType }) => types.nullable(partialDeep(wrappedType)),
+    optional: ({ wrappedType }) => types.optional(partialDeep(wrappedType)),
+    array: ({ wrappedType }) => types.array(partialDeep(wrappedType)),
+    union: ({ variants }) => types.union(mapObject(variants, (_, fieldValue) => partialDeep(fieldValue))),
+    object: ({ fields }) => types.object(mapObject(fields, (_, fieldValue) => types.optional(partialDeep(fieldValue)))),
+    entity: ({ fields }) => types.entity(mapObject(fields, (_, fieldValue) => types.optional(partialDeep(fieldValue)))),
+    otherwise: (_, t) => t,
+  }),
+)
 
 /**
  * TODO: add documentation and tests
@@ -2001,11 +1980,11 @@ export function areEqual(one: Type, other: Type): boolean {
   const type1 = concretise(one)
   const type2 = concretise(other)
 
-  function sameKindAndOptions(one: Concrete<Type>, other: Concrete<Type>): boolean {
+  function sameKindAndOptions(one: ConcreteType, other: ConcreteType): boolean {
     return one.kind === other.kind && one.options === other.options
   }
 
-  function arraysHaveSameElements(array1: any[], array2: any[]): boolean {
+  function arraysHaveSameElements(array1: readonly any[], array2: readonly any[]): boolean {
     return array1.length === array2.length && array1.every((element) => array2.includes(element))
   }
 
@@ -2024,7 +2003,7 @@ export function areEqual(one: Type, other: Type): boolean {
     || type1.kind === Kind.Boolean && sameKindAndOptions(type1, type2)
     || type1.kind === Kind.String && sameKindAndOptions(type1, type2)
     || (type1.kind === Kind.Literal && type1.kind === type2.kind && type1.options === type2.options && type1.literalValue === type2.literalValue)
-    || (type1.kind === Kind.Enum && type1.kind === type2.kind && type1.options === type2.options && arraysHaveSameElements(type1.variants, type2.variants))
+    || (type1.kind === Kind.Enum && type1.kind === type2.kind && type1.options === type2.options && arraysHaveSameElements(type1.variants , type2.variants ))
     || (type1.kind === Kind.Custom && type1.kind === type2.kind && type1.options === type2.options && type1.typeName === type2.typeName)
     || (type1.kind === Kind.Array && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
     || (type1.kind === Kind.Nullable && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
@@ -2080,10 +2059,11 @@ export function assertType<T extends Type>(
 }
 
 function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Array): boolean {
-  const concreteType = concretise(type)
-  const typeKind = concreteType.kind
-  const isWrapperType = 'wrappedType' in concreteType
-  return typeKind === kind || (isWrapperType && typeKind !== Kind.Array && hasWrapper(concreteType.wrappedType, kind))
+  return match(type, {
+    array: (t) => t.kind === kind,
+    wrapper: (t) => t.kind === kind || hasWrapper(t.wrappedType, kind),
+    otherwise: () => false,
+  })
 }
 
 /**
@@ -2108,6 +2088,17 @@ export function isNullable(type: Type): type is NullableType<Type> {
  */
 export function isArray(type: Type): type is ArrayType<Mutability, Type> {
   return hasWrapper(type, Kind.Array)
+}
+
+/**
+ * @param type the type to check
+ * @returns true if the type is an array type
+ */
+export function isNever(type: Type): type is NeverType {
+  return match(type, {
+    custom: ({ typeName }) => typeName === 'never',
+    otherwise: () => false,
+  })
 }
 
 /**
@@ -2137,9 +2128,124 @@ export function unwrap(
  * @param type the type to check
  * @returns false only for {@link ObjectType}, {@link UnionType}, {@link ArrayType}
  */
-export function isScalar(type: Type): boolean {
-  const unwrapped = unwrap(type)
-  const notUnionOrObjectOrEntity =
-    unwrapped.kind !== Kind.Union && unwrapped.kind !== Kind.Object && unwrapped.kind !== Kind.Entity
-  return !isArray(type) && notUnionOrObjectOrEntity
+export const isScalar: (type: Type) => boolean = matcher({
+  scalar: () => true,
+  array: () => false,
+  wrapper: ({ wrappedType }) => isScalar(wrappedType),
+  otherwise: () => false,
+})
+
+//TYPE MATCHER TODO: test, docs, format
+/**
+ * TODO
+ * @param type
+ * @param cases
+ * @returns
+ */
+export function match<const M extends TypeMatch<unknown>>(
+  type: MatcherInputType<M>,
+  cases: M,
+): M extends TypeMatch<infer T> ? T : unknown {
+  const t = types.concretise(type as Type)
+  const potentialHandlers = {
+    [Kind.String]: ['string', 'scalar', 'otherwise'],
+    [Kind.Number]: ['number', 'scalar', 'otherwise'],
+    [Kind.Boolean]: ['boolean', 'scalar', 'otherwise'],
+    [Kind.Literal]: ['literal', 'scalar', 'otherwise'],
+    [Kind.Enum]: ['enum', 'scalar', 'otherwise'],
+    [Kind.Custom]: ['custom', 'scalar', 'otherwise'],
+    [Kind.Object]: ['object', 'otherwise'],
+    [Kind.Entity]: ['entity', 'otherwise'],
+    [Kind.Union]: ['union', 'otherwise'],
+    [Kind.Nullable]: ['nullable', 'wrapper', 'otherwise'],
+    [Kind.Optional]: ['optional', 'wrapper', 'otherwise'],
+    [Kind.Array]: ['array', 'wrapper', 'otherwise'],
+  } as const
+  for (const handlerName of potentialHandlers[t.kind]) {
+    const handler = cases[handlerName]
+    if (handler) {
+      // @ts-ignore
+      return handler(t, type)
+    }
+  }
+  throw failWithInternalError('`types.match` with not exhaustive cases occurs')
 }
+
+/**
+ * TODO
+ * @param cases
+ * @param options
+ * @returns
+ */
+export function matcher<const M extends TypeMatch<unknown>>(
+  cases: M,
+  options?: { memoize?: boolean },
+): (type: MatcherInputType<M>) => M extends TypeMatch<infer T> ? T : unknown {
+  const mapper = (type: Type) => match(type as any, cases)
+  return (options?.memoize ? memoizeTransformation(mapper) : mapper) as any
+}
+
+//Utils types for match and matcher
+type TypeMatch<T> = {
+  [K in keyof MatcherNameToType]?: (type: MatcherNameToType[K][0], originalType: MatcherNameToType[K][1]) => T
+}
+export type Lazy<T> = T | (() => Lazy<T>)
+type MatcherNameToType = {
+  string: [StringType, Lazy<StringType>]
+  number: [NumberType, Lazy<NumberType>]
+  boolean: [BooleanType, Lazy<BooleanType>]
+  literal: [LiteralType, Lazy<LiteralType>]
+  enum: [EnumType, Lazy<EnumType>]
+  custom: [CustomType, Lazy<CustomType>]
+  object: [ObjectType<Mutability, Types>, Lazy<ObjectType<Mutability, Types>>]
+  entity: [EntityType<Mutability, Types>, Lazy<EntityType<Mutability, Types>>]
+  union: [UnionType<Types>, Lazy<UnionType<Types>>]
+  nullable: [NullableType<Type>, Lazy<NullableType<Type>>]
+  optional: [OptionalType<Type>, Lazy<OptionalType<Type>>]
+  array: [ArrayType<Mutability, Type>, Lazy<ArrayType<Mutability, Type>>]
+  wrapper: [
+    OptionalType<Type> | NullableType<Type> | ArrayType<Mutability, Type>,
+    Lazy<OptionalType<Type> | NullableType<Type> | ArrayType<Mutability, Type>>,
+  ]
+  scalar: [
+    StringType | NumberType | BooleanType | LiteralType | EnumType | CustomType,
+    Lazy<StringType | NumberType | BooleanType | LiteralType | EnumType | CustomType>,
+  ]
+  otherwise: [ConcreteType, Type]
+}
+type MatcherNameToTypeName = {
+  string: 'string'
+  number: 'number'
+  boolean: 'boolean'
+  literal: 'literal'
+  enum: 'enum'
+  custom: 'custom'
+  object: 'object'
+  entity: 'entity'
+  union: 'union'
+  nullable: 'nullable'
+  optional: 'optional'
+  array: 'array'
+  wrapper: 'array' | 'optional' | 'nullable'
+  scalar: 'string' | 'number' | 'boolean' | 'literal' | 'enum' | 'custom'
+  otherwise: AllTypeNames
+}
+type AllTypeNames =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'literal'
+  | 'enum'
+  | 'custom'
+  | 'object'
+  | 'entity'
+  | 'union'
+  | 'nullable'
+  | 'optional'
+  | 'array'
+type MatherInputTypeFromKeys<M extends keyof MatcherNameToType> = AllTypeNames extends MatcherNameToTypeName[M]
+  ? Type
+  : MatcherNameToType[M] | (() => MatherInputTypeFromKeys<M>)
+type MatcherInputType<M extends TypeMatch<unknown>> = MatherInputTypeFromKeys<
+  keyof M extends keyof MatcherNameToType ? keyof M : never
+>

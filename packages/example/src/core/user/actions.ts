@@ -3,11 +3,9 @@ import { idType, unauthorizedType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { userType } from './model'
 import advancedTypes from '@mondrian-framework/advanced-types'
-import { projection, result, types } from '@mondrian-framework/model'
+import { result, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { utils as prismaUtils } from '@mondrian-framework/prisma'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
-import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
 const loginInputType = types.object(
@@ -53,7 +51,7 @@ export const login = functions.withContext<Context>().build({
   input: loginInputType,
   output: loginOutputType,
   error: loginErrorType,
-  body: async ({ input, context, projection: proj }) => {
+  body: async ({ input, context, retrieve }) => {
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {
@@ -63,9 +61,7 @@ export const login = functions.withContext<Context>().build({
       where: { id: loggedUser.id },
       data: { metadata: { update: { lastLogin: new Date() } } },
     })
-    const userProjection = projection.subProjection(proj ?? (true as any), ['user'])
-    const select = prismaUtils.projectionToSelection<Prisma.UserSelect>(userType, userProjection)
-    const user = await context.prisma.user.findFirstOrThrow({ where: { id: loggedUser.id }, select })
+    const user = await context.prisma.user.findFirstOrThrow({ where: { id: loggedUser.id } })
     const secret = process.env.JWT_SECRET ?? 'secret'
     const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
     return result.ok({ user, jwt })
@@ -98,8 +94,7 @@ export const register = functions.withContext<Context>().build({
   input: registerInputType,
   output: userType,
   error: registerErrorType,
-  body: async ({ input, context, projection }) => {
-    const select = prismaUtils.projectionToSelection<Prisma.UserSelect>(userType, projection)
+  body: async ({ input, context, retrieve }) => {
     try {
       const user = await context.prisma.user.create({
         data: {
@@ -111,7 +106,6 @@ export const register = functions.withContext<Context>().build({
             },
           },
         },
-        select,
       })
       return result.ok(user)
     } catch {
@@ -126,7 +120,7 @@ export const follow = functions.withContext<LoggedUserContext>().build({
   input: types.object({ userId: idType }),
   output: userType,
   error: types.union({ ...unauthorizedType.variants, userNotExists: types.string() }),
-  body: async ({ input, context, projection }) => {
+  body: async ({ input, context }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' as const })
     }
@@ -146,8 +140,7 @@ export const follow = functions.withContext<LoggedUserContext>().build({
       },
       update: {},
     })
-    const select = prismaUtils.projectionToSelection<Prisma.UserSelect>(userType, projection)
-    const user = await context.prisma.user.findFirstOrThrow({ where: { id: context.userId }, select })
+    const user = await context.prisma.user.findFirstOrThrow({ where: { id: context.userId } })
     return result.ok(user)
   },
   options: { namespace: 'user' },

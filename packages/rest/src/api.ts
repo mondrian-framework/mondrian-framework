@@ -1,4 +1,4 @@
-import { types } from '@mondrian-framework/model'
+import { retrieve, types } from '@mondrian-framework/model'
 import { functions, logger } from '@mondrian-framework/module'
 import { OpenAPIV3_1 } from 'openapi-types'
 
@@ -37,8 +37,8 @@ export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
     context: unknown
     operationId: string
     functionArgs: {
-      projection: unknown
-      input: unknown
+      retrieve?: retrieve.GenericRetrieve
+      input?: unknown
     }
   } & RestContext,
 ) => Promise<Response | void>

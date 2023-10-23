@@ -92,13 +92,13 @@ export function build<const Fs extends functions.Functions, CI>({
         const contextInput = await context({ context: fContext, event, recordIndex: i })
         const ctx = await module.context(contextInput, {
           input: decoded.value,
-          projection: undefined,
+          retrieve: undefined,
           operationId,
           logger: operationLogger,
         })
         await functionBody.apply({
           input: decoded.value as never,
-          projection: undefined,
+          retrieve: undefined,
           operationId,
           context: ctx,
           logger: operationLogger,

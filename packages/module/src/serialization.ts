@@ -170,9 +170,16 @@ function serializeType(
       return {
         object: {
           type: 'object',
-          fields: mapObject(concreteType.fields, (_, field: types.Field) =>
-            'virtual' in field ? { type: resolve(field.virtual), virtual: true } : { type: resolve(field) },
-          ),
+          fields: mapObject(concreteType.fields, (_, field: types.Type) => resolve(field)),
+          options: concreteType.options,
+          lazy: typeof type === 'function' ? true : undefined,
+        },
+      }
+    case types.Kind.Entity:
+      return {
+        entity: {
+          type: 'entity',
+          fields: mapObject(concreteType.fields, (_, field: types.Type) => resolve(field)),
           options: concreteType.options,
           lazy: typeof type === 'function' ? true : undefined,
         },
@@ -296,7 +303,13 @@ const optionalTypeSchema = types.object({
 })
 const objectTypeSchema = types.object({
   type: types.literal('object'),
-  fields: types.record(types.object({ type: types.string(), virtual: types.boolean().optional() })),
+  fields: types.record(types.string()),
+  lazy: types.boolean().optional(),
+  options: types.object(baseOptionsFields).optional(),
+})
+const entityTypeSchema = types.object({
+  type: types.literal('entity'),
+  fields: types.record(types.string()),
   lazy: types.boolean().optional(),
   options: types.object(baseOptionsFields).optional(),
 })
@@ -332,6 +345,7 @@ const typeSchema = types
       nullable: nullableTypeSchema,
       optional: optionalTypeSchema,
       object: objectTypeSchema,
+      entity: entityTypeSchema,
       union: unionTypeSchema,
       custom: customTypeSchema,
     },

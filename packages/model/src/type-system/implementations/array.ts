@@ -170,6 +170,9 @@ function objectToArray(object: Object): decoding.Result<any[]> {
  */
 function keysAsConsecutiveNumbers(object: Object): number[] | undefined {
   const keys = Object.keys(object).map(Number).sort()
+  if (keys.length === 0) {
+    return []
+  }
   const startsAtZero = keys.at(0) === 0
   return startsAtZero && allConsecutive(keys) ? keys : undefined
 }

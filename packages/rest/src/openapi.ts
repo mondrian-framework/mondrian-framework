@@ -1,6 +1,6 @@
 import { Api, FunctionSpecifications, Request } from './api'
-import { decodeQueryObject, encodeQueryObject } from './utils'
-import { types } from '@mondrian-framework/model'
+import { completeRetrieve, decodeQueryObject, encodeQueryObject } from './utils'
+import { retrieve, types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
@@ -127,6 +127,39 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
   }
 }
 
+export function generateInputType(functionBody: functions.FunctionInterface): types.Type {
+  const retrieveType = retrieve.fromType(functionBody.output)
+  return retrieveType.isOk && !types.isNever(functionBody.input)
+    ? types.object({
+        retrieve: types.optional(retrieveType.value),
+        input: functionBody.input,
+      })
+    : retrieveType.isOk
+    ? types.optional(retrieveType.value)
+    : functionBody.input
+}
+
+export function splitInputAndRetrieve(
+  decoded: unknown,
+  functionBody: functions.FunctionInterface,
+): { input?: unknown; retrieve?: retrieve.GenericRetrieve } {
+  const retrieveType = retrieve.fromType(functionBody.output)
+  return retrieveType.isOk && !types.isNever(functionBody.input)
+    ? {
+        retrieve: completeRetrieve((decoded as { retrieve: retrieve.GenericRetrieve }).retrieve, functionBody.output),
+        input: (decoded as any).input,
+      }
+    : retrieveType.isOk
+    ? {
+        retrieve: completeRetrieve(decoded as retrieve.GenericRetrieve, functionBody.output),
+        input: undefined,
+      }
+    : {
+        input: decoded,
+        retrieve: undefined,
+      }
+}
+
 export function generateOpenapiInput({
   specification,
   functionBody,
@@ -166,12 +199,13 @@ export function generateOpenapiInput({
   const parametersInPath = specification.path
     ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
     : []
-  const inputType = types.concretise(functionBody.input)
-  const isScalar = types.isScalar(inputType)
-  const isArray = types.isArray(inputType)
-  const isRequired = isInputRequired(inputType)
-  const t = types.unwrap(inputType)
-  if (t.kind === types.Kind.Object) {
+  const inputType = generateInputType(functionBody)
+  const concreteInputType = types.concretise(inputType)
+  const isScalar = types.isScalar(concreteInputType)
+  const isArray = types.isArray(concreteInputType)
+  const isRequired = isInputRequired(concreteInputType)
+  const t = types.unwrap(concreteInputType)
+  if (t.kind === types.Kind.Object || t.kind === types.Kind.Entity) {
     for (const p of parametersInPath) {
       if (!t.fields[p] || !types.isScalar(t.fields[p]) || !isInputRequired(t.fields[p])) {
         throw new Error(
@@ -191,14 +225,14 @@ export function generateOpenapiInput({
     )
   }
   if (isScalar && parametersInPath.length === 1) {
-    const { schema } = typeToSchemaObject(inputType, typeMap, typeRef, true)
+    const { schema } = typeToSchemaObject(concreteInputType, typeMap, typeRef, true)
     return {
       parameters: [{ in: 'path', name: parametersInPath[0], schema: schema as any, required: true }],
       input: (request) => {
         return request.params[parametersInPath[0]]
       },
       request: (input) => {
-        const encoded = inputType.encodeWithoutValidation(input)
+        const encoded = concreteInputType.encodeWithoutValidation(input)
         return { params: { [parametersInPath[0]]: `${encoded}` } }
       },
     }
@@ -207,7 +241,7 @@ export function generateOpenapiInput({
     if (t.kind === types.Kind.Object) {
       const parameters = generatePathParameters({ parameters: parametersInPath, type: t, typeMap, typeRef })
       for (const [key, subtype] of Object.entries(t.fields)
-        .map(([k, v]) => [k, types.unwrapField(v)] as const)
+        .map(([k, v]) => [k, v] as const)
         .filter(([k, _]) => !parametersInPath.includes(k))) {
         const { schema } = typeToSchemaObject(subtype, typeMap, typeRef, true)
         parameters.push({
@@ -241,7 +275,7 @@ export function generateOpenapiInput({
             Object.entries(t.fields)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
-                const fieldType = types.concretise(types.unwrapField(field))
+                const fieldType = types.concretise(field)
                 const encoded = fieldType.encodeWithoutValidation(input[fieldName])
                 return [fieldName, `${encoded}`] as const
               }),
@@ -249,7 +283,7 @@ export function generateOpenapiInput({
           const queries = Object.entries(t.fields)
             .filter(([fieldName]) => !parametersInPath.includes(fieldName))
             .map(([fieldName, field]) => {
-              const fieldType = types.concretise(types.unwrapField(field))
+              const fieldType = types.concretise(field)
               const encoded = fieldType.encodeWithoutValidation(input[fieldName])
               if (types.isScalar(field)) {
                 return [fieldName, encoded]
@@ -262,7 +296,7 @@ export function generateOpenapiInput({
       }
     }
     if (parametersInPath.length === 0) {
-      const { schema } = typeToSchemaObject(inputType, typeMap, typeRef, true)
+      const { schema } = typeToSchemaObject(concreteInputType, typeMap, typeRef, true)
       return {
         parameters: [
           {
@@ -276,7 +310,7 @@ export function generateOpenapiInput({
         ],
         input: (request: Request) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
         request: (input) => {
-          const encoded = inputType.encodeWithoutValidation(input)
+          const encoded = concreteInputType.encodeWithoutValidation(input)
           const query = encodeQueryObject(encoded, specification.inputName ?? 'input')
           return { query }
         },
@@ -284,7 +318,7 @@ export function generateOpenapiInput({
     }
   } else {
     //BODY CAN EXIST
-    const { schema } = typeToSchemaObject(inputType, typeMap, typeRef)
+    const { schema } = typeToSchemaObject(concreteInputType, typeMap, typeRef)
     if (parametersInPath.length === 0) {
       return {
         requestBody: {
@@ -296,12 +330,12 @@ export function generateOpenapiInput({
         },
         input: (request) => request.body,
         request: (input) => {
-          const body = inputType.encodeWithoutValidation(input)
+          const body = concreteInputType.encodeWithoutValidation(input)
           return { body }
         },
       }
     }
-    if (t.kind === types.Kind.Object) {
+    if (t.kind === types.Kind.Object || t.kind === types.Kind.Entity) {
       const parameters = generatePathParameters({ parameters: parametersInPath, type: t, typeMap, typeRef })
       const remainingFields = Object.entries(t.fields).filter((v) => !parametersInPath.includes(v[0]))
       const remainingObject = types.object(Object.fromEntries(remainingFields))
@@ -321,7 +355,7 @@ export function generateOpenapiInput({
             Object.entries(t.fields)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
-                const fieldType = types.concretise(types.unwrapField(field))
+                const fieldType = types.concretise(field)
                 const encoded = fieldType.encodeWithoutValidation(input[fieldName])
                 return [fieldName, `${encoded}`] as const
               }),
@@ -335,9 +369,8 @@ export function generateOpenapiInput({
   throw new Error(`Error while generating openapi input type. Not supported. Path ${specification.path}`)
 }
 
-function isInputRequired(type: types.Type | types.Field): boolean {
-  const t = types.unwrapField(type)
-  return !types.isNullable(t) && !types.isOptional(t)
+function isInputRequired(type: types.Type): boolean {
+  return !types.isNullable(type) && !types.isOptional(type)
 }
 function generatePathParameters({
   parameters,
@@ -346,7 +379,7 @@ function generatePathParameters({
   typeRef,
 }: {
   parameters: string[]
-  type: types.ObjectType<any, any>
+  type: types.ObjectType<any, any> | types.EntityType<any, any>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): OpenAPIV3_1.ParameterObject[] {
@@ -436,7 +469,7 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
       if (specification.version?.max != null && version > specification.version.max) {
         continue
       }
-      usedTypes.push(functionBody.input)
+      usedTypes.push(generateInputType(functionBody))
       usedTypes.push(functionBody.output)
     }
   }
@@ -464,7 +497,7 @@ function typeToSchemaObject(
     if (alreadyConvertedTypeName) {
       return { name: alreadyConvertedTypeName, schema: { $ref: `#/components/schemas/${alreadyConvertedTypeName}` } }
     }
-    lazyTypeName = type().options?.name ?? `ANONYMOUS_TYPE_${typeRef.size}`
+    lazyTypeName = types.concretise(type()).options?.name ?? `ANONYMOUS_TYPE_${typeRef.size}`
     typeRef.set(type, lazyTypeName)
   }
   const { name, schema } = typeToSchemaObjectInternal(type, lazyTypeName, typeMap, typeRef, ignoreFirstLevelOptionality)
@@ -568,11 +601,12 @@ function typeToSchemaObjectInternal(
     }
     return { name, schema: { anyOf: [schema, { const: null }], description } }
   }
-  if (type.kind === types.Kind.Object) {
-    const fields = Object.entries(type.fields as types.Fields).map(([fieldName, field]) => {
-      const fieldType = types.unwrapField(field)
+  if (type.kind === types.Kind.Object || type.kind === types.Kind.Entity) {
+    const fields = Object.entries(type.fields as types.Types).map(([fieldName, fieldType]) => {
       const { schema } = typeToSchemaObject(
-        'virtual' in field ? types.optional(fieldType) : fieldType,
+        types.unwrap(fieldType).kind === types.Kind.Entity && !types.isOptional(fieldType)
+          ? types.optional(fieldType)
+          : fieldType,
         typeMap,
         typeRef,
       )
@@ -605,7 +639,7 @@ function typeToSchemaObjectInternal(
       name,
       schema: {
         type: 'string',
-        enum: type.variants,
+        enum: type.variants as unknown as string[],
         description,
       } as const,
     }

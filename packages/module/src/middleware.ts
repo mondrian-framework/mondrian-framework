@@ -1,5 +1,5 @@
 import { functions } from '.'
-import { ErrorType } from './function'
+import { ErrorType, OutputRetrieveCapabilities } from './function'
 import { retrieve, types } from '@mondrian-framework/model'
 import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
@@ -8,7 +8,9 @@ import { SeverityNumber } from '@opentelemetry/api-logs'
  * This middleware checks if the requested projection does not exceed the maximum given depth.
  * @param maxDepth the maximum depth.
  */
-export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<types.Type, types.Type, ErrorType, {}> {
+export function checkMaxProjectionDepth(
+  maxDepth: number,
+): functions.Middleware<types.Type, types.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check max projection depth',
     apply: (args, next) => {
@@ -38,7 +40,7 @@ export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<
  */
 export function checkOutputType(
   onFailure: 'log' | 'throw',
-): functions.Middleware<types.Type, types.Type, ErrorType, {}> {
+): functions.Middleware<types.Type, types.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {

@@ -130,7 +130,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
 }
 
 export function generateInputType(functionBody: functions.FunctionInterface): types.Type {
-  const retrieveType = retrieve.fromType(functionBody.output)
+  const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   return retrieveType.isOk && !types.isNever(functionBody.input)
     ? types.object({
         retrieve: types.optional(retrieveType.value),
@@ -145,7 +145,7 @@ export function splitInputAndRetrieve(
   decoded: unknown,
   functionBody: functions.FunctionInterface,
 ): { input?: unknown; retrieve?: retrieve.GenericRetrieve } {
-  const retrieveType = retrieve.fromType(functionBody.output)
+  const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   return retrieveType.isOk && !types.isNever(functionBody.input)
     ? {
         retrieve: completeRetrieve((decoded as { retrieve: retrieve.GenericRetrieve }).retrieve, functionBody.output),

@@ -17,7 +17,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }: {
   functionName: string
   module: module.Module<Fs, ContextInput>
-  functionBody: functions.FunctionImplementation<types.Type, types.Type, functions.ErrorType, Record<string, unknown>>
+  functionBody: functions.FunctionImplementation
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   globalMaxVersion: number
@@ -160,7 +160,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
 function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionImplementation<types.Type, types.Type, functions.ErrorType, Record<string, unknown>>
+  functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }
@@ -194,7 +194,7 @@ function checkVersionBounds(
 
 function parseVersion(rawVersion: string): result.Result<number, string> {
   const isValidVersion = /^v?\d+$/.test(rawVersion)
-  return isValidVersion ? result.ok(Number(rawVersion)) : result.fail(`invalid version: ${rawVersion}`)
+  return isValidVersion ? result.ok(Number(rawVersion.replace('v', ''))) : result.fail(`invalid version: ${rawVersion}`)
 }
 
 function toHttpError(

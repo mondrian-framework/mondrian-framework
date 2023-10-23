@@ -1,5 +1,5 @@
 import { functions, logger } from '.'
-import { ErrorType } from './function'
+import { ErrorType, OutputRetrieveCapabilities } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
@@ -132,7 +132,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const func: functions.FunctionImplementation<types.Type, types.Type, ErrorType, {}> = {
+      const func: functions.FunctionImplementation = {
         ...functionBody,
         middlewares: [
           ...maxProjectionDepthMiddleware,
@@ -145,8 +145,13 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
         const counter = myMeter.createCounter('task.invocation')
-        const wrappedFunction: functions.FunctionImplementation<types.Type, types.Type, ErrorType, {}> =
-          new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
+        const wrappedFunction: functions.FunctionImplementation<
+          types.Type,
+          types.Type,
+          ErrorType,
+          OutputRetrieveCapabilities,
+          {}
+        > = new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
         return [functionName, wrappedFunction]
       } else {
         return [functionName, new BaseFunction(func)]

@@ -82,34 +82,22 @@ function typeToGraphQLTypeInternal(type: types.Type, internalData: InternalData)
     // by the inner functions! This is unavoidable since this kind of caching is
     // only used by this top level function and the other inner functions should
     // not be aware of that.
-    let graphQLType = undefined
-    const concreteType = types.concretise(type)
-    if (concreteType.kind === types.Kind.Number) {
-      graphQLType = scalarOrDefault(concreteType, GraphQLInt, defaultName)
-    } else if (concreteType.kind === types.Kind.String) {
-      graphQLType = scalarOrDefault(concreteType, GraphQLString, defaultName)
-    } else if (concreteType.kind === types.Kind.Boolean) {
-      graphQLType = scalarOrDefault(concreteType, GraphQLBoolean, defaultName)
-    } else if (concreteType.kind === types.Kind.Enum) {
-      graphQLType = enumToGraphQLType(concreteType, defaultName)
-    } else if (concreteType.kind === types.Kind.Literal) {
-      graphQLType = literalToGraphQLType(concreteType, defaultName)
-    } else if (concreteType.kind === types.Kind.Union) {
-      graphQLType = unionToGraphQLType(concreteType, internalData)
-    } else if (concreteType.kind === types.Kind.Object) {
-      graphQLType = objectToGraphQLType(concreteType, internalData)
-    } else if (concreteType.kind === types.Kind.Entity) {
-      throw new Error('Not implemented') //TODO
-    } else if (concreteType.kind === types.Kind.Array) {
-      graphQLType = arrayToGraphQLType(concreteType, internalData)
-    } else if (concreteType.kind === types.Kind.Optional || concreteType.kind === types.Kind.Nullable) {
-      const type = typeToGraphQLTypeInternal(concreteType.wrappedType, internalData)
-      graphQLType = getNullableType(type)
-    } else if (concreteType.kind === types.Kind.Custom) {
-      graphQLType = customTypeToGraphQLType(concreteType, internalData)
-    } else {
-      assertNever(concreteType)
-    }
+    const graphQLType = types.match(type, {
+      number: (concreteType) => scalarOrDefault(concreteType, GraphQLInt, defaultName),
+      string: (concreteType) => scalarOrDefault(concreteType, GraphQLString, defaultName),
+      boolean: (concreteType) => scalarOrDefault(concreteType, GraphQLBoolean, defaultName),
+      enum: (concreteType) => enumToGraphQLType(concreteType, defaultName),
+      literal: (concreteType) => literalToGraphQLType(concreteType, defaultName),
+      union: (concreteType) => unionToGraphQLType(concreteType, internalData),
+      object: (concreteType) => objectToGraphQLType(concreteType, internalData),
+      entity: (concreteType) => entityToGraphQLType(concreteType, internalData),
+      array: (concreteType) => arrayToGraphQLType(concreteType, internalData),
+      custom: (concreteType) => customTypeToGraphQLType(concreteType, internalData),
+      wrapper: (concreteType) => {
+        const type = typeToGraphQLTypeInternal(concreteType.wrappedType, internalData)
+        return getNullableType(type)
+      },
+    })
     // Add the generated type to the map of explored types to make the invariant
     // valid once again
     knownTypes.set(type, graphQLType)
@@ -192,6 +180,16 @@ function arrayToGraphQLType(
 
 function objectToGraphQLType(
   object: types.ObjectType<any, types.Types>,
+  internalData: InternalData,
+): GraphQLObjectType {
+  const { defaultName } = internalData
+  const objectName = generateName(object, defaultName)
+  const fields = () => mapObject(object.fields, typeToGraphQLObjectField(internalData, objectName))
+  return new GraphQLObjectType({ name: objectName, fields })
+}
+
+function entityToGraphQLType(
+  object: types.EntityType<any, types.Types>,
   internalData: InternalData,
 ): GraphQLObjectType {
   const { defaultName } = internalData

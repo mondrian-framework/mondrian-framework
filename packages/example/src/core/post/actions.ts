@@ -13,6 +13,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
   input: writePostInput,
   output: postType,
   error: unauthorizedType,
+  retrieve: undefined,
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' as const })
@@ -33,6 +34,7 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
   input: types.never(),
   output: types.array(postType),
   error: undefined,
+  retrieve: {},
   body: async ({ context, retrieve: thisRetrieve }) => {
     const baseFilter: Prisma.PostWhereInput = {
       OR: [
@@ -45,7 +47,6 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
           : []),
       ],
     }
-    context.prisma.post.findFirst({})
     const args = retrieve.merge<Prisma.PostFindManyArgs>(types.array(postType), { where: baseFilter }, thisRetrieve)
     const posts = await context.prisma.post.findMany(args)
     return posts
@@ -58,6 +59,10 @@ export const likePost = functions.withContext<LoggedUserContext>().build({
   input: likePostInput,
   output: postType,
   error: types.union({ ...unauthorizedType.variants, postNotFound: idType }, { name: 'LikePostError' }),
+  retrieve: {
+    queryable: true,
+    orderable: true,
+  },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' as const })

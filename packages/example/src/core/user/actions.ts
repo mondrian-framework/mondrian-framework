@@ -36,6 +36,7 @@ const loginRateLimiter = rateLimiter.build<
   typeof loginInputType,
   typeof loginOutputType,
   typeof loginErrorType,
+  undefined,
   Context
 >({
   key: ({ input }) => input.email,
@@ -51,6 +52,7 @@ export const login = functions.withContext<Context>().build({
   input: loginInputType,
   output: loginOutputType,
   error: loginErrorType,
+  retrieve: undefined,
   body: async ({ input, context, retrieve }) => {
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
@@ -94,6 +96,7 @@ export const register = functions.withContext<Context>().build({
   input: registerInputType,
   output: userType,
   error: registerErrorType,
+  retrieve: undefined,
   body: async ({ input, context, retrieve }) => {
     try {
       const user = await context.prisma.user.create({
@@ -120,6 +123,7 @@ export const follow = functions.withContext<LoggedUserContext>().build({
   input: types.object({ userId: idType }),
   output: userType,
   error: types.union({ ...unauthorizedType.variants, userNotExists: types.string() }),
+  retrieve: undefined,
   body: async ({ input, context }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' as const })

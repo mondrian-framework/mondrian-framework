@@ -1,2 +1,2 @@
-export { fromModule } from './graphql'
+export * from './graphql'
 export * from './api'

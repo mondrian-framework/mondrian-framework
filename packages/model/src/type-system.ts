@@ -48,6 +48,9 @@ export type ConcreteType =
   | NullableType<any>
   | CustomType
 
+export type Lazy<T extends ConcreteType> = T | (() => Lazy<T>)
+
+export type Concrete<T extends Type> = Exclude<T, () => any>
 /**
  * A record of {@link Type `Type`s}
  */
@@ -217,7 +220,6 @@ export enum Mutability {
  *          ```
  */
 export const concretise = memoizeTransformation(concretiseInternal)
-type Concrete<T extends Type> = Exclude<T, () => any>
 function concretiseInternal<T extends Type>(type: T): Concrete<T> {
   return typeof type === 'function' ? concretise(type() as T) : (type as Concrete<T>)
 }
@@ -1510,7 +1512,9 @@ export type ArrayType<M extends Mutability, T extends Type> = {
 }
 
 /**
- * The options that can be used to define an {@link ArrayType `ArrayType`}.
+ * The options that can be used to define an {@link ArrayType `ArrayType`}:
+ * - `maxItems` is the meximum number of items (inclusive) an array can hold
+ * - `minItems` is the minimum number of items (inclusive) an array can hold
  */
 export type ArrayTypeOptions = BaseOptions & {
   readonly maxItems?: number
@@ -2189,7 +2193,7 @@ export function matcher<const M extends TypeMatch<unknown>>(
 type TypeMatch<T> = {
   [K in keyof MatcherNameToType]?: (type: MatcherNameToType[K][0], originalType: MatcherNameToType[K][1]) => T
 }
-export type Lazy<T> = T | (() => Lazy<T>)
+
 type MatcherNameToType = {
   string: [StringType, Lazy<StringType>]
   number: [NumberType, Lazy<NumberType>]

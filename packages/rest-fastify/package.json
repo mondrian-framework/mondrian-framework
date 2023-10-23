@@ -12,7 +12,7 @@
   },
   "keywords": [],
   "dependencies": {
-    "fastify": "4.24.1",
+    "fastify": "4.24.2",
     "@fastify/static": "6.11.2",
     "swagger-ui-dist": "^5.9.0"
   },

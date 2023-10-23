@@ -12,13 +12,13 @@ export function start<const Fs extends functions.Functions, const ContextInput>(
   server,
   api,
   context,
-  error,
+  errorHandler,
 }: {
   module: module.Module<Fs, ContextInput>
   api: graphql.Api<Fs>
   server: FastifyInstance
   context: (serve: Context, info: GraphQLResolveInfo) => Promise<ContextInput>
-  error?: graphql.ErrorHandler<Fs, Context>
+  errorHandler?: graphql.ErrorHandler<Fs, Context>
 }): void {
   const schema = graphql.fromModule({
     module,
@@ -27,7 +27,7 @@ export function start<const Fs extends functions.Functions, const ContextInput>(
     setHeader: (ctx, name, value) => {
       ctx.fastify.reply.header(name, value)
     },
-    error,
+    errorHandler,
   })
   const disableIntrospection: Plugin = {
     onValidate({ addValidationRule }) {

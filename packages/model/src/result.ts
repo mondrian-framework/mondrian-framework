@@ -282,3 +282,19 @@ export function tryEachFailFast<A, R, R1, E>(
   }
   return ok(valuesAccumulator)
 }
+
+/**
+ * @param value the value you want to check if is a result or not
+ * @returns Returns true if the given unknown value is actually a result
+ */
+export function isResult(value: unknown): value is Result<unknown, unknown> {
+  return value instanceof OkImpl || value instanceof FailureImpl
+}
+
+export function isOkResult(value: unknown): value is Ok<unknown, unknown> {
+  return isResult(value) && value.isOk
+}
+
+export function isFailureResult(value: unknown): value is Failure<unknown, unknown> {
+  return isResult(value) && !value.isOk
+}

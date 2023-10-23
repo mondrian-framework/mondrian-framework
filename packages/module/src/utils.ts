@@ -11,14 +11,27 @@ export function randomOperationId() {
   return crypto.randomUUID()
 }
 
+/**
+ * Return a set with all the unique types referenced by the given type.
+ *
+ * @example For example if the given type is an object the resulting set will
+ *          contain not only the object type itself, but also the types of its
+ *          fields
+ */
 export function uniqueTypes(from: types.Type): Set<types.Type> {
   return gatherUniqueTypes(new Set(), from)
 }
 
+/**
+ * Retruns a set with all the unique types referenced by the given list of types.
+ */
 export function allUniqueTypes(from: types.Type[]): Set<types.Type> {
   return from.reduce(gatherUniqueTypes, new Set())
 }
 
+// Returns a set of unique types referenced by the given type. The first argument
+// is a set that contains the types that have already been inspected and is updated
+// _in place_!
 function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): Set<types.Type> {
   if (inspectedTypes.has(type)) {
     return inspectedTypes

@@ -1,7 +1,7 @@
 import { functions, logger } from '@mondrian-framework/module'
 import { GraphQLErrorOptions } from 'graphql'
 
-type FunctionSpecifications = {
+export type FunctionSpecifications = {
   type: 'query' | 'mutation'
   name?: string
   inputName?: string
@@ -26,7 +26,7 @@ export type ErrorHandler<F extends functions.Functions, ContextInput> = (
     context: unknown
     operationId: string
     functionArgs: {
-      projection: unknown
+      retrieve: unknown
       input: unknown
     }
   } & ContextInput,

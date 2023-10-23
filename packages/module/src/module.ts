@@ -72,10 +72,22 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
 >
 
 /**
- * Checks for name collisions.
+ * TODO: understand if this is needed
+ */
+type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
+
+/**
+ * Checks for name collisions in the types that appear in the given function's signature.
+ * If there's at least two different types sharing the same name, this function will throw
+ * an error.
  */
 function assertUniqueNames(functions: functions.FunctionsInterfaces) {
-  const allTypes = allUniqueTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
+  const functionTypes = Object.values(functions).flatMap((f) => {
+    const hasError = f.error !== undefined
+    return hasError ? [f.input, f.output, f.error] : [f.input, f.output]
+  })
+
+  const allTypes = allUniqueTypes(functionTypes)
   const allNames = [...allTypes.values()]
     .map((t) => types.concretise(t).options?.name)
     .filter((name) => name !== undefined)
@@ -120,7 +132,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const func: functions.FunctionImplementation = {
+      const func: functions.FunctionImplementation<types.Type, types.Type, ErrorType, {}> = {
         ...functionBody,
         middlewares: [
           ...maxProjectionDepthMiddleware,

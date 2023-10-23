@@ -192,6 +192,11 @@ export function always<A>(value: A): (_: any) => A {
   return (_) => value
 }
 
+/**
+ * @param values an array of values to count
+ * @returns a map with a key for each element and the number of its occurrences
+ *          in the array as the associated value
+ */
 export function count<A>(values: A[]): Map<A, number> {
   return values.reduce(increaseCount, new Map<A, number>())
 }
@@ -242,4 +247,21 @@ export function areJsonsEquals(left: JSONType, right: JSONType): boolean {
     }
   }
   return false
+}
+
+/**
+ * @param word
+ * @returns a new string where the first letter is a capital letter
+ */
+export function capitalise(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1)
+}
+
+/**
+ * @param text the text to turn into camel case
+ * @returns a new string where each space has been removed and all words
+ *          have been capitalised
+ */
+export function toCamelCase(text: string): string {
+  return text.split(/\s+/).map(capitalise).join('')
 }

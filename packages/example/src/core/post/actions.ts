@@ -32,7 +32,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
 export const readPosts = functions.withContext<LoggedUserContext>().build({
   input: types.never(),
   output: types.array(postType),
-  error: types.never(),
+  error: undefined,
   body: async ({ context, retrieve: thisRetrieve }) => {
     const baseFilter: Prisma.PostWhereInput = {
       OR: [
@@ -48,7 +48,7 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
     context.prisma.post.findFirst({})
     const args = retrieve.merge<Prisma.PostFindManyArgs>(types.array(postType), { where: baseFilter }, thisRetrieve)
     const posts = await context.prisma.post.findMany(args)
-    return result.ok(posts)
+    return posts
   },
   options: { namespace: 'post' },
 })

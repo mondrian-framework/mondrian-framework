@@ -37,20 +37,22 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
         typeRef,
       })
       const { schema } = typeToSchemaObject(functionBody.output, typeMap, typeRef)
-      const errorType = types.concretise(functionBody.error)
       const errorMap: Record<string, (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject)[]> = {}
-      const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
-      if (errorType.kind === types.Kind.Union) {
-        for (const [variantName, variantType] of Object.entries(errorType.variants)) {
-          const code = (errorCodes[variantName] ?? 400).toString()
-          const ts = errorMap[code] ?? []
-          const { schema } = typeToSchemaObject(
-            types.object({ [variantName]: variantType as types.Type }),
-            typeMap,
-            typeRef,
-          )
-          ts.push(schema)
-          errorMap[code] = ts
+      if (functionBody.error) {
+        const errorType = types.concretise(functionBody.error)
+        const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
+        if (errorType.kind === types.Kind.Union) {
+          for (const [variantName, variantType] of Object.entries(errorType.variants)) {
+            const code = (errorCodes[variantName] ?? 400).toString()
+            const ts = errorMap[code] ?? []
+            const { schema } = typeToSchemaObject(
+              types.object({ [variantName]: variantType as types.Type }),
+              typeMap,
+              typeRef,
+            )
+            ts.push(schema)
+            errorMap[code] = ts
+          }
         }
       }
       const errorSchemas = Object.fromEntries(
@@ -167,7 +169,7 @@ export function generateOpenapiInput({
   typeRef,
 }: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionInterface
+  functionBody: functions.FunctionInterface<types.Type, types.Type, functions.ErrorType>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): {

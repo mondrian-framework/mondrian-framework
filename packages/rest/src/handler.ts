@@ -1,5 +1,6 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateInputType, generateOpenapiInput, splitInputAndRetrieve } from './openapi'
+import { completeRetrieve } from './utils'
 import { result, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
@@ -16,7 +17,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }: {
   functionName: string
   module: module.Module<Fs, ContextInput>
-  functionBody: functions.FunctionImplementation
+  functionBody: functions.FunctionImplementation<types.Type, types.Type, functions.ErrorType, Record<string, unknown>>
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   globalMaxVersion: number
@@ -48,12 +49,13 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     const responseHeaders = { 'operation-id': operationId }
 
     //Check version
-    const version = checkVersion({ request, minVersion, maxVersion })
+    const version = checkVersion(request, minVersion, maxVersion)
     if (!version.isOk) {
       operationLogger.logError('Bad request. (version)')
       endSpanWithError({ span, failure: version })
       return addHeadersToResponse(version.error, responseHeaders)
     }
+    span?.addEvent('Version checked')
 
     //Decode input
     const rawInput = getInputFromRequest(request)
@@ -63,40 +65,50 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
       endSpanWithError({ span, failure: decoded })
       return addHeadersToResponse(decoded.error, responseHeaders)
     }
-    span?.addEvent('Input decoded')
-
     //Split retrieve and input
     const { input, retrieve } = splitInputAndRetrieve(decoded.value, functionBody)
+    const completedRetrieve = retrieve ? completeRetrieve(retrieve, functionBody.output) : undefined
+    span?.addEvent('Input decoded')
 
     let moduleContext
     try {
       const contextInput = await context(serverContext)
       moduleContext = await module.context(contextInput, {
-        retrieve,
+        retrieve: completedRetrieve,
         input,
         operationId,
         logger: operationLogger,
       })
-      const result = await functionBody.apply({
-        retrieve: retrieve,
+      const res = (await functionBody.apply({
+        retrieve: completedRetrieve,
         input: input as never,
         context: moduleContext as Record<string, unknown>,
         operationId,
         logger: operationLogger,
-      })
-      if (result.isOk) {
-        const encoded = partialOutputType.encodeWithoutValidation(result.value)
+      })) as any
+
+      if (result.isResult(res) && !res.isOk) {
+        const codes = (specification.errorCodes ?? {}) as Record<string, number>
+        const key = res.error ? Object.keys(res.error)[0] : undefined
+        const status = key ? codes[key] ?? 400 : 400
+        if (functionBody.error) {
+          const encoded = functionBody.error.encodeWithoutValidation(res.error as any)
+          const response: Response = { status, body: encoded, headers: responseHeaders }
+          operationLogger.logInfo('Completed with error.')
+          endSpanWithResponse({ span, response })
+          return response
+        } else {
+          const reason =
+            "Function failed with an error but it explicitly stated it couldn't fail since its error field is undefined"
+          const failure = result.fail({ status: 500, body: { reason } })
+          endSpanWithError({ span, failure })
+          return addHeadersToResponse(failure.error, responseHeaders)
+        }
+      } else {
+        let value = result.isResult(res) && res.isOk ? res.value : res
+        const encoded = partialOutputType.encodeWithoutValidation(value as never)
         const response: Response = { status: 200, body: encoded, headers: responseHeaders }
         operationLogger.logInfo('Completed.')
-        endSpanWithResponse({ span, response })
-        return response
-      } else {
-        const codes = (specification.errorCodes ?? {}) as Record<string, number>
-        const key = Object.keys(result.error)[0]
-        const status = codes[key] ?? 400
-        const encoded = functionBody.error.encodeWithoutValidation(result.error)
-        const response: Response = { status, body: encoded, headers: responseHeaders }
-        operationLogger.logInfo('Completed with error.')
         endSpanWithResponse({ span, response })
         return response
       }
@@ -148,30 +160,16 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
 function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionImplementation
+  functionBody: functions.FunctionImplementation<types.Type, types.Type, functions.ErrorType, Record<string, unknown>>
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }
 
-function checkVersion({
-  request,
-  minVersion,
-  maxVersion,
-}: {
-  request: Request
-  minVersion: number
-  maxVersion: number
-}): result.Result<number, Response> {
-  const v = (request.params as Record<string, string>).v
-  const version = Number(v ? v.replace('v', '') : Number.NaN)
-  if (Number.isNaN(version) || version < minVersion || version > maxVersion) {
-    return result.fail({
-      status: 404,
-      body: { error: 'Invalid version', minVersion: `v${minVersion}`, maxVersion: `v${maxVersion}`, got: version },
-      headers: {},
-    })
-  }
-  return result.ok(version)
+function checkVersion(request: Request, minVersion: number, maxVersion: number): result.Result<number, Response> {
+  const rawVersion = request.params.v ?? ''
+  return parseVersion(rawVersion)
+    .mapError(toHttpError(404, 'Not a version number'))
+    .chain((v) => checkVersionBounds(v, minVersion, maxVersion).mapError(toHttpError(404, 'Invalid version')))
 }
 
 function decodeRawInput({
@@ -183,6 +181,28 @@ function decodeRawInput({
 }): result.Result<unknown, Response> {
   const decoded = types.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
   return decoded.mapError((error) => ({ status: 400, body: { errors: error }, headers: {} }))
+}
+
+function checkVersionBounds(
+  version: number,
+  minVersion: number,
+  maxVersion: number,
+): result.Result<number, { minVersion: number; maxVersion: number }> {
+  const isInBounds = minVersion <= version && version <= maxVersion
+  return isInBounds ? result.ok(version) : result.fail({ minVersion, maxVersion })
+}
+
+function parseVersion(rawVersion: string): result.Result<number, string> {
+  const isValidVersion = /^v?\d+$/.test(rawVersion)
+  return isValidVersion ? result.ok(Number(rawVersion)) : result.fail(`invalid version: ${rawVersion}`)
+}
+
+function toHttpError(
+  status: number,
+  message?: string,
+  additionalBody: Record<string, string> = {},
+): (errors: any) => Response {
+  return (errors) => ({ body: { errors, message, ...additionalBody }, status, headers: {} })
 }
 
 function addHeadersToResponse(response: Response, headers: Response['headers']): Response {
@@ -197,6 +217,8 @@ function endSpanWithError({ span, failure }: { span?: Span; failure: result.Fail
 
 function endSpanWithResponse({ span, response }: { span?: Span; response: Response }): void {
   span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, response.status)
-  span?.setStatus({ code: response.status.toString().slice(0, 1) === '2' ? SpanStatusCode.OK : SpanStatusCode.ERROR })
+  const responseHasSuccessStatusCode = 200 <= response.status && response.status <= 299
+  const spanStatusCode = responseHasSuccessStatusCode ? SpanStatusCode.OK : SpanStatusCode.ERROR
+  span?.setStatus({ code: spanStatusCode })
   span?.end()
 }

@@ -1,10 +1,5 @@
 import { result, types } from '.'
-import {
-  failWithInternalError,
-  memoizeTypeTransformation,
-  memoizeTransformation,
-  memoizeTypeTransformationWithParam,
-} from './utils'
+import { memoizeTypeTransformation } from './utils'
 import { deepMerge, flatMapObject, mapObject } from '@mondrian-framework/utils'
 import { randomUUID } from 'crypto'
 
@@ -15,6 +10,8 @@ export type Capabilities = {
   take?: true
   skip?: true
 }
+
+export type RootGenericRetrieve = GenericRetrieve | Record<string, GenericRetrieve>
 
 export type GenericRetrieve = {
   where?: GenericWhere
@@ -29,7 +26,7 @@ type GenericFieldSelect = boolean | { [K in string]: GenericFieldSelect }
 export type GenericOrderBy = {} | {}[]
 
 // prettier-ignore
-export type FromType<T extends types.Type, C extends Capabilities | undefined> = GenericRetrieve /* TODO
+export type FromType<T extends types.Type, C extends Capabilities | undefined> = RootGenericRetrieve /* TODO
   = [T] extends [types.EntityType<types.Mutability, infer Ts>] ? { where?: Where<Ts> } 
   : [T] extends [types.ArrayType<types.Mutability, infer T1>] ? FromType<T1>
   : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1>
@@ -54,19 +51,16 @@ type WhereFieldKeys<Ts extends types.Types> = {
   [K in keyof Ts]: WhereField<Ts[K]> extends Record<string, unknown> ? K : never
 }[keyof Ts]
 
-type RetrieveOptions = {
-  maxTake?: number
+export type MergeOptions = {
+  orderByOrder?: 'left-before' | 'right-before'
+  skipOrder?: 'left-before' | 'right-before'
+  takeOrder?: 'left-before' | 'right-before'
 }
-
 export function merge<const T extends GenericRetrieve>(
   type: types.Type,
   left?: T,
   right?: T,
-  options?: {
-    orderByOrder?: 'left-before' | 'right-before'
-    skipOrder?: 'left-before' | 'right-before'
-    takeOrder?: 'left-before' | 'right-before'
-  },
+  options?: MergeOptions,
 ): T | undefined {
   if (!left || !right) {
     return left || right
@@ -88,11 +82,7 @@ function mergeSelect(
   type: types.Type,
   left?: GenericSelect,
   right?: GenericSelect,
-  options?: {
-    orderByOrder?: 'left-before' | 'right-before'
-    skipOrder?: 'left-before' | 'right-before'
-    takeOrder?: 'left-before' | 'right-before'
-  },
+  options?: MergeOptions,
 ): GenericSelect | undefined {
   if (!left) {
     return right
@@ -114,7 +104,7 @@ function mergeSelect(
         const unwrappedFieldType = types.unwrap(fieldType)
         if (unwrappedFieldType.kind === types.Kind.Entity) {
           if (leftSelect === true && rightSelect === true) {
-            return true //TODO: merge with the other
+            return true
           }
           if (leftSelect === true && rightSelect !== true) {
             return merge(
@@ -182,12 +172,25 @@ export function fromType(type: types.Type, capabilities: Capabilities | undefine
   if (!capabilities) {
     return result.fail(null)
   }
-  const t = retrieve(types.unwrap(type), capabilities)
-  if (types.isNever(t)) {
-    return result.fail(null)
-  } else {
-    return result.ok(t)
-  }
+  const res = types.match(type, {
+    wrapper: ({ wrappedType }) => fromType(wrappedType, capabilities),
+    entity: (type) => result.ok(retrieve(type, capabilities)),
+    object: ({ fields }) => {
+      if (Object.values(fields).some((fieldType) => types.unwrap(fieldType).kind === types.Kind.Entity)) {
+        const entityFields = flatMapObject(fields, (fieldName, fieldType) =>
+          types.match(types.unwrap(fieldType), {
+            entity: (_, entity) => [[fieldName, retrieve(entity, capabilities)]] as [string, types.Type][],
+            otherwise: () => [],
+          }),
+        )
+        return result.ok(types.object(entityFields))
+      } else {
+        result.fail(null)
+      }
+    },
+    otherwise: () => result.fail(null),
+  }) as result.Result<types.Type, null>
+  return res
 }
 
 function retrieve(type: types.Type, capabilities: Capabilities): types.Type {

@@ -37,7 +37,7 @@ const loginRateLimiter = rateLimiter.build<
   typeof loginInputType,
   typeof loginOutputType,
   typeof loginErrorType,
-  undefined,
+  { select: true },
   Context
 >({
   key: ({ input }) => input.email,
@@ -53,8 +53,8 @@ export const login = functions.withContext<Context>().build({
   input: loginInputType,
   output: loginOutputType,
   error: loginErrorType,
-  retrieve: undefined,
-  body: async ({ input, context, retrieve }) => {
+  retrieve: { select: true },
+  body: async ({ input, context, retrieve: thisRetrieve }) => {
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {
@@ -64,7 +64,12 @@ export const login = functions.withContext<Context>().build({
       where: { id: loggedUser.id },
       data: { metadata: { update: { lastLogin: new Date() } } },
     })
-    const user = await context.prisma.user.findFirstOrThrow({ where: { id: loggedUser.id } })
+    const args = retrieve.merge<Prisma.UserFindFirstOrThrowArgs>(
+      userType,
+      { where: { id: loggedUser.id }, select: { id: true } },
+      (thisRetrieve as any)?.user,
+    )
+    const user = await context.prisma.user.findFirstOrThrow(args)
     const secret = process.env.JWT_SECRET ?? 'secret'
     const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
     return result.ok({ user, jwt })

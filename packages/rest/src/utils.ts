@@ -1,7 +1,7 @@
 import { Api, FunctionSpecifications } from './api'
 import { retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { JSONType, isArray, setTraversingValue, mapObject } from '@mondrian-framework/utils'
+import { JSONType, isArray, setTraversingValue, mapObject, flatMapObject } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
   return internalEncodeQueryObject(input, prefix).join('&')
@@ -72,6 +72,7 @@ export function completeRetrieve(
   if (!retr) {
     return undefined
   }
+  //TODO: GenericRetrieve coul be inside an object
   return types.match(type, {
     wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
     entity: ({ fields }) =>
@@ -88,6 +89,17 @@ export function completeRetrieve(
           return true
         }),
       }) as retrieve.GenericRetrieve,
+    object: ({ fields }) =>
+      flatMapObject(fields, (fieldName, fieldType) =>
+        types.match(types.unwrap(fieldType), {
+          entity: (_, entity) =>
+            [[fieldName, completeRetrieve(((retr ?? {}) as any)[fieldName], entity)]] as [
+              string,
+              retrieve.GenericRetrieve,
+            ][],
+          otherwise: () => [],
+        }),
+      ),
     otherwise: () => retr,
   })
 }

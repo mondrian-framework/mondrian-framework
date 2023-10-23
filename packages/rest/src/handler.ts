@@ -1,9 +1,8 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateOpenapiInput } from './openapi'
 import { completeProjection } from './utils'
-import { decoding, projection, result, types } from '@mondrian-framework/model'
+import { projection, result, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
-import { ErrorType } from '@mondrian-framework/module/src/function'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
@@ -18,7 +17,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }: {
   functionName: string
   module: module.Module<Fs, ContextInput>
-  functionBody: functions.FunctionImplementation<types.Type, types.Type, ErrorType, Record<string, unknown>>
+  functionBody: functions.FunctionImplementation<types.Type, types.Type, functions.ErrorType, Record<string, unknown>>
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   globalMaxVersion: number
@@ -169,7 +168,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
 function getInputExtractor(args: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionImplementation<types.Type, types.Type, ErrorType, Record<string, unknown>>
+  functionBody: functions.FunctionImplementation<types.Type, types.Type, functions.ErrorType, Record<string, unknown>>
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }

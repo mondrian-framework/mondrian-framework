@@ -2,7 +2,6 @@ import { Api, FunctionSpecifications, Request } from './api'
 import { decodeQueryObject, encodeQueryObject } from './utils'
 import { types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
-import { ErrorType } from '@mondrian-framework/module/src/function'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
@@ -137,7 +136,7 @@ export function generateOpenapiInput({
   typeRef,
 }: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionInterface<types.Type, types.Type, ErrorType>
+  functionBody: functions.FunctionInterface<types.Type, types.Type, functions.ErrorType>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): {

@@ -13,8 +13,8 @@ export function checkMaxProjectionDepth(
 ): functions.Middleware<types.Type, types.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check max projection depth',
-    apply: (args, next) => {
-      const depth = retrieve.selectionDepth(args.retrieve ?? {})
+    apply: (args, next, thisFunction) => {
+      const depth = retrieve.selectionDepth(thisFunction.output, args.retrieve ?? {})
       if (depth > maxDepth) {
         const errorMessage = `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxDepth}.`
         args.logger.emit({

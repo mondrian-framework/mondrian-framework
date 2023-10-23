@@ -3,9 +3,10 @@ import { idType, unauthorizedType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { userType } from './model'
 import advancedTypes from '@mondrian-framework/advanced-types'
-import { result, types } from '@mondrian-framework/model'
+import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
+import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
 const loginInputType = types.object(
@@ -96,7 +97,7 @@ export const register = functions.withContext<Context>().build({
   input: registerInputType,
   output: userType,
   error: registerErrorType,
-  retrieve: undefined,
+  retrieve: { select: true },
   body: async ({ input, context, retrieve }) => {
     try {
       const user = await context.prisma.user.create({
@@ -123,8 +124,8 @@ export const follow = functions.withContext<LoggedUserContext>().build({
   input: types.object({ userId: idType }),
   output: userType,
   error: types.union({ ...unauthorizedType.variants, userNotExists: types.string() }),
-  retrieve: undefined,
-  body: async ({ input, context }) => {
+  retrieve: { select: true },
+  body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' as const })
     }
@@ -144,7 +145,12 @@ export const follow = functions.withContext<LoggedUserContext>().build({
       },
       update: {},
     })
-    const user = await context.prisma.user.findFirstOrThrow({ where: { id: context.userId } })
+    const args = retrieve.merge<Prisma.UserFindFirstOrThrowArgs>(
+      userType,
+      { where: { id: context.userId }, select: { id: true } },
+      thisRetrieve,
+    )
+    const user = await context.prisma.user.findFirstOrThrow(args)
     return result.ok(user)
   },
   options: { namespace: 'user' },

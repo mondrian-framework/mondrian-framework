@@ -65,7 +65,29 @@ export function getMaxApiVersion(api: Api<functions.Functions>): number {
 /**
  * Add all non-entity fields that was excluded in the selection will be included.
  */
-export function completeRetrieve(retrieve: retrieve.GenericRetrieve, type: types.Type): retrieve.GenericRetrieve {
-  //TODO
-  return retrieve
+export function completeRetrieve(
+  retr: retrieve.GenericRetrieve | undefined,
+  type: types.Type,
+): retrieve.GenericRetrieve | undefined {
+  if (!retr) {
+    return undefined
+  }
+  return types.match(type, {
+    wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
+    entity: ({ fields }) =>
+      retrieve.merge(type, retr, {
+        select: mapObject(fields, (fieldName, fieldType) => {
+          if (types.unwrap(fieldType).kind === types.Kind.Entity) {
+            const subRetrieve = (retr.select ?? {})[fieldName]
+            if (subRetrieve) {
+              return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)
+            } else {
+              return undefined
+            }
+          }
+          return true
+        }),
+      }) as retrieve.GenericRetrieve,
+    otherwise: () => retr,
+  })
 }

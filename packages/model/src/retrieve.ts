@@ -5,11 +5,15 @@ import {
   memoizeTransformation,
   memoizeTypeTransformationWithParam,
 } from './utils'
-import { flatMapObject, mapObject } from '@mondrian-framework/utils'
+import { deepMerge, flatMapObject, mapObject } from '@mondrian-framework/utils'
 import { randomUUID } from 'crypto'
 
 export type Capabilities = {
-  queryable?: true
+  where?: true
+  select?: true
+  orderBy?: true
+  take?: true
+  skip?: true
 }
 
 export type GenericRetrieve = {
@@ -20,7 +24,8 @@ export type GenericRetrieve = {
   skip?: number
 }
 export type GenericWhere = { AND?: GenericWhere | GenericWhere[] }
-export type GenericSelect = null | {}
+export type GenericSelect = null | Record<string, undefined | GenericRetrieve | GenericFieldSelect>
+type GenericFieldSelect = boolean | { [K in string]: GenericFieldSelect }
 export type GenericOrderBy = {} | {}[]
 
 // prettier-ignore
@@ -75,27 +80,94 @@ export function merge<const T extends GenericRetrieve>(
     orderBy: orderBy.length === 0 ? undefined : orderBy,
     skip: options?.skipOrder === 'right-before' ? right.skip ?? left.skip : left.skip ?? right.skip,
     take: options?.takeOrder === 'right-before' ? right.take ?? left.take : left.take ?? right.take,
-    select: left.select ?? right.select, //TODO merge select by following type
+    select: mergeSelect(type, left.select, right.select, options),
   } as unknown as T
 }
 
-export function selectionDepth(retrieve: GenericRetrieve): number {
-  //TODO: better to follow an entity type
-  function selectionDepth(retrieve: GenericRetrieve, depth: number): number {
-    if (retrieve.select) {
-      return Object.values(retrieve.select)
-        .map((selected) => {
-          if (typeof selected === 'object' && selected) {
-            return selectionDepth(selected, depth + 1)
-          }
-          return depth
-        })
-        .reduce((p, c) => Math.max(p, c), 0)
-    } else {
-      return depth
-    }
+function mergeSelect(
+  type: types.Type,
+  left?: GenericSelect,
+  right?: GenericSelect,
+  options?: {
+    orderByOrder?: 'left-before' | 'right-before'
+    skipOrder?: 'left-before' | 'right-before'
+    takeOrder?: 'left-before' | 'right-before'
+  },
+): GenericSelect | undefined {
+  if (!left) {
+    return right
   }
-  return selectionDepth(retrieve, 1)
+  if (!right) {
+    return left
+  }
+  return types.match(type, {
+    entity: ({ fields }) => {
+      return mapObject(fields, (fieldName, fieldType) => {
+        const leftSelect = left[fieldName]
+        const rightSelect = right[fieldName]
+        if (!leftSelect) {
+          return rightSelect
+        }
+        if (!rightSelect) {
+          return leftSelect
+        }
+        const unwrappedFieldType = types.unwrap(fieldType)
+        if (unwrappedFieldType.kind === types.Kind.Entity) {
+          if (leftSelect === true && rightSelect === true) {
+            return true //TODO: merge with the other
+          }
+          if (leftSelect === true && rightSelect !== true) {
+            return merge(
+              unwrappedFieldType,
+              { select: mapObject(unwrappedFieldType.fields, () => true) },
+              rightSelect,
+              options,
+            )
+          }
+          if (rightSelect === true && leftSelect !== true) {
+            return merge(
+              unwrappedFieldType,
+              leftSelect,
+              { select: mapObject(unwrappedFieldType.fields, () => true) },
+              options,
+            )
+          }
+          return merge(unwrappedFieldType, leftSelect as GenericRetrieve, rightSelect as GenericRetrieve, options)
+        } else {
+          if (leftSelect === true) {
+            return true
+          }
+          if (rightSelect === true) {
+            return true
+          }
+          return deepMerge(rightSelect, leftSelect) as GenericFieldSelect
+        }
+      })
+    },
+    wrapper: ({ wrappedType }) => mergeSelect(wrappedType, left, right, options),
+    otherwise: () => left ?? right,
+  })
+}
+
+export function selectionDepth(type: types.Type, retrieve: GenericRetrieve): number {
+  return types.match(type, {
+    wrapper: ({ wrappedType }) => selectionDepth(wrappedType, retrieve),
+    entity: ({ fields }) =>
+      Object.entries(fields)
+        .map(([fieldName, fieldType]) => {
+          if (!retrieve.select) {
+            return 1
+          }
+          const unwrappedFieldType = types.unwrap(fieldType)
+          if (unwrappedFieldType.kind === types.Kind.Entity && typeof retrieve.select[fieldName] === 'object') {
+            return selectionDepth(fieldType, retrieve.select[fieldName] as GenericRetrieve) + 1
+          } else {
+            return 1
+          }
+        })
+        .reduce((p, c) => Math.max(p, c), 0),
+    otherwise: () => 1,
+  })
 }
 
 export function isRespected<T extends types.Type>(
@@ -118,33 +190,21 @@ export function fromType(type: types.Type, capabilities: Capabilities | undefine
   }
 }
 
-const retrieve = memoizeTypeTransformationWithParam(
-  (type: types.Type, capabilities: Capabilities) =>
-    types.match(type, {
-      entity: (concreteEntity, entity) => {
-        if (capabilities.queryable) {
-          return types.object(
-            {
-              where: types.optional(entityWhere(entity)),
-              select: types.optional(entitySelect(entity)),
-              orderBy: types.optional(types.array(entityOrderBy(entity))),
-              //distinct: types.unknown(), //TODO: need untagged union
-              skip: types.integer({ minimum: 0 }).optional(),
-              take: types.integer({ minimum: 0, maximum: 20 }).optional(),
-            },
-            { name: `${concreteEntity.options?.name ?? randomUUID()}QuerableRetrieve` },
-          )
-        } else {
-          return types.object(
-            { select: types.optional(entitySelect(entity)) },
-            { name: `${concreteEntity.options?.name ?? randomUUID()}Retrieve` },
-          )
-        }
-      },
-      otherwise: () => types.never(),
-    }),
-  (c) => c.queryable,
-)
+function retrieve(type: types.Type, capabilities: Capabilities): types.Type {
+  return types.match(type, {
+    entity: (_, entity) => {
+      return types.object({
+        ...(capabilities.where ? { where: types.optional(entityWhere(entity)) } : {}),
+        ...(capabilities.select ? { select: types.optional(entitySelect(entity)) } : {}),
+        ...(capabilities.orderBy ? { orderBy: types.optional(types.array(entityOrderBy(entity))) } : {}),
+        ...(capabilities.skip ? { skip: types.integer({ minimum: 0 }).optional() } : {}),
+        ...(capabilities.take ? { take: types.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
+        //distinct: types.unknown(), //TODO: need untagged union
+      })
+    },
+    otherwise: () => types.never(),
+  })
+}
 
 const entitySelect = memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((type) => {
   const entity = types.concretise(type)
@@ -162,12 +222,12 @@ const select: (type: types.Type) => types.Type = types.matcher({
       array: () => {
         throw new Error('Array of array not supported in selection')
       },
-      entity: (_, entity) => retrieve(entity, { queryable: true }),
+      entity: (_, entity) => retrieve(entity, { orderBy: true, select: true, skip: true, take: true, where: true }),
       otherwise: (_, type) => select(type),
     })
     return matcher(wrappedType)
   },
-  entity: (_, entity) => retrieve(entity, {}), //TODO: or true
+  entity: (_, entity) => retrieve(entity, { select: true }), //TODO: or true
   object: ({ fields }) => types.object(mapObject(fields, (_, fieldType) => types.optional(select(fieldType)))), // TODO: or true
   otherwise: () => types.boolean(),
 })

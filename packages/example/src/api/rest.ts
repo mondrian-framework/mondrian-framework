@@ -35,7 +35,7 @@ export function startServer(server: any) {
       if (error instanceof InvalidJwtError) {
         return { status: 400, body: error.message }
       }
-      if (error instanceof Error) {
+      if (error instanceof Error && process.env.ENVIRONMENT !== 'development') {
         logger.logError(error.message)
         //Hide error details
         return { status: 500, body: 'Internal server error' }

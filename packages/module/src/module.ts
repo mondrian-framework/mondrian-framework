@@ -43,19 +43,17 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
  * Mondrian module options.
  */
 export type ModuleOptions = {
-  checks?: {
-    /**
-     * Checks (at runtime) if the output value of any function is valid.
-     * It also checks if the projection is respected.
-     * Default is 'throw'.
-     * With 'ignore' the check is skipped (could be usefull in production environment in order to improve performance)
-     */
-    output?: 'ignore' | 'log' | 'throw'
-    /**
-     * Maximum projection depth allowed. If the requested projection is deeper an error is thrown.
-     */
-    maxProjectionDepth?: number
-  }
+  /**
+   * Checks (at runtime) if the output value of any function is valid.
+   * It also checks if the projection is respected.
+   * Default is 'throw'.
+   * With 'ignore' the check is skipped (could be usefull in production environment in order to improve performance)
+   */
+  checkOutputType?: 'ignore' | 'log' | 'throw'
+  /**
+   * Maximum projection depth allowed. If the requested projection is deeper an error is thrown.
+   */
+  maxSelectionDepth?: number
   /**
    * Enables opetelemetry instrumentation.
    */
@@ -122,12 +120,12 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 ): Module<Fs, ContextInput> {
   assertUniqueNames(module.functions)
   const maxProjectionDepthMiddleware =
-    module.options?.checks?.maxProjectionDepth != null
-      ? [middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)]
+    module.options?.maxSelectionDepth != null
+      ? [middleware.checkMaxProjectionDepth(module.options.maxSelectionDepth)]
       : []
   const checkOutputTypeMiddleware =
-    module.options?.checks?.output == null || module.options?.checks?.output !== 'ignore'
-      ? [middleware.checkOutputType(module.options?.checks?.output ?? 'throw')]
+    module.options?.checkOutputType == null || module.options?.checkOutputType !== 'ignore'
+      ? [middleware.checkOutputType(module.options?.checkOutputType ?? 'throw')]
       : []
 
   const wrappedFunctions = Object.fromEntries(

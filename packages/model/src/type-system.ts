@@ -2030,13 +2030,7 @@ export function isType<T extends Type>(
   decodingOptions?: decoding.Options,
   validationOptions?: validation.Options,
 ): value is Infer<T> {
-  return types
-    .concretise(type)
-    .decode(value, decodingOptions, validationOptions)
-    .match(
-      (_) => true,
-      (_) => false,
-    )
+  return types.concretise(type).decode(value, decodingOptions, validationOptions).isOk
 }
 
 /**
@@ -2062,7 +2056,19 @@ export function assertType<T extends Type>(
     )
 }
 
-function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Array): boolean {
+/**
+ * Determines whether a given `type` has a wrapper of the specified `kind`.
+ *
+ * @param type - The type to check.
+ * @param kind - The kind of wrapper to look for.
+ * @returns `true` if the type has a wrapper of the specified kind, `false` otherwise.
+ *
+ * @example
+ * ```typescript
+ * const hasOptionalWrapper = hasWrapper(type, Kind.Optional);
+ * ```
+ */
+export function hasWrapper(type: Type, kind: Kind.Optional | Kind.Nullable | Kind.Array): boolean {
   return match(type, {
     array: (t) => t.kind === kind,
     wrapper: (t) => t.kind === kind || hasWrapper(t.wrappedType, kind),
@@ -2139,12 +2145,36 @@ export const isScalar: (type: Type) => boolean = matcher({
   otherwise: () => false,
 })
 
-//TYPE MATCHER TODO: test, docs, format
 /**
- * TODO
- * @param type
- * @param cases
- * @returns
+ * Matches a given `type` with the corresponding function in `cases`.
+ * The return type of each function is generic and can be specified by the user.
+ * Some types can be gouped toghether with this keys: scalar, wrapper, otherwhise.
+ * The input `type` must be included in the cases.
+ *
+ * @param type - The type to match.
+ * @param cases - An object that maps a set of matcher names to their corresponding functions.
+ * @returns The result of the matched function.
+ *
+ * @example
+ * ```typescript
+ * types.match(type, {
+ *   number: (concreteType, type) => // return something,
+ *   string: (concreteType, type) => // return something,
+ *   boolean: (concreteType, type) => // return something,
+ *   enum: (concreteType, type) => // return something,
+ *   literal: (concreteType, type) => // return something,
+ *   // scalar: (concreteType, type) => // return something,
+ *   array: (concreteType, type) => // return something,
+ *   optional: (concreteType, type) => // return something,
+ *   nullable: (concreteType, type) => // return something,
+ *   // wrapper: (concreteType, type) => // return something,
+ *   union: (concreteType, type) => // return something,
+ *   object: (concreteType, type) => // return something,
+ *   entity: (concreteType, type) => // return something,
+ *   custom: (concreteType, type) => // return something,
+ *   // otherwhise: (concreteType, type) => // return something,
+ * })
+ * ```
  */
 export function match<const M extends TypeMatch<unknown>>(
   type: MatcherInputType<M>,
@@ -2176,10 +2206,38 @@ export function match<const M extends TypeMatch<unknown>>(
 }
 
 /**
- * TODO
- * @param cases
- * @param options
- * @returns
+ * Returns a function that matches a given `type` with the corresponding function in `cases`.
+ * The return type of each function is generic and can be specified by the user.
+ * Some types can be gouped toghether with this keys: scalar, wrapper, otherwhise.
+ * The input `type` must be included in the cases.
+ *
+ * @param cases - An object that maps a set of matcher names to their corresponding functions.
+ * @param options - An optional object that specifies additional options for the matcher.
+ * @param options.memoize - A boolean flag that indicates whether to memoize the matched function. Defaults to `false`.
+ * @returns A function that takes a `type` parameter and returns the result of the matched function.
+ *
+ * @example
+ * ```typescript
+ * const matchType = types.matcher({
+ *   number: (concreteType, type) => // return something,
+ *   string: (concreteType, type) => // return something,
+ *   boolean: (concreteType, type) => // return something,
+ *   enum: (concreteType, type) => // return something,
+ *   literal: (concreteType, type) => // return something,
+ *   // scalar: (concreteType, type) => // return something,
+ *   array: (concreteType, type) => // return something,
+ *   optional: (concreteType, type) => // return something,
+ *   nullable: (concreteType, type) => // return something,
+ *   // wrapper: (concreteType, type) => // return something,
+ *   union: (concreteType, type) => // return something,
+ *   object: (concreteType, type) => // return something,
+ *   entity: (concreteType, type) => // return something,
+ *   custom: (concreteType, type) => // return something,
+ *   // otherwhise: (concreteType, type) => // return something,
+ * }, { memoize: true });
+ *
+ * const result = matchType(type);
+ * ```
  */
 export function matcher<const M extends TypeMatch<unknown>>(
   cases: M,
@@ -2189,11 +2247,21 @@ export function matcher<const M extends TypeMatch<unknown>>(
   return (options?.memoize ? memoizeTransformation(mapper) : mapper) as any
 }
 
-//Utils types for match and matcher
+/**
+ * Handler type for a type match.
+ * Each function takes two parameters: the first one is the {@link ConcreteType} and the second one is the original reference of the {@link Type}.
+ * The return type of each function is generic and can be specified by the user.
+ */
 type TypeMatch<T> = {
+  /**
+   * Maps a matcher name to its corresponding function.
+   */
   [K in keyof MatcherNameToType]?: (type: MatcherNameToType[K][0], originalType: MatcherNameToType[K][1]) => T
 }
 
+/**
+ * Maps of matcher names to type handled by the cases functions. (ConcreteType, LazyType)
+ */
 type MatcherNameToType = {
   string: [StringType, Lazy<StringType>]
   number: [NumberType, Lazy<NumberType>]
@@ -2217,6 +2285,10 @@ type MatcherNameToType = {
   ]
   otherwise: [ConcreteType, Type]
 }
+
+/**
+ * Types covered by cases clausoles.
+ */
 type MatcherNameToTypeName = {
   string: 'string'
   number: 'number'
@@ -2234,22 +2306,19 @@ type MatcherNameToTypeName = {
   scalar: 'string' | 'number' | 'boolean' | 'literal' | 'enum' | 'custom'
   otherwise: AllTypeNames
 }
-type AllTypeNames =
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | 'literal'
-  | 'enum'
-  | 'custom'
-  | 'object'
-  | 'entity'
-  | 'union'
-  | 'nullable'
-  | 'optional'
-  | 'array'
+//prettier-ignore
+type AllTypeNames = 'string' | 'number' | 'boolean' | 'literal' | 'enum' | 'custom' | 'object' | 'entity' | 'union' | 'nullable' | 'optional' | 'array'
+
+/**
+ * Given a union of keyof {@link MatcherNameToType} it returns a type that can be safely passed to the matcher in order to cover all the cases.
+ */
 type MatherInputTypeFromKeys<M extends keyof MatcherNameToType> = AllTypeNames extends MatcherNameToTypeName[M]
   ? Type
   : MatcherNameToType[M] | (() => MatherInputTypeFromKeys<M>)
+
+/**
+ * Given a {@link TypeMatch} it returns a type that can be safely passed to the matcher in order to cover all the cases.
+ */
 type MatcherInputType<M extends TypeMatch<unknown>> = MatherInputTypeFromKeys<
   keyof M extends keyof MatcherNameToType ? keyof M : never
 >

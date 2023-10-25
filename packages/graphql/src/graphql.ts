@@ -3,7 +3,7 @@ import { createGraphQLError } from '@graphql-tools/utils'
 import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
-import { JSONType, assertNever, capitalise, mapObject, toCamelCase } from '@mondrian-framework/utils'
+import { JSONType, capitalise, mapObject, toCamelCase } from '@mondrian-framework/utils'
 import {
   GraphQLScalarType,
   GraphQLObjectType,
@@ -19,6 +19,8 @@ import {
   GraphQLSchema,
   GraphQLResolveInfo,
   GraphQLFieldConfig,
+  GraphQLInputObjectType,
+  GraphQLInputType,
 } from 'graphql'
 
 /**
@@ -30,8 +32,8 @@ import {
  * Turns a Mondrian type into an equivalent GraphQL type that can be used to
  * define GraphQL schemas.
  */
-export function typeToGraphQLType(type: types.Type): GraphQLOutputType {
-  return typeToGraphQLTypeInternal(types.concretise(type), {
+export function typeToGraphQLOutputType(type: types.Type): GraphQLOutputType {
+  return typeToGraphQLOutputTypeInternal(types.concretise(type), {
     inspectedTypes: new Set(),
     knownTypes: new Map(),
     knownCustomTypes: new Map(),
@@ -66,7 +68,7 @@ type InternalData = {
   defaultName: string | undefined
 }
 
-function typeToGraphQLTypeInternal(type: types.Type, internalData: InternalData): GraphQLOutputType {
+function typeToGraphQLOutputTypeInternal(type: types.Type, internalData: InternalData): GraphQLOutputType {
   const { inspectedTypes, knownTypes, defaultName } = internalData
   // If the type has already been explored, then return the output type that has
   // already been generated
@@ -94,7 +96,7 @@ function typeToGraphQLTypeInternal(type: types.Type, internalData: InternalData)
       array: (concreteType) => arrayToGraphQLType(concreteType, internalData),
       custom: (concreteType) => customTypeToGraphQLType(concreteType, internalData),
       wrapper: (concreteType) => {
-        const type = typeToGraphQLTypeInternal(concreteType.wrappedType, internalData)
+        const type = typeToGraphQLOutputTypeInternal(concreteType.wrappedType, internalData)
         return getNullableType(type)
       },
     })
@@ -173,7 +175,10 @@ function arrayToGraphQLType(
   const { defaultName } = internalData
   const arrayName = generateName(array, defaultName)
   const itemDefaultName = arrayName + 'Item'
-  const itemsType = typeToGraphQLTypeInternal(array.wrappedType, { ...internalData, defaultName: itemDefaultName })
+  const itemsType = typeToGraphQLOutputTypeInternal(array.wrappedType, {
+    ...internalData,
+    defaultName: itemDefaultName,
+  })
   const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
   return new GraphQLList(wrappedType)
 }
@@ -205,7 +210,10 @@ function typeToGraphQLObjectField(
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
     const concreteType = types.concretise(fieldType)
-    const graphQLType = typeToGraphQLTypeInternal(concreteType, { ...internalData, defaultName: fieldDefaultName })
+    const graphQLType = typeToGraphQLOutputTypeInternal(concreteType, {
+      ...internalData,
+      defaultName: fieldDefaultName,
+    })
     const canBeMissing = types.isOptional(concreteType) || types.isNullable(concreteType)
     return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
   }
@@ -217,7 +225,10 @@ function unionToGraphQLType(union: types.UnionType<types.Types>, internalData: I
   const types = Object.entries(union.variants).map(([name, variantType]) => {
     const variantName = unionName + capitalise(name)
     const variantValueDefaultName = name + 'Value'
-    const value = typeToGraphQLTypeInternal(variantType, { ...internalData, defaultName: variantValueDefaultName })
+    const value = typeToGraphQLOutputTypeInternal(variantType, {
+      ...internalData,
+      defaultName: variantValueDefaultName,
+    })
     const field = Object.fromEntries([[name, { type: value }]])
     return new GraphQLObjectType({ name: variantName, fields: field })
   })
@@ -266,10 +277,17 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
   const mutationsArray = moduleFunctions.flatMap(([name, fun]) =>
     toMutations(module.name, fun, api.functions[name], setHeader, context, module.context, errorHandler),
   )
-  return new GraphQLSchema({
-    query: new GraphQLObjectType({ name: 'query', fields: Object.fromEntries(queriesArray) }),
-    mutation: new GraphQLObjectType({ name: 'mutation', fields: Object.fromEntries(mutationsArray) }),
-  })
+  const query =
+    queriesArray.length === 0
+      ? undefined
+      : new GraphQLObjectType({ name: 'query', fields: Object.fromEntries(queriesArray) })
+  const mutation =
+    mutationsArray.length === 0
+      ? undefined
+      : new GraphQLObjectType({ name: 'mutation', fields: Object.fromEntries(mutationsArray) })
+
+  const schema = new GraphQLSchema({ query, mutation })
+  return schema
 }
 
 /**
@@ -376,7 +394,7 @@ function makeOperation(
     setHeader(serverContext, 'operation-id', operationId)
 
     // Decode all the needed bits to call the function
-    const graphQLInputTypeName = 'TODO' // TODO: Where do I get this?
+    const graphQLInputTypeName = 'input'
     const input = decodeInput(fun.input, resolverInput[graphQLInputTypeName], logger) as never
     const retrieve = undefined //TODO get the retrieve
     const partialOutputType = types.partialDeep(fun.output)
@@ -395,7 +413,16 @@ function makeOperation(
       .catch((error) => handleFunctionError({ ...handlerInput, error }))
   }
 
-  return [operationName, { type: typeToGraphQLType(fun.output), resolve }]
+  return [
+    operationName,
+    {
+      type: typeToGraphQLOutputType(fun.output),
+      args: {
+        input: { type: typeToGraphQLInputType(fun.input) },
+      },
+      resolve,
+    },
+  ]
 }
 
 /**

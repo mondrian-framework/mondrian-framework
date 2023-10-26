@@ -12,7 +12,6 @@ import {
   GraphQLList,
   GraphQLNonNull,
   GraphQLBoolean,
-  GraphQLInt,
   getNullableType,
   GraphQLUnionType,
   GraphQLOutputType,
@@ -21,6 +20,8 @@ import {
   GraphQLFieldConfig,
   GraphQLInputObjectType,
   GraphQLInputType,
+  GraphQLFloat,
+  isInputType,
 } from 'graphql'
 
 /**
@@ -34,6 +35,15 @@ import {
  */
 export function typeToGraphQLOutputType(type: types.Type): GraphQLOutputType {
   return typeToGraphQLOutputTypeInternal(types.concretise(type), {
+    inspectedTypes: new Set(),
+    knownTypes: new Map(),
+    knownCustomTypes: new Map(),
+    defaultName: undefined,
+  })
+}
+
+export function typeToGraphQLInputType(type: types.Type): GraphQLInputType {
+  return typeToGraphQLInputTypeInternal(types.concretise(type), {
     inspectedTypes: new Set(),
     knownTypes: new Map(),
     knownCustomTypes: new Map(),
@@ -85,7 +95,7 @@ function typeToGraphQLOutputTypeInternal(type: types.Type, internalData: Interna
     // only used by this top level function and the other inner functions should
     // not be aware of that.
     const graphQLType = types.match(type, {
-      number: (concreteType) => scalarOrDefault(concreteType, GraphQLInt, defaultName),
+      number: (concreteType) => scalarOrDefault(concreteType, GraphQLFloat, defaultName),
       string: (concreteType) => scalarOrDefault(concreteType, GraphQLString, defaultName),
       boolean: (concreteType) => scalarOrDefault(concreteType, GraphQLBoolean, defaultName),
       enum: (concreteType) => enumToGraphQLType(concreteType, defaultName),
@@ -98,6 +108,56 @@ function typeToGraphQLOutputTypeInternal(type: types.Type, internalData: Interna
       wrapper: (concreteType) => {
         const type = typeToGraphQLOutputTypeInternal(concreteType.wrappedType, internalData)
         return getNullableType(type)
+      },
+    })
+    // Add the generated type to the map of explored types to make the invariant
+    // valid once again
+    knownTypes.set(type, graphQLType)
+    return graphQLType
+  }
+}
+
+// Data used in the recursive calls of `typeToGraphQLTypeInternal` to store
+// all relevant information that has to be used throughout the recursive calls.
+type InternalInputData = {
+  // A set of all the types that have already been explored
+  inspectedTypes: Set<types.Type>
+  // A map from <explored type> to already generated output type
+  knownTypes: Map<types.Type, GraphQLInputType>
+  // A map for all custom types that have already been explored. Here we just
+  // save their name
+  knownCustomTypes: Map<string, GraphQLScalarType>
+  // The default name to assign to the current type in the iteration process
+  defaultName: string | undefined
+}
+
+function typeToGraphQLInputTypeInternal(type: types.Type, internalData: InternalInputData): GraphQLInputType {
+  const { inspectedTypes, knownTypes, defaultName } = internalData
+  // If the type has already been explored, then return the output type that has
+  // already been generated
+  if (inspectedTypes.has(type)) {
+    // ⚠️ Possible pain point: `typeToGraphQLTypeInternal` relies on the fact
+    // that _every single type_ that appears in `inspectedTypes` must also have
+    // an associated generated type here
+    return knownTypes.get(type)!!
+  } else {
+    inspectedTypes.add(type)
+    // ⚠️ Possible pain point: here the invariant that a type inside `exporedTypes`
+    // must have a counterpart in the `knownTypes` map is broken and cannot be used
+    // by the inner functions! This is unavoidable since this kind of caching is
+    // only used by this top level function and the other inner functions should
+    // not be aware of that.
+    const graphQLType: GraphQLInputType = types.match(type, {
+      number: (_concreteType) => GraphQLFloat,
+      string: (_concreteType) => GraphQLString,
+      boolean: (_concreteType) => GraphQLBoolean,
+      literal: (concreteType) => literalToGraphQLType(concreteType, defaultName),
+      object: (concreteType) => objectToInputGraphQLType(concreteType, internalData),
+      entity: (concreteType) => entityToInputGraphQLType(concreteType, internalData),
+      nullable: (wrappedType) => getNullableType(typeToGraphQLInputTypeInternal(wrappedType, internalData)),
+      optional: (wrappedType) => getNullableType(typeToGraphQLInputTypeInternal(wrappedType, internalData)),
+      otherwise: () => {
+        throw new Error('Cannot turn this type into an input type')
       },
     })
     // Add the generated type to the map of explored types to make the invariant
@@ -193,6 +253,16 @@ function objectToGraphQLType(
   return new GraphQLObjectType({ name: objectName, fields })
 }
 
+function objectToInputGraphQLType(
+  object: types.ObjectType<any, types.Types>,
+  internalData: InternalInputData,
+): GraphQLInputObjectType {
+  const { defaultName } = internalData
+  const objectName = generateName(object, defaultName)
+  const fields = () => mapObject(object.fields, typeToGraphQLInputObjectField(internalData, objectName))
+  return new GraphQLInputObjectType({ name: objectName, fields })
+}
+
 function entityToGraphQLType(
   object: types.EntityType<any, types.Types>,
   internalData: InternalData,
@@ -203,6 +273,16 @@ function entityToGraphQLType(
   return new GraphQLObjectType({ name: objectName, fields })
 }
 
+function entityToInputGraphQLType(
+  object: types.EntityType<any, types.Types>,
+  internalData: InternalInputData,
+): GraphQLInputObjectType {
+  const { defaultName } = internalData
+  const objectName = generateName(object, defaultName)
+  const fields = () => mapObject(object.fields, typeToGraphQLInputObjectField(internalData, objectName))
+  return new GraphQLInputObjectType({ name: objectName, fields })
+}
+
 function typeToGraphQLObjectField(
   internalData: InternalData,
   objectName: string,
@@ -211,6 +291,22 @@ function typeToGraphQLObjectField(
     const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
     const concreteType = types.concretise(fieldType)
     const graphQLType = typeToGraphQLOutputTypeInternal(concreteType, {
+      ...internalData,
+      defaultName: fieldDefaultName,
+    })
+    const canBeMissing = types.isOptional(concreteType) || types.isNullable(concreteType)
+    return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
+  }
+}
+
+function typeToGraphQLInputObjectField(
+  internalData: InternalInputData,
+  objectName: string,
+): (fieldName: string, fieldType: types.Type) => { type: GraphQLInputType } {
+  return (fieldName, fieldType) => {
+    const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
+    const concreteType = types.concretise(fieldType)
+    const graphQLType = typeToGraphQLInputTypeInternal(concreteType, {
       ...internalData,
       defaultName: fieldDefaultName,
     })

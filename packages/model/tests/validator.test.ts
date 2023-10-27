@@ -1,4 +1,4 @@
-import { arbitrary, path, types, validation } from '../src'
+import { arbitrary, decoding, path, types, validation } from '../src'
 import { assertFailure, assertOk } from './testing-utils'
 import { test, fc as gen } from '@fast-check/vitest'
 import { areSameArray } from '@mondrian-framework/utils'
@@ -37,9 +37,24 @@ const mockEncode = () => {
 const mockDecode = () => {
   throw 'test'
 }
+const mockGenerator = () => {
+  throw 'test'
+}
 
-const alwaysSuccess = types.custom('alwaysSuccess', mockEncode, mockDecode, () => validation.succeed())
-const alwaysFail = types.custom('alwaysFail', mockEncode, mockDecode, (value) => validation.fail('test', value))
+const alwaysSuccess = types.custom(
+  'alwaysSuccess',
+  mockEncode,
+  (v) => decoding.succeed(v),
+  () => validation.succeed(),
+  mockGenerator,
+)
+const alwaysFail = types.custom(
+  'alwaysFail',
+  mockEncode,
+  (v) => decoding.succeed(v),
+  (value) => validation.fail('test', value),
+  mockGenerator,
+)
 
 describe.concurrent('errorToString', () => {
   test('prints the error and its path', () => {
@@ -441,19 +456,13 @@ describe.concurrent('validation.validate', () => {
   describe.concurrent('on union types', () => {
     test.prop([gen.anything()])('succeeds if variant is valid', (value) => {
       const model = types.union({ variant1: alwaysSuccess, variant2: alwaysFail })
-      assertOk(model.validate({ variant1: value }))
+      assertOk(model.validate(value))
     })
 
     test.prop([gen.anything()])('fails is variant is invalid', (value) => {
-      const model = types.union({ variant1: alwaysSuccess, variant2: alwaysFail })
-      const expectedError = [{ got: value, path: path.empty().prependVariant('variant2') }]
-      checkError(model.validate({ variant2: value }), expectedError)
-    })
-
-    test('fail with internal error when called on unhandled variant', () => {
-      const model = types.union({ variant1: alwaysSuccess, variant2: alwaysSuccess })
-      expect(() => model.validate({ notAVariant: 1 } as any)).toThrowError(/^\[internal error\]/)
-      expect(() => model.validate({} as any)).toThrowError(/^\[internal error\]/)
+      const model = types.union({ variant1: alwaysFail, variant2: alwaysFail })
+      const expectedError = [{ got: value, path: path.empty() }]
+      checkError(model.validate(value), expectedError)
     })
   })
 
@@ -470,7 +479,7 @@ describe.concurrent('validation.validate', () => {
         },
       }
       const validationSpy = vi.spyOn(validationFunction, 'validate')
-      const model = types.custom('custom', mockEncode, mockDecode, validationFunction.validate)
+      const model = types.custom('custom', mockEncode, mockDecode, validationFunction.validate, mockGenerator)
       assertOk(model.validate(value, options))
       expect(validationSpy).toHaveBeenCalledTimes(1)
     })

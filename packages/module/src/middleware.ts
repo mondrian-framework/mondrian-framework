@@ -16,7 +16,7 @@ export function checkMaxProjectionDepth(
     apply: (args, next, thisFunction) => {
       const depth = retrieve.selectionDepth(thisFunction.output, args.retrieve ?? {})
       if (depth > maxDepth) {
-        const errorMessage = `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxDepth}.`
+        const errorMessage = `Max selection depth reached: requested selection have a depth of ${depth}. The maximum is ${maxDepth}.`
         args.logger.emit({
           body: errorMessage,
           attributes: {
@@ -47,7 +47,7 @@ export function checkOutputType(
       const nextRes: any = await next(args)
       let res
       if (thisFunction.error && !nextRes.isOk) {
-        return nextRes as never
+        return nextRes
       } else if (thisFunction.error) {
         res = nextRes.value
       } else {
@@ -57,7 +57,7 @@ export function checkOutputType(
       const outputPartialDeepType = types.concretise(types.partialDeep(thisFunction.output))
       const checkResult = retrieve
         .isRespected(thisFunction.output, args.retrieve ?? {}, res as never)
-        .chain(({ trimmedValue }) => outputPartialDeepType.validate(trimmedValue).replace(trimmedValue))
+        .chain(({ trimmedValue }) => outputPartialDeepType.validate(trimmedValue as never).replace(trimmedValue))
 
       if (!checkResult.isOk) {
         const errorsMessage = JSON.stringify(checkResult.error)
@@ -75,7 +75,7 @@ export function checkOutputType(
 
         switch (onFailure) {
           case 'log':
-            return res as never
+            return res
           case 'throw':
             throw new Error(`Invalid output: ${errorsMessage}`)
           default:
@@ -83,7 +83,7 @@ export function checkOutputType(
         }
       }
       if (thisFunction.error) {
-        return checkResult as never
+        return checkResult
       } else {
         return checkResult.value
       }

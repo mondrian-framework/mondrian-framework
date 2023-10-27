@@ -1,7 +1,7 @@
 import { decoding, validation, types, result, encoding } from './index'
 import { NeverType } from './types-exports'
 import { memoizeTypeTransformation, memoizeTransformation, failWithInternalError } from './utils'
-import { JSONType, filterMapObject, mapObject } from '@mondrian-framework/utils'
+import { JSONType, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
@@ -39,10 +39,10 @@ export type ConcreteType =
   | StringType
   | BooleanType
   | EnumType
-  | LiteralType<any> //TODO: remove any breaks things
-  | UnionType<{}>
-  | ObjectType<Mutability, {}>
-  | EntityType<Mutability, {}>
+  | LiteralType<any>
+  | UnionType<any>
+  | ObjectType<Mutability, any>
+  | EntityType<Mutability, any>
   | ArrayType<Mutability, any>
   | OptionalType<any>
   | NullableType<any>
@@ -54,7 +54,7 @@ export type Concrete<T extends Type> = Exclude<T, () => any>
 /**
  * A record of {@link Type `Type`s}
  */
-export type Types = Record<string, Type>
+export type Types = { [K in string]: Type }
 
 /**
  * A type that turns a Mondrian {@link Type `Type`} into the equivalent TypeScript's type
@@ -101,16 +101,14 @@ type InferObject<M extends Mutability, Ts extends Types> =
     { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
     { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   >
-
 // prettier-ignore
 type InferEntity<M extends Mutability, Ts extends Types> =
 ApplyObjectMutability<M,
   { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
   { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
 >
-
 // prettier-ignore
-type InferUnion<Ts extends Types> = { [Key in keyof Ts]: { readonly [P in Key]: Infer<Ts[Key]> } }[keyof Ts]
+type InferUnion<Ts extends Types> = { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
 // prettier-ignore
 type InferArray<M, T extends Type> = M extends Mutability.Immutable ? Readonly<Infer<T>[]> : Infer<T>[]
 // prettier-ignore
@@ -1074,13 +1072,18 @@ export type UnionType<Ts extends Types> = {
    * @returns a random example value that match this type. Useful for mocking purposes.
    */
   example(args?: { maxDepth?: number; seed?: number }): InferUnion<Ts>
-  isTaggedUnion(): boolean
+
+  /**
+   * TODO
+   * @param value
+   */
+  variantOwnership(value: InferUnion<Ts>): keyof Ts & string
 }
 
 /**
  * The options that can be used to define a {@link UnionType `UnionType`}.
  */
-export type UnionTypeOptions = BaseOptions & { useTags?: boolean }
+export type UnionTypeOptions = BaseOptions
 
 /**
  * The model of an object in the Mondrian framework.
@@ -1943,7 +1946,7 @@ export type PartialDeep<T extends Type>
   : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
   : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
   : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>
-  : [T] extends [(() => infer T1 extends Type)] ? PartialDeep<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? () => PartialDeep<T1>
   : T
 
 /**

@@ -14,7 +14,7 @@ const prisma = new PrismaClient()
 export const instance = module.build({
   name: 'reddit',
   version: '2.0.0',
-  functions,
+  functions: functions,
   options: {
     maxSelectionDepth: 3,
     checkOutputType: 'throw',

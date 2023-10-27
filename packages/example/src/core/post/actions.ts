@@ -5,6 +5,8 @@ import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { Prisma } from '@prisma/client'
 
+const a: types.UnionType<types.Types> = 1 as any
+
 const writePostInput = () =>
   types
     .object({ content: types.string(), title: types.string(), visibility: postVisibilityType })
@@ -16,7 +18,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
-      return result.fail({ notLoggedIn: 'Invalid authentication' as const })
+      return result.fail('Invalid authentication')
     }
     const newPost = await context.prisma.post.create({
       data: {
@@ -24,7 +26,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
         publishedAt: new Date(),
         authorId: context.userId,
       },
-      select: retrieve?.select,
+      select: retrieve?.select as any,
     })
     return result.ok(newPost)
   },
@@ -63,11 +65,14 @@ const likePostInput = types.object({ postId: idType }, { name: 'LikePostInput' }
 export const likePost = functions.withContext<LoggedUserContext>().build({
   input: likePostInput,
   output: postType,
-  error: types.union({ ...unauthorizedType.variants, postNotFound: idType }, { name: 'LikePostError' }),
+  error: types.union(
+    { ...unauthorizedType.variants, postNotFound: types.literal('Post not found') },
+    { name: 'LikePostError' },
+  ),
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
-      return result.fail({ notLoggedIn: 'Invalid authentication' as const })
+      return result.fail('Invalid authentication')
     }
     const canViewPost = await context.prisma.post.findFirst({
       where: {
@@ -80,7 +85,7 @@ export const likePost = functions.withContext<LoggedUserContext>().build({
       },
     })
     if (!canViewPost) {
-      return result.fail({ postNotFound: input.postId })
+      return result.fail('Post not found')
     }
     await context.prisma.like.upsert({
       create: {

@@ -534,6 +534,12 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
         checkValue(result, [10, 11, 12])
       })
 
+      test('can decode array-like empty object', () => {
+        const object = {}
+        const result = model.decodeWithoutValidation(object, options)
+        checkValue(result, [])
+      })
+
       test('can decode array-like object with numeric string keys', () => {
         const object = { '1': 11, '0': 10, '2': 12 }
         const result = model.decodeWithoutValidation(object, options)
@@ -541,7 +547,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       })
 
       test('fails on non array-like objects', () => {
-        const failingObjects = [{}, { 0: 10, 2: 12 }, { 1: 11, 2: 12 }, { notNumber: 10 }]
+        const failingObjects = [{ 0: 10, 2: 12 }, { 1: 11, 2: 12 }, { notNumber: 10 }]
         for (const object of failingObjects) {
           const result = model.decodeWithoutValidation(object, options)
           const expectedError = [{ expected: 'array', got: object, path: path.empty() }]
@@ -643,52 +649,15 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
     const model = types.union({ variant1: types.number(), variant2: types.string().optional() })
 
     test.prop([number.filter((n) => n % 2 === 0)])('can decode its tagged variant', (number) => {
-      checkValue(model.decodeWithoutValidation({ variant1: number }), { variant1: number })
+      checkValue(model.decodeWithoutValidation(number), number)
     })
 
     test.prop([gen.string()])('can decode its other tagged variant', (string) => {
-      checkValue(model.decodeWithoutValidation({ variant2: string }), { variant2: string })
+      checkValue(model.decodeWithoutValidation(string), string)
     })
 
     test('can decode its other missing variant', () => {
-      checkValue(model.decodeWithoutValidation({ variant2: null }), { variant2: undefined })
-    })
-
-    test.prop([nonObject])('fails with something that is not an object', (value) => {
-      const result = model.decodeWithoutValidation(value)
-      const expectedError = [{ expected: 'union (variant1 | variant2)', got: value, path: path.empty() }]
-      checkError(result, expectedError)
-    })
-
-    test('fails with objects that are not tagged as one of its unions', () => {
-      const failingValues = [{}, { variant1: 1, variant2: 2 }, { notAVariant: 2 }]
-      for (const value of failingValues) {
-        const result = model.decodeWithoutValidation(value)
-        const expectedError = [{ expected: 'union (variant1 | variant2)', got: value, path: path.empty() }]
-        checkError(result, expectedError)
-      }
-    })
-
-    test.prop([nonNumber])('fails if it cannot decode the variant wrapped type', (value) => {
-      const result = model.decodeWithoutValidation({ variant1: value })
-      const expectedError = [{ expected: 'number', got: value, path: path.empty().prependVariant('variant1') }]
-      checkError(result, expectedError)
-    })
-  })
-
-  describe.concurrent('untagged union value', () => {
-    const model = types.union({ variant1: types.number(), variant2: types.string().optional() }, { useTags: false })
-
-    test.prop([number.filter((n) => n % 2 === 0)])('can decode its tagged variant', (number) => {
-      checkValue(model.decodeWithoutValidation(number), { variant1: number })
-    })
-
-    test.prop([gen.string()])('can decode its other tagged variant', (string) => {
-      checkValue(model.decodeWithoutValidation(string), { variant2: string })
-    })
-
-    test('can decode its other missing variant', () => {
-      checkValue(model.decodeWithoutValidation(null), { variant2: undefined })
+      checkValue(model.decodeWithoutValidation(null), undefined)
     })
 
     test('fails with non correct value', () => {
@@ -697,48 +666,36 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
     })
 
     test('get the correct variant with ambiguos (but correct) value', () => {
-      const model = types.union(
-        {
-          v1: types.number({ minimum: 0, maximum: 10 }),
-          v2: types.number({ minimum: 20, maximum: 30 }),
-        },
-        { useTags: false },
-      )
-      checkValue(model.decodeWithoutValidation(25), { v2: 25 })
+      const model = types.union({
+        v1: types.number({ minimum: 0, maximum: 10 }),
+        v2: types.number({ minimum: 20, maximum: 30 }),
+      })
+      checkValue(model.decodeWithoutValidation(25), 25)
     })
 
     test('get the first variant with ambiguos value', () => {
-      const model = types.union(
-        {
-          v1: types.number({ minimum: 0, maximum: 10 }),
-          v2: types.number({ minimum: 20, maximum: 30 }),
-        },
-        { useTags: false },
-      )
-      checkValue(model.decodeWithoutValidation(40), { v1: 40 })
+      const model = types.union({
+        v1: types.number({ minimum: 0, maximum: 10 }),
+        v2: types.number({ minimum: 20, maximum: 30 }),
+      })
+      checkValue(model.decodeWithoutValidation(40), 40)
     })
 
     test('do to not cast if a variant can decode without casting', () => {
-      const model = types.union(
-        {
-          v1: types.number(),
-          v2: types.string(),
-        },
-        { useTags: false },
-      )
-      checkValue(model.decodeWithoutValidation('25', { typeCastingStrategy: 'tryCasting' }), { v2: '25' })
+      const model = types.union({
+        v1: types.number(),
+        v2: types.string(),
+      })
+      checkValue(model.decodeWithoutValidation('25', { typeCastingStrategy: 'tryCasting' }), '25')
     })
 
     test('cast if no variants can decode without casting', () => {
-      const model = types.union(
-        {
-          v0: types.boolean(),
-          v1: types.number(),
-          v2: types.integer(),
-        },
-        { useTags: false },
-      )
-      checkValue(model.decodeWithoutValidation('25', { typeCastingStrategy: 'tryCasting' }), { v1: 25 })
+      const model = types.union({
+        v0: types.boolean(),
+        v1: types.number(),
+        v2: types.integer(),
+      })
+      checkValue(model.decodeWithoutValidation('25', { typeCastingStrategy: 'tryCasting' }), 25)
     })
   })
 

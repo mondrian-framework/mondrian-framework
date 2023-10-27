@@ -65,7 +65,7 @@ export type ModuleOptions = {
  */
 type ContextType<F extends functions.Functions> = UnionToIntersection<
   {
-    [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, any, infer Context> ? Context : never
+    [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, any, any, infer Context> ? Context : never
   }[keyof F]
 >
 

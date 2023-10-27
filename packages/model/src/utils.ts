@@ -72,18 +72,6 @@ export function prependIndexToAll<Data extends Record<string, any>, T extends Wi
   return values.map((value) => ({ ...value, path: value.path.prependIndex(index) }))
 }
 
-/**
- * @param values an array of item that all have a `path` field
- * @param variantName the variant to prepend to the path of each item of the given array
- * @returns an array of item with the path updated with the prepended variant
- */
-export function prependVariantToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
-  values: T[],
-  variantName: string,
-): T[] {
-  return values.map((value) => ({ ...value, path: value.path.prependVariant(variantName) }))
-}
-
 type TypeTransformerWithParam<T extends types.Type, A> = (type: T, args: A) => types.Type
 export function memoizeTypeTransformationWithParam<T extends types.Type, A = undefined>(
   mapper: TypeTransformerWithParam<T, A>,

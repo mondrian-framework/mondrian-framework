@@ -18,15 +18,14 @@ const loginInputType = types.object(
 )
 const loginOutputType = types.object(
   {
-    user: userType,
     jwt: types.string(),
   },
   { name: 'LoginOutput' },
 )
 const loginErrorType = types.union(
   {
-    invalidLogin: types.string(),
-    tooManyRequests: types.string(),
+    invalidLogin: types.literal('invalid username or password'),
+    tooManyRequests: types.literal('Too many requests. Retry in few minutes.'),
   },
   {
     name: 'LoginError',
@@ -37,14 +36,14 @@ const loginRateLimiter = rateLimiter.build<
   typeof loginInputType,
   typeof loginOutputType,
   typeof loginErrorType,
-  { select: true },
+  undefined,
   Context
 >({
   key: ({ input }) => input.email,
   rate: '10 requests in 1 minute',
   onLimit: async () => {
     //TODO: warn the user, maybe block the account
-    return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
+    return result.fail('Too many requests. Retry in few minutes.')
   },
   slotProvider,
 })
@@ -53,26 +52,20 @@ export const login = functions.withContext<Context>().build({
   input: loginInputType,
   output: loginOutputType,
   error: loginErrorType,
-  retrieve: { select: true },
+  retrieve: undefined,
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {
-      return result.fail({ invalidLogin: 'invalid username or password' })
+      return result.fail('invalid username or password')
     }
     await context.prisma.user.update({
       where: { id: loggedUser.id },
       data: { metadata: { update: { lastLogin: new Date() } } },
     })
-    const args = retrieve.merge<Prisma.UserFindFirstOrThrowArgs>(
-      userType,
-      { where: { id: loggedUser.id }, select: { id: true } },
-      (thisRetrieve as any)?.user,
-    )
-    const user = await context.prisma.user.findFirstOrThrow(args)
     const secret = process.env.JWT_SECRET ?? 'secret'
     const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
-    return result.ok({ user, jwt })
+    return result.ok({ jwt })
   },
   middlewares: [loginRateLimiter],
   options: { namespace: 'user' },
@@ -91,13 +84,13 @@ const registerInputType = types.object(
 )
 const registerErrorType = types.union(
   {
-    emailAlreadyTaken: types.string(),
+    emailAlreadyTaken: types.literal('Email already taken'),
   },
   {
     name: 'RegisterError',
   },
 )
-
+const a: functions.ErrorType = registerErrorType
 export const register = functions.withContext<Context>().build({
   input: registerInputType,
   output: userType,
@@ -119,7 +112,7 @@ export const register = functions.withContext<Context>().build({
       return result.ok(user)
     } catch {
       //TODO: check if error is "email duplicate"
-      return result.fail({ emailAlreadyTaken: 'This email si already taken' })
+      return result.fail('Email already taken')
     }
   },
   options: { namespace: 'user' },
@@ -128,14 +121,14 @@ export const register = functions.withContext<Context>().build({
 export const follow = functions.withContext<LoggedUserContext>().build({
   input: types.object({ userId: idType }),
   output: userType,
-  error: types.union({ ...unauthorizedType.variants, userNotExists: types.string() }),
+  error: types.union({ ...unauthorizedType.variants, userNotExists: types.literal('User does not exists') }),
   retrieve: { select: true },
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {
-      return result.fail({ notLoggedIn: 'Invalid authentication' as const })
+      return result.fail('Invalid authentication')
     }
     if (input.userId === context.userId || (await context.prisma.user.count({ where: { id: input.userId } })) === 0) {
-      return result.fail({ userNotExists: "This user doesn't exists." })
+      return result.fail('User does not exists')
     }
     await context.prisma.follower.upsert({
       create: {

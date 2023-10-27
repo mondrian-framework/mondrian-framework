@@ -41,18 +41,12 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
       if (functionBody.error) {
         const errorType = types.concretise(functionBody.error)
         const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
-        if (errorType.kind === types.Kind.Union) {
-          for (const [variantName, variantType] of Object.entries(errorType.variants)) {
-            const code = (errorCodes[variantName] ?? 400).toString()
-            const ts = errorMap[code] ?? []
-            const { schema } = typeToSchemaObject(
-              types.object({ [variantName]: variantType as types.Type }),
-              typeMap,
-              typeRef,
-            )
-            ts.push(schema)
-            errorMap[code] = ts
-          }
+        for (const [variantName, variantType] of Object.entries(errorType.variants as types.Types)) {
+          const code = (errorCodes[variantName] ?? 400).toString()
+          const ts = errorMap[code] ?? []
+          const { schema } = typeToSchemaObject(variantType, typeMap, typeRef)
+          ts.push(schema)
+          errorMap[code] = ts
         }
       }
       const errorSchemas = Object.fromEntries(
@@ -647,17 +641,10 @@ function typeToSchemaObjectInternal(
     }
   }
   if (type.kind === types.Kind.Union) {
-    if (type.isTaggedUnion()) {
-      const taggedUnionTypes = Object.entries(type.variants).map(
-        ([k, t]) => typeToSchemaObject(types.object({ [k]: t as types.Type }), typeMap, typeRef).schema,
-      )
-      return { name, schema: { anyOf: taggedUnionTypes, description } }
-    } else {
-      const untaggedUnionTypes = Object.values(type.variants).map(
-        (t) => typeToSchemaObject(t as types.Type, typeMap, typeRef).schema,
-      )
-      return { name, schema: { anyOf: untaggedUnionTypes, description } }
-    }
+    const untaggedUnionTypes = Object.values(type.variants).map(
+      (t) => typeToSchemaObject(t as types.Type, typeMap, typeRef).schema,
+    )
+    return { name, schema: { anyOf: untaggedUnionTypes, description } }
   }
   return assertNever(type)
 }

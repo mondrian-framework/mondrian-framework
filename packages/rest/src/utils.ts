@@ -33,7 +33,7 @@ function internalEncodeQueryObject(input: JSONType, prefix: string): string[] {
  * FROM { "input[id]": "id", "input[meta][info]": 123 }
  * TO   { id: "id", meta: { info: 123 } }
  */
-export function decodeQueryObject(input: Record<string, unknown>, prefix: string): JSONType {
+export function decodeQueryObject(input: Record<string, unknown>, prefix: string): JSONType | undefined {
   const output = {}
   for (const [key, value] of Object.entries(input)) {
     if (!key.startsWith(prefix)) {
@@ -47,6 +47,9 @@ export function decodeQueryObject(input: Record<string, unknown>, prefix: string
       return value as JSONType
     }
     setTraversingValue(value, path, output)
+  }
+  if (Object.keys(output).length === 0) {
+    return undefined
   }
   return output
 }
@@ -80,7 +83,7 @@ export function completeRetrieve(
         select: mapObject(fields, (fieldName, fieldType) => {
           if (types.unwrap(fieldType).kind === types.Kind.Entity) {
             const subRetrieve = (retr.select ?? {})[fieldName]
-            if (subRetrieve) {
+            if (subRetrieve && subRetrieve !== true) {
               return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)
             } else {
               return undefined

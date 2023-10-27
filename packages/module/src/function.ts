@@ -114,7 +114,7 @@ export type FunctionArguments<
   readonly logger: logger.MondrianLogger
 }
 
-export type ErrorType = types.UnionType<types.Types> | undefined
+export type ErrorType = types.UnionType<any> | undefined
 
 export type OutputRetrieveCapabilities = retrieve.Capabilities | undefined
 

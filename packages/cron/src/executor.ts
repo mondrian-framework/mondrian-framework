@@ -45,7 +45,7 @@ export function start<const F extends functions.Functions, CI>({
           operationName: functionName,
         })
         try {
-          const input = (await options.input()) as never
+          const input = await options.input()
           const contextInput = await context({ cron: options.cron })
           const ctx = await module.context(contextInput, {
             input,
@@ -54,7 +54,7 @@ export function start<const F extends functions.Functions, CI>({
             logger: operationLogger,
           })
           await functionBody.apply({
-            input,
+            input: input as never,
             retrieve: undefined,
             operationId,
             logger: operationLogger,

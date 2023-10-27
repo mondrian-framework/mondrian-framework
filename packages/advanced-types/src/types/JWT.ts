@@ -9,13 +9,13 @@ type JwtOptions = { algorithm: 'HS256' | 'HS384' | 'HS512' } & Omit<
 
 const DEFAULT_HS_JWT_ALGORITHM = 'HS256'
 
-export type JWTType<T extends types.ObjectType<any, any>, Name extends string> = m.CustomType<
+export type JWTType<T extends types.ObjectType<types.Mutability, types.Types>, Name extends string> = m.CustomType<
   `${Name}-jwt`,
   JwtOptions,
   types.Infer<T>
 >
 
-export function jwt<T extends types.ObjectType<any, any>, Name extends string>(
+export function jwt<T extends types.ObjectType<types.Mutability, types.Types>, Name extends string>(
   name: Name,
   payloadType: T,
   secret: string,
@@ -31,7 +31,8 @@ export function jwt<T extends types.ObjectType<any, any>, Name extends string>(
       return result
     },
     (value) => decodeJwt(value, payloadType, secret, options),
-    (payload, options) => payloadType.validate(payload as never, options),
+    (payload, options) =>
+      payloadType.validate(payload as types.Infer<types.ObjectType<types.Mutability, types.Types>>, options),
     (maxDepth) => types.concretise(payloadType).arbitrary(maxDepth) as gen.Arbitrary<types.Infer<T>>,
     options,
   )

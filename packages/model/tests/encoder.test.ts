@@ -100,43 +100,25 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
   )
 
   describe.concurrent('on union values', () => {
-    const unionModel = arbitrary.union(
-      {
-        variant1: arbitrary.number(),
-        variant2: arbitrary.optional(arbitrary.string()),
-      },
-      gen.boolean(),
-    )
+    const unionModel = arbitrary.union({
+      variant1: arbitrary.number(),
+      variant2: arbitrary.optional(arbitrary.string()),
+    })
 
     test.prop([unionModel, gen.double()])('encodes a variant', (model, number) => {
-      const variant = { variant1: number }
-      if (model.isTaggedUnion()) {
-        expect(model.encodeWithoutValidation(variant)).toEqual(variant)
-      } else {
-        expect(model.encodeWithoutValidation(variant)).toEqual(number)
-      }
+      expect(model.encodeWithoutValidation(number)).toEqual(number)
     })
 
     test.prop([unionModel, gen.string()])('encodes the other variant', (model, string) => {
-      const variant = { variant2: string }
-      if (model.isTaggedUnion()) {
-        expect(model.encodeWithoutValidation(variant)).toEqual(variant)
-      } else {
-        expect(model.encodeWithoutValidation(variant)).toEqual(string)
-      }
+      expect(model.encodeWithoutValidation(string)).toEqual(string)
     })
 
     test.prop([unionModel])('encodes a variant with only optional undefined field', (model) => {
-      const variant = { variant2: undefined }
-      if (model.isTaggedUnion()) {
-        expect(model.encodeWithoutValidation(variant)).toEqual({ variant2: null })
-      } else {
-        expect(model.encodeWithoutValidation(variant)).toEqual(null)
-      }
+      expect(model.encodeWithoutValidation(undefined)).toEqual(null)
     })
 
     test.prop([unionModel])('fails if called with unhandled variant', (model) => {
-      expect(() => model.encodeWithoutValidation({ notVariant: 1 } as any)).toThrowError(/^\[internal error\]/)
+      expect(() => model.encodeWithoutValidation(true as any)).toThrowError(/^\[internal error\]/)
       expect(() => model.encodeWithoutValidation({} as any)).toThrowError(/^\[internal error\]/)
     })
   })

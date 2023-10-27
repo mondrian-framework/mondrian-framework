@@ -11,6 +11,6 @@ export type UnauthorizedType = types.Infer<typeof unauthorizedType>
 export const unauthorizedType = types
   .union({
     notLoggedIn: types.literal('Invalid authentication'),
-    unauthorized: types.object({}),
+    unauthorized: types.literal('Unauthorized'),
   })
   .setName('Unauthorized')

@@ -72,7 +72,7 @@ function serializeTypes(
   nameMap: Map<types.Type, string>
 } {
   const allTypes = Object.values(moduleInterface.functions).flatMap((f) =>
-    f.error ? [f.input, f.output, f.error] : [f.input, f.output],
+    f.errors ? [f.input, f.output, ...Object.values(f.errors)] : [f.input, f.output],
   )
   const uniqueTypes = utils.allUniqueTypes(allTypes)
   const nameMap: Map<types.Type, string> = new Map()
@@ -214,9 +214,9 @@ function serializeFunctions(
   const functionMap = mapObject(moduleInterface.functions, (_, functionInterface) => {
     const input = nameMap.get(functionInterface.input)!
     const output = nameMap.get(functionInterface.output)!
-    if (functionInterface.error) {
-      const error = nameMap.get(functionInterface.error)!
-      return { input, output, error, options: functionInterface.options }
+    if (functionInterface.errors) {
+      const errors = mapObject(functionInterface.errors, (_, errorType) => nameMap.get(errorType)!)
+      return { input, output, errors, options: functionInterface.options }
     } else {
       return { input, output, options: functionInterface.options }
     }
@@ -347,7 +347,7 @@ const functionSchema = types
   .object({
     input: types.string({ minLength: 1 }),
     output: types.string({ minLength: 1 }),
-    error: types.string({ minLength: 1 }).optional(),
+    errors: types.record(types.string({ minLength: 1 })).optional(),
     retrieve: types
       .object({
         where: types.literal(true).optional(),

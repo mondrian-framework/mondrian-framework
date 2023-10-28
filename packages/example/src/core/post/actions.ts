@@ -1,11 +1,9 @@
 import { LoggedUserContext } from '..'
-import { idType, unauthorizedType } from '../common/model'
+import { idType, notLoggedInType, unauthorizedType } from '../common/model'
 import { postType, postVisibilityType } from './model'
 import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { Prisma } from '@prisma/client'
-
-const a: types.UnionType<types.Types> = 1 as any
 
 const writePostInput = () =>
   types
@@ -14,7 +12,10 @@ const writePostInput = () =>
 export const writePost = functions.withContext<LoggedUserContext>().build({
   input: writePostInput,
   output: postType,
-  error: unauthorizedType,
+  errors: {
+    notLoggedInType,
+    unauthorizedType,
+  },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
@@ -26,7 +27,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
         publishedAt: new Date(),
         authorId: context.userId,
       },
-      select: retrieve?.select as any,
+      select: retrieve?.select as never, //TODO
     })
     return result.ok(newPost)
   },
@@ -36,8 +37,8 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
 export const readPosts = functions.withContext<LoggedUserContext>().build({
   input: types.never(),
   output: types.array(postType),
-  error: undefined,
-  retrieve: { select: true, where: true, skip: true, limit: true, orderBy: true },
+  errors: undefined,
+  retrieve: { select: true, where: true, skip: true, take: true, orderBy: true },
   body: async ({ context, retrieve: thisRetrieve }) => {
     const baseFilter: Prisma.PostWhereInput = {
       OR: [
@@ -60,15 +61,15 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
   },
   options: { namespace: 'post' },
 })
-
 const likePostInput = types.object({ postId: idType }, { name: 'LikePostInput' })
 export const likePost = functions.withContext<LoggedUserContext>().build({
   input: likePostInput,
   output: postType,
-  error: types.union(
-    { ...unauthorizedType.variants, postNotFound: types.literal('Post not found') },
-    { name: 'LikePostError' },
-  ),
+  errors: {
+    unauthorizedType,
+    notLoggedInType,
+    postNotFound: types.literal('Post not found'),
+  },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {

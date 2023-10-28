@@ -57,7 +57,7 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
       query?: string
     }
   }
-  errorCodes?: [F['error']] extends [types.UnionType<infer TS>] ? { [K in keyof TS]?: number } : never
+  errorCodes?: Record<keyof F['errors'], number>
   namespace?: string | null
 }
 

@@ -46,9 +46,9 @@ export function checkOutputType(
     apply: async (args, next, thisFunction) => {
       const nextRes: any = await next(args)
       let res
-      if (thisFunction.error && !nextRes.isOk) {
+      if (thisFunction.errors && !nextRes.isOk) {
         return nextRes
-      } else if (thisFunction.error) {
+      } else if (thisFunction.errors) {
         res = nextRes.value
       } else {
         res = nextRes
@@ -82,7 +82,7 @@ export function checkOutputType(
             assertNever(onFailure)
         }
       }
-      if (thisFunction.error) {
+      if (thisFunction.errors) {
         return checkResult
       } else {
         return checkResult.value

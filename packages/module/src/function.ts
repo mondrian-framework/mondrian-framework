@@ -22,7 +22,7 @@ export interface FunctionInterface<
   /**
    * The type describing the possible errors returned by the function.
    */
-  readonly error: E
+  readonly errors: E
   /**
    * The type describing the possible errors returned by the function.
    */
@@ -40,17 +40,17 @@ export interface Function<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
   E extends ErrorType = undefined,
-  R extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
+  C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
   Context extends Record<string, unknown> = Record<string, unknown>,
-> extends FunctionInterface<I, O, E, R> {
+> extends FunctionInterface<I, O, E, C> {
   /**
    * Function body.
    */
-  readonly body: (args: FunctionArguments<I, O, R, Context>) => FunctionResult<O, E>
+  readonly body: (args: FunctionArguments<I, O, C, Context>) => FunctionResult<O, E, C>
   /**
    * Function {@link Middleware Middlewares}
    */
-  readonly middlewares?: readonly Middleware<I, O, E, R, Context>[]
+  readonly middlewares?: readonly Middleware<I, O, E, C, Context>[]
 }
 
 /**
@@ -60,13 +60,13 @@ export interface FunctionImplementation<
   I extends types.Type = types.Type,
   O extends types.Type = types.Type,
   E extends ErrorType = ErrorType,
-  R extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
+  C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
   Context extends Record<string, unknown> = Record<string, unknown>,
-> extends Function<I, O, E, R, Context> {
+> extends Function<I, O, E, C, Context> {
   /**
    * Function apply. This executes function's {@link Middleware} and function's body.
    */
-  readonly apply: (args: FunctionArguments<I, O, R, Context>) => FunctionResult<O, E>
+  readonly apply: (args: FunctionArguments<I, O, C, Context>) => FunctionResult<O, E, C>
 }
 
 /**
@@ -114,11 +114,13 @@ export type FunctionArguments<
   readonly logger: logger.MondrianLogger
 }
 
-export type ErrorType = types.UnionType<any> | undefined
+export type ErrorType = types.Types | undefined
 
 export type OutputRetrieveCapabilities = retrieve.Capabilities | undefined
 
-export type FunctionResult<O extends types.Type, E extends ErrorType> = Promise<FunctionResultInternal<O, E>>
+export type FunctionResult<O extends types.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> = Promise<
+  FunctionResultInternal<O, E, C>
+>
 
 /**
  * Turns input/output/error into a function's result:
@@ -126,12 +128,15 @@ export type FunctionResult<O extends types.Type, E extends ErrorType> = Promise<
  *   partial version of the inferred value
  * - if the error is a union then the function will return a `Result` that can fail with the given error
  */
-type FunctionResultInternal<O extends types.Type, E extends ErrorType> = [E] extends [types.UnionType<infer _>]
-  ? result.Result<types.Infer<types.PartialDeep<O>>, types.Infer<E>>
-  : [E] extends [undefined]
-  ? types.Infer<types.PartialDeep<O>>
-  : unknown
-
+//prettier-ignore
+type FunctionResultInternal<O extends types.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> 
+  = [C] extends [{ select: true }] ?
+      [E] extends [types.Types] ? result.Result<types.Infer<types.PartialDeep<O>>, types.Infer<types.UnionType<E>>>
+    : [E] extends [undefined] ? types.Infer<types.PartialDeep<O>>
+    : any
+  :   [E] extends [types.Types] ? result.Result<types.Infer<O>, types.Infer<types.UnionType<E>>>
+    : [E] extends [undefined] ? types.Infer<O>
+    : any
 /**
  * Mondrian function's middleware type. Applied before calling the {@link Function}'s body.
  * Usefull for trasforming the {@link FunctionArguments} or the result of a function.
@@ -151,7 +156,7 @@ export type Middleware<
   I extends types.Type,
   O extends types.Type,
   E extends ErrorType,
-  R extends OutputRetrieveCapabilities,
+  C extends OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
 > = {
   /**
@@ -166,23 +171,17 @@ export type Middleware<
    * @returns a value that respect function's output type and the given projection.
    */
   apply: (
-    args: FunctionArguments<I, O, R, Context>,
-    next: (args: FunctionArguments<I, O, R, Context>) => FunctionResult<O, E>,
-    thisFunction: FunctionImplementation<I, O, E, R, Context>,
-  ) => FunctionResult<O, E>
+    args: FunctionArguments<I, O, C, Context>,
+    next: (args: FunctionArguments<I, O, C, Context>) => FunctionResult<O, E, C>,
+    thisFunction: FunctionImplementation<I, O, E, C, Context>,
+  ) => FunctionResult<O, E, C>
 }
 
 /**
  * A map of {@link FunctionImplementation}s.
  */
 export type Functions<Contexts extends Record<string, Record<string, unknown>> = Record<string, any>> = {
-  [K in keyof Contexts]: FunctionImplementation<
-    types.Type,
-    types.Type,
-    ErrorType,
-    OutputRetrieveCapabilities,
-    Contexts[K]
-  >
+  [K in keyof Contexts]: FunctionImplementation<types.Type, types.Type, any, OutputRetrieveCapabilities, Contexts[K]>
 }
 
 /**
@@ -220,8 +219,8 @@ export function build<
   const I extends types.Type,
   const O extends types.Type,
   const E extends ErrorType,
-  const R extends OutputRetrieveCapabilities,
->(func: Function<I, O, E, R, {}>): FunctionImplementation<I, O, E, R, {}> {
+  const C extends OutputRetrieveCapabilities,
+>(func: Function<I, O, E, C, {}>): FunctionImplementation<I, O, E, C, {}> {
   return withContext().build(func)
 }
 
@@ -260,8 +259,8 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
   public build<
     const I extends types.Type,
     const O extends types.Type,
-    const E extends ErrorType = undefined,
-    const R extends OutputRetrieveCapabilities = undefined,
+    const E extends ErrorType,
+    const R extends OutputRetrieveCapabilities,
   >(func: Function<I, O, E, R, Context>): FunctionImplementation<I, O, E, R, Context> {
     return new BaseFunction(func)
   }

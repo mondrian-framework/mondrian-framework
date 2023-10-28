@@ -11,16 +11,16 @@ export class OpentelemetryFunction<
   I extends types.Type,
   O extends types.Type,
   E extends ErrorType,
-  R extends OutputRetrieveCapabilities,
+  C extends OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
-> extends BaseFunction<I, O, E, R, Context> {
+> extends BaseFunction<I, O, E, C, Context> {
   private readonly name: string
   private readonly tracer: Tracer
   private readonly counter: Counter
   private readonly histogram: Histogram
 
   constructor(
-    func: functions.Function<I, O, E, R, Context>,
+    func: functions.Function<I, O, E, C, Context>,
     name: string,
     opentelemetry: {
       tracer: Tracer
@@ -35,7 +35,7 @@ export class OpentelemetryFunction<
     this.histogram = opentelemetry.histogram
   }
 
-  public async apply(args: functions.FunctionArguments<I, O, R, Context>): FunctionResult<O, E> {
+  public async apply(args: functions.FunctionArguments<I, O, C, Context>): FunctionResult<O, E, C> {
     this.counter.add(1)
     const startTime = new Date().getTime()
     const spanResult = await this.tracer.startActiveSpan(
@@ -80,9 +80,9 @@ export class OpentelemetryFunction<
 
   private async executeWithinSpan(
     middlewareIndex: number,
-    args: functions.FunctionArguments<I, O, R, Context>,
+    args: functions.FunctionArguments<I, O, C, Context>,
     span: Span,
-  ): FunctionResult<O, E> {
+  ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
       span.addEvent('execution', { type: 'body' })
       return this.body(args)

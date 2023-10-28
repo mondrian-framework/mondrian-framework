@@ -1,5 +1,5 @@
 import { slotProvider } from '../../rate-limiter'
-import { idType, unauthorizedType } from '../common/model'
+import { idType, unauthorizedType, notLoggedInType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { userType } from './model'
 import advancedTypes from '@mondrian-framework/advanced-types'
@@ -22,15 +22,10 @@ const loginOutputType = types.object(
   },
   { name: 'LoginOutput' },
 )
-const loginErrorType = types.union(
-  {
-    invalidLogin: types.literal('invalid username or password'),
-    tooManyRequests: types.literal('Too many requests. Retry in few minutes.'),
-  },
-  {
-    name: 'LoginError',
-  },
-)
+const loginErrorType = {
+  invalidLogin: types.literal('invalid username or password'),
+  tooManyRequests: types.literal('Too many requests. Retry in few minutes.'),
+} as const
 
 const loginRateLimiter = rateLimiter.build<
   typeof loginInputType,
@@ -51,7 +46,7 @@ const loginRateLimiter = rateLimiter.build<
 export const login = functions.withContext<Context>().build({
   input: loginInputType,
   output: loginOutputType,
-  error: loginErrorType,
+  errors: loginErrorType,
   retrieve: undefined,
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     const { email, password } = input
@@ -82,19 +77,13 @@ const registerInputType = types.object(
     name: 'RegisterInput',
   },
 )
-const registerErrorType = types.union(
-  {
-    emailAlreadyTaken: types.literal('Email already taken'),
-  },
-  {
-    name: 'RegisterError',
-  },
-)
-const a: functions.ErrorType = registerErrorType
+
 export const register = functions.withContext<Context>().build({
   input: registerInputType,
   output: userType,
-  error: registerErrorType,
+  errors: {
+    emailAlreadyTaken: types.literal('Email already taken'),
+  },
   retrieve: { select: true },
   body: async ({ input, context, retrieve }) => {
     try {
@@ -121,7 +110,11 @@ export const register = functions.withContext<Context>().build({
 export const follow = functions.withContext<LoggedUserContext>().build({
   input: types.object({ userId: idType }),
   output: userType,
-  error: types.union({ ...unauthorizedType.variants, userNotExists: types.literal('User does not exists') }),
+  errors: {
+    unauthorizedType,
+    notLoggedInType,
+    userNotExists: types.literal('User does not exists'),
+  },
   retrieve: { select: true },
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {

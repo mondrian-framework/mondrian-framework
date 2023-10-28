@@ -7,10 +7,5 @@ export const idType = types.string({
   regex: /^[0-9a-f]{24}$/,
 })
 
-export type UnauthorizedType = types.Infer<typeof unauthorizedType>
-export const unauthorizedType = types
-  .union({
-    notLoggedIn: types.literal('Invalid authentication'),
-    unauthorized: types.literal('Unauthorized'),
-  })
-  .setName('Unauthorized')
+export const notLoggedInType = types.literal('Invalid authentication')
+export const unauthorizedType = types.literal('Unauthorized')

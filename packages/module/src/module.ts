@@ -81,8 +81,8 @@ type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
  */
 function assertUniqueNames(functions: functions.FunctionsInterfaces) {
   const functionTypes = Object.values(functions).flatMap((f) => {
-    const hasError = f.error !== undefined
-    return hasError ? [f.input, f.output, f.error] : [f.input, f.output]
+    const hasError = f.errors !== undefined
+    return hasError ? [f.input, f.output, ...Object.values(f.errors)] : [f.input, f.output]
   })
 
   const allTypes = allUniqueTypes(functionTypes)

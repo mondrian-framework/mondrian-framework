@@ -9,7 +9,7 @@ export type Sdk<F extends functions.Functions, Metadata> = {
 }
 
 type SdkFunctions<F extends functions.Functions, Metadata> = {
-  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], F[K]['error'], F[K]['retrieve'], Metadata>
+  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], F[K]['errors'], F[K]['retrieve'], Metadata>
 }
 
 type SdkFunction<
@@ -28,7 +28,7 @@ type SdkFunctionInternal<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   P extends retrieve.FromType<O, C>,
-> = [E] extends [types.UnionType<infer _>] ? result.Result<Project<O, P>, types.Infer<E>> : Project<O, P>
+> = [E] extends [types.UnionType<infer _>] ? result.Result<Project<O, P>, types.Infer<types.UnionType<E>>> : Project<O, P>
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata

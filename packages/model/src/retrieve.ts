@@ -20,7 +20,7 @@ export type GenericRetrieve = {
 }
 export type GenericWhere = { AND?: GenericWhere | GenericWhere[] }
 export type GenericSelect = null | Record<string, undefined | GenericRetrieve | GenericFieldSelect>
-type GenericFieldSelect = boolean | { [K in string]: GenericFieldSelect }
+type GenericFieldSelect = boolean | { select?: { [K in string]: GenericFieldSelect } }
 export type GenericOrderBy = {} | {}[]
 
 // prettier-ignore
@@ -30,6 +30,8 @@ export type FromType<T extends types.Type, C extends Capabilities | undefined> =
   : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1>
   : GenericRetrieve
   */
+
+export type HasSelection<C extends Capabilities | undefined> = C extends { select: true } ? true : false
 
 type Where<Ts extends types.Types> = { [K in WhereFieldKeys<Ts>]?: WhereField<Ts[K]> } & {
   AND?: Where<Ts> | Where<Ts>[]
@@ -158,20 +160,39 @@ export function selectionDepth(type: types.Type, retrieve: GenericRetrieve): num
   })
 }
 
+export function selectedType(type: types.Type, select: GenericSelect): types.Type {
+  if (!select) {
+    return type
+  }
+  return types.match(type, {
+    optional: ({ wrappedType }) => types.optional(selectedType(wrappedType, select)),
+    nullable: ({ wrappedType }) => types.nullable(selectedType(wrappedType, select)),
+    array: ({ wrappedType }) => types.optional(selectedType(wrappedType, select)),
+    record: ({ fields }, t) => {
+      const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {
+        const selection = select[fieldName]
+        if (selection === true) {
+          return [[fieldName, fieldType]]
+        } else if (typeof selection === 'object' && selection.select) {
+          return [[fieldName, selectedType(fieldType, selection.select)]]
+        } else {
+          return []
+        }
+      })
+      return types.object(selectedFields)
+    },
+    otherwise: (t) => t,
+  })
+}
+
 export function isRespected<T extends types.Type>(
   type: T,
   retrieve: FromType<T, {}>,
   value: types.Infer<T>,
 ): result.Result<{ trimmedValue: types.Infer<T> }, decoding.Error[] | validation.Error[]> {
-  /*const asd = types.matcher({
-    optional: ({ wrappedType }) => types.optional(asd(wrappedType)),
-    nullable: ({ wrappedType }) => types.nullable(asd(wrappedType)),
-    array: ({ wrappedType }) => types.optional(asd(wrappedType)),
-    
-    otherwise: (t) => t,
-  })*/
-
-  return result.ok({ trimmedValue: value }) //TODO
+  const typeToRespect = retrieve.select ? selectedType(type, retrieve.select) : type
+  const result = types.concretise(typeToRespect).decode(value)
+  return result.map((trimmedValue) => ({ trimmedValue }))
 }
 
 export function fromType(type: types.Type, capabilities: Capabilities | undefined): result.Result<types.Type, null> {
@@ -233,9 +254,13 @@ function select(type: types.Type): types.Type {
         retrieve: retrieve(entity, { select: true }),
         all: types.boolean(),
       }),
-    object: ({ fields }) =>
+    object: (
+      { fields }, // { select?: { ... } } | boolean
+    ) =>
       types.union({
-        fields: types.object(mapObject(fields, (_, fieldType) => types.optional(select(fieldType)))),
+        fields: types
+          .object({ select: types.object(mapObject(fields, (_, fieldType) => types.optional(select(fieldType)))) })
+          .optional(),
         all: types.boolean(),
       }),
     otherwise: () => types.boolean(),

@@ -54,7 +54,7 @@ export type Concrete<T extends Type> = Exclude<T, () => any>
 /**
  * A record of {@link Type `Type`s}
  */
-export type Types = { [K in string]: Type }
+export type Types = { readonly [K in string]: Type }
 
 /**
  * A type that turns a Mondrian {@link Type `Type`} into the equivalent TypeScript's type
@@ -112,6 +112,41 @@ type InferUnion<Ts extends Types> = { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof 
 // prettier-ignore
 type InferArray<M, T extends Type> = M extends Mutability.Immutable ? Readonly<Infer<T>[]> : Infer<T>[]
 // prettier-ignore
+
+export type InferReturn<T extends Type>
+  = [T] extends [NumberType] ? number
+  : [T] extends [StringType] ? string
+  : [T] extends [BooleanType] ? boolean
+  : [T] extends [LiteralType<infer L>] ? L
+  : [T] extends [CustomType<any, any, infer InferredAs>] ? InferredAs
+  : [T] extends [EnumType<infer Vs>] ? Vs[number]
+  : [T] extends [OptionalType<infer T1>] ? undefined | InferReturn<T1>
+  : [T] extends [NullableType<infer T1>] ? null | InferReturn<T1>
+  : [T] extends [ArrayType<infer M, infer T1>] ? InferReturnArray<M, T1>
+  : [T] extends [ObjectType<infer M, infer Ts>] ? InferReturnObject<M, Ts>
+  : [T] extends [EntityType<infer M, infer Ts>] ? InferReturnEntity<M, Ts>
+  : [T] extends [UnionType<infer Ts>] ? InferReturnUnion<Ts>
+  : [T] extends [(() => infer T1 extends Type)] ? InferReturn<T1>
+  : never
+
+// prettier-ignore
+type InferReturnObject<M extends Mutability, Ts extends Types> =
+  ApplyObjectMutability<M,
+    { [Key in NonOptionalKeysReturn<Ts>]: InferReturn<Ts[Key]> } &
+    { [Key in OptionalKeysReturn<Ts>]?: InferReturn<Ts[Key]> }
+  >
+// prettier-ignore
+type InferReturnEntity<M extends Mutability, Ts extends Types> =
+ApplyObjectMutability<M,
+  { [Key in NonOptionalKeysReturn<Ts>]: InferReturn<Ts[Key]> } &
+  { [Key in OptionalKeysReturn<Ts>]?: InferReturn<Ts[Key]> }
+>
+// prettier-ignore
+type InferReturnUnion<Ts extends Types> = { [Key in keyof Ts]: InferReturn<Ts[Key]> }[keyof Ts]
+// prettier-ignore
+type InferReturnArray<M, T extends Type> = M extends Mutability.Immutable ? Readonly<InferReturn<T>[]> : InferReturn<T>[]
+
+// prettier-ignore
 type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknown>> = M extends Mutability.Immutable ? { readonly [K in keyof T]: T[K] } : { [K in keyof T]: T[K] }
 
 /**
@@ -130,6 +165,10 @@ type OptionalKeys<T extends Types> = {
   [K in keyof T]: IsOptional<T[K]> extends true ? K : never
 }[keyof T]
 
+type OptionalKeysReturn<T extends Types> = {
+  [K in keyof T]: IsOptional<T[K]> extends true ? K : IsEntity<T[K]> extends true ? K : never
+}[keyof T]
+
 /**
  * Given an array of types, returns the union of the fields whose type is not optional
  *
@@ -144,6 +183,10 @@ type OptionalKeys<T extends Types> = {
  */
 type NonOptionalKeys<T extends Types> = {
   [K in keyof T]: IsOptional<T[K]> extends true ? never : K
+}[keyof T]
+
+type NonOptionalKeysReturn<T extends Types> = {
+  [K in keyof T]: IsOptional<T[K]> extends true ? never : IsEntity<T[K]> extends true ? never : K
 }[keyof T]
 
 /**
@@ -168,8 +211,18 @@ type NonOptionalKeys<T extends Types> = {
  */
 //prettier-ignore
 type IsOptional<T extends Type> 
-  = [T] extends [OptionalType<infer _T1>] ? true
+  = [T] extends [OptionalType<any>] ? true
   : [T] extends [NullableType<infer T1>] ? IsOptional<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? IsOptional<T1>
+  : false
+
+//prettier-ignore
+type IsEntity<T extends Type> 
+  = [T] extends [EntityType<any, any>] ? true
+  : [T] extends [OptionalType<infer T1>] ? IsEntity<T1>
+  : [T] extends [NullableType<infer T1>] ? IsEntity<T1>
+  : [T] extends [ArrayType<any, infer T1>] ? IsEntity<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? IsEntity<T1>
   : false
 
 /**
@@ -2191,8 +2244,8 @@ export function match<const M extends TypeMatch<unknown>>(
     [Kind.Literal]: ['literal', 'scalar', 'otherwise'],
     [Kind.Enum]: ['enum', 'scalar', 'otherwise'],
     [Kind.Custom]: ['custom', 'scalar', 'otherwise'],
-    [Kind.Object]: ['object', 'otherwise'],
-    [Kind.Entity]: ['entity', 'otherwise'],
+    [Kind.Object]: ['object', 'record', 'otherwise'],
+    [Kind.Entity]: ['entity', 'record', 'otherwise'],
     [Kind.Union]: ['union', 'otherwise'],
     [Kind.Nullable]: ['nullable', 'wrapper', 'otherwise'],
     [Kind.Optional]: ['optional', 'wrapper', 'otherwise'],
@@ -2278,6 +2331,10 @@ type MatcherNameToType = {
   nullable: [NullableType<Type>, Lazy<NullableType<Type>>]
   optional: [OptionalType<Type>, Lazy<OptionalType<Type>>]
   array: [ArrayType<Mutability, Type>, Lazy<ArrayType<Mutability, Type>>]
+  record: [
+    ObjectType<Mutability, Types> | EntityType<Mutability, Types>,
+    Lazy<ObjectType<Mutability, Types>> | Lazy<EntityType<Mutability, Types>>,
+  ]
   wrapper: [
     OptionalType<Type> | NullableType<Type> | ArrayType<Mutability, Type>,
     Lazy<OptionalType<Type> | NullableType<Type> | ArrayType<Mutability, Type>>,
@@ -2305,6 +2362,7 @@ type MatcherNameToTypeName = {
   nullable: 'nullable'
   optional: 'optional'
   array: 'array'
+  record: 'object' | 'entity'
   wrapper: 'array' | 'optional' | 'nullable'
   scalar: 'string' | 'number' | 'boolean' | 'literal' | 'enum' | 'custom'
   otherwise: AllTypeNames

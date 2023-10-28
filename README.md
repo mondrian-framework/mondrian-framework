@@ -93,7 +93,7 @@ const api: rest.Api<typeof Functions> = {
     register: {
       method: 'put',
       path: '/user',
-      errorCodes: { weakPassword: 400 },
+      errorCodes: { weakPassword: 400, emailAlreadyUsed: 403 },
     },
   },
   options: { introspection: true },

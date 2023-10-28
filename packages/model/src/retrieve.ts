@@ -18,32 +18,83 @@ export type GenericRetrieve = {
   take?: number
   skip?: number
 }
-export type GenericWhere = { AND?: GenericWhere | GenericWhere[] }
-export type GenericSelect = null | Record<string, undefined | GenericRetrieve | GenericFieldSelect>
-type GenericFieldSelect = boolean | { select?: { [K in string]: GenericFieldSelect } }
+export type GenericWhere = { AND?: GenericWhere | GenericWhere[] } & Record<string, { equals?: unknown }>
+export type GenericSelect = null | Record<string, undefined | GenericRetrieve | boolean>
 export type GenericOrderBy = {} | {}[]
 
 // prettier-ignore
-export type FromType<T extends types.Type, C extends Capabilities | undefined> = GenericRetrieve /* TODO
-  = [T] extends [types.EntityType<types.Mutability, infer Ts>] ? { where?: Where<Ts> } 
-  : [T] extends [types.ArrayType<types.Mutability, infer T1>] ? FromType<T1>
-  : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1>
-  : GenericRetrieve
-  */
+export type FromType<T extends types.Type, C extends Capabilities>
+  = [T] extends [types.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
+  : [T] extends [types.ArrayType<any, infer T1>] ? FromType<T1, C>
+  : [T] extends [types.OptionalType<infer T1>] ? FromType<T1, C>
+  : [T] extends [types.NullableType<infer T1>] ? FromType<T1, C>
+  : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1, C>
+  : never
 
-export type HasSelection<C extends Capabilities | undefined> = C extends { select: true } ? true : false
+type TakeType<C extends Capabilities> = [C] extends [{ take: true }] ? { take?: number } : {}
+type SkipType<C extends Capabilities> = [C] extends [{ skip: true }] ? { skip?: number } : {}
 
-type Where<Ts extends types.Types> = { [K in WhereFieldKeys<Ts>]?: WhereField<Ts[K]> } & {
-  AND?: Where<Ts> | Where<Ts>[]
-  OR?: Where<Ts> | Where<Ts>[]
-  NOT?: Where<Ts>
+type AllCapabilities = {
+  where: true
+  select: true
+  orderBy: true
+  take: true
+  skip: true
 }
 
 // prettier-ignore
+type SelectType<T extends types.Type, C extends Capabilities>
+  = [C] extends [{ select: true }]
+  ? [T] extends [types.EntityType<any, infer Ts>] ? { select?: { [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C>
+  : [T] extends [types.ObjectType<any, infer Ts>] ? { select?: { [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } }
+  : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
+  : [T] extends [types.OptionalType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [types.NullableType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [(() => infer T1 extends types.Type)] ? SelectType<T1, C>
+  : never : {}
+
+// prettier-ignore
+type OrderByType<T extends types.Type, C extends Capabilities>
+  = [C] extends [{ orderBy: true }]
+  ? [T] extends [types.EntityType<any, infer Ts>] ? { orderBy?: OrderByFields<Ts> | OrderByFields<Ts>[] } 
+  : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
+  : [T] extends [types.OptionalType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [types.NullableType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [(() => infer T1 extends types.Type)] ? SelectType<T1, C>
+  : never : {}
+
+type SortDirection = 'asc' | 'desc'
+type OrderByFields<Ts extends types.Types> = { [K in keyof Ts]?: OrderByField<Ts[K]> }
+// prettier-ignore
+type OrderByField<T extends types.Type> 
+  = [T] extends [types.EntityType<any, infer Ts>] ? OrderByFields<Ts>
+  : [T] extends [types.ObjectType<any, infer Ts>] ? OrderByFields<Ts>
+  : [T] extends [types.ArrayType<any, any>] ? { _count?: SortDirection }
+  : [T] extends [types.OptionalType<infer T1>] ? OrderByField<T1>
+  : [T] extends [types.NullableType<infer T1>] ? OrderByField<T1>
+  : [T] extends [(() => infer T1 extends types.Type)] ? OrderByField<T1>
+  : SortDirection
+
+// prettier-ignore
+type WhereType<T extends types.Type, C extends Capabilities> 
+  = [C] extends [{ where: true }]
+  ? [T] extends [types.EntityType<any, infer Ts>] ? { where?: WhereFields<Ts> }
+  : [T] extends [types.ArrayType<any, infer T1>] ? WhereType<T1, AllCapabilities>
+  : [T] extends [types.OptionalType<infer T1>] ? WhereType<T1, C>
+  : [T] extends [types.NullableType<infer T1>] ? WhereType<T1, C>
+  : [T] extends [(() => infer T1 extends types.Type)] ? WhereType<T1, C>
+  : never : {}
+
+type WhereFields<Ts extends types.Types> = { [K in WhereFieldKeys<Ts>]?: WhereField<Ts[K]> } & {
+  AND?: WhereFields<Ts>[]
+  OR?: WhereFields<Ts>[]
+  NOT?: WhereFields<Ts>
+}
+// prettier-ignore
 type WhereField<T extends types.Type> 
-  = [T] extends [types.EntityType<types.Mutability, infer Ts>] ? Where<Ts>
-  : [T] extends [types.ArrayType<types.Mutability, infer T1>] ? undefined //TODO
-  : [T] extends [types.StringType] ? { equals?: string }
+  = [T] extends [types.EntityType<any, infer Ts>] ? WhereFields<Ts>
+  : [T] extends [types.ArrayType<any, infer T1>] ? undefined //TODO
+  : [T] extends [types.StringType] ? { equals?: string } //TODO other types
   : [T] extends [(() => infer T1 extends types.Type)] ? WhereField<T1>
   : undefined
 
@@ -130,7 +181,7 @@ function mergeSelect(
           if (rightSelect === true) {
             return true
           }
-          return deepMerge(rightSelect, leftSelect) as GenericFieldSelect
+          return { select: deepMerge(rightSelect.select, leftSelect.select) as GenericSelect }
         }
       })
     },
@@ -187,7 +238,7 @@ export function selectedType(type: types.Type, select: GenericSelect): types.Typ
 
 export function isRespected<T extends types.Type>(
   type: T,
-  retrieve: FromType<T, {}>,
+  retrieve: FromType<T, { select: true }>,
   value: types.Infer<T>,
 ): result.Result<{ trimmedValue: types.Infer<T> }, decoding.Error[] | validation.Error[]> {
   const typeToRespect = retrieve.select ? selectedType(type, retrieve.select) : type

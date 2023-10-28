@@ -41,16 +41,20 @@ const register = functions.build({
   input: types.object({ email: types.string(), password: types.string() }),
   output: types.object({ jwt: types.string() }),
   errors: {
-    weakPassword: types.literal('Weak password.'),
+    weakPassword: types.string(),
+    emailAlreadyUsed: types.string(),
   },
   retrieve: undefined,
   async body({ input: { email, password } }) {
     // weak password check
     if (password.length < 3) {
-      return result.fail('Weak password.') //wrap in result
+      return result.fail({ weakPassword: 'Need at least 3 characters' })
+    }
+    if (false /* email check logic */) {
+      return result.fail({ emailAlreadyUsed: 'This email is already used' })
     }
     // register logic ...
-    return result.ok({ jwt: '...' }) //wrap in result
+    return result.ok({ jwt: '...' })
   },
 })
 ```

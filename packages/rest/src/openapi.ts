@@ -38,13 +38,12 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
       })
       const { schema } = typeToSchemaObject(functionBody.output, typeMap, typeRef)
       const errorMap: Record<string, (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject)[]> = {}
-      if (functionBody.error) {
-        const errorType = types.concretise(functionBody.error)
+      if (functionBody.errors) {
         const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
-        for (const [variantName, variantType] of Object.entries(errorType.variants as types.Types)) {
-          const code = (errorCodes[variantName] ?? 400).toString()
+        for (const [errorName, errorType] of Object.entries(functionBody.errors)) {
+          const code = (errorCodes[errorName] ?? 400).toString()
           const ts = errorMap[code] ?? []
-          const { schema } = typeToSchemaObject(variantType, typeMap, typeRef)
+          const { schema } = typeToSchemaObject(types.object({ [errorName]: errorType }), typeMap, typeRef)
           ts.push(schema)
           errorMap[code] = ts
         }

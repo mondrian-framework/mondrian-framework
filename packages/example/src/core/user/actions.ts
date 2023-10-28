@@ -38,7 +38,7 @@ const loginRateLimiter = rateLimiter.build<
   rate: '10 requests in 1 minute',
   onLimit: async () => {
     //TODO: warn the user, maybe block the account
-    return result.fail('Too many requests. Retry in few minutes.')
+    return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
   },
   slotProvider,
 })
@@ -52,7 +52,7 @@ export const login = functions.withContext<Context>().build({
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {
-      return result.fail('invalid username or password')
+      return result.fail({ invalidLogin: 'invalid username or password' })
     }
     await context.prisma.user.update({
       where: { id: loggedUser.id },
@@ -101,7 +101,7 @@ export const register = functions.withContext<Context>().build({
       return result.ok(user)
     } catch {
       //TODO: check if error is "email duplicate"
-      return result.fail('Email already taken')
+      return result.fail({ emailAlreadyTaken: 'Email already taken' })
     }
   },
   options: { namespace: 'user' },
@@ -118,10 +118,10 @@ export const follow = functions.withContext<LoggedUserContext>().build({
   retrieve: { select: true },
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {
-      return result.fail('Invalid authentication')
+      return result.fail({ notLoggedInType: 'Invalid authentication' })
     }
     if (input.userId === context.userId || (await context.prisma.user.count({ where: { id: input.userId } })) === 0) {
-      return result.fail('User does not exists')
+      return result.fail({ userNotExists: 'User does not exists' })
     }
     await context.prisma.follower.upsert({
       create: {

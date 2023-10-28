@@ -131,12 +131,15 @@ export type FunctionResult<O extends types.Type, E extends ErrorType, C extends 
 //prettier-ignore
 type FunctionResultInternal<O extends types.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> 
   = [C] extends [{ select: true }] ?
-      [E] extends [types.Types] ? result.Result<types.Infer<types.PartialDeep<O>>, types.Infer<types.UnionType<E>>>
+      [E] extends [types.Types] ? result.Result<types.Infer<types.PartialDeep<O>>, InferErrorType<E>>
     : [E] extends [undefined] ? types.Infer<types.PartialDeep<O>>
     : any
-  :   [E] extends [types.Types] ? result.Result<types.Infer<O>, types.Infer<types.UnionType<E>>>
+  :   [E] extends [types.Types] ? result.Result<types.Infer<O>, InferErrorType<E>>
     : [E] extends [undefined] ? types.Infer<O>
     : any
+
+type InferErrorType<Ts extends types.Types> = { [K in keyof Ts]: { [K2 in K]: types.Infer<Ts[K]> } }[keyof Ts]
+
 /**
  * Mondrian function's middleware type. Applied before calling the {@link Function}'s body.
  * Usefull for trasforming the {@link FunctionArguments} or the result of a function.

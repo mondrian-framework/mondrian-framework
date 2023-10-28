@@ -12,7 +12,7 @@ type RateLimitMiddlewareInput<
   I extends types.Type,
   O extends types.Type,
   E extends functions.ErrorType,
-  R extends functions.OutputRetrieveCapabilities,
+  C extends functions.OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
 > = {
   /**
@@ -22,7 +22,7 @@ type RateLimitMiddlewareInput<
    * @param args The function arguments.
    * @returns The key of the group or null.
    */
-  key: (args: functions.FunctionArguments<I, O, R, Context>) => string | null
+  key: (args: functions.FunctionArguments<I, O, C, Context>) => string | null
 
   /**
    * The rate limit to apply to requests passing through this middleware.
@@ -35,7 +35,7 @@ type RateLimitMiddlewareInput<
    * @param args The function arguments.
    * @returns A function result instance.
    */
-  onLimit?: (args: functions.FunctionArguments<I, O, R, Context>) => functions.FunctionResult<O, E>
+  onLimit?: (args: functions.FunctionArguments<I, O, C, Context>) => functions.FunctionResult<O, E, C>
 
   /**
    * The actual implementation of the rate-limiter storage. If undefined is passed, then an {@link InMemorySlotProvider} is used.

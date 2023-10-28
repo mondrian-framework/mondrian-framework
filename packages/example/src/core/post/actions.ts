@@ -19,7 +19,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
-      return result.fail('Invalid authentication')
+      return result.fail({ notLoggedInType: 'Invalid authentication' })
     }
     const newPost = await context.prisma.post.create({
       data: {
@@ -73,7 +73,7 @@ export const likePost = functions.withContext<LoggedUserContext>().build({
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
-      return result.fail('Invalid authentication')
+      return result.fail({ notLoggedInType: 'Invalid authentication' })
     }
     const canViewPost = await context.prisma.post.findFirst({
       where: {
@@ -86,7 +86,7 @@ export const likePost = functions.withContext<LoggedUserContext>().build({
       },
     })
     if (!canViewPost) {
-      return result.fail('Post not found')
+      return result.fail({ postNotFound: 'Post not found' })
     }
     await context.prisma.like.upsert({
       create: {

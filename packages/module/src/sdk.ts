@@ -28,7 +28,9 @@ type SdkFunctionInternal<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   P extends retrieve.FromType<O, C>,
-> = [E] extends [types.UnionType<infer _>] ? result.Result<Project<O, P>, types.Infer<types.UnionType<E>>> : Project<O, P>
+> = [E] extends [types.UnionType<infer _>]
+  ? result.Result<Project<O, P>, types.Infer<types.UnionType<E>>>
+  : Project<O, P>
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata

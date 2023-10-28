@@ -89,10 +89,10 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
       if (result.isResult(res) && !res.isOk) {
         const codes = (specification.errorCodes ?? {}) as Record<string, number>
-        if (functionBody.error) {
-          const key = functionBody.error.variantOwnership(res.error as never)
+        if (functionBody.errors) {
+          const key = Object.keys(res.error as Record<string, unknown>)[0]
           const status = key ? codes[key] ?? 400 : 400
-          const encoded = functionBody.error.encodeWithoutValidation(res.error as never)
+          const encoded = types.concretise(functionBody.errors[key]).encodeWithoutValidation(res.error as never)
           const response: Response = { status, body: encoded, headers: responseHeaders }
           operationLogger.logInfo('Completed with error.')
           endSpanWithResponse({ span, response })

@@ -31,7 +31,7 @@ const register = functions.build({
 })
 ```
 
-This is your first Mondrian function! Notice the `errors`` and `retrieve`` parameters? Let’s dive deeper into these with another example:
+This is your first Mondrian function! Notice the `errors` and `retrieve` parameters? Let’s dive deeper into these with another example:
 
 ```typescript
 import { types, result } from '@mondrian-framework/model'
@@ -55,7 +55,7 @@ const register = functions.build({
 })
 ```
 
-Now, we’ve added typed errors to the same function. Isn’t that neat? But what about retrieve? That’s a more advanced topic which we’ll cover later. For now, let’s focus on exposing our function through a REST API.
+Now, we’ve added typed errors to the same function. Isn’t that neat? But what about `retrieve` parameter? That’s a more advanced topic which we’ll cover later. For now, let’s focus on exposing our function through a REST API.
 
 First, we need to build the Mondrian module:
 

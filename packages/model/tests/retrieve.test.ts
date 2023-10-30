@@ -1,15 +1,22 @@
 import { retrieve, types } from '../src/index'
+import { array } from '../src/types-exports'
 import { assertFailure, assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
+import { JSONType, mapObject } from '@mondrian-framework/utils'
 import { describe, expect } from 'vitest'
 
 const user = () =>
-  types.entity({
-    name: types.string(),
-    bestFriend: types.optional(user),
-    posts: types.array(post),
-    metadata,
-  })
+  types.entity(
+    {
+      name: types.string(),
+      bestFriend: types.optional(user),
+      posts: types.array(types.optional(post)),
+      metadata,
+    },
+    {
+      name: 'User',
+    },
+  )
 type User = types.Infer<typeof user>
 type PartialUser = types.Infer<types.PartialDeep<typeof user>>
 const metadata = () =>
@@ -18,11 +25,14 @@ const metadata = () =>
     loggedInAt: types.dateTime(),
   })
 const post = () =>
-  types.entity({
-    title: types.string(),
-    content: types.string(),
-    author: user,
-  })
+  types.entity(
+    {
+      title: types.string(),
+      content: types.string(),
+      author: user,
+    },
+    { name: 'Post' },
+  )
 type Post = types.Infer<typeof post>
 type PartialPost = types.Infer<types.PartialDeep<typeof post>>
 
@@ -32,7 +42,7 @@ const r: UserRetrieve = { where: { NOT: {} } }
 type PostRetrieve = retrieve.FromType<typeof post, { where: true; select: true; orderBy: true; take: true; skip: true }>
 const p: PostRetrieve = { orderBy: { author: { posts: { _count: 'asc' } } } }
 
-describe.concurrent('merge', () => {
+describe('merge', () => {
   test('simple retrieve', () => {
     const result = retrieve.merge(
       user,
@@ -52,4 +62,217 @@ describe.concurrent('merge', () => {
   })
 })
 
-//TODO ...
+test('selectionDepth', () => {
+  expect(retrieve.selectionDepth(user, {})).toBe(1)
+  expect(retrieve.selectionDepth(user, { select: { name: true } })).toBe(1)
+  expect(retrieve.selectionDepth(user, { select: { metadata: true } })).toBe(1)
+  expect(retrieve.selectionDepth(user, { select: { metadata: { select: { loggedInAt: true } } } })).toBe(1)
+  expect(retrieve.selectionDepth(user, { select: { bestFriend: true } })).toBe(2)
+  expect(retrieve.selectionDepth(user, { select: { bestFriend: {} } })).toBe(2)
+  expect(retrieve.selectionDepth(user, { select: { bestFriend: { select: {} } } })).toBe(2)
+  expect(retrieve.selectionDepth(user, { select: { bestFriend: { select: { name: true } } } })).toBe(2)
+  expect(retrieve.selectionDepth(user, { select: { bestFriend: { select: { posts: true } } } })).toBe(3)
+  expect(retrieve.selectionDepth(types.string(), null as never)).toBe(1)
+})
+
+describe('fromType', () => {
+  test('empty retrieve', () => {
+    const computedUserRetrieve = retrieve.fromType(user, {})
+    const expectedUserRetrieve = types.object({})
+    expect(computedUserRetrieve.isOk).toBe(true)
+    if (computedUserRetrieve.isOk) {
+      expect(types.areEqual(expectedUserRetrieve, computedUserRetrieve.value)).toBe(true)
+    }
+  })
+  test('no retrieve', () => {
+    const computedUserRetrieve = retrieve.fromType(user, undefined)
+    expect(computedUserRetrieve.isOk).toBe(false)
+  })
+  test('invalid type for retrieve', () => {
+    const computedUserRetrieve = retrieve.fromType(types.array(types.object({})), { select: true })
+    expect(computedUserRetrieve.isOk).toBe(false)
+  })
+  test('invalid type for retrieve', () => {
+    expect(() =>
+      retrieve.fromType(types.entity({ users: types.array(types.array(user)) }), {
+        select: true,
+      }),
+    ).toThrow('Array of array not supported in selection')
+    expect(() =>
+      retrieve.fromType(types.entity({ users: types.array(types.array(user)) }), {
+        where: true,
+      }),
+    ).toThrow('Array of array not supported in where')
+  })
+  test('complete retrieve', () => {
+    const computedUserRetrieve = retrieve.fromType(user, {
+      where: true,
+      select: true,
+      orderBy: true,
+      take: true,
+      skip: true,
+    })
+    const expectedUserRetrieve = () =>
+      types.object({
+        select: types.optional(userSelect),
+        where: types.optional(userWhere),
+        orderBy: types.union({ multi: types.array(userOrderBy), single: userOrderBy }).optional(),
+        skip: types.integer({ minimum: 0 }).optional(),
+        take: types.integer({ minimum: 0, maximum: 20 }).optional(),
+      })
+    const expectedPostRetrieve = () =>
+      types.object({
+        select: types.optional(postSelect),
+        where: types.optional(postWhere),
+        orderBy: types.union({ multi: types.array(postOrderBy), single: postOrderBy }).optional(),
+        skip: types.integer({ minimum: 0 }).optional(),
+        take: types.integer({ minimum: 0, maximum: 20 }).optional(),
+      })
+
+    const userSelect = () =>
+      types.object(
+        {
+          name: types.boolean().optional(),
+          bestFriend: types
+            .union({ retrieve: types.object({ select: types.optional(userSelect) }), all: types.boolean() })
+            .optional(),
+          posts: types.union({ retrieve: expectedPostRetrieve, all: types.boolean() }).optional(),
+          metadata: types
+            .union({
+              fields: types.object({
+                select: types
+                  .object({
+                    registeredAt: types.boolean().optional(),
+                    loggedInAt: types.boolean().optional(),
+                  })
+                  .optional(),
+              }),
+              all: types.boolean(),
+            })
+            .optional(),
+        },
+        { name: 'UserSelect' },
+      )
+
+    const postSelect = () =>
+      types.object(
+        {
+          title: types.boolean().optional(),
+          content: types.boolean().optional(),
+          author: types
+            .union({ retrieve: types.object({ select: types.optional(userSelect) }), all: types.boolean() })
+            .optional(),
+        },
+        { name: 'PostSelect' },
+      )
+
+    const userWhere = () =>
+      types.object(
+        {
+          name: types.object({ equals: types.string().optional() }).optional(),
+          bestFriend: types.optional(userWhere),
+          posts: types
+            .object({
+              some: types.optional(postWhere),
+              every: types.optional(postWhere),
+              none: types.optional(postWhere),
+            })
+            .optional(),
+          metadata: types.object({}).optional(), //TODO
+        },
+        { name: 'UserWhere' },
+      )
+
+    const postWhere = () =>
+      types.object(
+        {
+          title: types.object({ equals: types.string().optional() }).optional(),
+          content: types.object({ equals: types.string().optional() }).optional(),
+          author: types.optional(userWhere),
+        },
+        { name: 'PostWhere' },
+      )
+
+    const userOrderBy = () =>
+      types.object(
+        {
+          name: types.optional(retrieve.sortDirectionType),
+          bestFriend: types.optional(userOrderBy),
+          posts: types.object({ _count: types.optional(retrieve.sortDirectionType) }).optional(),
+          metadata: types
+            .object({
+              registeredAt: types.optional(retrieve.sortDirectionType),
+              loggedInAt: types.optional(retrieve.sortDirectionType),
+            })
+            .optional(),
+        },
+        { name: 'UserOrderBy' },
+      )
+
+    const postOrderBy = () =>
+      types.object(
+        {
+          title: types.optional(retrieve.sortDirectionType),
+          content: types.optional(retrieve.sortDirectionType),
+          author: types.optional(userOrderBy),
+        },
+        { name: 'PostOrderBy' },
+      )
+
+    expect(computedUserRetrieve.isOk).toBe(true)
+    if (computedUserRetrieve.isOk) {
+      const s2 = serializeType(computedUserRetrieve.value)
+      const s1 = serializeType(expectedUserRetrieve)
+      expect(s1).toStrictEqual(s2)
+    }
+  })
+})
+
+function serializeType(type: types.Type, examined: Set<string> = new Set()): JSONType {
+  const concreteType = types.concretise(type)
+  const name = concreteType.options?.name
+  if (name && examined.has(name)) {
+    return { $ref: name }
+  }
+  if (name) {
+    examined.add(name)
+  }
+  return types.match(type, {
+    array: ({ wrappedType, options }) => ({
+      kind: 'array',
+      wrappedType: serializeType(wrappedType, examined),
+      options,
+    }),
+    optional: ({ wrappedType, options }) => ({
+      kind: 'optional',
+      wrappedType: serializeType(wrappedType, examined),
+      options,
+    }),
+    nullable: ({ wrappedType, options }) => ({
+      kind: 'optional',
+      wrappedType: serializeType(wrappedType, examined),
+      options,
+    }),
+    string: ({ options }) => ({ kind: 'string', options }),
+    number: ({ options }) => ({ kind: 'number', options }),
+    boolean: ({ options }) => ({ kind: 'boolean', options }),
+    literal: ({ literalValue, options }) => ({ kind: 'literal', literalValue, options }),
+    enum: ({ variants, options }) => ({ kind: 'enumeration', variants, options }),
+    custom: ({ typeName, options }) => ({ kind: 'custom', typeName, options }),
+    object: ({ fields, options }) => ({
+      kind: 'object',
+      fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
+      options,
+    }),
+    entity: ({ fields, options }) => ({
+      kind: 'entity',
+      fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
+      options,
+    }),
+    union: ({ variants, options }) => ({
+      kind: 'union',
+      variants: mapObject(variants, (_, variantType) => serializeType(variantType, examined)),
+      options,
+    }),
+  })
+}

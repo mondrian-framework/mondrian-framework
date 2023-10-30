@@ -68,6 +68,8 @@ model Like {
   @@unique([userId, postId])
 }
 
-type ExampleType {
+type Embedded {
   number Int
+  value String
+  embedded Embedded
 }

@@ -24,7 +24,8 @@ export type GenericOrderBy = {} | {}[]
 
 // prettier-ignore
 export type FromType<T extends types.Type, C extends Capabilities>
-  = [T] extends [types.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
+  = [types.Type] extends [T] ? GenericRetrieve 
+  : [T] extends [types.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
   : [T] extends [types.ArrayType<any, infer T1>] ? FromType<T1, C>
   : [T] extends [types.OptionalType<infer T1>] ? FromType<T1, C>
   : [T] extends [types.NullableType<infer T1>] ? FromType<T1, C>
@@ -190,7 +191,7 @@ function mergeSelect(
   })
 }
 
-export function selectionDepth(type: types.Type, retrieve: GenericRetrieve): number {
+export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType<T, { select: true }>): number {
   return types.match(type, {
     wrapper: ({ wrappedType }) => selectionDepth(wrappedType, retrieve),
     entity: ({ fields }) =>
@@ -202,6 +203,8 @@ export function selectionDepth(type: types.Type, retrieve: GenericRetrieve): num
           const unwrappedFieldType = types.unwrap(fieldType)
           if (unwrappedFieldType.kind === types.Kind.Entity && typeof retrieve.select[fieldName] === 'object') {
             return selectionDepth(fieldType, retrieve.select[fieldName] as GenericRetrieve) + 1
+          } else if (unwrappedFieldType.kind === types.Kind.Entity && retrieve.select[fieldName] === true) {
+            return 2
           } else {
             return 1
           }
@@ -258,19 +261,18 @@ export function fromType(type: types.Type, capabilities: Capabilities | undefine
   return res
 }
 
-function retrieve(type: types.Type, capabilities: Capabilities): types.Type {
-  return types.match(type, {
-    entity: (_, entity) => {
-      return types.object({
-        ...(capabilities.where ? { where: types.optional(entityWhere(entity)) } : {}),
-        ...(capabilities.select ? { select: types.optional(entitySelect(entity)) } : {}),
-        ...(capabilities.orderBy ? { orderBy: types.optional(types.array(entityOrderBy(entity))) } : {}),
-        ...(capabilities.skip ? { skip: types.integer({ minimum: 0 }).optional() } : {}),
-        ...(capabilities.take ? { take: types.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
-        //distinct: types.unknown(), //TODO: need untagged union
-      })
-    },
-    otherwise: () => types.never(),
+function retrieve(entity: types.Lazy<types.EntityType<any, any>>, capabilities: Capabilities): types.Type {
+  return types.object({
+    ...(capabilities.select ? { select: types.optional(entitySelect(entity)) } : {}),
+    ...(capabilities.where ? { where: types.optional(entityWhere(entity)) } : {}),
+    ...(capabilities.orderBy
+      ? {
+          orderBy: types.union({ multi: types.array(entityOrderBy(entity)), single: entityOrderBy(entity) }).optional(),
+        }
+      : {}),
+    ...(capabilities.skip ? { skip: types.integer({ minimum: 0 }).optional() } : {}),
+    ...(capabilities.take ? { take: types.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
+    //distinct: types.unknown(), //TODO
   })
 }
 
@@ -287,7 +289,7 @@ function select(type: types.Type): types.Type {
     wrapper: ({ wrappedType }) => select(wrappedType),
     array: ({ wrappedType }) => {
       const matcher: (type: types.Type) => types.Type = types.matcher({
-        wrapper: (t) => matcher(t),
+        wrapper: ({ wrappedType }) => matcher(wrappedType),
         array: () => {
           throw new Error('Array of array not supported in selection')
         },
@@ -309,9 +311,9 @@ function select(type: types.Type): types.Type {
       { fields }, // { select?: { ... } } | boolean
     ) =>
       types.union({
-        fields: types
-          .object({ select: types.object(mapObject(fields, (_, fieldType) => types.optional(select(fieldType)))) })
-          .optional(),
+        fields: types.object({
+          select: types.object(mapObject(fields, (_, fieldType) => types.optional(select(fieldType)))).optional(),
+        }),
         all: types.boolean(),
       }),
     otherwise: () => types.boolean(),
@@ -331,10 +333,10 @@ const entityWhere = memoizeTypeTransformation<types.Lazy<types.EntityType<types.
 
 function where(type: types.Type): types.Type {
   return types.match(type, {
-    wrapper: (t) => where(t),
+    wrapper: ({ wrappedType }) => where(wrappedType),
     array: ({ wrappedType }) => {
       const matcher: (type: types.Type) => types.Type = types.matcher({
-        wrapper: (t) => matcher(t),
+        wrapper: ({ wrappedType }) => matcher(wrappedType),
         scalar: (t) => types.object({ equals: types.optional(types.array(t)) }),
         array: () => {
           throw new Error('Array of array not supported in where')
@@ -368,15 +370,16 @@ const entityOrderBy = memoizeTypeTransformation<types.Lazy<types.EntityType<type
   )
 })
 
-function sortDirection() {
+export function sortDirectionType(): types.Type {
   return types.union({ asc: types.literal('asc'), desc: types.literal('desc') }, { name: 'SortDirection' })
 }
+
 function orderBy(type: types.Type): types.Type {
   return types.match(type, {
     wrapper: ({ wrappedType }) => orderBy(wrappedType),
-    array: () => types.object({ _count: types.optional(sortDirection) }),
+    array: () => types.object({ _count: types.optional(sortDirectionType) }),
     entity: (_, entity) => entityOrderBy(entity),
     object: ({ fields }) => types.object(mapObject(fields, (_, fieldType) => types.optional(orderBy(fieldType)))),
-    otherwise: (t) => sortDirection,
+    otherwise: () => sortDirectionType,
   })
 }

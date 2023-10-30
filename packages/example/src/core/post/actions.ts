@@ -38,7 +38,7 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
   input: types.never(),
   output: types.array(postType),
   errors: undefined,
-  retrieve: { select: true, where: true, skip: true, take: true, orderBy: true },
+  retrieve: { select: true },
   body: async ({ context, retrieve: thisRetrieve }) => {
     const baseFilter: Prisma.PostWhereInput = {
       OR: [

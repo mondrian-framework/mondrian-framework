@@ -3,6 +3,7 @@ import { NeverType } from './types-exports'
 import { memoizeTypeTransformation, memoizeTransformation, failWithInternalError } from './utils'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
+import { isDeepStrictEqual } from 'util'
 
 /**
  * The possible kinds of types modelled by the Mondrian Framework
@@ -2029,6 +2030,7 @@ const partialDeepInternal = memoizeTypeTransformation(
 
 /**
  * TODO: add documentation and tests
+ * TODO: not working with recursive types
  * @param one the first type to compare
  * @param other the second type to compare
  * @returns true if the two types model the same type
@@ -2040,8 +2042,8 @@ export function areEqual(one: Type, other: Type): boolean {
   const type1 = concretise(one)
   const type2 = concretise(other)
 
-  function sameKindAndOptions(one: ConcreteType, other: ConcreteType): boolean {
-    return one.kind === other.kind && one.options === other.options
+  function haveSameOptions(one: ConcreteType, other: ConcreteType): boolean {
+    return isDeepStrictEqual(one.options, other.options)
   }
 
   function arraysHaveSameElements(array1: readonly any[], array2: readonly any[]): boolean {
@@ -2051,26 +2053,37 @@ export function areEqual(one: Type, other: Type): boolean {
   function sameFieldsAreSameTypes(one: Types, other: Types): boolean {
     const oneKeys = Object.keys(one)
     const otherKeys = Object.keys(other)
-    return (
-      arraysHaveSameElements(oneKeys, otherKeys) &&
-      Object.entries(one).every(([fieldName, fieldType]) => areEqual(other[fieldName], fieldType))
-    )
+    const haveSameKeys = arraysHaveSameElements(oneKeys, otherKeys)
+    return haveSameKeys && Object.entries(one).every(([fieldName, fieldType]) => areEqual(other[fieldName], fieldType))
   }
 
+  if (!haveSameOptions(type1, type2)) {
+    return false
+  }
+  const sameNumber = type1.kind === Kind.Number && type1.kind === type2.kind
+  const sameBoolean = type1.kind === Kind.Boolean && type1.kind === type2.kind
+  const sameString = type1.kind === Kind.String && type1.kind === type2.kind
   // prettier-ignore
-  return (
-       type1.kind === Kind.Number && sameKindAndOptions(type1, type2)
-    || type1.kind === Kind.Boolean && sameKindAndOptions(type1, type2)
-    || type1.kind === Kind.String && sameKindAndOptions(type1, type2)
-    || (type1.kind === Kind.Literal && type1.kind === type2.kind && type1.options === type2.options && type1.literalValue === type2.literalValue)
-    || (type1.kind === Kind.Enum && type1.kind === type2.kind && type1.options === type2.options && arraysHaveSameElements(type1.variants , type2.variants ))
-    || (type1.kind === Kind.Custom && type1.kind === type2.kind && type1.options === type2.options && type1.typeName === type2.typeName)
-    || (type1.kind === Kind.Array && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === Kind.Nullable && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === Kind.Optional && type1.kind === type2.kind && type1.options === type2.options && areEqual(type1.wrappedType, type2.wrappedType))
-    || (type1.kind === Kind.Object && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.fields, type2.fields))
-    || (type1.kind === Kind.Union && type1.kind === type2.kind && type1.options === type2.options && sameFieldsAreSameTypes(type1.variants, type2.variants))
-  )
+  const sameLiteral = (type1.kind === Kind.Literal && type1.kind === type2.kind && type1.literalValue === type2.literalValue)
+  // prettier-ignore
+  const sameEnum = (type1.kind === Kind.Enum && type1.kind === type2.kind && arraysHaveSameElements(type1.variants , type2.variants ))
+  // prettier-ignore
+  const sameCustom = (type1.kind === Kind.Custom && type1.kind === type2.kind && type1.typeName === type2.typeName) //TODO: not enough
+  // prettier-ignore
+  const sameArray = (type1.kind === Kind.Array && type1.kind === type2.kind && areEqual(type1.wrappedType, type2.wrappedType))
+  // prettier-ignore
+  const sameNullable = (type1.kind === Kind.Nullable && type1.kind === type2.kind && areEqual(type1.wrappedType, type2.wrappedType))
+  // prettier-ignore
+  const sameOptional = (type1.kind === Kind.Optional && type1.kind === type2.kind && areEqual(type1.wrappedType, type2.wrappedType))
+  // prettier-ignore
+  const sameObject = (type1.kind === Kind.Object && type1.kind === type2.kind && sameFieldsAreSameTypes(type1.fields, type2.fields))
+  // prettier-ignore
+  const sameEntity = (type1.kind === Kind.Entity && type1.kind === type2.kind && sameFieldsAreSameTypes(type1.fields, type2.fields))
+  // prettier-ignore
+  const sameUnion = (type1.kind === Kind.Union && type1.kind === type2.kind && sameFieldsAreSameTypes(type1.variants, type2.variants))
+  // prettier-ignore
+  const result = sameNumber || sameBoolean || sameString|| sameLiteral|| sameEnum|| sameCustom|| sameArray|| sameNullable|| sameOptional|| sameObject|| sameEntity|| sameUnion
+  return result
 }
 
 /**

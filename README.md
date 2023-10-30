@@ -18,7 +18,7 @@ import { functions } from '@mondrian-framework/module'
 const register = functions.build({
   input: types.object({ email: types.string(), password: types.string() }),
   output: types.object({ jwt: types.string() }),
-  errors: undefined,
+  error: undefined,
   retrieve: undefined,
   async body({ input: { email, password } }) {
     // weak password check
@@ -31,7 +31,7 @@ const register = functions.build({
 })
 ```
 
-This is your first Mondrian function! Notice the `errors` and `retrieve` parameters? Let’s dive deeper into these with another example:
+This is your first Mondrian function! Notice the `error` and `retrieve` parameters? Let’s dive deeper into these with another example:
 
 ```typescript
 import { types, result } from '@mondrian-framework/model'
@@ -40,7 +40,7 @@ import { functions } from '@mondrian-framework/module'
 const register = functions.build({
   input: types.object({ email: types.string(), password: types.string() }),
   output: types.object({ jwt: types.string() }),
-  errors: {
+  error: {
     weakPassword: types.string(),
     emailAlreadyUsed: types.string(),
   },

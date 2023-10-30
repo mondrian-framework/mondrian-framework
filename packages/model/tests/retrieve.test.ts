@@ -30,6 +30,7 @@ const post = () =>
       title: types.string(),
       content: types.string(),
       author: user,
+      tags: types.array(types.object({ type: types.string(), value: types.string().nullable() })),
     },
     { name: 'Post' },
   )
@@ -40,7 +41,7 @@ type UserRetrieve = retrieve.FromType<typeof user, { where: true; select: true; 
 const r: UserRetrieve = { where: { NOT: {} } }
 
 type PostRetrieve = retrieve.FromType<typeof post, { where: true; select: true; orderBy: true; take: true; skip: true }>
-const p: PostRetrieve = { orderBy: { author: { posts: { _count: 'asc' } } } }
+const p: PostRetrieve = { where: {} }
 
 describe('merge', () => {
   test('simple retrieve', () => {
@@ -116,7 +117,7 @@ describe('fromType', () => {
       types.object({
         select: types.optional(userSelect),
         where: types.optional(userWhere),
-        orderBy: types.union({ multi: types.array(userOrderBy), single: userOrderBy }).optional(),
+        orderBy: types.array(userOrderBy).optional(),
         skip: types.integer({ minimum: 0 }).optional(),
         take: types.integer({ minimum: 0, maximum: 20 }).optional(),
       })
@@ -124,7 +125,7 @@ describe('fromType', () => {
       types.object({
         select: types.optional(postSelect),
         where: types.optional(postWhere),
-        orderBy: types.union({ multi: types.array(postOrderBy), single: postOrderBy }).optional(),
+        orderBy: types.array(postOrderBy).optional(),
         skip: types.integer({ minimum: 0 }).optional(),
         take: types.integer({ minimum: 0, maximum: 20 }).optional(),
       })
@@ -162,6 +163,16 @@ describe('fromType', () => {
           author: types
             .union({ retrieve: types.object({ select: types.optional(userSelect) }), all: types.boolean() })
             .optional(),
+          tags: types
+            .union({
+              fields: types.object({
+                select: types.optional(
+                  types.object({ type: types.boolean().optional(), value: types.boolean().optional() }),
+                ),
+              }),
+              all: types.boolean(),
+            })
+            .optional(),
         },
         { name: 'PostSelect' },
       )
@@ -178,7 +189,19 @@ describe('fromType', () => {
               none: types.optional(postWhere),
             })
             .optional(),
-          metadata: types.object({}).optional(), //TODO
+          metadata: types
+            .object({
+              equals: types
+                .object({
+                  registeredAt: types.dateTime(),
+                  loggedInAt: types.dateTime(),
+                })
+                .optional(),
+            })
+            .optional(),
+          AND: types.array(userWhere).optional(),
+          OR: types.array(userWhere).optional(),
+          NOT: types.optional(userWhere),
         },
         { name: 'UserWhere' },
       )
@@ -189,6 +212,21 @@ describe('fromType', () => {
           title: types.object({ equals: types.string().optional() }).optional(),
           content: types.object({ equals: types.string().optional() }).optional(),
           author: types.optional(userWhere),
+          tags: types
+            .object({
+              equals: types
+                .object({
+                  type: types.string(),
+                  value: types.string().nullable(),
+                })
+                .array()
+                .optional(),
+              isEmpty: types.boolean().optional(),
+            })
+            .optional(),
+          AND: types.array(postWhere).optional(),
+          OR: types.array(postWhere).optional(),
+          NOT: types.optional(postWhere),
         },
         { name: 'PostWhere' },
       )
@@ -215,14 +253,15 @@ describe('fromType', () => {
           title: types.optional(retrieve.sortDirectionType),
           content: types.optional(retrieve.sortDirectionType),
           author: types.optional(userOrderBy),
+          tags: types.object({ _count: types.optional(retrieve.sortDirectionType) }).optional(),
         },
         { name: 'PostOrderBy' },
       )
 
     expect(computedUserRetrieve.isOk).toBe(true)
     if (computedUserRetrieve.isOk) {
-      const s2 = serializeType(computedUserRetrieve.value)
       const s1 = serializeType(expectedUserRetrieve)
+      const s2 = serializeType(computedUserRetrieve.value)
       expect(s1).toStrictEqual(s2)
     }
   })

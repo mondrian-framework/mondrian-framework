@@ -51,6 +51,22 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
           : []),
       ],
     }
+    context.prisma.user.findFirst({
+      where: {
+
+
+        embedded: {
+          some: {
+            AND: [{}]
+          }
+        }
+      },
+      orderBy: {
+        embedded: {
+
+        }
+      }
+    })
     const args = retrieve.merge<Prisma.PostFindManyArgs>(
       postType,
       { where: baseFilter, select: { id: true } },

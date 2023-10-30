@@ -19,11 +19,12 @@ model User {
   followeds  Follower[]   @relation(name: "follower")
   followers  Follower[]   @relation(name: "followed")
   givenLikes Like[]
+  embedded   Embedded[]
 }
 
 type UserMetadata {
   createdAt DateTime
-  lastLogin DateTime
+  lastLogin DateTime?
 }
 
 model Follower {
@@ -69,7 +70,7 @@ model Like {
 }
 
 type Embedded {
-  number Int
-  value String
-  embedded Embedded
+  number   Int
+  value    String
+  embedded Embedded[]
 }

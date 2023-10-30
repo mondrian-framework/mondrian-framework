@@ -265,11 +265,7 @@ function retrieve(entity: types.Lazy<types.EntityType<any, any>>, capabilities: 
   return types.object({
     ...(capabilities.select ? { select: types.optional(entitySelect(entity)) } : {}),
     ...(capabilities.where ? { where: types.optional(entityWhere(entity)) } : {}),
-    ...(capabilities.orderBy
-      ? {
-          orderBy: types.union({ multi: types.array(entityOrderBy(entity)), single: entityOrderBy(entity) }).optional(),
-        }
-      : {}),
+    ...(capabilities.orderBy ? { orderBy: types.array(entityOrderBy(entity)).optional() } : {}),
     ...(capabilities.skip ? { skip: types.integer({ minimum: 0 }).optional() } : {}),
     ...(capabilities.take ? { take: types.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
     //distinct: types.unknown(), //TODO
@@ -278,10 +274,11 @@ function retrieve(entity: types.Lazy<types.EntityType<any, any>>, capabilities: 
 
 const entitySelect = memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((type) => {
   const entity = types.concretise(type)
-  return types.object(
-    mapObject(entity.fields, (_, fieldType) => types.optional(select(fieldType))),
-    { name: `${entity.options?.name ?? randomUUID()}Select` },
-  )
+  return () =>
+    types.object(
+      mapObject(entity.fields, (_, fieldType) => types.optional(select(fieldType))),
+      { name: `${entity.options?.name ?? randomUUID()}Select` },
+    )
 })
 
 function select(type: types.Type): types.Type {
@@ -307,9 +304,7 @@ function select(type: types.Type): types.Type {
         retrieve: retrieve(entity, { select: true }),
         all: types.boolean(),
       }),
-    object: (
-      { fields }, // { select?: { ... } } | boolean
-    ) =>
+    object: ({ fields }) =>
       types.union({
         fields: types.object({
           select: types.object(mapObject(fields, (_, fieldType) => types.optional(select(fieldType)))).optional(),
@@ -320,43 +315,58 @@ function select(type: types.Type): types.Type {
   })
 }
 
-const entityWhere = memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((type) => {
-  const entity = types.concretise(type)
-  return types.object(
-    flatMapObject(entity.fields, (fieldName, fieldType) => {
-      const result = types.optional(where(fieldType))
-      return result ? [[fieldName, result]] : []
-    }),
-    { name: `${entity.options?.name ?? randomUUID()}Where` },
-  )
-})
+const entityWhere: (type: types.Lazy<types.EntityType<types.Mutability, types.Types>>) => types.Type =
+  memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((type) => {
+    const entity = types.concretise(type)
+    return () =>
+      types.object(
+        {
+          ...flatMapObject(entity.fields, (fieldName, fieldType) => {
+            const result = types.optional(where(fieldType))
+            return result ? [[fieldName, result]] : []
+          }),
+          AND: types.array(entityWhere(type)).optional(),
+          OR: types.array(entityWhere(type)).optional(),
+          NOT: types.optional(entityWhere(type)),
+        },
+        { name: `${entity.options?.name ?? randomUUID()}Where` },
+      )
+  })
 
 function where(type: types.Type): types.Type {
   return types.match(type, {
     wrapper: ({ wrappedType }) => where(wrappedType),
     array: ({ wrappedType }) => {
       const matcher: (type: types.Type) => types.Type = types.matcher({
-        wrapper: ({ wrappedType }) => matcher(wrappedType),
+        wrapper: ({ wrappedType }) => matcher(wrappedType), //isSet
         scalar: (t) => types.object({ equals: types.optional(types.array(t)) }),
         array: () => {
           throw new Error('Array of array not supported in where')
         },
-        entity: (_, entity) => {
-          const fieldWhereType = entityWhere(entity)
+        entity: (_, t) => {
+          const fieldWhereType = entityWhere(t)
           return types.object({
             some: types.optional(fieldWhereType),
             every: types.optional(fieldWhereType),
             none: types.optional(fieldWhereType),
           })
         },
+        object: ({ fields }, t) => {
+          return types.object({
+            equals: types.optional(types.object(fields).array()),
+            isEmpty: types.boolean().optional(),
+          })
+        },
         otherwise: () => {
-          throw 'TODO'
+          throw new Error('Unsupported where field')
         },
       })
       return matcher(wrappedType)
     },
-    object: () => types.object({}), //TODO
-    union: () => types.object({}), //TODO
+    object: ({ fields }) => types.object({ equals: types.object(fields).optional() }),
+    union: () => {
+      throw new Error('Unsupported union in where')
+    },
     entity: (_, entity) => entityWhere(entity),
     scalar: (t) => types.object({ equals: types.optional(t) }),
   })
@@ -371,7 +381,7 @@ const entityOrderBy = memoizeTypeTransformation<types.Lazy<types.EntityType<type
 })
 
 export function sortDirectionType(): types.Type {
-  return types.union({ asc: types.literal('asc'), desc: types.literal('desc') }, { name: 'SortDirection' })
+  return types.enumeration(['asc', 'desc'], { name: 'SortDirection' })
 }
 
 function orderBy(type: types.Type): types.Type {

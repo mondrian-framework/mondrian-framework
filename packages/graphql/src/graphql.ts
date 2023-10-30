@@ -21,6 +21,7 @@ import {
   GraphQLInputObjectType,
   GraphQLInputType,
   GraphQLFloat,
+  GraphQLInputFieldConfig,
   isInputType,
 } from 'graphql'
 
@@ -286,7 +287,7 @@ function entityToInputGraphQLType(
 function typeToGraphQLObjectField(
   internalData: InternalData,
   objectName: string,
-): (fieldName: string, fieldType: types.Type) => { type: GraphQLOutputType } {
+): (fieldName: string, fieldType: types.Type) => GraphQLFieldConfig<any, any> {
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
     const concreteType = types.concretise(fieldType)
@@ -302,7 +303,7 @@ function typeToGraphQLObjectField(
 function typeToGraphQLInputObjectField(
   internalData: InternalInputData,
   objectName: string,
-): (fieldName: string, fieldType: types.Type) => { type: GraphQLInputType } {
+): (fieldName: string, fieldType: types.Type) => GraphQLInputFieldConfig {
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
     const concreteType = types.concretise(fieldType)

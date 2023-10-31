@@ -32,8 +32,8 @@ export type FromType<T extends types.Type, C extends Capabilities>
   : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1, C>
   : never
 
-type TakeType<C extends Capabilities> = [C] extends [{ take: true }] ? { take?: number } : {}
-type SkipType<C extends Capabilities> = [C] extends [{ skip: true }] ? { skip?: number } : {}
+type TakeType<C extends Capabilities> = [C] extends [{ take: true }] ? { readonly take?: number } : {}
+type SkipType<C extends Capabilities> = [C] extends [{ skip: true }] ? { readonly skip?: number } : {}
 
 type AllCapabilities = {
   where: true
@@ -46,8 +46,8 @@ type AllCapabilities = {
 // prettier-ignore
 type SelectType<T extends types.Type, C extends Capabilities>
   = [C] extends [{ select: true }]
-  ? [T] extends [types.EntityType<any, infer Ts>] ? { select?: { [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C>
-  : [T] extends [types.ObjectType<any, infer Ts>] ? { select?: { [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } }
+  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C>
+  : [T] extends [types.ObjectType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } }
   : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
   : [T] extends [types.OptionalType<infer T1>] ? SelectType<T1, C>
   : [T] extends [types.NullableType<infer T1>] ? SelectType<T1, C>
@@ -57,7 +57,7 @@ type SelectType<T extends types.Type, C extends Capabilities>
 // prettier-ignore
 type OrderByType<T extends types.Type, C extends Capabilities>
   = [C] extends [{ orderBy: true }]
-  ? [T] extends [types.EntityType<any, infer Ts>] ? { orderBy?: OrderByFields<Ts> | OrderByFields<Ts>[] } 
+  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly orderBy?: readonly OrderByFields<Ts>[] } 
   : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
   : [T] extends [types.OptionalType<infer T1>] ? SelectType<T1, C>
   : [T] extends [types.NullableType<infer T1>] ? SelectType<T1, C>
@@ -65,12 +65,12 @@ type OrderByType<T extends types.Type, C extends Capabilities>
   : never : {}
 
 type SortDirection = 'asc' | 'desc'
-type OrderByFields<Ts extends types.Types> = { [K in keyof Ts]?: OrderByField<Ts[K]> }
+type OrderByFields<Ts extends types.Types> = { readonly [K in keyof Ts]?: OrderByField<Ts[K]> }
 // prettier-ignore
 type OrderByField<T extends types.Type> 
   = [T] extends [types.EntityType<any, infer Ts>] ? OrderByFields<Ts>
   : [T] extends [types.ObjectType<any, infer Ts>] ? OrderByFields<Ts>
-  : [T] extends [types.ArrayType<any, any>] ? { _count?: SortDirection }
+  : [T] extends [types.ArrayType<any, any>] ? { readonly _count?: SortDirection }
   : [T] extends [types.OptionalType<infer T1>] ? OrderByField<T1>
   : [T] extends [types.NullableType<infer T1>] ? OrderByField<T1>
   : [T] extends [(() => infer T1 extends types.Type)] ? OrderByField<T1>
@@ -79,24 +79,38 @@ type OrderByField<T extends types.Type>
 // prettier-ignore
 type WhereType<T extends types.Type, C extends Capabilities> 
   = [C] extends [{ where: true }]
-  ? [T] extends [types.EntityType<any, infer Ts>] ? { where?: WhereFields<Ts> }
+  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly where?: WhereFields<Ts> }
   : [T] extends [types.ArrayType<any, infer T1>] ? WhereType<T1, AllCapabilities>
   : [T] extends [types.OptionalType<infer T1>] ? WhereType<T1, C>
   : [T] extends [types.NullableType<infer T1>] ? WhereType<T1, C>
   : [T] extends [(() => infer T1 extends types.Type)] ? WhereType<T1, C>
   : never : {}
 
-type WhereFields<Ts extends types.Types> = { [K in WhereFieldKeys<Ts>]?: WhereField<Ts[K]> } & {
-  AND?: WhereFields<Ts>[]
-  OR?: WhereFields<Ts>[]
-  NOT?: WhereFields<Ts>
+type WhereFields<Ts extends types.Types> = { readonly [K in keyof Ts]?: WhereField<Ts[K]> } & {
+  readonly AND?: readonly WhereFields<Ts>[]
+  readonly OR?: readonly WhereFields<Ts>[]
+  readonly NOT?: WhereFields<Ts>
 }
 // prettier-ignore
 type WhereField<T extends types.Type> 
   = [T] extends [types.EntityType<any, infer Ts>] ? WhereFields<Ts>
-  : [T] extends [types.ArrayType<any, infer T1>] ? undefined //TODO
-  : [T] extends [types.StringType] ? { equals?: string } //TODO other types
+  : [T] extends [types.ArrayType<any, infer T1>] ? WhereFieldArray<T1>
+  : [T] extends [types.StringType] ? { readonly equals?: string }
+  : [T] extends [types.ObjectType<any, any>] ? { readonly equals?: types.Infer<T> }
+  : [T] extends [types.EntityType<any, infer Ts>] ? WhereFields<Ts>
+  : [T] extends [types.OptionalType<infer T1>] ? WhereField<T1>
+  : [T] extends [types.NullableType<infer T1>] ? WhereField<T1>
   : [T] extends [(() => infer T1 extends types.Type)] ? WhereField<T1>
+  : undefined
+
+// prettier-ignore
+type WhereFieldArray<T extends types.Type> 
+  = [T] extends [types.EntityType<any, infer Ts>] ? { readonly some?: WhereFields<Ts>; readonly every?: WhereFields<Ts>, readonly none?: WhereFields<Ts> }
+  : [T] extends [types.OptionalType<infer T1>] ? WhereFieldArray<T1>
+  : [T] extends [types.NullableType<infer T1>] ? WhereFieldArray<T1>
+  : [T] extends [types.StringType] ? { readonly equals?: readonly string[], readonly isEmpty?: boolean }
+  : [T] extends [types.ObjectType<any, any>] ? { readonly equals?: readonly types.Infer<T>[], readonly isEmpty?: boolean }
+  : [T] extends [(() => infer T1 extends types.Type)] ? WhereFieldArray<T1>
   : undefined
 
 type WhereFieldKeys<Ts extends types.Types> = {
@@ -380,7 +394,7 @@ const entityOrderBy = memoizeTypeTransformation<types.Lazy<types.EntityType<type
   )
 })
 
-export function sortDirectionType(): types.Type {
+export function sortDirectionType() {
   return types.enumeration(['asc', 'desc'], { name: 'SortDirection' })
 }
 

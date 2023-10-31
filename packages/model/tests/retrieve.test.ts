@@ -1,9 +1,7 @@
 import { retrieve, types } from '../src/index'
-import { array } from '../src/types-exports'
-import { assertFailure, assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
-import { describe, expect } from 'vitest'
+import { describe, expect, expectTypeOf } from 'vitest'
 
 const user = () =>
   types.entity(
@@ -121,6 +119,14 @@ describe('fromType', () => {
         skip: types.integer({ minimum: 0 }).optional(),
         take: types.integer({ minimum: 0, maximum: 20 }).optional(),
       })
+    type ExpectedUserRetrieveType = types.Infer<typeof expectedUserRetrieve>
+    type GeneratedUserRetrieve = retrieve.FromType<
+      typeof user,
+      { where: true; select: true; orderBy: true; take: true; skip: true }
+    >
+    expectTypeOf<GeneratedUserRetrieve>().toMatchTypeOf<ExpectedUserRetrieveType>()
+    expectTypeOf<ExpectedUserRetrieveType>().toMatchTypeOf<GeneratedUserRetrieve>()
+
     const expectedPostRetrieve = () =>
       types.object({
         select: types.optional(postSelect),

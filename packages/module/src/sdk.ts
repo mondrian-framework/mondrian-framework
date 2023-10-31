@@ -69,7 +69,7 @@ class SdkBuilder<const Metadata> {
             })
             const result = await func.apply({
               input: input as never,
-              retrieve: options?.retrieve,
+              retrieve: options?.retrieve ?? {},
               context: ctx,
               operationId,
               logger: thisLogger,

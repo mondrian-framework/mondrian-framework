@@ -115,7 +115,7 @@ describe('fromType', () => {
       types.object({
         select: types.optional(userSelect),
         where: types.optional(userWhere),
-        orderBy: types.array(userOrderBy).optional(),
+        orderBy: types.mutableArray(userOrderBy).optional(),
         skip: types.integer({ minimum: 0 }).optional(),
         take: types.integer({ minimum: 0, maximum: 20 }).optional(),
       })
@@ -131,7 +131,7 @@ describe('fromType', () => {
       types.object({
         select: types.optional(postSelect),
         where: types.optional(postWhere),
-        orderBy: types.array(postOrderBy).optional(),
+        orderBy: types.mutableArray(postOrderBy).optional(),
         skip: types.integer({ minimum: 0 }).optional(),
         take: types.integer({ minimum: 0, maximum: 20 }).optional(),
       })
@@ -205,8 +205,8 @@ describe('fromType', () => {
                 .optional(),
             })
             .optional(),
-          AND: types.array(userWhere).optional(),
-          OR: types.array(userWhere).optional(),
+          AND: types.mutableArray(userWhere).optional(),
+          OR: types.mutableArray(userWhere).optional(),
           NOT: types.optional(userWhere),
         },
         { name: 'UserWhere' },
@@ -230,8 +230,8 @@ describe('fromType', () => {
               isEmpty: types.boolean().optional(),
             })
             .optional(),
-          AND: types.array(postWhere).optional(),
-          OR: types.array(postWhere).optional(),
+          AND: types.mutableArray(postWhere).optional(),
+          OR: types.mutableArray(postWhere).optional(),
           NOT: types.optional(postWhere),
         },
         { name: 'PostWhere' },
@@ -240,13 +240,13 @@ describe('fromType', () => {
     const userOrderBy = () =>
       types.object(
         {
-          name: types.optional(retrieve.sortDirectionType),
+          name: types.optional(retrieve.sortDirection),
           bestFriend: types.optional(userOrderBy),
-          posts: types.object({ _count: types.optional(retrieve.sortDirectionType) }).optional(),
+          posts: types.object({ _count: types.optional(retrieve.sortDirection) }).optional(),
           metadata: types
             .object({
-              registeredAt: types.optional(retrieve.sortDirectionType),
-              loggedInAt: types.optional(retrieve.sortDirectionType),
+              registeredAt: types.optional(retrieve.sortDirection),
+              loggedInAt: types.optional(retrieve.sortDirection),
             })
             .optional(),
         },
@@ -256,10 +256,10 @@ describe('fromType', () => {
     const postOrderBy = () =>
       types.object(
         {
-          title: types.optional(retrieve.sortDirectionType),
-          content: types.optional(retrieve.sortDirectionType),
+          title: types.optional(retrieve.sortDirection),
+          content: types.optional(retrieve.sortDirection),
           author: types.optional(userOrderBy),
-          tags: types.object({ _count: types.optional(retrieve.sortDirectionType) }).optional(),
+          tags: types.object({ _count: types.optional(retrieve.sortDirection) }).optional(),
         },
         { name: 'PostOrderBy' },
       )

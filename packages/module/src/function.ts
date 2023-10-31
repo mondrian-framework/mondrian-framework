@@ -89,7 +89,7 @@ export type FunctionOptions = {
 export type FunctionArguments<
   I extends types.Type,
   O extends types.Type,
-  R extends OutputRetrieveCapabilities,
+  C extends OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
 > = {
   /**
@@ -99,7 +99,7 @@ export type FunctionArguments<
   /**
    * Wanted retrieve. The return value must respects this retrieve object.
    */
-  readonly retrieve: retrieve.FromType<O, R> | undefined
+  readonly retrieve: retrieve.FromType<O, C>
   /**
    * Operation ID.
    */
@@ -183,8 +183,13 @@ export type Middleware<
 /**
  * A map of {@link FunctionImplementation}s.
  */
-export type Functions<Contexts extends Record<string, Record<string, unknown>> = Record<string, any>> = {
-  [K in keyof Contexts]: FunctionImplementation<types.Type, types.Type, any, OutputRetrieveCapabilities, Contexts[K]>
+export type Functions<
+  Fs extends Record<string, FunctionImplementation<any, any, any, any, any>> = Record<
+    string,
+    FunctionImplementation<any, any, any, any, any>
+  >,
+> = {
+  [K in keyof Fs]: Fs[K]
 }
 
 /**

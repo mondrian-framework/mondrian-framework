@@ -18,34 +18,30 @@ export type GenericRetrieve = {
   take?: number
   skip?: number
 }
-export type GenericWhere = { AND?: GenericWhere | GenericWhere[] } & Record<string, { equals?: unknown }>
-export type GenericSelect = null | Record<string, undefined | GenericRetrieve | boolean>
+export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere[] } & { readonly [K in string]: any }
+export type GenericSelect = null | { readonly [K in string]: undefined | GenericRetrieve | boolean }
 export type GenericOrderBy = {} | {}[]
 
 // prettier-ignore
-export type FromType<T extends types.Type, C extends Capabilities>
+export type FromType<T extends types.Type, C extends Capabilities | undefined>
   = [types.Type] extends [T] ? GenericRetrieve 
-  : [T] extends [types.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
+  : [C] extends [Capabilities]
+  ? [T] extends [types.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
   : [T] extends [types.ArrayType<any, infer T1>] ? FromType<T1, C>
   : [T] extends [types.OptionalType<infer T1>] ? FromType<T1, C>
   : [T] extends [types.NullableType<infer T1>] ? FromType<T1, C>
   : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1, C>
-  : never
+  : never : never
 
-type TakeType<C extends Capabilities> = [C] extends [{ take: true }] ? { readonly take?: number } : {}
-type SkipType<C extends Capabilities> = [C] extends [{ skip: true }] ? { readonly skip?: number } : {}
+type TakeType<C extends Capabilities> = [C] extends [{ readonly take: true }] ? { readonly take?: number } : {}
+type SkipType<C extends Capabilities> = [C] extends [{ readonly skip: true }] ? { readonly skip?: number } : {}
 
-type AllCapabilities = {
-  where: true
-  select: true
-  orderBy: true
-  take: true
-  skip: true
-}
+export type AllCapabilities = typeof allCapabilities
+export const allCapabilities = { orderBy: true, select: true, skip: true, take: true, where: true } as const
 
 // prettier-ignore
 type SelectType<T extends types.Type, C extends Capabilities>
-  = [C] extends [{ select: true }]
+  = [C] extends [{ readonly select: true }]
   ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C>
   : [T] extends [types.ObjectType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } }
   : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
@@ -56,15 +52,14 @@ type SelectType<T extends types.Type, C extends Capabilities>
 
 // prettier-ignore
 type OrderByType<T extends types.Type, C extends Capabilities>
-  = [C] extends [{ orderBy: true }]
-  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly orderBy?: readonly OrderByFields<Ts>[] } 
+  = [C] extends [{ readonly orderBy: true }]
+  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly orderBy?: OrderByFields<Ts>[] } 
   : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
   : [T] extends [types.OptionalType<infer T1>] ? SelectType<T1, C>
   : [T] extends [types.NullableType<infer T1>] ? SelectType<T1, C>
   : [T] extends [(() => infer T1 extends types.Type)] ? SelectType<T1, C>
   : never : {}
 
-type SortDirection = 'asc' | 'desc'
 type OrderByFields<Ts extends types.Types> = { readonly [K in keyof Ts]?: OrderByField<Ts[K]> }
 // prettier-ignore
 type OrderByField<T extends types.Type> 
@@ -78,7 +73,7 @@ type OrderByField<T extends types.Type>
 
 // prettier-ignore
 type WhereType<T extends types.Type, C extends Capabilities> 
-  = [C] extends [{ where: true }]
+  = [C] extends [{ readonly where: true }]
   ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly where?: WhereFields<Ts> }
   : [T] extends [types.ArrayType<any, infer T1>] ? WhereType<T1, AllCapabilities>
   : [T] extends [types.OptionalType<infer T1>] ? WhereType<T1, C>
@@ -87,8 +82,8 @@ type WhereType<T extends types.Type, C extends Capabilities>
   : never : {}
 
 type WhereFields<Ts extends types.Types> = { readonly [K in keyof Ts]?: WhereField<Ts[K]> } & {
-  readonly AND?: readonly WhereFields<Ts>[]
-  readonly OR?: readonly WhereFields<Ts>[]
+  readonly AND?: WhereFields<Ts>[]
+  readonly OR?: WhereFields<Ts>[]
   readonly NOT?: WhereFields<Ts>
 }
 // prettier-ignore
@@ -394,16 +389,15 @@ const entityOrderBy = memoizeTypeTransformation<types.Lazy<types.EntityType<type
   )
 })
 
-export function sortDirectionType() {
-  return types.enumeration(['asc', 'desc'], { name: 'SortDirection' })
-}
+export const sortDirection = () => types.enumeration(['asc', 'desc'], { name: 'SortDirection' })
+export type SortDirection = types.Infer<typeof sortDirection>
 
 function orderBy(type: types.Type): types.Type {
   return types.match(type, {
     wrapper: ({ wrappedType }) => orderBy(wrappedType),
-    array: () => types.object({ _count: types.optional(sortDirectionType) }),
+    array: () => types.object({ _count: types.optional(sortDirection) }),
     entity: (_, entity) => entityOrderBy(entity),
     object: ({ fields }) => types.object(mapObject(fields, (_, fieldType) => types.optional(orderBy(fieldType)))),
-    otherwise: () => sortDirectionType,
+    otherwise: () => sortDirection,
   })
 }

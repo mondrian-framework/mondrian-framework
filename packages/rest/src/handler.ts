@@ -1,7 +1,7 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateInputType, generateOpenapiInput, splitInputAndRetrieve } from './openapi'
 import { completeRetrieve } from './utils'
-import { result, types } from '@mondrian-framework/model'
+import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -80,7 +80,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         logger: operationLogger,
       })
       const res = (await functionBody.apply({
-        retrieve: completedRetrieve,
+        retrieve: completedRetrieve ?? {},
         input: input as never,
         context: moduleContext as Record<string, unknown>,
         operationId,

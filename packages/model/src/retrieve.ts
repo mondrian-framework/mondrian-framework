@@ -108,98 +108,12 @@ type WhereFieldArray<T extends types.Type>
   : [T] extends [(() => infer T1 extends types.Type)] ? WhereFieldArray<T1>
   : undefined
 
-type WhereFieldKeys<Ts extends types.Types> = {
-  [K in keyof Ts]: WhereField<Ts[K]> extends Record<string, unknown> ? K : never
-}[keyof Ts]
-
-export type MergeOptions = {
-  orderByOrder?: 'left-before' | 'right-before'
-  skipOrder?: 'left-before' | 'right-before'
-  takeOrder?: 'left-before' | 'right-before'
-}
-export function merge<const T extends GenericRetrieve>(
-  type: types.Type,
-  left?: T,
-  right?: T,
-  options?: MergeOptions,
-): T | undefined {
-  if (!left || !right) {
-    return left || right
-  }
-  const rightOrderBy = right.orderBy ? (Array.isArray(right.orderBy) ? right.orderBy : [right.orderBy]) : []
-  const leftOrderBy = left.orderBy ? (Array.isArray(left.orderBy) ? left.orderBy : [left.orderBy]) : []
-  const orderBy =
-    options?.orderByOrder === 'right-before' ? [...rightOrderBy, ...leftOrderBy] : [...leftOrderBy, ...rightOrderBy]
-  return {
-    where: left.where && right.where ? { AND: [left.where, right.where] } : left.where ?? right.where,
-    orderBy: orderBy.length === 0 ? undefined : orderBy,
-    skip: options?.skipOrder === 'right-before' ? right.skip ?? left.skip : left.skip ?? right.skip,
-    take: options?.takeOrder === 'right-before' ? right.take ?? left.take : left.take ?? right.take,
-    select: mergeSelect(type, left.select, right.select, options),
-  } as unknown as T
-}
-
-function mergeSelect(
-  type: types.Type,
-  left?: GenericSelect,
-  right?: GenericSelect,
-  options?: MergeOptions,
-): GenericSelect | undefined {
-  if (!left) {
-    return right
-  }
-  if (!right) {
-    return left
-  }
-  return types.match(type, {
-    entity: ({ fields }) => {
-      return mapObject(fields, (fieldName, fieldType) => {
-        const leftSelect = left[fieldName]
-        const rightSelect = right[fieldName]
-        if (!leftSelect) {
-          return rightSelect
-        }
-        if (!rightSelect) {
-          return leftSelect
-        }
-        const unwrappedFieldType = types.unwrap(fieldType)
-        if (unwrappedFieldType.kind === types.Kind.Entity) {
-          if (leftSelect === true && rightSelect === true) {
-            return true
-          }
-          if (leftSelect === true && rightSelect !== true) {
-            return merge(
-              unwrappedFieldType,
-              { select: mapObject(unwrappedFieldType.fields, () => true) },
-              rightSelect,
-              options,
-            )
-          }
-          if (rightSelect === true && leftSelect !== true) {
-            return merge(
-              unwrappedFieldType,
-              leftSelect,
-              { select: mapObject(unwrappedFieldType.fields, () => true) },
-              options,
-            )
-          }
-          return merge(unwrappedFieldType, leftSelect as GenericRetrieve, rightSelect as GenericRetrieve, options)
-        } else {
-          if (leftSelect === true) {
-            return true
-          }
-          if (rightSelect === true) {
-            return true
-          }
-          return { select: deepMerge(rightSelect.select, leftSelect.select) as GenericSelect }
-        }
-      })
-    },
-    wrapper: ({ wrappedType }) => mergeSelect(wrappedType, left, right, options),
-    otherwise: () => left ?? right,
-  })
-}
-
+/**
+ * Gets the depth of the selection.
+ * @param type {@link types.Type Type} to follow in order to cimpute the depth.
+ * @param retrieve retrieve instance with the selection
+ * @returns the selection depth
+ */
 export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType<T, { select: true }>): number {
   return types.match(type, {
     wrapper: ({ wrappedType }) => selectionDepth(wrappedType, retrieve),
@@ -223,21 +137,28 @@ export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType
   })
 }
 
-export function selectedType(type: types.Type, select: GenericSelect): types.Type {
+/**
+ * Gets a projected {@link types.Type Type} in function of the given type and the retrieve selection.
+ * @param type the root type.
+ * @param retrieve the retrieve with a selection.
+ * @returns the specific sub-type of the root type.
+ */
+export function selectedType<T extends types.Type>(type: T, retrieve: FromType<T, { select: true }>): types.Type {
+  const select = retrieve.select
   if (!select) {
     return type
   }
   return types.match(type, {
-    optional: ({ wrappedType }) => types.optional(selectedType(wrappedType, select)),
-    nullable: ({ wrappedType }) => types.nullable(selectedType(wrappedType, select)),
-    array: ({ wrappedType }) => types.optional(selectedType(wrappedType, select)),
-    record: ({ fields }, t) => {
+    optional: ({ wrappedType }) => types.optional(selectedType(wrappedType, retrieve)),
+    nullable: ({ wrappedType }) => types.nullable(selectedType(wrappedType, retrieve)),
+    array: ({ wrappedType }) => types.array(selectedType(wrappedType, retrieve)),
+    record: ({ fields }) => {
       const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {
         const selection = select[fieldName]
         if (selection === true) {
           return [[fieldName, fieldType]]
         } else if (typeof selection === 'object' && selection.select) {
-          return [[fieldName, selectedType(fieldType, selection.select)]]
+          return [[fieldName, selectedType(fieldType, selection)]]
         } else {
           return []
         }
@@ -248,14 +169,23 @@ export function selectedType(type: types.Type, select: GenericSelect): types.Typ
   })
 }
 
-export function isRespected<T extends types.Type>(
+/**
+ * Trims a value in function of it's {@link types.Type Type} and a selection
+ * @param type the value {@link types.Type Type}
+ * @param retrieve the retrieve with a selection
+ * @param value the value to be trimmed
+ * @returns a trimmed value
+ */
+export function trimToSelection<T extends types.Type>(
   type: T,
   retrieve: FromType<T, { select: true }>,
-  value: types.Infer<T>,
-): result.Result<{ trimmedValue: types.Infer<T> }, decoding.Error[] | validation.Error[]> {
-  const typeToRespect = retrieve.select ? selectedType(type, retrieve.select) : type
-  const result = types.concretise(typeToRespect).decode(value)
-  return result.map((trimmedValue) => ({ trimmedValue }))
+  value: types.Infer<types.PartialDeep<T>>,
+): result.Result<types.Infer<types.PartialDeep<T>>, decoding.Error[] | validation.Error[]> {
+  const typeToRespect = selectedType(type, retrieve)
+  const result = types.concretise(typeToRespect).decode(value, {
+    errorReportingStrategy: 'allErrors',
+  })
+  return result
 }
 
 export function fromType(type: types.Type, capabilities: Capabilities | undefined): result.Result<types.Type, null> {
@@ -399,5 +329,104 @@ function orderBy(type: types.Type): types.Type {
     entity: (_, entity) => entityOrderBy(entity),
     object: ({ fields }) => types.object(mapObject(fields, (_, fieldType) => types.optional(orderBy(fieldType)))),
     otherwise: () => sortDirection,
+  })
+}
+
+/**
+ * TODO
+ */
+export type MergeOptions = {
+  orderByOrder?: 'left-before' | 'right-before'
+  skipOrder?: 'left-before' | 'right-before'
+  takeOrder?: 'left-before' | 'right-before'
+}
+/**
+ * TODO
+ * @param type
+ * @param left
+ * @param right
+ * @param options
+ * @returns
+ */
+export function merge<const T extends GenericRetrieve>(
+  type: types.Type,
+  left?: T,
+  right?: T,
+  options?: MergeOptions,
+): T | undefined {
+  if (!left || !right) {
+    return left || right
+  }
+  const rightOrderBy = right.orderBy ? (Array.isArray(right.orderBy) ? right.orderBy : [right.orderBy]) : []
+  const leftOrderBy = left.orderBy ? (Array.isArray(left.orderBy) ? left.orderBy : [left.orderBy]) : []
+  const orderBy =
+    options?.orderByOrder === 'right-before' ? [...rightOrderBy, ...leftOrderBy] : [...leftOrderBy, ...rightOrderBy]
+  return {
+    where: left.where && right.where ? { AND: [left.where, right.where] } : left.where ?? right.where,
+    orderBy: orderBy.length === 0 ? undefined : orderBy,
+    skip: options?.skipOrder === 'right-before' ? right.skip ?? left.skip : left.skip ?? right.skip,
+    take: options?.takeOrder === 'right-before' ? right.take ?? left.take : left.take ?? right.take,
+    select: mergeSelect(type, left.select, right.select, options),
+  } as unknown as T
+}
+
+function mergeSelect(
+  type: types.Type,
+  left?: GenericSelect,
+  right?: GenericSelect,
+  options?: MergeOptions,
+): GenericSelect | undefined {
+  if (!left) {
+    return right
+  }
+  if (!right) {
+    return left
+  }
+  return types.match(type, {
+    entity: ({ fields }) => {
+      return mapObject(fields, (fieldName, fieldType) => {
+        const leftSelect = left[fieldName]
+        const rightSelect = right[fieldName]
+        if (!leftSelect) {
+          return rightSelect
+        }
+        if (!rightSelect) {
+          return leftSelect
+        }
+        const unwrappedFieldType = types.unwrap(fieldType)
+        if (unwrappedFieldType.kind === types.Kind.Entity) {
+          if (leftSelect === true && rightSelect === true) {
+            return true
+          }
+          if (leftSelect === true && rightSelect !== true) {
+            return merge(
+              unwrappedFieldType,
+              { select: mapObject(unwrappedFieldType.fields, () => true) },
+              rightSelect,
+              options,
+            )
+          }
+          if (rightSelect === true && leftSelect !== true) {
+            return merge(
+              unwrappedFieldType,
+              leftSelect,
+              { select: mapObject(unwrappedFieldType.fields, () => true) },
+              options,
+            )
+          }
+          return merge(unwrappedFieldType, leftSelect as GenericRetrieve, rightSelect as GenericRetrieve, options)
+        } else {
+          if (leftSelect === true) {
+            return true
+          }
+          if (rightSelect === true) {
+            return true
+          }
+          return { select: deepMerge(rightSelect.select, leftSelect.select) as GenericSelect }
+        }
+      })
+    },
+    wrapper: ({ wrappedType }) => mergeSelect(wrappedType, left, right, options),
+    otherwise: () => left ?? right,
   })
 }

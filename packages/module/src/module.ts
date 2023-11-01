@@ -123,13 +123,14 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
     module.options?.maxSelectionDepth != null
       ? [middleware.checkMaxProjectionDepth(module.options.maxSelectionDepth)]
       : []
-  const checkOutputTypeMiddleware =
-    module.options?.checkOutputType == null || module.options?.checkOutputType !== 'ignore'
-      ? [middleware.checkOutputType(module.options?.checkOutputType ?? 'throw')]
-      : []
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
+      const checkOutputTypeMiddleware =
+        module.options?.checkOutputType == null || module.options?.checkOutputType !== 'ignore'
+          ? [middleware.checkOutputType(functionName, module.options?.checkOutputType ?? 'throw')]
+          : []
+
       const func: functions.FunctionImplementation = {
         ...functionBody,
         middlewares: [

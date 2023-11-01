@@ -58,7 +58,7 @@ export type Error = WithPath<{
  *          value is returned
  * @example ```ts
  *          const error = { expected: "foo", got: 1, path: path.empty() }
- *          const newError addExpected("bar")(error)
+ *          const newError = addExpected("bar")(error)
  *          // newError -> { expected: "foo or bar", got: 1, path: path.empty() }
  *          ```
  */

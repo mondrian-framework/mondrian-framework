@@ -57,7 +57,7 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
       thisRetrieve,
     )
     const posts = await context.prisma.post.findMany(args)
-    return [{}]
+    return posts
   },
   options: { namespace: 'post' },
 })

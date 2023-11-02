@@ -1,6 +1,6 @@
-/*import { Api, FunctionSpecifications, Request } from './api'
+import { Api, FunctionSpecifications, Request } from './api'
 import { generateOpenapiInput } from './openapi'
-import { projection, result, types } from '@mondrian-framework/model'
+import { retrieve, result, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 
 export type Sdk<Fs extends functions.FunctionsInterfaces> = {
@@ -9,31 +9,32 @@ export type Sdk<Fs extends functions.FunctionsInterfaces> = {
 }
 
 type SdkFunctions<Fs extends functions.FunctionsInterfaces> = {
-  [K in keyof Fs]: SdkFunction<Fs[K]['input'], Fs[K]['error'], Fs[K]['output']>
+  [K in keyof Fs]: SdkFunction<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], Fs[K]['retrieve']>
 }
 
-type SdkFunction<InputType extends types.Type, ErrorType extends functions.ErrorType, OutputType extends types.Type> = <
-  const P extends projection.FromType<OutputType>,
->(
+type SdkFunction<
+  InputType extends types.Type,
+  OutputType extends types.Type,
+  E extends functions.ErrorType,
+  C extends retrieve.Capabilities | undefined,
+> = <const P extends retrieve.FromType<OutputType, C>>(
   input: types.Infer<InputType>,
-  options?: { projection?: P; headers?: Record<string, string | string[] | undefined> },
-) => Promise<SdkFunctionResult<ErrorType, OutputType, P>>
+  options?: { retrieve?: P; operationId?: string; headers?: Record<string, string | string[] | undefined> },
+) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
-  ErrorType extends functions.ErrorType,
-  OutputType extends types.Type,
-  P extends projection.FromType<OutputType>,
-> = [ErrorType] extends [undefined]
-  ? sdk.Project<OutputType, P>
-  : [ErrorType] extends [types.UnionType<any>]
-  ? result.Result<sdk.Project<OutputType, P>, types.Infer<ErrorType>>
-  : never
+  O extends types.Type,
+  E extends functions.ErrorType,
+  C extends retrieve.Capabilities | undefined,
+  P extends retrieve.FromType<O, C>,
+> = [E] extends [types.Types]
+  ? result.Result<sdk.Project<O, P>, { [K in keyof E]: types.Infer<E[K]> }>
+  : sdk.Project<O, P>
 
 function getRequestBuilder(args: { specification: FunctionSpecifications; functionBody: functions.FunctionInterface }) {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).request
 }
 
-//TODO: adapt to function error change
 export function build<const Fs extends functions.FunctionsInterfaces, const API extends Api<Fs>>({
   module,
   api,
@@ -52,10 +53,10 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
       if (!specification) {
         return []
       }
-      const errorType = functionBody.error ? types.concretise(functionBody.error) : undefined
       const outputType = types.concretise(types.partialDeep(functionBody.output))
+      const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
       const requestBuilder = getRequestBuilder({ specification, functionBody })
-      const resolver = async (input: never, options?: { headers?: any; projection: any }) => {
+      const resolver = async (input: never, options?: { headers?: any; retrieve: any }) => {
         const url = `${endpoint}/${module.name}/api/v${specification.version?.max ?? specification.version?.min ?? 1}${
           specification.path ?? `/${functionName}`
         }`
@@ -64,10 +65,18 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
           return p.replaceAll(`{${key}}`, param)
         }, url)
         const finalUrl = request.query ? `${urlWithParam}?${request.query}` : urlWithParam
-        const projectionHeader = options?.projection != null ? { projection: JSON.stringify(options.projection) } : {}
+        const retrieveHeader = retrieveType.isOk
+          ? options?.retrieve != null
+            ? {
+                retrieve: JSON.stringify(
+                  types.concretise(retrieveType.value).encodeWithoutValidation(options.retrieve as never),
+                ),
+              }
+            : {}
+          : {}
         // file deepcode ignore Ssrf: this request is built with already validated input
         const response = await fetch(finalUrl, {
-          headers: { 'content-type': 'application/json', ...headers, ...options?.headers, ...projectionHeader },
+          headers: { 'content-type': 'application/json', ...headers, ...options?.headers, ...retrieveHeader },
           method: specification.method,
           body: request.body !== undefined ? JSON.stringify(request.body) : null,
         })
@@ -76,30 +85,46 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
           const json = await response.json()
           const res = outputType.decode(json, { typeCastingStrategy: 'tryCasting' })
           if (!res.isOk) {
-            console.log(`Operation failed while decoding response: ${operationId}`)
             throw new Error(JSON.stringify(res.error))
           }
-          const projectionRespected = projection.respectsProjection(
-            functionBody.output,
-            (options?.projection ?? true) as never,
-            res.value as never,
-          )
-          if (!projectionRespected.isOk) {
-            console.log(`Operation failed because output doen't respect projection: ${operationId}`)
-            throw new Error(JSON.stringify(projectionRespected.error))
+          if (retrieveType.isOk) {
+            const trimmedValue = retrieve.trimToSelection(
+              functionBody.output,
+              retrieve as retrieve.GenericRetrieve,
+              res.value as never,
+            )
+            if (!trimmedValue.isOk) {
+              throw new Error(JSON.stringify(trimmedValue.error))
+            }
+            if (functionBody.errors) {
+              return result.ok(trimmedValue.value)
+            } else {
+              return trimmedValue.value
+            }
+          } else {
+            if (functionBody.errors) {
+              return result.ok(res.value)
+            } else {
+              return res.value
+            }
           }
-          return result.ok(projectionRespected.value)
-        } else if (errorType) {
+        } else if (functionBody.errors) {
           const json = await response.json()
-          const error = errorType.decode(json, { typeCastingStrategy: 'tryCasting' })
-          if (!error.isOk) {
-            console.log(`Operation failed while decoding error: ${operationId}`)
-            throw new Error(JSON.stringify(error.error))
+          const [error] = Object.entries(functionBody.errors).flatMap(([k, v]) =>
+            typeof json === 'object' && json && k in json ? [[k, v, json[k]] as const] : [],
+          )
+          if (!error) {
+            throw new Error(`Unexpected error: ${JSON.stringify(json)}`)
           }
-          return result.fail(error.value)
+          const [errorName, errorType, errorValue] = error
+          const decodedError = types.concretise(errorType).decode(errorValue, { typeCastingStrategy: 'tryCasting' })
+          if (!decodedError.isOk) {
+            throw new Error(JSON.stringify(decodedError.error))
+          }
+          return result.fail({ [errorName]: decodedError.value })
+        } else {
+          throw new Error(await response.text())
         }
-        console.log(`Operation failed with unexpected error: ${operationId}`)
-        throw new Error(await response.text())
       }
       return [[functionName, resolver]]
     }),
@@ -110,4 +135,3 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
     withHeaders: (headers: Record<string, string | string[] | undefined>) => build({ api, endpoint, module, headers }),
   }
 }
-*/

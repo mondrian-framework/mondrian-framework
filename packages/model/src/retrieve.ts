@@ -161,7 +161,7 @@ function removeEmbeddedEntities(type: types.Type): types.Type {
 export function selectedType<T extends types.Type>(type: T, retrieve: FromType<T, { select: true }>): types.Type {
   const select = retrieve.select
   if (!select) {
-    return type
+    return removeEmbeddedEntities(type)
   }
   return types.match(type, {
     optional: ({ wrappedType }) => types.optional(selectedType(wrappedType, retrieve)),

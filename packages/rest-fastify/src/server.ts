@@ -24,21 +24,23 @@ export function serve<const F extends functions.Functions, CI>({
   error?: rest.ErrorHandler<F, Context>
 }): void {
   utils.assertApiValidity(api)
-  const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
+  const pathPrefix = api.options?.pathPrefix ?? '/api'
   if (api.options?.introspection) {
+    const introspectionPath =
+      typeof api.options.introspection === 'object' ? api.options.introspection.path : `/openapi`
     fastifyInstance.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
-      prefix: `${pathPrefix}/doc`,
+      prefix: introspectionPath,
     })
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/v${api.version}/schema.json`)
-    fastifyInstance.get(`${pathPrefix}/doc/swagger-initializer.js`, (req, res) => res.send(indexContent))
-    fastifyInstance.get(`${pathPrefix}/doc`, (req, res) => {
-      res.redirect(`${pathPrefix}/doc/index.html`)
+      .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}/v${api.version}/schema.json`)
+    fastifyInstance.get(`${introspectionPath}/swagger-initializer.js`, (req, res) => res.send(indexContent))
+    fastifyInstance.get(`${introspectionPath}`, (req, res) => {
+      res.redirect(`${introspectionPath}/index.html`)
     })
-    fastifyInstance.get(`${pathPrefix}/doc/:v/schema.json`, (req, reply) => {
+    fastifyInstance.get(`${introspectionPath}/:v/schema.json`, (req, reply) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
       if (Number.isNaN(version) || !Number.isInteger(version) || version < 1 || version > api.version) {

@@ -7,7 +7,10 @@ export type Api<F extends functions.FunctionsInterfaces> = {
     [K in keyof F]?: FunctionSpecifications<F[K]> | FunctionSpecifications<F[K]>[]
   }
   options?: {
-    introspection?: boolean
+    /**
+     * Default path is /openapi
+     */
+    introspection?: true | { path: string }
     /**
      * Default is /api
      */

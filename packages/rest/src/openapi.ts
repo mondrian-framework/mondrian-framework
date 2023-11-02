@@ -121,7 +121,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
   return {
     openapi: '3.1.0',
     info: { version: module.version, title: module.name },
-    servers: [{ url: `${`/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
+    servers: [{ url: `${`${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
     paths,
     components: {
       ...components,

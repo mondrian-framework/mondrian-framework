@@ -115,8 +115,8 @@ serve({
   context: async ({}) => ({}),
 })
 fastifyInstance.listen({ port: 4000 }).then((address) => {
-  console.log(`Server started at address ${address}`)
+  console.log(`Server started at address ${address}/api/doc`)
 })
 ```
 
-With REST introspection enabled, you can visit http://localhost:4000/my-module/api/doc to view the Swagger documentation with the OpenAPI v3 specification of our exposed functions. Enjoy exploring your newly created API!
+With REST introspection enabled, you can visit http://localhost:4000/api/doc to view the Swagger documentation with the OpenAPI v3 specification of our exposed functions. Enjoy exploring your newly created API!

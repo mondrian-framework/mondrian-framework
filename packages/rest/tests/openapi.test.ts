@@ -13,7 +13,8 @@ describe('module to openapi', () => {
         toString: functions.define({
           input: types.number(),
           output: types.string(),
-          error: types.never(),
+          errors: undefined,
+          retrieve: undefined,
         }),
       },
     })
@@ -22,6 +23,7 @@ describe('module to openapi', () => {
       module: m,
       version: 1,
       api: {
+        version: 1,
         functions: {
           toString: { method: 'get' },
         },
@@ -35,10 +37,7 @@ describe('module to openapi', () => {
       paths: {
         '/toString': {
           get: {
-            parameters: [
-              { name: 'input', in: 'query', required: true, explode: true, schema: { type: 'number' } },
-              { name: 'projection', in: 'header', example: true },
-            ],
+            parameters: [{ name: 'input', in: 'query', required: true, explode: true, schema: { type: 'number' } }],
             responses: {
               '200': { description: 'Success', content: { 'application/json': { schema: { type: 'string' } } } },
             },
@@ -53,17 +52,17 @@ describe('module to openapi', () => {
   test('works on more complex module', () => {
     const postCategory = types.enumeration(['FUNNY', 'QUESTION']).setName('PostCategory')
     const user = () =>
-      types.object({
+      types.entity({
         username: types.string(),
-        posts: { virtual: types.array(post) },
+        posts: types.array(post),
         registeredAt: types.dateTime(),
       })
     const post = () =>
-      types.object({
+      types.entity({
         title: types.string({ minLength: 1, maxLength: 2000 }),
         content: types.string(),
-        author: { virtual: types.nullable(user) },
-        likes: { virtual: types.array(user) },
+        author: types.nullable(user),
+        likes: types.array(user),
         visualizations: types.integer({ minimum: 0 }),
         categories: types.array(postCategory).optional(),
       })
@@ -74,12 +73,14 @@ describe('module to openapi', () => {
         getPosts: functions.define({
           input: types.object({ userId: types.string(), limit: types.integer().optional() }),
           output: types.array(post),
-          error: types.never(),
+          errors: undefined,
+          retrieve: undefined,
         }),
         getUsers: functions.define({
           input: types.object({ start: types.integer(), limit: types.integer() }),
           output: types.array(user),
-          error: types.never(),
+          errors: undefined,
+          retrieve: undefined,
         }),
       },
     })
@@ -88,6 +89,7 @@ describe('module to openapi', () => {
       module: m,
       version: 1,
       api: {
+        version: 1,
         functions: {
           getPosts: { method: 'get', path: '/posts/{userId}' },
           getUsers: [
@@ -108,7 +110,6 @@ describe('module to openapi', () => {
             parameters: [
               { in: 'path', name: 'userId', required: true, schema: { type: 'string' } },
               { name: 'limit', in: 'query', required: false, explode: true, schema: { type: 'integer' } },
-              { name: 'projection', in: 'header', example: true },
             ],
             responses: {
               '200': {
@@ -125,7 +126,7 @@ describe('module to openapi', () => {
         },
         '/users': {
           post: {
-            parameters: [{ name: 'projection', in: 'header', example: true }],
+            parameters: [],
             requestBody: {
               content: {
                 'application/json': {
@@ -153,7 +154,6 @@ describe('module to openapi', () => {
             parameters: [
               { name: 'start', in: 'query', required: true, explode: true, schema: { type: 'integer' } },
               { name: 'limit', in: 'query', required: true, explode: true, schema: { type: 'integer' } },
-              { name: 'projection', in: 'header', example: true },
             ],
             responses: {
               '200': {

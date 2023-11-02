@@ -326,8 +326,8 @@ function unionToGraphQLType(union: types.UnionType<types.Types>, internalData: I
       ...internalData,
       defaultName: variantValueDefaultName,
     })
-    const field = Object.fromEntries([[name, { type: value }]])
-    return new GraphQLObjectType({ name: variantName, fields: field })
+    const fields = Object.fromEntries([[name, { type: value }]])
+    return new GraphQLObjectType({ name: variantName, fields })
   })
   return new GraphQLUnionType({ name: unionName, types })
 }

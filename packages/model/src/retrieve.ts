@@ -137,6 +137,21 @@ export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType
   })
 }
 
+function removeEmbeddedEntities(type: types.Type): types.Type {
+  function omitEntityFields(fields: types.Types): types.Types {
+    return flatMapObject(fields, (fieldName, fieldType) =>
+      types.unwrap(fieldType).kind === types.Kind.Entity ? [] : [[fieldName, fieldType]],
+    )
+  }
+  return types.match(type, {
+    optional: ({ wrappedType }) => types.optional(removeEmbeddedEntities(wrappedType)),
+    nullable: ({ wrappedType }) => types.nullable(removeEmbeddedEntities(wrappedType)),
+    array: ({ wrappedType }) => types.array(removeEmbeddedEntities(wrappedType)),
+    entity: ({ fields }) => types.entity(omitEntityFields(fields)),
+    object: ({ fields }) => types.object(omitEntityFields(fields)),
+    otherwise: (_, t) => t,
+  })
+}
 /**
  * Gets a projected {@link types.Type Type} in function of the given type and the retrieve selection.
  * @param type the root type.
@@ -156,7 +171,7 @@ export function selectedType<T extends types.Type>(type: T, retrieve: FromType<T
       const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {
         const selection = select[fieldName]
         if (selection === true) {
-          return [[fieldName, fieldType]]
+          return [[fieldName, removeEmbeddedEntities(fieldType)]]
         } else if (typeof selection === 'object' && selection.select) {
           return [[fieldName, selectedType(fieldType, selection)]]
         } else {

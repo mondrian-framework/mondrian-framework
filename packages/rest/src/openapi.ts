@@ -68,11 +68,21 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
           ] as const
         }),
       )
+      const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
+      const retrieveOpenapiType = retrieveType.isOk ? typeToSchemaObject(retrieveType.value, typeMap, typeRef) : null
+      const retrieveHeader: OpenAPIV3_1.ParameterObject[] = retrieveOpenapiType
+        ? [
+            {
+              name: 'retrieve',
+              in: 'header',
+              schema: retrieveOpenapiType.schema as OpenAPIV3_1.ReferenceObject, //TODO: it's ok to put a schema here?
+              example: {},
+            },
+          ]
+        : []
       const operationObj: OpenAPIV3_1.OperationObject = {
         ...specification.openapi?.specification.parameters,
-        parameters: parameters
-          ? [...parameters, { name: 'projection', in: 'header', example: true }]
-          : [{ name: 'projection', in: 'header', example: true }],
+        parameters: parameters ? [...parameters, ...retrieveHeader] : retrieveHeader,
         requestBody,
         responses:
           specification.openapi?.specification.responses === null
@@ -122,39 +132,6 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
   }
 }
 
-export function generateInputType(functionBody: functions.FunctionInterface): types.Type {
-  const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-  return retrieveType.isOk && !types.isNever(functionBody.input)
-    ? types.object({
-        retrieve: types.optional(retrieveType.value),
-        input: functionBody.input,
-      })
-    : retrieveType.isOk
-    ? types.optional(retrieveType.value)
-    : functionBody.input
-}
-
-export function splitInputAndRetrieve(
-  decoded: unknown,
-  functionBody: functions.FunctionInterface,
-): { input?: unknown; retrieve?: retrieve.GenericRetrieve } {
-  const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-  return retrieveType.isOk && !types.isNever(functionBody.input)
-    ? {
-        retrieve: completeRetrieve((decoded as { retrieve: retrieve.GenericRetrieve }).retrieve, functionBody.output),
-        input: (decoded as any).input,
-      }
-    : retrieveType.isOk
-    ? {
-        retrieve: completeRetrieve(decoded as retrieve.GenericRetrieve, functionBody.output),
-        input: undefined,
-      }
-    : {
-        input: decoded,
-        retrieve: undefined,
-      }
-}
-
 export function generateOpenapiInput({
   specification,
   functionBody,
@@ -194,7 +171,14 @@ export function generateOpenapiInput({
   const parametersInPath = specification.path
     ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
     : []
-  const inputType = generateInputType(functionBody)
+  const inputType = functionBody.input
+  if (types.isNever(inputType)) {
+    return {
+      parameters: [],
+      input: () => null,
+      request: () => ({}),
+    }
+  }
   const concreteInputType = types.concretise(inputType)
   const isScalar = types.isScalar(concreteInputType)
   const isArray = types.isArray(concreteInputType)
@@ -464,7 +448,11 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
       if (specification.version?.max != null && version > specification.version.max) {
         continue
       }
-      usedTypes.push(generateInputType(functionBody))
+      const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
+      if (retrieveType.isOk) {
+        usedTypes.push(retrieveType.value)
+      }
+      usedTypes.push(functionBody.input)
       usedTypes.push(functionBody.output)
     }
   }

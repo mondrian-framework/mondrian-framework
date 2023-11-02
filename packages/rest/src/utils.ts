@@ -54,15 +54,59 @@ export function decodeQueryObject(input: Record<string, unknown>, prefix: string
   return output
 }
 
-export function getPathFromSpecification(functionName: string, spec: FunctionSpecifications, prefix: string): string {
-  return `${prefix}/:v${spec.path ?? `/${functionName}`}`
+export function getPathsFromSpecification({
+  functionName,
+  specification,
+  prefix,
+  globalMaxVersion,
+}: {
+  functionName: string
+  specification: FunctionSpecifications
+  prefix: string
+  globalMaxVersion: number
+}): string[] {
+  const paths = []
+  for (let i = specification.version?.min ?? 1; i <= (specification.version?.max ?? globalMaxVersion); i++) {
+    paths.push(`${prefix}/v${i}${specification.path ?? `/${functionName}`}`)
+  }
+  return paths
 }
 
-export function getMaxApiVersion(api: Api<functions.Functions>): number {
-  return Object.values(api.functions)
-    .flatMap((v) => (v ? (isArray(v) ? v : [v]) : []))
-    .map((v) => Math.max(v.version?.max ?? 0, v.version?.min ?? 0))
-    .reduce((p, c) => Math.max(p, c), api.version ?? 1)
+export function assertApiValidity(api: Api<functions.FunctionsInterfaces>) {
+  if (api.version < 1 || !Number.isInteger(api.version) || api.version > 100) {
+    throw new Error(`Invalid api version. Must be between 1 and 100 and be an integer. Got ${api.version}`)
+  }
+  for (const [functionName, specifications] of Object.entries(api.functions)) {
+    for (const specification of Array.isArray(specifications) ? specifications : [specifications]) {
+      if (
+        specification?.version?.max != null &&
+        (specification.version.max < 1 ||
+          specification.version.max > api.version ||
+          !Number.isInteger(specification.version.max))
+      ) {
+        throw new Error(
+          `Invalid version for function ${functionName}. 'max' must be between 1 and ${api.version} and be an integer`,
+        )
+      }
+      if (
+        specification?.version?.min != null &&
+        (specification.version.min < 1 ||
+          specification.version.min > api.version ||
+          !Number.isInteger(specification.version.min))
+      ) {
+        throw new Error(
+          `Invalid version for function ${functionName}. 'min' must be between 1 and ${api.version} and be an integer`,
+        )
+      }
+      if (
+        specification?.version?.min != null &&
+        specification.version.max != null &&
+        specification.version.min > specification.version.max
+      ) {
+        throw new Error(`Invalid version for function ${functionName}. 'min' must be less than or equals to 'max'`)
+      }
+    }
+  }
 }
 
 /**

@@ -35,12 +35,13 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
 })
 
 export const readPosts = functions.withContext<LoggedUserContext>().build({
-  input: types.never(),
+  input: types.object({ userId: idType }),
   output: types.array(postType),
   errors: undefined,
   retrieve: retrieve.allCapabilities,
-  body: async ({ context, retrieve: thisRetrieve }) => {
+  body: async ({ context, input, retrieve: thisRetrieve }) => {
     const baseFilter: Prisma.PostWhereInput = {
+      authorId: input.userId,
       OR: [
         { visibility: 'PUBLIC' },
         ...(context.userId

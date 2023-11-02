@@ -13,7 +13,10 @@ export type Api<F extends functions.FunctionsInterfaces> = {
      */
     pathPrefix?: string
   }
-  version?: number
+  /**
+   * The current api version. Must be an integer greater than or quelas to 1.
+   */
+  version: number
 }
 
 export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch'

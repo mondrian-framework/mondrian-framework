@@ -7,17 +7,14 @@ const api: rest.Api<module.Functions> = {
   version: 2,
   functions: {
     register: [
-      { method: 'post', path: '/subscribe', version: { max: 1 } },
-      { method: 'put', path: '/user' },
+      { method: 'post', path: '/subscribe', version: { min: 2 } },
+      { method: 'put', path: '/user', version: { max: 1 } },
     ],
-    login: { method: 'get', path: '/user/jwt', errorCodes: { invalidLogin: 401 } },
-    follow: { method: 'put', path: '/user/follow' },
+    login: { method: 'post', path: '/login', errorCodes: { invalidLogin: 401 } },
+    follow: { method: 'put', path: '/user/{userId}/follow' },
     writePost: { method: 'post', path: '/post' },
-    readPosts: [
-      { method: 'get', path: '/user/posts' },
-      { method: 'post', path: '/user/posts' },
-    ],
-    likePost: { method: 'put', path: '/post/like' },
+    readPosts: [{ method: 'get', path: '/user/{userId}/posts' }],
+    likePost: { method: 'put', path: '/post/{postId}/like' },
   },
   options: { introspection: true },
 }

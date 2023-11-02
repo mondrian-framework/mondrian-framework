@@ -17,21 +17,25 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): void {
-  const maxVersion = utils.getMaxApiVersion(api)
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = utils.getPathFromSpecification(functionName, specification, '')
+      const paths = utils.getPathsFromSpecification({
+        functionName,
+        specification,
+        prefix: '',
+        globalMaxVersion: api.version,
+      })
       const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
         module,
         context,
         specification,
         functionName,
         functionBody,
-        globalMaxVersion: maxVersion,
+        globalMaxVersion: api.version,
         error,
       })
       const lambdaApiHandler: HandlerFunction = async (request, response) => {
@@ -54,7 +58,9 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
         }
         return result.body
       }
-      server.METHOD(specification.method.toUpperCase() as METHODS, path, lambdaApiHandler)
+      for (const path of paths) {
+        server.METHOD(specification.method.toUpperCase() as METHODS, path, lambdaApiHandler)
+      }
     }
   }
 }

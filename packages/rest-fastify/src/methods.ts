@@ -2,7 +2,7 @@ import { server } from '.'
 import { functions, module } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
-import { FastifyInstance } from 'fastify'
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 export function attachRestMethods<Fs extends functions.Functions, ContextInput>({
   module,
@@ -19,25 +19,26 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
   pathPrefix: string
   error?: rest.ErrorHandler<Fs, server.Context>
 }): void {
-  const maxVersion = utils.getMaxApiVersion(api)
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const path = utils.getPathFromSpecification(functionName, specification, pathPrefix).replace(/{(.*?)}/g, ':$1')
-      const functionRestHandler = rest.handler.fromFunction<Fs, server.Context, ContextInput>({
+      const paths = utils
+        .getPathsFromSpecification({ functionName, specification, prefix: pathPrefix, globalMaxVersion: api.version })
+        .map((p) => p.replace(/{(.*?)}/g, ':$1'))
+      const restHandler = rest.handler.fromFunction<Fs, server.Context, ContextInput>({
         module,
         context,
         specification,
         functionName,
         functionBody,
-        globalMaxVersion: maxVersion,
+        globalMaxVersion: api.version,
         error,
       })
-      server[specification.method](path, async (request, reply) => {
-        const result = await functionRestHandler({
+      const fastifyHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+        const result = await restHandler({
           serverContext: { fastify: { request, reply } },
           request: {
             body: request.body as string,
@@ -53,7 +54,10 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
           reply.headers(result.headers)
         }
         return result.body
-      })
+      }
+      for (const path of paths) {
+        server[specification.method](path, fastifyHandler)
+      }
     }
   }
 }

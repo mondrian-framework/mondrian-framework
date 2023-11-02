@@ -20,14 +20,14 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): APIGatewayProxyHandlerV2 {
+  utils.assertApiValidity(api)
   const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
   const server = lambdaApi({ base: pathPrefix })
-  const globalMaxVersion = utils.getMaxApiVersion(api)
   if (api.options?.introspection) {
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/v${globalMaxVersion}/schema.json`)
+      .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/v${api.version}/schema.json`)
     server.get(`/doc/swagger-initializer.js`, (req: Request, res: Response) => res.send(indexContent))
     server.get(`/doc`, (req: Request, res: Response) => {
       res.redirect(`${pathPrefix}/doc/index.html`)
@@ -35,9 +35,9 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
     server.get(`/doc/:v/schema.json`, (req: Request, res: Response) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
-      if (Number.isNaN(version) || version < 1 || version > globalMaxVersion) {
+      if (Number.isNaN(version) || !Number.isInteger(version) || version < 1 || version > api.version) {
         res.status(404)
-        return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${globalMaxVersion}` }
+        return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${api.version}` }
       }
       return rest.openapi.fromModule({ module, api, version })
     })

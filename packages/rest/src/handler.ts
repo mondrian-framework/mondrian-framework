@@ -1,5 +1,5 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
-import { generateInputType, generateOpenapiInput, splitInputAndRetrieve } from './openapi'
+import { generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
 import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
@@ -28,7 +28,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
     : generateGetInputFromRequest({ functionBody, specification })
-  const inputType = generateInputType(functionBody)
+  const inputType = functionBody.input
+  const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = types.concretise(types.partialDeep(functionBody.output))
 
   const thisLogger = logger.build({
@@ -48,39 +49,55 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     const operationLogger = thisLogger.updateContext({ operationId })
     const responseHeaders = { 'operation-id': operationId }
 
-    //Check version
-    const version = checkVersion(request, minVersion, maxVersion)
-    if (!version.isOk) {
-      operationLogger.logError('Bad request. (version)')
-      endSpanWithError({ span, failure: version })
-      return addHeadersToResponse(version.error, responseHeaders)
-    }
-    span?.addEvent('Version checked')
-
     //Decode input
-    const rawInput = getInputFromRequest(request)
-    const decoded = decodeRawInput({ rawInput, inputType })
-    if (!decoded.isOk) {
-      operationLogger.logError('Bad request. (input)')
-      endSpanWithError({ span, failure: decoded })
-      return addHeadersToResponse(decoded.error, responseHeaders)
+    let input: unknown = null
+    if (!types.isNever(inputType)) {
+      const rawInput = getInputFromRequest(request)
+      const decoded = decodeRawInput({ input: rawInput, type: inputType })
+      if (!decoded.isOk) {
+        operationLogger.logError('Bad request. (input)')
+        endSpanWithError({ span, failure: decoded })
+        return addHeadersToResponse(decoded.error, responseHeaders)
+      }
+      input = decoded.value
+      span?.addEvent('Input decoded')
     }
-    //Split retrieve and input
-    const { input, retrieve } = splitInputAndRetrieve(decoded.value, functionBody)
-    const completedRetrieve = retrieve ? completeRetrieve(retrieve, functionBody.output) : undefined
-    span?.addEvent('Input decoded')
+
+    //Decode retrieve
+    let retrieveValue: retrieve.GenericRetrieve | undefined = undefined
+    if (retrieveType.isOk) {
+      const rawRetrieve = request.headers['retrieve']
+      if (rawRetrieve && typeof rawRetrieve === 'string') {
+        let jsonRawRetrieve
+        try {
+          jsonRawRetrieve = JSON.parse(rawRetrieve)
+        } catch {
+          jsonRawRetrieve = 'Invalid JSON'
+        }
+        const decodedRetrieve = decodeRawRetrieve({ input: jsonRawRetrieve, type: retrieveType.value })
+        if (!decodedRetrieve.isOk) {
+          operationLogger.logError('Bad request. (retrieve)')
+          endSpanWithError({ span, failure: decodedRetrieve })
+          return addHeadersToResponse(decodedRetrieve.error, responseHeaders)
+        }
+        retrieveValue = completeRetrieve(decodedRetrieve.value as retrieve.GenericRetrieve, functionBody.output)
+      } else {
+        retrieveValue = completeRetrieve({}, functionBody.output)
+      }
+      span?.addEvent('Retrieve decoded')
+    }
 
     let moduleContext
     try {
       const contextInput = await context(serverContext)
       moduleContext = await module.context(contextInput, {
-        retrieve: completedRetrieve,
+        retrieve: retrieveValue,
         input,
         operationId,
         logger: operationLogger,
       })
       const res = (await functionBody.apply({
-        retrieve: completedRetrieve ?? {},
+        retrieve: retrieveValue ?? {},
         input: input as never,
         context: moduleContext as Record<string, unknown>,
         operationId,
@@ -125,7 +142,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           functionName,
           operationId,
           context: moduleContext,
-          functionArgs: { input, retrieve },
+          functionArgs: { input, retrieve: retrieveValue },
           ...serverContext,
         })
         if (result !== undefined) {
@@ -165,44 +182,18 @@ function generateGetInputFromRequest(args: {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }
 
-function checkVersion(request: Request, minVersion: number, maxVersion: number): result.Result<number, Response> {
-  const rawVersion = request.params.v ?? ''
-  return parseVersion(rawVersion)
-    .mapError(toHttpError(404, 'Not a version number'))
-    .chain((v) => checkVersionBounds(v, minVersion, maxVersion).mapError(toHttpError(404, 'Invalid version')))
+function decodeRawInput({ input, type }: { input: unknown; type: types.Type }): result.Result<unknown, Response> {
+  const decoded = types.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
+  return decoded.mapError((error) => ({ status: 400, body: { errors: error, message: 'Invalid input' }, headers: {} }))
 }
 
-function decodeRawInput({
-  rawInput,
-  inputType,
-}: {
-  rawInput: unknown
-  inputType: types.Type
-}): result.Result<unknown, Response> {
-  const decoded = types.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
-  return decoded.mapError((error) => ({ status: 400, body: { errors: error }, headers: {} }))
-}
-
-function checkVersionBounds(
-  version: number,
-  minVersion: number,
-  maxVersion: number,
-): result.Result<number, { minVersion: number; maxVersion: number }> {
-  const isInBounds = minVersion <= version && version <= maxVersion
-  return isInBounds ? result.ok(version) : result.fail({ minVersion, maxVersion })
-}
-
-function parseVersion(rawVersion: string): result.Result<number, string> {
-  const isValidVersion = /^v?\d+$/.test(rawVersion)
-  return isValidVersion ? result.ok(Number(rawVersion.replace('v', ''))) : result.fail(`invalid version: ${rawVersion}`)
-}
-
-function toHttpError(
-  status: number,
-  message?: string,
-  additionalBody: Record<string, string> = {},
-): (errors: any) => Response {
-  return (errors) => ({ body: { errors, message, ...additionalBody }, status, headers: {} })
+function decodeRawRetrieve({ input, type }: { input: unknown; type: types.Type }): result.Result<unknown, Response> {
+  const decoded = types.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
+  return decoded.mapError((error) => ({
+    status: 400,
+    body: { errors: error, message: 'Invalid retrieve' },
+    headers: {},
+  }))
 }
 
 function addHeadersToResponse(response: Response, headers: Response['headers']): Response {

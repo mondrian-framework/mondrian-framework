@@ -14,7 +14,7 @@ async function main() {
   const prova = functions.withContext<{}>().build({
     input: model,
     output: types.number(),
-    error: undefined,
+    errors: undefined,
     retrieve: { select: true },
     body: async () => 1,
     options: { namespace: 'post' },

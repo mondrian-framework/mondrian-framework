@@ -1,7 +1,8 @@
 import { module } from '../core'
 import { InvalidJwtError } from '../core/errors'
 import { rest } from '@mondrian-framework/rest'
-import { server as restServer } from '@mondrian-framework/rest-fastify'
+import { serve } from '@mondrian-framework/rest-fastify'
+import { FastifyInstance } from 'fastify'
 
 const api: rest.Api<module.Functions> = {
   version: 2,
@@ -19,9 +20,9 @@ const api: rest.Api<module.Functions> = {
   options: { introspection: true },
 }
 
-export function startServer(server: any) {
-  restServer.start({
-    server,
+export function startServer(fastifyInstance: FastifyInstance) {
+  serve({
+    fastifyInstance,
     module: module.instance,
     api,
     context: async ({ fastify }) => ({

@@ -81,32 +81,40 @@ Next, we expose the module as a REST API endpoint:
 
 ```typescript
 import { rest } from '@mondrian-framework/rest'
-import { server } from '@mondrian-framework/rest-fastify'
+import { serve } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods
 const api: rest.Api<typeof myFunctions> = {
-  version: 1,
+  version: 2,
   functions: {
-    register: {
-      method: 'put',
-      path: '/user',
-      errorCodes: { weakPassword: 400, emailAlreadyUsed: 403 },
-      // version: { min: 1, max: ? } //versioning support
-    },
+    register: [
+      {
+        method: 'put',
+        path: '/user',
+        errorCodes: { weakPassword: 400, emailAlreadyUsed: 401 },
+        version: { max: 1 },
+      },
+      {
+        method: 'post',
+        path: '/login',
+        errorCodes: { weakPassword: 400, emailAlreadyUsed: 403 },
+        version: { min: 2 },
+      },
+    ],
   },
   options: { introspection: true },
 }
 
 //Start the server
-const fastifyServer = fastify()
-server.start({
-  server: fastifyServer,
+const fastifyInstance = fastify()
+serve({
+  fastifyInstance,
   module: moduleInstance,
   api,
   context: async ({}) => ({}),
 })
-fastifyServer.listen({ port: 4000 }).then((address) => {
+fastifyInstance.listen({ port: 4000 }).then((address) => {
   console.log(`Server started at address ${address}`)
 })
 ```

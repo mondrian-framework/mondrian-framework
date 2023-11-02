@@ -10,23 +10,23 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type Context = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
-export function start<const F extends functions.Functions, CI>({
+export function serve<const F extends functions.Functions, CI>({
   module,
   api,
-  server,
+  fastifyInstance,
   context,
   error,
 }: {
   module: module.Module<F, CI>
   api: rest.Api<F>
-  server: FastifyInstance
+  fastifyInstance: FastifyInstance
   context: (serverContext: Context) => Promise<CI>
   error?: rest.ErrorHandler<F, Context>
 }): void {
   utils.assertApiValidity(api)
   const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
   if (api.options?.introspection) {
-    server.register(fastifyStatic, {
+    fastifyInstance.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
       prefix: `${pathPrefix}/doc`,
     })
@@ -34,11 +34,11 @@ export function start<const F extends functions.Functions, CI>({
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
       .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/v${api.version}/schema.json`)
-    server.get(`${pathPrefix}/doc/swagger-initializer.js`, (req, res) => res.send(indexContent))
-    server.get(`${pathPrefix}/doc`, (req, res) => {
+    fastifyInstance.get(`${pathPrefix}/doc/swagger-initializer.js`, (req, res) => res.send(indexContent))
+    fastifyInstance.get(`${pathPrefix}/doc`, (req, res) => {
       res.redirect(`${pathPrefix}/doc/index.html`)
     })
-    server.get(`${pathPrefix}/doc/:v/schema.json`, (req, reply) => {
+    fastifyInstance.get(`${pathPrefix}/doc/:v/schema.json`, (req, reply) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
       if (Number.isNaN(version) || !Number.isInteger(version) || version < 1 || version > api.version) {
@@ -48,5 +48,5 @@ export function start<const F extends functions.Functions, CI>({
       return rest.openapi.fromModule({ module, api, version })
     })
   }
-  attachRestMethods({ module, api, server, context, pathPrefix, error })
+  attachRestMethods({ module, api, fastifyInstance, context, pathPrefix, error })
 }

@@ -133,7 +133,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
       })
       await functionBody.apply({
         input: decoded.value as never,
-        retrieve: undefined,
+        retrieve: {},
         operationId,
         context: ctx,
         logger: operationLogger,

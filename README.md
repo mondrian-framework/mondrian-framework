@@ -66,15 +66,13 @@ First, we need to build the Mondrian module:
 ```typescript
 import { module } from '@mondrian-framework/module'
 
-const functions = {
-  register, //here we put all the module functions
-}
+const myFunctions = { register } //here we put all the module functions
 
 //instantiate the Mondrian module
 const moduleInstance = module.build({
   name: 'my-module',
   version: '0.0.0',
-  functions,
+  functions: myFunctions,
   context: async () => ({}),
 })
 ```
@@ -87,13 +85,14 @@ import { server } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods
-const api: rest.Api<typeof Functions> = {
+const api: rest.Api<typeof myFunctions> = {
   version: 1,
   functions: {
     register: {
       method: 'put',
       path: '/user',
       errorCodes: { weakPassword: 400, emailAlreadyUsed: 403 },
+      // version: { min: 1, max: ? } //versioning support
     },
   },
   options: { introspection: true },

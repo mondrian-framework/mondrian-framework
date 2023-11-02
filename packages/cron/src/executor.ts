@@ -55,7 +55,7 @@ export function start<const F extends functions.Functions, CI>({
           })
           await functionBody.apply({
             input: input as never,
-            retrieve: undefined,
+            retrieve: {},
             operationId,
             logger: operationLogger,
             context: ctx,

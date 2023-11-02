@@ -98,7 +98,7 @@ export function build<const Fs extends functions.Functions, CI>({
         })
         await functionBody.apply({
           input: decoded.value as never,
-          retrieve: undefined,
+          retrieve: {},
           operationId,
           context: ctx,
           logger: operationLogger,

@@ -38,13 +38,13 @@ test('Real example', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
-    error: types.union({ invalidEmailOrPassword: types.literal('Invalid email or password') }),
+    errors: { invalidEmailOrPassword: types.literal('Invalid email or password') },
     retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
         logger.logWarn(`Invalid email or password: ${input.email}`)
-        return result.fail('Invalid email or password')
+        return result.fail({ invalidEmailOrPassword: 'Invalid email or password' })
       }
       logger.logInfo(`Logged in: ${input.email}`)
       return result.ok({ jwt: user.email, user })
@@ -67,16 +67,16 @@ test('Real example', async () => {
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: types.nullable(User),
-    error: types.union({
+    errors: {
       weakPassword: types.literal('Weak passowrd'),
       doubleRegister: types.literal('Double register'),
-    }),
+    },
     retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
         logger.logWarn(`Double register`, { email: input.email })
-        return result.fail('Double register')
+        return result.fail({ doubleRegister: 'Double register' })
       } else {
         logger.logInfo(`Registered: ${input.email}`)
         return result.ok(db.updateUser(input))
@@ -85,7 +85,8 @@ test('Real example', async () => {
     middlewares: [
       {
         name: 'Avoid weak passwords',
-        apply: async (args, next) => (args.input.password === '123' ? result.fail('Weak passowrd') : next(args)),
+        apply: async (args, next) =>
+          args.input.password === '123' ? result.fail({ weakPassword: 'Weak passowrd' }) : next(args),
       },
     ],
     options: { namespace: 'authentication' },
@@ -94,11 +95,11 @@ test('Real example', async () => {
   const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
     input: types.object({ firstname: types.string(), lastname: types.string() }),
     output: User,
-    error: types.union({ unauthorized: types.literal('unauthorized') }),
+    errors: { unauthorized: types.literal('unauthorized') },
     retrieve: undefined,
     body: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
-        return result.fail('unauthorized')
+        return result.fail({ unauthorized: 'unauthorized' })
       }
       const user = db.findUser({ email: authenticatedUser.email })
       if (!user) {
@@ -151,11 +152,13 @@ test('Real example', async () => {
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   expect(failedRegisterResult.isOk).toBe(false)
-  expect(!failedRegisterResult.isOk && failedRegisterResult.error).toEqual('Double register')
+  expect(!failedRegisterResult.isOk && failedRegisterResult.error).toEqual({ doubleRegister: 'Double register' })
 
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult.isOk).toBe(false)
-  expect(!failedLoginResult.isOk && failedLoginResult.error).toEqual('Invalid email or password')
+  expect(!failedLoginResult.isOk && failedLoginResult.error).toEqual({
+    invalidEmailOrPassword: 'Invalid email or password',
+  })
 
   const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
   expect(loginResult.isOk).toEqual(true)
@@ -165,7 +168,7 @@ test('Real example', async () => {
   })
 
   const completeProfileResult = await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
-  expect(!completeProfileResult.isOk && completeProfileResult.error).toEqual('unauthorized')
+  expect(!completeProfileResult.isOk && completeProfileResult.error).toEqual({ unauthorized: 'unauthorized' })
   expect(
     async () =>
       await client.functions.completeProfile(
@@ -196,7 +199,7 @@ describe('Unique type name', () => {
     const f = functions.build({
       input,
       output,
-      error: undefined,
+      errors: undefined,
       retrieve: undefined,
       body: () => {
         throw 'Unreachable'
@@ -219,8 +222,8 @@ describe('Default middlewares', () => {
     const dummy = functions.build({
       input: type,
       output: type,
-      error: undefined,
-      retrieve: undefined,
+      errors: undefined,
+      retrieve: { select: true },
       body: async ({ input }) => {
         if (input?.value === 'wrong') {
           return {} //selection not respected sometimes!
@@ -248,7 +251,7 @@ describe('Default middlewares', () => {
 
     const result1 = await client.functions.dummy({ value: '123' })
     expect(result1).toEqual({ value: '123' })
-    const result2 = await client.functions.dummy({ value: 'wrong' })
+    const result2 = await client.functions.dummy({ value: 'wrong' }, { retrieve: { select: {} } })
     expect(result2).toEqual({})
     expect(
       async () =>
@@ -258,7 +261,7 @@ describe('Default middlewares', () => {
         ),
     ).rejects.toThrowError('Max selection depth reached: requested selection have a depth of 3. The maximum is 2.')
     expect(async () => await client.functions.dummy({ value: 'wrong' })).rejects.toThrowError(
-      '[{"missingField":"value","path":{"fragments":[]}}]',
+      'Invalid output on function dummy. Errors: (1) expected: string, got: undefined, path: $.value',
     )
   })
 })

@@ -21,16 +21,23 @@ type SdkFunction<
 > = <const P extends retrieve.FromType<OutputType, C>>(
   input: types.Infer<InputType>,
   options?: { retrieve?: P; metadata?: Metadata; operationId?: string },
-) => Promise<SdkFunctionInternal<OutputType, E, C, P>>
+) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
-type SdkFunctionInternal<
+type SdkFunctionResult<
   O extends types.Type,
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   P extends retrieve.FromType<O, C>,
-> = [E] extends [types.UnionType<infer _>]
-  ? result.Result<Project<O, P>, types.Infer<types.UnionType<E>>>
-  : Project<O, P>
+> = [E] extends [types.Types] ? result.Result<Project<O, P>, { [K in keyof E]: types.Infer<E[K]> }> : Project<O, P>
+
+/**
+ * Infer a subset of a Mondrian type `T` based on a retrieve `P`
+ * If not explicitly required, all embedded entities are excluded.
+ **/
+// prettier-ignore
+export type Project<T extends types.Type, P extends retrieve.GenericRetrieve> //TODO
+  = [P] extends [Record<string, unknown>] ? types.Infer<types.PartialDeep<T>> 
+  : types.Infer<T>
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata
@@ -101,11 +108,3 @@ export function build<const Fs extends functions.Functions, ContextInput>(args: 
 }): Sdk<Fs, unknown> {
   return withMetadata().build(args)
 }
-
-/**
- * Infer a subset of a Mondrian type `T` based on a retrieve `P`
- * If not explicitly required, all embedded entities are excluded.
- **/
-// prettier-ignore
-export type Project<T extends types.Type, P extends retrieve.GenericRetrieve> //TODO
-  = types.Infer<T>

@@ -33,7 +33,8 @@ describe('Opentelemetry', () => {
     const dummy = functions.build({
       input: types.string(),
       output: types.string(),
-      error: types.union({ unknownInput: types.string() }),
+      errors: { unknownInput: types.string() },
+      retrieve: undefined,
       body: async ({ input, logger }) => {
         if (input !== 'ping') {
           logger.logError('Only "ping" is accepted', { received: input })
@@ -47,7 +48,8 @@ describe('Opentelemetry', () => {
       version: '1.0.0',
       functions: { dummy },
       options: {
-        checks: { maxProjectionDepth: 2, output: 'throw' },
+        maxSelectionDepth: 2,
+        checkOutputType: 'throw',
         opentelemetryInstrumentation: true,
       },
       context: async () => ({}),
@@ -60,10 +62,10 @@ describe('Opentelemetry', () => {
       },
     })
 
-    const result1 = await client.functions.dummy('ping', { projection: true })
+    const result1 = await client.functions.dummy('ping')
     expect(result1.isOk && result1.value).toBe('pong')
     try {
-      await client.functions.dummy('pong', { projection: true })
+      await client.functions.dummy('pong')
     } catch {}
 
     const spans = spanExporter.getFinishedSpans()

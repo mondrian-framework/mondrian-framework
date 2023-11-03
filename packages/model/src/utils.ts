@@ -50,42 +50,8 @@ export function prependIndexToAll<Data extends Record<string, any>, T extends Wi
   return values.map((value) => ({ ...value, path: value.path.prependIndex(index) }))
 }
 
-type TypeTransformerWithParam<T extends types.Type, A> = (type: T, args: A) => types.Type
-export function memoizeTypeTransformationWithParam<T extends types.Type, A = undefined>(
-  mapper: TypeTransformerWithParam<T, A>,
-  key: (args: A) => unknown,
-): TypeTransformerWithParam<T, A> {
-  const cache = new Map<types.Type, Map<any, types.Type>>()
-  return (type: T, args: A) => {
-    const paramKey = key(args)
-    const cachedMap = cache.get(type)
-    if (cachedMap) {
-      const cachedResult = cachedMap.get(paramKey)
-      if (cachedResult) {
-        return cachedResult
-      }
-    }
-    if (typeof type === 'function') {
-      const lazyResult = () => mapper(types.concretise(type), args)
-      if (cachedMap) {
-        cachedMap.set(paramKey, lazyResult)
-      } else {
-        cache.set(type, new Map([[paramKey, lazyResult]]))
-      }
-      return lazyResult
-    }
-    const result = mapper(type, args)
-    if (cachedMap) {
-      cachedMap.set(paramKey, result)
-    } else {
-      cache.set(type, new Map([[paramKey, result]]))
-    }
-    return result
-  }
-}
-
-type TypeTransformer<T extends types.Type> = (type: T) => types.Type
-export function memoizeTypeTransformation<T extends types.Type>(mapper: TypeTransformer<T>): TypeTransformer<T> {
+type TypeTransformer<T extends types.Type> = (type: T, lazyType: T) => types.Type
+export function memoizeTypeTransformation<T extends types.Type>(mapper: TypeTransformer<T>): (type: T) => types.Type {
   const cache = new Map<types.Type, types.Type>()
   return (type: T) => {
     const cachedResult = cache.get(type)
@@ -93,11 +59,11 @@ export function memoizeTypeTransformation<T extends types.Type>(mapper: TypeTran
       return cachedResult
     }
     if (typeof type === 'function') {
-      const lazyResult = () => mapper(types.concretise(type))
+      const lazyResult = () => mapper(types.concretise(type), type)
       cache.set(type, lazyResult)
       return lazyResult
     }
-    const result = mapper(type)
+    const result = mapper(type, type)
     cache.set(type, result)
     return result
   }

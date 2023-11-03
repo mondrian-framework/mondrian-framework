@@ -37,6 +37,7 @@ import {
  * - Generates a random name in the form "TYPE{N}" where "N" is a random integer
  */
 function generateName(type: types.Type, defaultName: string | undefined): string {
+  //TODO: keep tracks of names
   const concreteType = types.concretise(type)
   return concreteType.options?.name
     ? capitalise(concreteType.options.name)
@@ -46,8 +47,6 @@ function generateName(type: types.Type, defaultName: string | undefined): string
 // Data used in the recursive calls of `typeToGraphQLTypeInternal` to store
 // all relevant information that has to be used throughout the recursive calls.
 type InternalData = {
-  // A set of all the types that have already been explored
-  inspectedTypes: Set<types.Type>
   // A map from <explored type> to already generated output type(s)
   knownOutputTypes: Map<types.Type, GraphQLOutputType>
   // A map from <explored type> to already generated input type(s)
@@ -60,78 +59,56 @@ type InternalData = {
 }
 
 function typeToGraphQLOutputTypeInternal(type: types.Type, internalData: InternalData): GraphQLOutputType {
-  const { inspectedTypes, knownOutputTypes, defaultName } = internalData
-  // If the type has already been explored, then return the output type that has
-  // already been generated
-  if (inspectedTypes.has(type)) {
-    // ⚠️ Possible pain point: `typeToGraphQLTypeInternal` relies on the fact
-    // that _every single type_ that appears in `inspectedTypes` must also have
-    // an associated generated type here
-    return knownOutputTypes.get(type)!!
-  } else {
-    inspectedTypes.add(type)
-    // ⚠️ Possible pain point: here the invariant that a type inside `exporedTypes`
-    // must have a counterpart in the `knownTypes` map is broken and cannot be used
-    // by the inner functions! This is unavoidable since this kind of caching is
-    // only used by this top level function and the other inner functions should
-    // not be aware of that.
-    const graphQLType = types.match(type, {
-      number: (concreteType) => scalarOrDefault(concreteType, GraphQLFloat, defaultName),
-      string: (concreteType) => scalarOrDefault(concreteType, GraphQLString, defaultName),
-      boolean: (concreteType) => scalarOrDefault(concreteType, GraphQLBoolean, defaultName),
-      enum: (concreteType) => enumToGraphQLType(concreteType, defaultName),
-      literal: (concreteType) => literalToGraphQLType(concreteType, defaultName),
-      union: (concreteType) => unionToGraphQLType(concreteType, internalData),
-      object: (concreteType) => objectToGraphQLType(concreteType, internalData),
-      entity: (concreteType) => entityToGraphQLType(concreteType, internalData),
-      array: (concreteType) => arrayToGraphQLType(concreteType, internalData),
-      custom: (concreteType) => customTypeToGraphQLType(concreteType, internalData),
-      wrapper: (concreteType) => {
-        const type = typeToGraphQLOutputTypeInternal(concreteType.wrappedType, internalData)
-        return getNullableType(type)
-      },
-    })
-    // Add the generated type to the map of explored types to make the invariant
-    // valid once again
-    knownOutputTypes.set(type, graphQLType)
-    return graphQLType
+  const { knownOutputTypes, defaultName } = internalData
+  const knownOutputType = knownOutputTypes.get(type)
+  if (knownOutputType) {
+    return knownOutputType
   }
+  const graphQLType = types.match(type, {
+    number: (type) => scalarOrDefault(type, GraphQLFloat, defaultName),
+    string: (type) => scalarOrDefault(type, GraphQLString, defaultName),
+    boolean: (type) => scalarOrDefault(type, GraphQLBoolean, defaultName),
+    enum: (type) => enumToGraphQLType(type, defaultName),
+    literal: (type) => literalToGraphQLType(type, defaultName),
+    union: (type) => unionToGraphQLType(type, internalData),
+    object: (type) => objectToGraphQLType(type, internalData),
+    entity: (type) => entityToGraphQLType(type, internalData),
+    array: (type) => arrayToGraphQLType(type, internalData),
+    wrapper: ({ wrappedType }) => {
+      const type = typeToGraphQLOutputTypeInternal(wrappedType, internalData)
+      return getNullableType(type)
+    },
+    custom: (type) => customTypeToGraphQLType(type, internalData),
+  })
+  knownOutputTypes.set(type, graphQLType)
+  return graphQLType
 }
 
 function typeToGraphQLInputTypeInternal(type: types.Type, internalData: InternalData): GraphQLInputType {
-  const { inspectedTypes, knownInputTypes, defaultName } = internalData
-  // If the type has already been explored, then return the output type that has
-  // already been generated
-  if (inspectedTypes.has(type)) {
-    // ⚠️ Possible pain point: `typeToGraphQLTypeInternal` relies on the fact
-    // that _every single type_ that appears in `inspectedTypes` must also have
-    // an associated generated type here
-    return knownInputTypes.get(type)!!
-  } else {
-    inspectedTypes.add(type)
-    // ⚠️ Possible pain point: here the invariant that a type inside `exporedTypes`
-    // must have a counterpart in the `knownInputTypes` map is broken and cannot be used
-    // by the inner functions! This is unavoidable since this kind of caching is
-    // only used by this top level function and the other inner functions should
-    // not be aware of that.
-    const graphQLType: GraphQLInputType = types.match(type, {
-      number: (_concreteType) => GraphQLFloat,
-      string: (_concreteType) => GraphQLString,
-      boolean: (_concreteType) => GraphQLBoolean,
-      literal: (concreteType) => literalToGraphQLType(concreteType, defaultName),
-      object: (concreteType) => objectToInputGraphQLType(concreteType, internalData),
-      entity: (concreteType) => entityToInputGraphQLType(concreteType, internalData),
-      nullable: (wrappedType) => getNullableType(typeToGraphQLInputTypeInternal(wrappedType, internalData)),
-      optional: (wrappedType) => getNullableType(typeToGraphQLInputTypeInternal(wrappedType, internalData)),
-      otherwise: () => {
-        throw new Error('Cannot turn this type into an input type')
-      },
-    })
-    // Add the generated type to the map of explored types to make the invariant
-    // valid once again
-    knownInputTypes.set(type, graphQLType)
-    return graphQLType
+  const { knownInputTypes } = internalData
+  const knownInputType = knownInputTypes.get(type)
+  if (knownInputType) {
+    return knownInputType
   }
+  const graphQLType: GraphQLInputType = types.match(type, {
+    number: () => GraphQLFloat,
+    string: () => GraphQLString,
+    boolean: () => GraphQLBoolean,
+    enum: (_, type) => typeToGraphQLOutputTypeInternal(type, internalData) as GraphQLInputType,
+    literal: (_, type) => typeToGraphQLOutputTypeInternal(type, internalData) as GraphQLInputType,
+    union: ({ variants }) => {
+      throw 'TODO union'
+    },
+    object: (type) => objectToInputGraphQLType(type, internalData),
+    entity: (type) => entityToInputGraphQLType(type, internalData),
+    array: (type) => arrayToInputGraphQLType(type, internalData),
+    wrapper: ({ wrappedType }) => getNullableType(typeToGraphQLInputTypeInternal(wrappedType, internalData)),
+    custom: (type) => {
+      throw 'TODO'
+    },
+  })
+  knownInputTypes.set(type, graphQLType)
+  return graphQLType
 }
 
 // If the given type has some options then it is turned into a scalar (we assume
@@ -210,6 +187,21 @@ function arrayToGraphQLType(
   return new GraphQLList(wrappedType)
 }
 
+function arrayToInputGraphQLType(
+  array: types.ArrayType<any, any>,
+  internalData: InternalData,
+): GraphQLList<GraphQLInputType> {
+  const { defaultName } = internalData
+  const arrayName = generateName(array, defaultName)
+  const itemDefaultName = arrayName + 'Item'
+  const itemsType = typeToGraphQLInputTypeInternal(array.wrappedType, {
+    ...internalData,
+    defaultName: itemDefaultName,
+  })
+  const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
+  return new GraphQLList(wrappedType)
+}
+
 function objectToGraphQLType(
   object: types.ObjectType<any, types.Types>,
   internalData: InternalData,
@@ -225,7 +217,7 @@ function objectToInputGraphQLType(
   internalData: InternalData,
 ): GraphQLInputObjectType {
   const { defaultName } = internalData
-  const objectName = generateName(object, defaultName)
+  const objectName = `${generateName(object, defaultName)}Input`
   const fields = () => mapObject(object.fields, typeToGraphQLInputObjectField(internalData, objectName))
   return new GraphQLInputObjectType({ name: objectName, fields })
 }
@@ -245,7 +237,7 @@ function entityToInputGraphQLType(
   internalData: InternalData,
 ): GraphQLInputObjectType {
   const { defaultName } = internalData
-  const objectName = generateName(object, defaultName)
+  const objectName = `${generateName(object, defaultName)}Input`
   const fields = () => mapObject(object.fields, typeToGraphQLInputObjectField(internalData, objectName))
   return new GraphQLInputObjectType({ name: objectName, fields })
 }
@@ -334,20 +326,46 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
 ): GraphQLSchema {
   const { module, api, context, setHeader, errorHandler } = input
   const moduleFunctions = Object.entries(module.functions)
+  const internalData: InternalData = {
+    knownOutputTypes: new Map(),
+    knownInputTypes: new Map(),
+    knownCustomTypes: new Map(),
+    defaultName: undefined,
+  }
   const queriesArray = moduleFunctions.flatMap(([name, fun]) =>
-    toQueries(module.name, fun, api.functions[name], setHeader, context, module.context, errorHandler),
+    toQueries(
+      module.name,
+      name,
+      fun,
+      api.functions[name],
+      setHeader,
+      context,
+      module.context,
+      errorHandler,
+      internalData,
+    ),
   )
   const mutationsArray = moduleFunctions.flatMap(([name, fun]) =>
-    toMutations(module.name, fun, api.functions[name], setHeader, context, module.context, errorHandler),
+    toMutations(
+      module.name,
+      name,
+      fun,
+      api.functions[name],
+      setHeader,
+      context,
+      module.context,
+      errorHandler,
+      internalData,
+    ),
   )
   const query =
     queriesArray.length === 0
       ? undefined
-      : new GraphQLObjectType({ name: 'query', fields: Object.fromEntries(queriesArray) })
+      : new GraphQLObjectType({ name: 'Query', fields: Object.fromEntries(queriesArray) })
   const mutation =
     mutationsArray.length === 0
       ? undefined
-      : new GraphQLObjectType({ name: 'mutation', fields: Object.fromEntries(mutationsArray) })
+      : new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutationsArray) })
 
   const schema = new GraphQLSchema({ query, mutation })
   return schema
@@ -359,17 +377,19 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
  */
 function toQueries(
   moduleName: string,
+  functionName: string,
   fun: functions.FunctionImplementation,
   spec: FunctionSpecifications | readonly FunctionSpecifications[] | undefined,
   setHeader: (server: any, name: string, value: string) => void,
   getContextInput: (server: any, info: GraphQLResolveInfo) => Promise<any>,
   getModuleContext: any,
   errorHandler: ErrorHandler<any, any> | undefined,
+  internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>][] {
   return asSpecs(spec)
     .filter((spec) => spec.type === 'query')
-    .map((spec, i) => {
-      const queryName = spec.name ?? `query${i}`
+    .map((spec) => {
+      const queryName = spec.name ?? functionName
       return makeOperation(
         'query',
         moduleName,
@@ -379,6 +399,7 @@ function toQueries(
         getContextInput,
         getModuleContext,
         errorHandler,
+        internalData,
       )
     })
 }
@@ -389,17 +410,19 @@ function toQueries(
  */
 function toMutations(
   moduleName: string,
+  functionName: string,
   fun: functions.FunctionImplementation,
   spec: FunctionSpecifications | readonly FunctionSpecifications[] | undefined,
   setHeader: (server: any, name: string, value: string) => void,
   getContextInput: (server: any, info: GraphQLResolveInfo) => Promise<any>,
   getModuleContext: any,
   errorHandler: ErrorHandler<any, any> | undefined,
+  internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>][] {
   return asSpecs(spec)
     .filter((spec) => spec.type === 'mutation')
-    .map((spec, i) => {
-      const mutationName = spec.name ?? `mutation${i}`
+    .map((spec) => {
+      const mutationName = spec.name ?? functionName
       return makeOperation(
         'mutation',
         moduleName,
@@ -409,6 +432,7 @@ function toMutations(
         getContextInput,
         getModuleContext,
         errorHandler,
+        internalData,
       )
     })
 }
@@ -444,6 +468,7 @@ function makeOperation(
   getContextInput: (server: any, info: GraphQLResolveInfo) => Promise<any>,
   getModuleContext: any,
   errorHandler: ErrorHandler<any, any> | undefined,
+  internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>] {
   const resolve = async (
     _parent: unknown,
@@ -479,21 +504,16 @@ function makeOperation(
       .catch((error) => handleFunctionError({ ...handlerInput, error }))
   }
 
-  const retr = fun.retrieve ? retrieve.fromType(fun.input, fun.retrieve) : retrieve.fromType(fun.input, {})
-  if (!retr.isOk) {
-    throw new Error("couldn't generate retrieve")
-  } else {
-    const retrieveType = types.concretise(retr.value).setName(operationName + 'Retrieve')
-    const internalData = {
-      inspectedTypes: new Set<types.Type>(),
-      knownOutputTypes: new Map(),
-      knownInputTypes: new Map(),
-      knownCustomTypes: new Map(),
-      defaultName: undefined,
-    }
-    const type = typeToGraphQLOutputTypeInternal(fun.output, internalData)
-    const retrieve = { type: typeToGraphQLInputTypeInternal(retrieveType, internalData) }
+  const retrieveTypeResult = retrieve.fromType(fun.input, fun.retrieve)
+  if (!retrieveTypeResult.isOk) {
     const input = { type: typeToGraphQLInputTypeInternal(fun.input, internalData) }
+    const type = typeToGraphQLOutputTypeInternal(fun.output, internalData)
+    return [operationName, { type, args: { input }, resolve }]
+  } else {
+    const retrieveType = types.concretise(retrieveTypeResult.value).setName(operationName + 'Retrieve')
+    const input = { type: typeToGraphQLInputTypeInternal(fun.input, internalData) }
+    const retrieve = { type: typeToGraphQLInputTypeInternal(retrieveType, internalData) }
+    const type = typeToGraphQLOutputTypeInternal(fun.output, internalData)
     return [operationName, { type, args: { retrieve, input }, resolve }]
   }
 }

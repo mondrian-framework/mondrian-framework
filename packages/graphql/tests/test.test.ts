@@ -1,6 +1,8 @@
 import { graphql } from '../src'
+import { fromModule } from '../src/graphql'
 import { result, types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
+import fs from 'fs'
 import {
   printSchema,
   GraphQLSchema,
@@ -13,46 +15,41 @@ import {
 } from 'graphql'
 import { expect, test } from 'vitest'
 
-const exampleModule = module.build({
-  name: 'example module',
-  version: '1.0.0',
-  functions: {
-    asd: functions.build({
-      input: types.number(),
-      output: types.string(),
-      error: types.never(),
-      async body() {
-        return result.ok('a')
+test('main', () => {
+  const model = () =>
+    types
+      .entity({
+        id: types.string(),
+        name: types.string(),
+        friends: types.optional(types.array(model)),
+      })
+      .setName('User')
+
+  const prova = functions.withContext<{}>().build({
+    input: model,
+    output: model,
+    errors: undefined,
+    retrieve: { where: true },
+    body: async () => ({ id: 'a', name: 'a' }),
+    options: { namespace: 'post' },
+  })
+
+  const schema = fromModule({
+    module: {
+      name: 'string',
+      version: 'string',
+      functions: { prova },
+      context: async () => ({}),
+    },
+    api: {
+      functions: {
+        prova: { type: 'mutation' },
       },
-    }),
-  },
-  context: async () => ({}),
-})
-
-test.concurrent('typeToGqlType', () => {
-  //const schema = graphql.fromModule({
-  //  module: exampleModule,
-  //  api: {
-  //    functions: {
-  //      asd: [{ type: 'query', name: 'a' }],
-  //    },
-  //  },
-  //  context: async () => {},
-  //  setHeader: () => {},
-  //})
-  // expect(1).toBe(2)
-})
-
-test('a', () => {
-  const optionalInt = types.union({ some: types.number(), none: types.unknown() }).setName('optional_int')
-  const t = getNamedType(graphql.typeToGraphQLType(optionalInt))
-
-  console.log(
-    printSchema(
-      new GraphQLSchema({
-        types: [t],
-      }),
-    ),
-  )
-  expect(1).toBe(2)
+    },
+    context: async () => ({}),
+    setHeader: () => {},
+  })
+  const schemaPrinted = printSchema(schema)
+  fs.writeFileSync('schema.graphql', schemaPrinted, {})
+  console.log(schemaPrinted)
 })

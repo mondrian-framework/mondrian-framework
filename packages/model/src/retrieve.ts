@@ -20,7 +20,7 @@ export type GenericRetrieve = {
 }
 export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere[] } & { readonly [K in string]: any }
 export type GenericSelect = null | { readonly [K in string]: undefined | GenericRetrieve | boolean }
-export type GenericOrderBy = {}[]
+export type GenericOrderBy = {} | {}[]
 
 // prettier-ignore
 export type FromType<T extends types.Type, C extends Capabilities | undefined>
@@ -209,7 +209,7 @@ export function fromType(type: types.Type, capabilities: Capabilities | undefine
   }
   const res = types.match(type, {
     wrapper: ({ wrappedType }) => fromType(wrappedType, capabilities),
-    entity: (type) => result.ok(retrieve(type, capabilities)),
+    entity: (_, type) => result.ok(retrieve(type, capabilities)),
     otherwise: () => result.fail(null),
   }) as result.Result<types.Type, null>
   return res
@@ -270,7 +270,7 @@ function select(type: types.Type): types.Type {
 }
 
 const entityWhere: (type: types.Lazy<types.EntityType<types.Mutability, types.Types>>) => types.Type =
-  memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((type) => {
+  memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((_, type) => {
     const entity = types.concretise(type)
     return () =>
       types.object(
@@ -372,8 +372,8 @@ export function merge<const T extends GenericRetrieve>(
   if (!left || !right) {
     return left || right
   }
-  const rightOrderBy = right.orderBy ?? []
-  const leftOrderBy = left.orderBy ?? []
+  const rightOrderBy = right.orderBy ? (Array.isArray(right.orderBy) ? right.orderBy : [right.orderBy]) : []
+  const leftOrderBy = left.orderBy ? (Array.isArray(left.orderBy) ? left.orderBy : [left.orderBy]) : []
   const orderBy =
     options?.orderByOrder === 'right-before' ? [...rightOrderBy, ...leftOrderBy] : [...leftOrderBy, ...rightOrderBy]
   return {

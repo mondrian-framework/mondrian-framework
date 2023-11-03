@@ -7,7 +7,7 @@ async function main() {
   opentelemetry.setup(module.instance.name, module.instance.version)
   const server = fastify()
   rest.startServer(server)
-  //graphql.startServer(server)
+  graphql.startServer(server)
   const address = await server.listen({ port: 4000 })
   console.log(`Server started at address ${address}`)
 }

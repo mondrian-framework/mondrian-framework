@@ -76,22 +76,151 @@ describe('trimToSelection', () => {
 })
 
 describe('merge', () => {
-  test('simple retrieve', () => {
-    const result = retrieve.merge(
+  test('none', () => {
+    const result = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(user, undefined, {
+      take: 1,
+    })
+    expect(result).toEqual({ take: 1 })
+  })
+  test('select and where', () => {
+    const now = new Date()
+    const result = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
       user,
-      { select: { name: true, posts: true }, where: { id: { equals: 'u2' } } },
+      { select: { name: true, posts: true }, where: { name: { equals: 'Mario' } } },
       {
-        select: { posts: { where: { id: { equals: 'p1' } }, select: { content: true } } },
-        where: { name: { equals: 'Mario' } },
+        select: { posts: { where: { title: { equals: 'Test' } }, select: { content: true } } },
+        where: { metadata: { equals: { loggedInAt: now, registeredAt: now } } },
       },
     )
     expect(result).toEqual({
-      where: { AND: [{ id: { equals: 'u2' } }, { name: { equals: 'Mario' } }] },
+      where: { AND: [{ name: { equals: 'Mario' } }, { metadata: { equals: { loggedInAt: now, registeredAt: now } } }] },
       select: {
         name: true,
-        posts: { where: { id: { equals: 'p1' } }, select: { title: true, content: true, author: true, tags: true } },
+        posts: {
+          where: { title: { equals: 'Test' } },
+          select: { title: true, content: true, tags: true },
+        },
       },
     })
+    const resul2 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { name: true }, where: { name: { equals: 'Mario' } } },
+      {},
+    )
+    expect(resul2).toEqual({
+      where: { name: { equals: 'Mario' } },
+      select: { name: true },
+    })
+
+    const resul3 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: true } },
+      { select: { posts: true } },
+    )
+    expect(resul3).toEqual({ select: { posts: true } })
+
+    const resul4 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: true } },
+      { select: { posts: {} } },
+    )
+    expect(resul4).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+      select: {
+        posts: {
+          select: {
+            content: true,
+            tags: true,
+            title: true,
+          },
+        },
+      },
+    })
+
+    const resul5 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: { select: { author: true } } } },
+      { select: { posts: true } },
+    )
+    expect(resul5).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+      select: {
+        posts: {
+          select: {
+            author: true,
+            content: true,
+            tags: true,
+            title: true,
+          },
+        },
+      },
+    })
+
+    const resul6 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: { select: { author: true } } } },
+      { select: { posts: { select: { author: {} } } } },
+    )
+    expect(resul6).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+      select: {
+        posts: {
+          select: {
+            author: { select: { metadata: true, name: true } },
+          },
+        },
+      },
+    })
+
+    const resul7 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { metadata: { select: { registeredAt: true } } } },
+      { select: { metadata: { select: { loggedInAt: true } } } },
+    )
+    expect(resul7).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+      select: { metadata: { select: { registeredAt: true, loggedInAt: true } } },
+    })
+  })
+  test('order by', () => {
+    const result = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { orderBy: [{ name: 'asc', bestFriend: { metadata: { loggedInAt: 'desc' } } }] },
+      { orderBy: [{ posts: { _count: 'asc' } }] },
+    )
+    expect(result).toEqual({
+      orderBy: [{ name: 'asc', bestFriend: { metadata: { loggedInAt: 'desc' } } }, { posts: { _count: 'asc' } }],
+    })
+
+    const result2 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { orderBy: [{ name: 'asc', bestFriend: { metadata: { loggedInAt: 'desc' } } }] },
+      { orderBy: [{ posts: { _count: 'asc' } }] },
+      { orderByOrder: 'right-before' },
+    )
+    expect(result2).toEqual({
+      orderBy: [{ posts: { _count: 'asc' } }, { name: 'asc', bestFriend: { metadata: { loggedInAt: 'desc' } } }],
+    })
+  })
+  test('skip and take', () => {
+    const result = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { skip: 1, take: 10 },
+      { skip: 2, take: 20 },
+    )
+    expect(result).toEqual({ skip: 1, take: 10 })
+
+    const result2 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { skip: 1, take: 10 },
+      { skip: 2, take: 20 },
+      { skipOrder: 'right-before', takeOrder: 'right-before' },
+    )
+    expect(result2).toEqual({ skip: 2, take: 20 })
+
+    const result3 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { skip: 1, take: 10 },
+      {},
+      { skipOrder: 'right-before', takeOrder: 'right-before' },
+    )
+    expect(result3).toEqual({ skip: 1, take: 10 })
   })
 })
 

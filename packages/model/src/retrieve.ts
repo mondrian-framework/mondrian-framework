@@ -20,7 +20,7 @@ export type GenericRetrieve = {
 }
 export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere[] } & { readonly [K in string]: any }
 export type GenericSelect = null | { readonly [K in string]: undefined | GenericRetrieve | boolean }
-export type GenericOrderBy = {} | {}[]
+export type GenericOrderBy = {}[]
 
 // prettier-ignore
 export type FromType<T extends types.Type, C extends Capabilities | undefined>
@@ -372,8 +372,8 @@ export function merge<const T extends GenericRetrieve>(
   if (!left || !right) {
     return left || right
   }
-  const rightOrderBy = right.orderBy ? (Array.isArray(right.orderBy) ? right.orderBy : [right.orderBy]) : []
-  const leftOrderBy = left.orderBy ? (Array.isArray(left.orderBy) ? left.orderBy : [left.orderBy]) : []
+  const rightOrderBy = right.orderBy ?? []
+  const leftOrderBy = left.orderBy ?? []
   const orderBy =
     options?.orderByOrder === 'right-before' ? [...rightOrderBy, ...leftOrderBy] : [...leftOrderBy, ...rightOrderBy]
   return {
@@ -398,7 +398,7 @@ function mergeSelect(
     return left
   }
   return types.match(type, {
-    entity: ({ fields }) => {
+    record: ({ fields }) => {
       return mapObject(fields, (fieldName, fieldType) => {
         const leftSelect = left[fieldName]
         const rightSelect = right[fieldName]
@@ -416,7 +416,11 @@ function mergeSelect(
           if (leftSelect === true && rightSelect !== true) {
             return merge(
               unwrappedFieldType,
-              { select: mapObject(unwrappedFieldType.fields, () => true) },
+              {
+                select: mapObject(unwrappedFieldType.fields, (_, t) =>
+                  types.unwrap(t).kind !== types.Kind.Entity ? true : undefined,
+                ),
+              },
               rightSelect,
               options,
             )
@@ -425,7 +429,11 @@ function mergeSelect(
             return merge(
               unwrappedFieldType,
               leftSelect,
-              { select: mapObject(unwrappedFieldType.fields, () => true) },
+              {
+                select: mapObject(unwrappedFieldType.fields, (_, t) =>
+                  types.unwrap(t).kind !== types.Kind.Entity ? true : undefined,
+                ),
+              },
               options,
             )
           }
@@ -437,7 +445,7 @@ function mergeSelect(
           if (rightSelect === true) {
             return true
           }
-          return { select: deepMerge(rightSelect.select, leftSelect.select) as GenericSelect }
+          return { select: mergeSelect(fieldType, rightSelect.select, leftSelect.select) }
         }
       })
     },

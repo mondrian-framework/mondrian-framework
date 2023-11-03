@@ -1,6 +1,7 @@
 import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
 import { result, retrieve, types } from '@mondrian-framework/model'
+import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
 import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { JSONType, capitalise, mapObject, toCamelCase } from '@mondrian-framework/utils'
@@ -22,35 +23,12 @@ import {
   GraphQLInputType,
   GraphQLFloat,
   GraphQLInputFieldConfig,
-  isInputType,
 } from 'graphql'
 
 /**
  * TODO: vedere se negli scalari da un suggerimento su cosa inserire (numero/stringa)
  *
  */
-
-/**
- * Turns a Mondrian type into an equivalent GraphQL type that can be used to
- * define GraphQL schemas.
- */
-export function typeToGraphQLOutputType(type: types.Type): GraphQLOutputType {
-  return typeToGraphQLOutputTypeInternal(types.concretise(type), {
-    inspectedTypes: new Set(),
-    knownTypes: new Map(),
-    knownCustomTypes: new Map(),
-    defaultName: undefined,
-  })
-}
-
-export function typeToGraphQLInputType(type: types.Type): GraphQLInputType {
-  return typeToGraphQLInputTypeInternal(types.concretise(type), {
-    inspectedTypes: new Set(),
-    knownTypes: new Map(),
-    knownCustomTypes: new Map(),
-    defaultName: undefined,
-  })
-}
 
 /**
  * Generates a name for the given type with the following algorithm:
@@ -70,8 +48,10 @@ function generateName(type: types.Type, defaultName: string | undefined): string
 type InternalData = {
   // A set of all the types that have already been explored
   inspectedTypes: Set<types.Type>
-  // A map from <explored type> to already generated output type
-  knownTypes: Map<types.Type, GraphQLOutputType>
+  // A map from <explored type> to already generated output type(s)
+  knownOutputTypes: Map<types.Type, GraphQLOutputType>
+  // A map from <explored type> to already generated input type(s)
+  knownInputTypes: Map<types.Type, GraphQLInputType>
   // A map for all custom types that have already been explored. Here we just
   // save their name
   knownCustomTypes: Map<string, GraphQLScalarType>
@@ -80,14 +60,14 @@ type InternalData = {
 }
 
 function typeToGraphQLOutputTypeInternal(type: types.Type, internalData: InternalData): GraphQLOutputType {
-  const { inspectedTypes, knownTypes, defaultName } = internalData
+  const { inspectedTypes, knownOutputTypes, defaultName } = internalData
   // If the type has already been explored, then return the output type that has
   // already been generated
   if (inspectedTypes.has(type)) {
     // ⚠️ Possible pain point: `typeToGraphQLTypeInternal` relies on the fact
     // that _every single type_ that appears in `inspectedTypes` must also have
     // an associated generated type here
-    return knownTypes.get(type)!!
+    return knownOutputTypes.get(type)!!
   } else {
     inspectedTypes.add(type)
     // ⚠️ Possible pain point: here the invariant that a type inside `exporedTypes`
@@ -113,38 +93,24 @@ function typeToGraphQLOutputTypeInternal(type: types.Type, internalData: Interna
     })
     // Add the generated type to the map of explored types to make the invariant
     // valid once again
-    knownTypes.set(type, graphQLType)
+    knownOutputTypes.set(type, graphQLType)
     return graphQLType
   }
 }
 
-// Data used in the recursive calls of `typeToGraphQLTypeInternal` to store
-// all relevant information that has to be used throughout the recursive calls.
-type InternalInputData = {
-  // A set of all the types that have already been explored
-  inspectedTypes: Set<types.Type>
-  // A map from <explored type> to already generated output type
-  knownTypes: Map<types.Type, GraphQLInputType>
-  // A map for all custom types that have already been explored. Here we just
-  // save their name
-  knownCustomTypes: Map<string, GraphQLScalarType>
-  // The default name to assign to the current type in the iteration process
-  defaultName: string | undefined
-}
-
-function typeToGraphQLInputTypeInternal(type: types.Type, internalData: InternalInputData): GraphQLInputType {
-  const { inspectedTypes, knownTypes, defaultName } = internalData
+function typeToGraphQLInputTypeInternal(type: types.Type, internalData: InternalData): GraphQLInputType {
+  const { inspectedTypes, knownInputTypes, defaultName } = internalData
   // If the type has already been explored, then return the output type that has
   // already been generated
   if (inspectedTypes.has(type)) {
     // ⚠️ Possible pain point: `typeToGraphQLTypeInternal` relies on the fact
     // that _every single type_ that appears in `inspectedTypes` must also have
     // an associated generated type here
-    return knownTypes.get(type)!!
+    return knownInputTypes.get(type)!!
   } else {
     inspectedTypes.add(type)
     // ⚠️ Possible pain point: here the invariant that a type inside `exporedTypes`
-    // must have a counterpart in the `knownTypes` map is broken and cannot be used
+    // must have a counterpart in the `knownInputTypes` map is broken and cannot be used
     // by the inner functions! This is unavoidable since this kind of caching is
     // only used by this top level function and the other inner functions should
     // not be aware of that.
@@ -163,7 +129,7 @@ function typeToGraphQLInputTypeInternal(type: types.Type, internalData: Internal
     })
     // Add the generated type to the map of explored types to make the invariant
     // valid once again
-    knownTypes.set(type, graphQLType)
+    knownInputTypes.set(type, graphQLType)
     return graphQLType
   }
 }
@@ -256,7 +222,7 @@ function objectToGraphQLType(
 
 function objectToInputGraphQLType(
   object: types.ObjectType<any, types.Types>,
-  internalData: InternalInputData,
+  internalData: InternalData,
 ): GraphQLInputObjectType {
   const { defaultName } = internalData
   const objectName = generateName(object, defaultName)
@@ -276,7 +242,7 @@ function entityToGraphQLType(
 
 function entityToInputGraphQLType(
   object: types.EntityType<any, types.Types>,
-  internalData: InternalInputData,
+  internalData: InternalData,
 ): GraphQLInputObjectType {
   const { defaultName } = internalData
   const objectName = generateName(object, defaultName)
@@ -301,7 +267,7 @@ function typeToGraphQLObjectField(
 }
 
 function typeToGraphQLInputObjectField(
-  internalData: InternalInputData,
+  internalData: InternalData,
   objectName: string,
 ): (fieldName: string, fieldType: types.Type) => GraphQLInputFieldConfig {
   return (fieldName, fieldType) => {
@@ -485,6 +451,10 @@ function makeOperation(
     serverContext: unknown,
     info: GraphQLResolveInfo,
   ) => {
+    // TODO: I have no idea where this should come from, it looks like something from
+    // the context, maybe?
+    const retrieveValue = undefined as unknown as GenericRetrieve
+
     // Setup logging
     const operationId = utils.randomOperationId()
     const logger = logging.build({ moduleName, operationId, operationType, operationName, server: 'GQL' })
@@ -493,33 +463,39 @@ function makeOperation(
     // Decode all the needed bits to call the function
     const graphQLInputTypeName = 'input'
     const input = decodeInput(fun.input, resolverInput[graphQLInputTypeName], logger) as never
-    const retrieve = undefined //TODO get the retrieve
     const partialOutputType = types.partialDeep(fun.output)
 
     // Retrieve the contexts
     const inputContext = await getContextInput(serverContext, info)
-    const context = await getModuleContext(inputContext, { retrieve, input, operationId, logger })
+    const context = await getModuleContext(inputContext, { retrieve: retrieveValue, input, operationId, logger })
 
     // Call the function and handle a possible failure
     const contexts = { serverContext, context }
-    const operationData = { operationId, functionName: operationName, retrieve, input }
+    const operationData = { operationId, functionName: operationName, retrieve: retrieveValue, input }
     const handlerInput = { logger, ...operationData, errorHandler, ...contexts }
     return fun
-      .apply({ context: context, retrieve, input, operationId, logger }) //TODO: projection
+      .apply({ context: context, retrieve: retrieveValue, input, operationId, logger })
       .then((res) => handleFunctionResult(res, partialOutputType, handlerInput))
       .catch((error) => handleFunctionError({ ...handlerInput, error }))
   }
 
-  return [
-    operationName,
-    {
-      type: typeToGraphQLOutputType(fun.output),
-      args: {
-        input: { type: typeToGraphQLInputType(fun.input) },
-      },
-      resolve,
-    },
-  ]
+  const retr = fun.retrieve ? retrieve.fromType(fun.input, fun.retrieve) : retrieve.fromType(fun.input, {})
+  if (!retr.isOk) {
+    throw new Error("couldn't generate retrieve")
+  } else {
+    const retrieveType = types.concretise(retr.value).setName(operationName + 'Retrieve')
+    const internalData = {
+      inspectedTypes: new Set<types.Type>(),
+      knownOutputTypes: new Map(),
+      knownInputTypes: new Map(),
+      knownCustomTypes: new Map(),
+      defaultName: undefined,
+    }
+    const type = typeToGraphQLOutputTypeInternal(fun.output, internalData)
+    const retrieve = { type: typeToGraphQLInputTypeInternal(retrieveType, internalData) }
+    const input = { type: typeToGraphQLInputTypeInternal(fun.input, internalData) }
+    return [operationName, { type, args: { retrieve, input }, resolve }]
+  }
 }
 
 /**

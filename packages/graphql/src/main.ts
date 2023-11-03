@@ -5,7 +5,7 @@ import { printSchema } from 'graphql'
 
 async function main() {
   const model = types
-    .object({
+    .entity({
       id: types.string(),
       name: types.number(),
     })
@@ -13,10 +13,10 @@ async function main() {
 
   const prova = functions.withContext<{}>().build({
     input: model,
-    output: types.number(),
+    output: model,
     errors: undefined,
     retrieve: { select: true },
-    body: async () => 1,
+    body: async () => ({ id: 'a', name: 1 }),
     options: { namespace: 'post' },
   })
 
@@ -25,7 +25,7 @@ async function main() {
       name: 'string',
       version: 'string',
       functions: { prova },
-      context: async () => ({ select: true } as const),
+      context: async () => ({}),
     },
     api: {
       functions: {

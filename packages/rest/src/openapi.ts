@@ -106,10 +106,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
             : functionBody.options?.namespace ?? specification.namespace
             ? [functionBody.options?.namespace ?? specification.namespace ?? '']
             : [],
-        /*security:
-          specification.openapi?.specification.security === null
-            ? undefined
-            : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),*/
+        security: specification.security,
       }
       if (paths[path]) {
         ;(paths[path] as Record<string, unknown>)[specification.method.toLocaleLowerCase()] = operationObj
@@ -121,13 +118,11 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
   return {
     openapi: '3.1.0',
     info: { version: module.version, title: module.name },
-    servers: [{ url: `${`${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
+    servers: [{ url: `${api.options?.pathPrefix ?? '/api'}/v${version}` }],
     paths,
     components: {
       ...components,
-      securitySchemes: {
-        _: { type: 'http', scheme: 'bearer' },
-      } /*, securitySchemes: openapiSecuritySchemes({ module }) */,
+      securitySchemes: api.securities,
     },
   }
 }
@@ -370,57 +365,6 @@ function generatePathParameters({
   }
   return result
 }
-
-/*
-function openapiSecurityRequirements({
-  module,
-  functionName,
-}: {
-  module: module.Module<any, any>
-  functionName: string
-}): OpenAPIV3_1.SecurityRequirementObject[] | undefined {
-  const auth = (module.functionOptions ?? {})[functionName]?.authentication
-  if (auth && auth !== 'NONE') {
-    return [{ [functionName]: [] }]
-  } else if (auth === 'NONE') {
-    return undefined
-  }
-  if (module.authentication) {
-    return [{ _: [] }]
-  }
-  return undefined
-}
-
-function openapiSecuritySchemes({
-  module,
-}: {
-  module: module.Module<any, any>
-}): Record<string, OpenAPIV3_1.SecuritySchemeObject> | undefined {
-  const defaultSchema: OpenAPIV3_1.SecuritySchemeObject | undefined = module.authentication
-    ? { type: 'http', scheme: module.authentication.type, bearerFormat: module.authentication.format }
-    : undefined
-  const schemas = Object.fromEntries(
-    Object.entries(module.functionOptions ?? {}).flatMap(([k, v]) => {
-      if (!v?.authentication || v.authentication === 'NONE') {
-        return []
-      }
-      const schema: OpenAPIV3_1.SecuritySchemeObject = {
-        type: 'http',
-        scheme: v.authentication.type,
-        bearerFormat: v.authentication.format,
-      }
-      return [[k, schema]]
-    }),
-  )
-  if (Object.keys(schemas).length === 0 && !defaultSchema) {
-    return undefined
-  }
-  return {
-    ...schemas,
-    ...(defaultSchema ? { _: defaultSchema } : {}),
-  }
-}
-*/
 
 function openapiComponents<Fs extends functions.FunctionsInterfaces>({
   module,

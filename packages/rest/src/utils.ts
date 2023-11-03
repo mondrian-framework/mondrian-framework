@@ -72,12 +72,20 @@ export function getPathsFromSpecification({
   return paths
 }
 
+/**
+ * Checks the validity of a rest api configuration.
+ * Checks:
+ *  - versions min, max boundaries
+ *  - paths syntax
+ * @param api the api configuration
+ */
 export function assertApiValidity(api: Api<functions.FunctionsInterfaces>) {
   if (api.version < 1 || !Number.isInteger(api.version) || api.version > 100) {
     throw new Error(`Invalid api version. Must be between 1 and 100 and be an integer. Got ${api.version}`)
   }
   for (const [functionName, specifications] of Object.entries(api.functions)) {
     for (const specification of Array.isArray(specifications) ? specifications : [specifications]) {
+      //TODO: Check path syntax, other checks?
       if (
         specification?.version?.max != null &&
         (specification.version.max < 1 ||

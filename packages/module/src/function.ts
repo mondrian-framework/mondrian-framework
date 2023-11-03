@@ -78,7 +78,7 @@ export type FunctionOptions = {
    */
   readonly namespace?: string
   /**
-   * Description of a function.  It's used as documentation.
+   * Description of a function. It's used as documentation.
    */
   readonly description?: string
 }

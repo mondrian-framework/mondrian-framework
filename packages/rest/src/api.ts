@@ -20,6 +20,10 @@ export type Api<F extends functions.FunctionsInterfaces> = {
    * The current api version. Must be an integer greater than or quelas to 1.
    */
   version: number
+  /**
+   * Available openapi securities. The key is used as reference in the function specification.
+   */
+  securities?: Record<string, OpenAPIV3_1.SecuritySchemeObject>
 }
 
 export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch'
@@ -65,6 +69,7 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   }
   errorCodes?: { [K in keyof F['errors']]?: number }
   namespace?: string | null
+  security?: OpenAPIV3_1.SecurityRequirementObject[]
 }
 
 type NullableOperationObject = {

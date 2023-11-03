@@ -12,10 +12,13 @@ const api: rest.Api<module.Functions> = {
       { method: 'put', path: '/user', version: { max: 1 } },
     ],
     login: { method: 'post', path: '/login', errorCodes: { invalidLogin: 401 } },
-    follow: { method: 'put', path: '/user/{userId}/follow' },
-    writePost: { method: 'post', path: '/post' },
-    readPosts: [{ method: 'get', path: '/user/{userId}/posts' }],
-    likePost: { method: 'put', path: '/post/{postId}/like' },
+    follow: { method: 'put', path: '/user/{userId}/follow', security: [{ loggedUser: [] }] },
+    writePost: { method: 'post', path: '/post', security: [{ loggedUser: [] }] },
+    readPosts: [{ method: 'get', path: '/user/{userId}/posts', security: [{ loggedUser: [] }] }],
+    likePost: { method: 'put', path: '/post/{postId}/like', security: [{ loggedUser: [] }] },
+  },
+  securities: {
+    loggedUser: { type: 'http', scheme: 'bearer' },
   },
   options: { introspection: true },
 }

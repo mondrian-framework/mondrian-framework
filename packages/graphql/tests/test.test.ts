@@ -49,7 +49,4 @@ test('main', () => {
     context: async () => ({}),
     setHeader: () => {},
   })
-  const schemaPrinted = printSchema(schema)
-  fs.writeFileSync('schema.graphql', schemaPrinted, {})
-  console.log(schemaPrinted)
 })

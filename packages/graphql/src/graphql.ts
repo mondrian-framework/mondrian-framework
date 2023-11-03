@@ -5,6 +5,7 @@ import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
 import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { JSONType, capitalise, mapObject, toCamelCase } from '@mondrian-framework/utils'
+import fs from 'fs'
 import {
   GraphQLScalarType,
   GraphQLObjectType,
@@ -23,6 +24,7 @@ import {
   GraphQLInputType,
   GraphQLFloat,
   GraphQLInputFieldConfig,
+  printSchema,
 } from 'graphql'
 
 /**
@@ -97,14 +99,16 @@ function typeToGraphQLInputTypeInternal(type: types.Type, internalData: Internal
     enum: (_, type) => typeToGraphQLOutputTypeInternal(type, internalData) as GraphQLInputType,
     literal: (_, type) => typeToGraphQLOutputTypeInternal(type, internalData) as GraphQLInputType,
     union: ({ variants }) => {
-      throw 'TODO union'
+      return GraphQLFloat
+      //throw 'TODO union'
     },
     object: (type) => objectToInputGraphQLType(type, internalData),
     entity: (type) => entityToInputGraphQLType(type, internalData),
     array: (type) => arrayToInputGraphQLType(type, internalData),
     wrapper: ({ wrappedType }) => getNullableType(typeToGraphQLInputTypeInternal(wrappedType, internalData)),
     custom: (type) => {
-      throw 'TODO'
+      return GraphQLFloat
+      //throw 'TODO'
     },
   })
   knownInputTypes.set(type, graphQLType)
@@ -249,7 +253,7 @@ function typeToGraphQLObjectField(
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
     const concreteType = types.concretise(fieldType)
-    const graphQLType = typeToGraphQLOutputTypeInternal(concreteType, {
+    const graphQLType = typeToGraphQLOutputTypeInternal(fieldType, {
       ...internalData,
       defaultName: fieldDefaultName,
     })
@@ -265,7 +269,7 @@ function typeToGraphQLInputObjectField(
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
     const concreteType = types.concretise(fieldType)
-    const graphQLType = typeToGraphQLInputTypeInternal(concreteType, {
+    const graphQLType = typeToGraphQLInputTypeInternal(fieldType, {
       ...internalData,
       defaultName: fieldDefaultName,
     })
@@ -368,6 +372,8 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
       : new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutationsArray) })
 
   const schema = new GraphQLSchema({ query, mutation })
+  const schemaPrinted = printSchema(schema)
+  fs.writeFileSync('schema.graphql', schemaPrinted, {})
   return schema
 }
 

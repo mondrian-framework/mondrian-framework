@@ -1,4 +1,5 @@
 import { decoding, m, validation } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 const MIN_LON = -180.0
 const MAX_LON = 180.0
@@ -13,6 +14,7 @@ export function longitude(options?: m.BaseOptions): m.CustomType<'longitude', {}
     (value) =>
       typeof value === 'number' ? decoding.succeed(value) : decoding.fail('Expected a longitude number', value),
     validateLongitude,
+    () => gen.integer({ min: MIN_LON * 1000, max: MAX_LON * 1000 }).map((v) => v / 1000),
     options,
   )
 }

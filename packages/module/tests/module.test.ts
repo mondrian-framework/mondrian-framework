@@ -1,17 +1,16 @@
-import { module, functions, sdk, serialization } from '../src'
-import { moduleSchema } from '../src/serialization'
+import { module, functions, sdk } from '../src'
 import { result, types } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
 test('Real example', async () => {
   ///Types
   const User = () =>
-    types.object({
+    types.entity({
       email: types.string(),
       password: types.string(),
       firstname: types.string().optional(),
       lastname: types.string().optional(),
-      friend: { virtual: types.optional(User) },
+      friend: types.optional(User),
       metadata: types
         .record(types.string({ maxLength: 1024 }))
         .setName('Metadata')
@@ -19,9 +18,13 @@ test('Real example', async () => {
     })
   type User = types.Infer<typeof User>
   const LoginInput = () =>
-    types.pick(User(), { email: true, password: true }, types.Mutability.Immutable, {
-      name: 'LoginInput',
-    })
+    types.object(
+      {
+        email: types.string(),
+        password: types.string(),
+      },
+      { name: 'LoginInput' },
+    )
   const LoginOutput = types.object({ jwt: types.string(), user: User }).nullable().setName('LoginOuput')
 
   //Functions
@@ -35,12 +38,13 @@ test('Real example', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
-    error: types.union({ invalidUsernameOrPassword: types.string() }),
+    errors: { invalidEmailOrPassword: types.literal('Invalid email or password') },
+    retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
         logger.logWarn(`Invalid email or password: ${input.email}`)
-        return result.fail({ invalidUsernameOrPassword: input.email })
+        return result.fail({ invalidEmailOrPassword: 'Invalid email or password' })
       }
       logger.logInfo(`Logged in: ${input.email}`)
       return result.ok({ jwt: user.email, user })
@@ -63,12 +67,16 @@ test('Real example', async () => {
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: types.nullable(User),
-    error: types.union({ weakPassword: types.string(), doubleRegister: types.string() }),
+    errors: {
+      weakPassword: types.literal('Weak passowrd'),
+      doubleRegister: types.literal('Double register'),
+    },
+    retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
         logger.logWarn(`Double register`, { email: input.email })
-        return result.fail({ doubleRegister: input.email })
+        return result.fail({ doubleRegister: 'Double register' })
       } else {
         logger.logInfo(`Registered: ${input.email}`)
         return result.ok(db.updateUser(input))
@@ -78,7 +86,7 @@ test('Real example', async () => {
       {
         name: 'Avoid weak passwords',
         apply: async (args, next) =>
-          args.input.password === '123' ? result.fail({ weakPassword: args.input.password }) : next(args),
+          args.input.password === '123' ? result.fail({ weakPassword: 'Weak passowrd' }) : next(args),
       },
     ],
     options: { namespace: 'authentication' },
@@ -87,7 +95,8 @@ test('Real example', async () => {
   const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
     input: types.object({ firstname: types.string(), lastname: types.string() }),
     output: User,
-    error: types.union({ unauthorized: types.string() }),
+    errors: { unauthorized: types.literal('unauthorized') },
+    retrieve: undefined,
     body: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
         return result.fail({ unauthorized: 'unauthorized' })
@@ -114,7 +123,7 @@ test('Real example', async () => {
   const m = module.build({
     name: 'test',
     version: '1.0.0',
-    options: { checks: { maxProjectionDepth: 2 } },
+    options: { maxSelectionDepth: 2 },
     functions: { login, register, completeProfile },
     context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
       if (authorization != null) {
@@ -143,11 +152,13 @@ test('Real example', async () => {
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   expect(failedRegisterResult.isOk).toBe(false)
-  expect(!failedRegisterResult.isOk && failedRegisterResult.error).toEqual({ doubleRegister: 'admin@domain.com' })
+  expect(!failedRegisterResult.isOk && failedRegisterResult.error).toEqual({ doubleRegister: 'Double register' })
 
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult.isOk).toBe(false)
-  expect(!failedLoginResult.isOk && failedLoginResult.error).toEqual({ invalidUsernameOrPassword: 'admin@domain.com' })
+  expect(!failedLoginResult.isOk && failedLoginResult.error).toEqual({
+    invalidEmailOrPassword: 'Invalid email or password',
+  })
 
   const loginResult = await client.functions.login({ email: 'admin@domain.com', password: '1234' })
   expect(loginResult.isOk).toEqual(true)
@@ -185,11 +196,11 @@ describe('Unique type name', () => {
     const n = types.number().setName('Input')
     const input = types.number().setName('Input')
     const output = types.union({ n, v: input.setName('V') })
-    const error = types.never()
     const f = functions.build({
       input,
       output,
-      error,
+      errors: undefined,
+      retrieve: undefined,
       body: () => {
         throw 'Unreachable'
       },
@@ -207,16 +218,17 @@ describe('Unique type name', () => {
 
 describe('Default middlewares', () => {
   test('Testing maximum projection depth and output type', async () => {
-    const type = () => types.object({ type: types.optional(type), value: types.string() })
+    const type = () => types.entity({ type: types.optional(type), value: types.string() })
     const dummy = functions.build({
       input: type,
       output: type,
-      error: types.never(),
+      errors: undefined,
+      retrieve: { select: true },
       body: async ({ input }) => {
         if (input?.value === 'wrong') {
-          return result.ok({}) //projection not respected sometimes!
+          return {} //selection not respected sometimes!
         }
-        return result.ok(input)
+        return input
       },
     })
     const m = module.build({
@@ -224,7 +236,8 @@ describe('Default middlewares', () => {
       version: '1.0.0',
       functions: { dummy },
       options: {
-        checks: { maxProjectionDepth: 2, output: 'throw' },
+        checkOutputType: 'throw',
+        maxSelectionDepth: 2,
       },
       context: async () => ({}),
     })
@@ -237,14 +250,18 @@ describe('Default middlewares', () => {
     })
 
     const result1 = await client.functions.dummy({ value: '123' })
-    expect(result1.isOk && result1.value).toEqual({ value: '123' })
-    const result2 = await client.functions.dummy({ value: '123' }, { projection: { type: { type: true } } })
-    expect(result2.isOk && result2.value).toEqual({})
+    expect(result1).toEqual({ value: '123' })
+    const result2 = await client.functions.dummy({ value: 'wrong' }, { retrieve: { select: {} } })
+    expect(result2).toEqual({})
     expect(
-      async () => await client.functions.dummy({ value: '123' }, { projection: { type: { type: { type: true } } } }),
-    ).rejects.toThrowError('Max projection depth reached: requested projection have a depth of 3. The maximum is 2.')
+      async () =>
+        await client.functions.dummy(
+          { value: '123' },
+          { retrieve: { select: { type: { select: { type: { select: {} } } } } } },
+        ),
+    ).rejects.toThrowError('Max selection depth reached: requested selection have a depth of 3. The maximum is 2.')
     expect(async () => await client.functions.dummy({ value: 'wrong' })).rejects.toThrowError(
-      '[{"missingField":"value","path":{"fragments":[]}}]',
+      'Invalid output on function dummy. Errors: (1) expected: string, got: undefined, path: $.value',
     )
   })
 })

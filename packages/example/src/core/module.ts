@@ -15,6 +15,11 @@ export const instance = module.build({
   name: 'reddit',
   version: '2.0.0',
   functions,
+  options: {
+    maxSelectionDepth: 3,
+    checkOutputType: 'throw',
+    opentelemetryInstrumentation: true,
+  },
   context: async ({ authorization, ip }: { authorization?: string; ip: string }) => {
     const context: Context = { prisma, ip }
     if (authorization) {

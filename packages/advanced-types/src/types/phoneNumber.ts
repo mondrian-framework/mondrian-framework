@@ -10,6 +10,7 @@ export function phoneNumber(options?: m.BaseOptions): PhoneNumberType {
     'phone-number',
     'Invalid phone number of the form (7-15 digits) [E.164]',
     options,
+    undefined,
     PHONE_NUMBER_REGEX,
   )
 }

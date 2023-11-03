@@ -1,6 +1,6 @@
 import { Api, FunctionSpecifications, Request } from './api'
-import { decodeQueryObject, encodeQueryObject } from './utils'
-import { types } from '@mondrian-framework/model'
+import { completeRetrieve, decodeQueryObject, encodeQueryObject } from './utils'
+import { retrieve, types } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
@@ -37,18 +37,13 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
         typeRef,
       })
       const { schema } = typeToSchemaObject(functionBody.output, typeMap, typeRef)
-      const errorType = types.concretise(functionBody.error)
       const errorMap: Record<string, (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject)[]> = {}
-      const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
-      if (errorType.kind === types.Kind.Union) {
-        for (const [variantName, variantType] of Object.entries(errorType.variants)) {
-          const code = (errorCodes[variantName] ?? 400).toString()
+      if (functionBody.errors) {
+        const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
+        for (const [errorName, errorType] of Object.entries(functionBody.errors)) {
+          const code = (errorCodes[errorName] ?? 400).toString()
           const ts = errorMap[code] ?? []
-          const { schema } = typeToSchemaObject(
-            types.object({ [variantName]: variantType as types.Type }),
-            typeMap,
-            typeRef,
-          )
+          const { schema } = typeToSchemaObject(types.object({ [errorName]: errorType }), typeMap, typeRef)
           ts.push(schema)
           errorMap[code] = ts
         }
@@ -73,11 +68,21 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
           ] as const
         }),
       )
+      const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
+      const retrieveOpenapiType = retrieveType.isOk ? typeToSchemaObject(retrieveType.value, typeMap, typeRef) : null
+      const retrieveHeader: OpenAPIV3_1.ParameterObject[] = retrieveOpenapiType
+        ? [
+            {
+              name: 'retrieve',
+              in: 'header',
+              schema: retrieveOpenapiType.schema as OpenAPIV3_1.ReferenceObject, //TODO: it's ok to put a schema here?
+              example: {},
+            },
+          ]
+        : []
       const operationObj: OpenAPIV3_1.OperationObject = {
         ...specification.openapi?.specification.parameters,
-        parameters: parameters
-          ? [...parameters, { name: 'projection', in: 'header', example: true }]
-          : [{ name: 'projection', in: 'header', example: true }],
+        parameters: parameters ? [...parameters, ...retrieveHeader] : retrieveHeader,
         requestBody,
         responses:
           specification.openapi?.specification.responses === null
@@ -101,10 +106,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
             : functionBody.options?.namespace ?? specification.namespace
             ? [functionBody.options?.namespace ?? specification.namespace ?? '']
             : [],
-        /*security:
-          specification.openapi?.specification.security === null
-            ? undefined
-            : specification.openapi?.specification.security ?? openapiSecurityRequirements({ module, functionName }),*/
+        security: specification.security,
       }
       if (paths[path]) {
         ;(paths[path] as Record<string, unknown>)[specification.method.toLocaleLowerCase()] = operationObj
@@ -116,13 +118,11 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
   return {
     openapi: '3.1.0',
     info: { version: module.version, title: module.name },
-    servers: [{ url: `${`/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`}/v${version}` }],
+    servers: [{ url: `${api.options?.pathPrefix ?? '/api'}/v${version}` }],
     paths,
     components: {
       ...components,
-      securitySchemes: {
-        _: { type: 'http', scheme: 'bearer' },
-      } /*, securitySchemes: openapiSecuritySchemes({ module }) */,
+      securitySchemes: api.securities,
     },
   }
 }
@@ -134,7 +134,7 @@ export function generateOpenapiInput({
   typeRef,
 }: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionInterface
+  functionBody: functions.FunctionInterface<types.Type, types.Type, functions.ErrorType>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): {
@@ -166,12 +166,20 @@ export function generateOpenapiInput({
   const parametersInPath = specification.path
     ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
     : []
-  const inputType = types.concretise(functionBody.input)
-  const isScalar = types.isScalar(inputType)
-  const isArray = types.isArray(inputType)
-  const isRequired = isInputRequired(inputType)
-  const t = types.unwrap(inputType)
-  if (t.kind === types.Kind.Object) {
+  const inputType = functionBody.input
+  if (types.isNever(inputType)) {
+    return {
+      parameters: [],
+      input: () => null,
+      request: () => ({}),
+    }
+  }
+  const concreteInputType = types.concretise(inputType)
+  const isScalar = types.isScalar(concreteInputType)
+  const isArray = types.isArray(concreteInputType)
+  const isRequired = isInputRequired(concreteInputType)
+  const t = types.unwrap(concreteInputType)
+  if (t.kind === types.Kind.Object || t.kind === types.Kind.Entity) {
     for (const p of parametersInPath) {
       if (!t.fields[p] || !types.isScalar(t.fields[p]) || !isInputRequired(t.fields[p])) {
         throw new Error(
@@ -191,14 +199,14 @@ export function generateOpenapiInput({
     )
   }
   if (isScalar && parametersInPath.length === 1) {
-    const { schema } = typeToSchemaObject(inputType, typeMap, typeRef, true)
+    const { schema } = typeToSchemaObject(concreteInputType, typeMap, typeRef, true)
     return {
       parameters: [{ in: 'path', name: parametersInPath[0], schema: schema as any, required: true }],
       input: (request) => {
         return request.params[parametersInPath[0]]
       },
       request: (input) => {
-        const encoded = inputType.encodeWithoutValidation(input)
+        const encoded = concreteInputType.encodeWithoutValidation(input)
         return { params: { [parametersInPath[0]]: `${encoded}` } }
       },
     }
@@ -207,7 +215,7 @@ export function generateOpenapiInput({
     if (t.kind === types.Kind.Object) {
       const parameters = generatePathParameters({ parameters: parametersInPath, type: t, typeMap, typeRef })
       for (const [key, subtype] of Object.entries(t.fields)
-        .map(([k, v]) => [k, types.unwrapField(v)] as const)
+        .map(([k, v]) => [k, v] as const)
         .filter(([k, _]) => !parametersInPath.includes(k))) {
         const { schema } = typeToSchemaObject(subtype, typeMap, typeRef, true)
         parameters.push({
@@ -241,7 +249,7 @@ export function generateOpenapiInput({
             Object.entries(t.fields)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
-                const fieldType = types.concretise(types.unwrapField(field))
+                const fieldType = types.concretise(field)
                 const encoded = fieldType.encodeWithoutValidation(input[fieldName])
                 return [fieldName, `${encoded}`] as const
               }),
@@ -249,7 +257,7 @@ export function generateOpenapiInput({
           const queries = Object.entries(t.fields)
             .filter(([fieldName]) => !parametersInPath.includes(fieldName))
             .map(([fieldName, field]) => {
-              const fieldType = types.concretise(types.unwrapField(field))
+              const fieldType = types.concretise(field)
               const encoded = fieldType.encodeWithoutValidation(input[fieldName])
               if (types.isScalar(field)) {
                 return [fieldName, encoded]
@@ -262,7 +270,7 @@ export function generateOpenapiInput({
       }
     }
     if (parametersInPath.length === 0) {
-      const { schema } = typeToSchemaObject(inputType, typeMap, typeRef, true)
+      const { schema } = typeToSchemaObject(concreteInputType, typeMap, typeRef, true)
       return {
         parameters: [
           {
@@ -276,7 +284,7 @@ export function generateOpenapiInput({
         ],
         input: (request: Request) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
         request: (input) => {
-          const encoded = inputType.encodeWithoutValidation(input)
+          const encoded = concreteInputType.encodeWithoutValidation(input)
           const query = encodeQueryObject(encoded, specification.inputName ?? 'input')
           return { query }
         },
@@ -284,7 +292,7 @@ export function generateOpenapiInput({
     }
   } else {
     //BODY CAN EXIST
-    const { schema } = typeToSchemaObject(inputType, typeMap, typeRef)
+    const { schema } = typeToSchemaObject(concreteInputType, typeMap, typeRef)
     if (parametersInPath.length === 0) {
       return {
         requestBody: {
@@ -296,12 +304,12 @@ export function generateOpenapiInput({
         },
         input: (request) => request.body,
         request: (input) => {
-          const body = inputType.encodeWithoutValidation(input)
+          const body = concreteInputType.encodeWithoutValidation(input)
           return { body }
         },
       }
     }
-    if (t.kind === types.Kind.Object) {
+    if (t.kind === types.Kind.Object || t.kind === types.Kind.Entity) {
       const parameters = generatePathParameters({ parameters: parametersInPath, type: t, typeMap, typeRef })
       const remainingFields = Object.entries(t.fields).filter((v) => !parametersInPath.includes(v[0]))
       const remainingObject = types.object(Object.fromEntries(remainingFields))
@@ -321,7 +329,7 @@ export function generateOpenapiInput({
             Object.entries(t.fields)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
-                const fieldType = types.concretise(types.unwrapField(field))
+                const fieldType = types.concretise(field)
                 const encoded = fieldType.encodeWithoutValidation(input[fieldName])
                 return [fieldName, `${encoded}`] as const
               }),
@@ -335,9 +343,8 @@ export function generateOpenapiInput({
   throw new Error(`Error while generating openapi input type. Not supported. Path ${specification.path}`)
 }
 
-function isInputRequired(type: types.Type | types.Field): boolean {
-  const t = types.unwrapField(type)
-  return !types.isNullable(t) && !types.isOptional(t)
+function isInputRequired(type: types.Type): boolean {
+  return !types.isNullable(type) && !types.isOptional(type)
 }
 function generatePathParameters({
   parameters,
@@ -346,7 +353,7 @@ function generatePathParameters({
   typeRef,
 }: {
   parameters: string[]
-  type: types.ObjectType<any, any>
+  type: types.ObjectType<any, any> | types.EntityType<any, any>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): OpenAPIV3_1.ParameterObject[] {
@@ -358,57 +365,6 @@ function generatePathParameters({
   }
   return result
 }
-
-/*
-function openapiSecurityRequirements({
-  module,
-  functionName,
-}: {
-  module: module.Module<any, any>
-  functionName: string
-}): OpenAPIV3_1.SecurityRequirementObject[] | undefined {
-  const auth = (module.functionOptions ?? {})[functionName]?.authentication
-  if (auth && auth !== 'NONE') {
-    return [{ [functionName]: [] }]
-  } else if (auth === 'NONE') {
-    return undefined
-  }
-  if (module.authentication) {
-    return [{ _: [] }]
-  }
-  return undefined
-}
-
-function openapiSecuritySchemes({
-  module,
-}: {
-  module: module.Module<any, any>
-}): Record<string, OpenAPIV3_1.SecuritySchemeObject> | undefined {
-  const defaultSchema: OpenAPIV3_1.SecuritySchemeObject | undefined = module.authentication
-    ? { type: 'http', scheme: module.authentication.type, bearerFormat: module.authentication.format }
-    : undefined
-  const schemas = Object.fromEntries(
-    Object.entries(module.functionOptions ?? {}).flatMap(([k, v]) => {
-      if (!v?.authentication || v.authentication === 'NONE') {
-        return []
-      }
-      const schema: OpenAPIV3_1.SecuritySchemeObject = {
-        type: 'http',
-        scheme: v.authentication.type,
-        bearerFormat: v.authentication.format,
-      }
-      return [[k, schema]]
-    }),
-  )
-  if (Object.keys(schemas).length === 0 && !defaultSchema) {
-    return undefined
-  }
-  return {
-    ...schemas,
-    ...(defaultSchema ? { _: defaultSchema } : {}),
-  }
-}
-*/
 
 function openapiComponents<Fs extends functions.FunctionsInterfaces>({
   module,
@@ -435,6 +391,10 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
       }
       if (specification.version?.max != null && version > specification.version.max) {
         continue
+      }
+      const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
+      if (retrieveType.isOk) {
+        usedTypes.push(retrieveType.value)
       }
       usedTypes.push(functionBody.input)
       usedTypes.push(functionBody.output)
@@ -464,7 +424,7 @@ function typeToSchemaObject(
     if (alreadyConvertedTypeName) {
       return { name: alreadyConvertedTypeName, schema: { $ref: `#/components/schemas/${alreadyConvertedTypeName}` } }
     }
-    lazyTypeName = type().options?.name ?? `ANONYMOUS_TYPE_${typeRef.size}`
+    lazyTypeName = types.concretise(type()).options?.name ?? `ANONYMOUS_TYPE_${typeRef.size}`
     typeRef.set(type, lazyTypeName)
   }
   const { name, schema } = typeToSchemaObjectInternal(type, lazyTypeName, typeMap, typeRef, ignoreFirstLevelOptionality)
@@ -568,11 +528,12 @@ function typeToSchemaObjectInternal(
     }
     return { name, schema: { anyOf: [schema, { const: null }], description } }
   }
-  if (type.kind === types.Kind.Object) {
-    const fields = Object.entries(type.fields as types.Fields).map(([fieldName, field]) => {
-      const fieldType = types.unwrapField(field)
+  if (type.kind === types.Kind.Object || type.kind === types.Kind.Entity) {
+    const fields = Object.entries(type.fields as types.Types).map(([fieldName, fieldType]) => {
       const { schema } = typeToSchemaObject(
-        'virtual' in field ? types.optional(fieldType) : fieldType,
+        types.unwrap(fieldType).kind === types.Kind.Entity && !types.isOptional(fieldType)
+          ? types.optional(fieldType)
+          : fieldType,
         typeMap,
         typeRef,
       )
@@ -605,23 +566,16 @@ function typeToSchemaObjectInternal(
       name,
       schema: {
         type: 'string',
-        enum: type.variants,
+        enum: type.variants as unknown as string[],
         description,
       } as const,
     }
   }
   if (type.kind === types.Kind.Union) {
-    if (type.isTaggedUnion()) {
-      const taggedUnionTypes = Object.entries(type.variants).map(
-        ([k, t]) => typeToSchemaObject(types.object({ [k]: t as types.Type }), typeMap, typeRef).schema,
-      )
-      return { name, schema: { anyOf: taggedUnionTypes, description } }
-    } else {
-      const untaggedUnionTypes = Object.values(type.variants).map(
-        (t) => typeToSchemaObject(t as types.Type, typeMap, typeRef).schema,
-      )
-      return { name, schema: { anyOf: untaggedUnionTypes, description } }
-    }
+    const untaggedUnionTypes = Object.values(type.variants).map(
+      (t) => typeToSchemaObject(t as types.Type, typeMap, typeRef).schema,
+    )
+    return { name, schema: { anyOf: untaggedUnionTypes, description } }
   }
   return assertNever(type)
 }

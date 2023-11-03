@@ -1,10 +1,10 @@
 import { functions, logger } from '.'
-import { ErrorType } from './function'
+import { ErrorType, OutputRetrieveCapabilities } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
-import { projection, types } from '@mondrian-framework/model'
+import { retrieve, types } from '@mondrian-framework/model'
 import { UnionToIntersection, count } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
@@ -31,7 +31,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
     input: ContextInput,
     args: {
       input: unknown
-      projection: projection.Projection | undefined
+      retrieve: retrieve.GenericRetrieve | undefined
       operationId: string
       logger: logger.MondrianLogger
     },
@@ -43,19 +43,17 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
  * Mondrian module options.
  */
 export type ModuleOptions = {
-  checks?: {
-    /**
-     * Checks (at runtime) if the output value of any function is valid.
-     * It also checks if the projection is respected.
-     * Default is 'throw'.
-     * With 'ignore' the check is skipped (could be usefull in production environment in order to improve performance)
-     */
-    output?: 'ignore' | 'log' | 'throw'
-    /**
-     * Maximum projection depth allowed. If the requested projection is deeper an error is thrown.
-     */
-    maxProjectionDepth?: number
-  }
+  /**
+   * Checks (at runtime) if the output value of any function is valid.
+   * It also checks if the projection is respected.
+   * Default is 'throw'.
+   * With 'ignore' the check is skipped (could be usefull in production environment in order to improve performance)
+   */
+  checkOutputType?: 'ignore' | 'log' | 'throw'
+  /**
+   * Maximum projection depth allowed. If the requested projection is deeper an error is thrown.
+   */
+  maxSelectionDepth?: number
   /**
    * Enables opetelemetry instrumentation.
    */
@@ -67,15 +65,27 @@ export type ModuleOptions = {
  */
 type ContextType<F extends functions.Functions> = UnionToIntersection<
   {
-    [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, any, infer Context> ? Context : never
+    [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, any, any, infer Context> ? Context : never
   }[keyof F]
 >
 
 /**
- * Checks for name collisions.
+ * TODO: understand if this is needed
+ */
+type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
+
+/**
+ * Checks for name collisions in the types that appear in the given function's signature.
+ * If there's at least two different types sharing the same name, this function will throw
+ * an error.
  */
 function assertUniqueNames(functions: functions.FunctionsInterfaces) {
-  const allTypes = allUniqueTypes(Object.values(functions).flatMap((f) => [f.input, f.output, f.error]))
+  const functionTypes = Object.values(functions).flatMap((f) => {
+    const hasError = f.errors !== undefined
+    return hasError ? [f.input, f.output, ...Object.values(f.errors)] : [f.input, f.output]
+  })
+
+  const allTypes = allUniqueTypes(functionTypes)
   const allNames = [...allTypes.values()]
     .map((t) => types.concretise(t).options?.name)
     .filter((name) => name !== undefined)
@@ -110,16 +120,17 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 ): Module<Fs, ContextInput> {
   assertUniqueNames(module.functions)
   const maxProjectionDepthMiddleware =
-    module.options?.checks?.maxProjectionDepth != null
-      ? [middleware.checkMaxProjectionDepth(module.options.checks.maxProjectionDepth)]
-      : []
-  const checkOutputTypeMiddleware =
-    module.options?.checks?.output == null || module.options?.checks?.output !== 'ignore'
-      ? [middleware.checkOutputType(module.options?.checks?.output ?? 'throw')]
+    module.options?.maxSelectionDepth != null
+      ? [middleware.checkMaxProjectionDepth(module.options.maxSelectionDepth)]
       : []
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
+      const checkOutputTypeMiddleware =
+        module.options?.checkOutputType == null || module.options?.checkOutputType !== 'ignore'
+          ? [middleware.checkOutputType(functionName, module.options?.checkOutputType ?? 'throw')]
+          : []
+
       const func: functions.FunctionImplementation = {
         ...functionBody,
         middlewares: [
@@ -133,8 +144,13 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
         const counter = myMeter.createCounter('task.invocation')
-        const wrappedFunction: functions.FunctionImplementation<types.Type, types.Type, ErrorType, {}> =
-          new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
+        const wrappedFunction: functions.FunctionImplementation<
+          types.Type,
+          types.Type,
+          ErrorType,
+          OutputRetrieveCapabilities,
+          {}
+        > = new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
         return [functionName, wrappedFunction]
       } else {
         return [functionName, new BaseFunction(func)]

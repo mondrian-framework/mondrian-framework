@@ -66,7 +66,7 @@ describe.concurrent('replace', () => {
 })
 
 describe.concurrent('recover', () => {
-  test('returns value if called on ok value', () => expect(result.ok(1).recover(() => 0)).toBe(1))
+  test('returns value if called on ok value', () => expect(result.ok(1 as number).recover(() => 0)).toBe(1))
   test('provides the error to the callback', () => expect(result.fail(1).recover((n) => n + 1)).toBe(2))
   test('returns fallback if called on failure value', () => expect(result.fail('error').recover(() => 1)).toBe(1))
 })

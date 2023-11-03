@@ -75,8 +75,8 @@ describe('Infer', () => {
     test('immutable ObjectType inferred with immutable fields', () => {
       const model = types.object({
         field1: types.number(),
-        field2: { virtual: types.string() },
-        field3: types.object({ inner: { virtual: types.boolean() } }).mutable(),
+        field2: types.string(),
+        field3: types.object({ inner: types.boolean() }).mutable(),
       })
       type Inferred = types.Infer<typeof model>
       type Expected = {
@@ -96,104 +96,6 @@ describe('Infer', () => {
       })
       type Inferred = types.Infer<typeof model>
       expectTypeOf<Inferred>().toEqualTypeOf<{ field1: number; field2: string }>()
-    })
-
-    test('merged objects inferred as a single object', () => {
-      const model = types.merge(types.object({ field1: types.string() }), types.object({ field2: types.number() }))
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string; readonly field2: number }>()
-    })
-
-    test('merged objects inferred as a mutable single object', () => {
-      const model = types.merge(
-        types.object({ field1: types.string() }),
-        types.object({ field2: types.number() }),
-        types.Mutability.Mutable,
-      )
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string; field2: number }>()
-    })
-
-    test("second object overrides the first object's fields", () => {
-      const model = types.merge(types.object({ field: types.number() }), types.object({ field: types.string() }))
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: string }>()
-    })
-
-    test('picked object fields inferred as single field object', () => {
-      const model = types.pick(types.object({ field1: types.string(), field2: types.number() }), {
-        field1: true,
-        field2: undefined,
-      })
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
-    })
-
-    test('picked object fields inferred as mutable single field object', () => {
-      const model = types.pick(
-        types.object({ field1: types.string(), field2: types.number() }),
-        {
-          field1: true,
-        },
-        types.Mutability.Mutable,
-      )
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
-    })
-
-    test('omitted object fields inferred as single field object', () => {
-      const model = types.omit(types.object({ field1: types.string(), field2: types.number() }), {
-        field2: true,
-        field1: undefined,
-      })
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
-    })
-
-    test('omitted object fields inferred as mutable single field object', () => {
-      const model = types.omit(
-        types.object({ field1: types.string(), field2: types.number() }),
-        {
-          field2: true,
-        },
-        types.Mutability.Mutable,
-      )
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
-    })
-
-    test('omitted object references inferred as single field object', () => {
-      const model = types.omitVirtualFields(
-        types.object({ field1: types.string(), field2: { virtual: types.number() } }),
-      )
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1: string }>()
-    })
-
-    test('omitted object references inferred as mutable single field object', () => {
-      const model = types.omitVirtualFields(
-        types.object({ field1: types.string(), field2: { virtual: types.number() } }),
-        types.Mutability.Mutable,
-      )
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: string }>()
-    })
-
-    test('partial of object inferred with every field optional', () => {
-      const model = types.partial(
-        types.object({ field1: types.string().nullable(), field2: { virtual: types.number().optional() } }),
-      )
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field1?: string | null; readonly field2?: number }>()
-    })
-
-    test('partial of mutable object inferred with every field optional', () => {
-      const model = types.partial(
-        types.object({ field1: types.string().nullable(), field2: { virtual: types.number().optional() } }),
-        types.Mutability.Mutable,
-      )
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ field1?: string | null; field2?: number }>()
     })
   })
 
@@ -237,10 +139,7 @@ describe('Infer', () => {
     })
     type Inferred = types.Infer<typeof model>
     type InferredObject = { readonly field1: string; readonly field2: boolean }
-    type Expected =
-      | { readonly variant1: string }
-      | { readonly variant2: InferredObject }
-      | { readonly variant3: boolean }
+    type Expected = string | InferredObject | boolean
     expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
   })
 
@@ -250,6 +149,9 @@ describe('Infer', () => {
       () => null,
       () => decoding.fail('test', 'test'),
       () => validation.fail('test', 'test'),
+      () => {
+        throw 'error'
+      },
     )
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<number>()

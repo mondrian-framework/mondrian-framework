@@ -1,503 +1,590 @@
-import { ErrorHandler, Api } from './api'
-import { infoToProjection } from './utils'
-import { makeExecutableSchema } from '@graphql-tools/schema'
+import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
-import { decoding, projection, types, validation } from '@mondrian-framework/model'
-import { module, utils, functions, logger } from '@mondrian-framework/module'
-import { assertNever, isArray } from '@mondrian-framework/utils'
-import { GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema } from 'graphql'
+import { result, retrieve, types } from '@mondrian-framework/model'
+import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
+import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
+import { MondrianLogger } from '@mondrian-framework/module/src/logger'
+import { JSONType, capitalise, mapObject, toCamelCase } from '@mondrian-framework/utils'
+import {
+  GraphQLScalarType,
+  GraphQLObjectType,
+  GraphQLEnumType,
+  GraphQLString,
+  GraphQLList,
+  GraphQLNonNull,
+  GraphQLBoolean,
+  getNullableType,
+  GraphQLUnionType,
+  GraphQLOutputType,
+  GraphQLSchema,
+  GraphQLResolveInfo,
+  GraphQLFieldConfig,
+  GraphQLInputObjectType,
+  GraphQLInputType,
+  GraphQLFloat,
+  GraphQLInputFieldConfig,
+} from 'graphql'
 
-type GraphqlType =
-  | { type: 'scalar'; description?: string; impl: types.CustomType<string, {}, any> }
-  | { type: 'type' | 'input' | 'enum'; definition?: string; description?: string }
-  | {
-      type: 'union'
-      definition: string
-      description?: string
-      is?: Record<string, undefined | ((v: unknown) => boolean)>
-    }
+/**
+ * TODO: vedere se negli scalari da un suggerimento su cosa inserire (numero/stringa)
+ *
+ */
 
-function typeToGqlType(
-  t: types.Type,
-  typeMap: Record<string, GraphqlType>, //id -> definition
-  typeRef: Map<Function, string>, // function -> id
-  isInput: boolean,
-  isOptional: boolean,
-  suggestedName?: string,
-): string {
-  const isRequired = isOptional ? '' : '!'
-  const mt = types.concretise(t)
-  if (typeof t === 'function') {
-    const id = typeRef.get(t)
-    if (id) {
-      return `${isInput ? 'I' : ''}${id}${isRequired}`
-    }
-    if (mt.options?.name) {
-      typeRef.set(t, mt.options.name)
-    }
-  }
-  return typeToGqlTypeInternal(t, typeMap, typeRef, isInput, isOptional, suggestedName)
+/**
+ * Generates a name for the given type with the following algorithm:
+ * - If the type has a name uses that, otherwise
+ * - If the default name is defined uses that, otherwise
+ * - Generates a random name in the form "TYPE{N}" where "N" is a random integer
+ */
+function generateName(type: types.Type, defaultName: string | undefined): string {
+  //TODO: keep tracks of names
+  const concreteType = types.concretise(type)
+  return concreteType.options?.name
+    ? capitalise(concreteType.options.name)
+    : defaultName ?? 'TYPE' + Math.floor(Math.random() * 100_000_000)
 }
-function typeToGqlTypeInternal(
-  t: types.Type,
-  typeMap: Record<string, GraphqlType>, //type name -> definition
-  typeRef: Map<Function, string>, // function -> type name
-  isInput: boolean,
-  isOptional: boolean,
-  suggestedName?: string,
-): string {
-  const isRequired = isOptional ? '' : '!'
-  const type = types.concretise(t)
-  let name: string | undefined = type.options?.name ?? suggestedName
-  const description = type.options && 'description' in type.options ? type.options.description : undefined
 
-  if (type.kind === types.Kind.String) {
-    return `String${isRequired}`
+// Data used in the recursive calls of `typeToGraphQLTypeInternal` to store
+// all relevant information that has to be used throughout the recursive calls.
+type InternalData = {
+  // A map from <explored type> to already generated output type(s)
+  knownOutputTypes: Map<types.Type, GraphQLOutputType>
+  // A map from <explored type> to already generated input type(s)
+  knownInputTypes: Map<types.Type, GraphQLInputType>
+  // A map for all custom types that have already been explored. Here we just
+  // save their name
+  knownCustomTypes: Map<string, GraphQLScalarType>
+  // The default name to assign to the current type in the iteration process
+  defaultName: string | undefined
+}
+
+function typeToGraphQLOutputTypeInternal(type: types.Type, internalData: InternalData): GraphQLOutputType {
+  const { knownOutputTypes, defaultName } = internalData
+  const knownOutputType = knownOutputTypes.get(type)
+  if (knownOutputType) {
+    return knownOutputType
   }
-  if (type.kind === types.Kind.Custom) {
-    const gqlType: GraphqlType = { type: 'scalar', description, impl: type }
-    typeMap[type.typeName] = gqlType
-    return `${type.typeName}${isRequired}`
+  const graphQLType = types.match(type, {
+    number: (type) => scalarOrDefault(type, GraphQLFloat, defaultName),
+    string: (type) => scalarOrDefault(type, GraphQLString, defaultName),
+    boolean: (type) => scalarOrDefault(type, GraphQLBoolean, defaultName),
+    enum: (type) => enumToGraphQLType(type, defaultName),
+    literal: (type) => literalToGraphQLType(type, defaultName),
+    union: (type) => unionToGraphQLType(type, internalData),
+    object: (type) => objectToGraphQLType(type, internalData),
+    entity: (type) => entityToGraphQLType(type, internalData),
+    array: (type) => arrayToGraphQLType(type, internalData),
+    wrapper: ({ wrappedType }) => {
+      const type = typeToGraphQLOutputTypeInternal(wrappedType, internalData)
+      return getNullableType(type)
+    },
+    custom: (type) => customTypeToGraphQLType(type, internalData),
+  })
+  knownOutputTypes.set(type, graphQLType)
+  return graphQLType
+}
+
+function typeToGraphQLInputTypeInternal(type: types.Type, internalData: InternalData): GraphQLInputType {
+  const { knownInputTypes } = internalData
+  const knownInputType = knownInputTypes.get(type)
+  if (knownInputType) {
+    return knownInputType
   }
-  if (type.kind === types.Kind.Boolean) {
-    return `Boolean${isRequired}`
-  }
-  if (type.kind === types.Kind.Number) {
-    if (type.options?.isInteger) {
-      return `Int${isRequired}`
-    }
-    return `Float${isRequired}`
-  }
-  if (type.kind === types.Kind.Array) {
-    return `[${typeToGqlType(type.wrappedType, typeMap, typeRef, isInput, false, name)}]${isRequired}`
-  }
-  if (type.kind === types.Kind.Optional || type.kind === types.Kind.Nullable) {
-    return typeToGqlType(type.wrappedType, typeMap, typeRef, isInput, true, name)
-  }
-  if (type.kind === types.Kind.Object) {
-    name = name ?? 'NAME_NEEDED'
-    const fields = Object.entries(type.fields as types.Fields).map(([fieldName, field]) => {
-      const fieldMType = types.concretise(types.unwrapField(field))
-      const fieldType = typeToGqlType(field as types.Type, typeMap, typeRef, isInput, false, `${name}_${fieldName}`)
-      const desc = fieldMType.options?.description ? `"""${fieldMType.options.description}"""\n` : ''
-      return `${desc}${fieldName}: ${fieldType}`
-    })
-    if (isInput) {
-      typeMap[`I${name}`] = {
-        type: 'input',
-        description,
-        definition: `input I${name} {
-          ${fields.join('\n        ')}
-      }`,
-      }
+  const graphQLType: GraphQLInputType = types.match(type, {
+    number: () => GraphQLFloat,
+    string: () => GraphQLString,
+    boolean: () => GraphQLBoolean,
+    enum: (_, type) => typeToGraphQLOutputTypeInternal(type, internalData) as GraphQLInputType,
+    literal: (_, type) => typeToGraphQLOutputTypeInternal(type, internalData) as GraphQLInputType,
+    union: ({ variants }) => {
+      throw 'TODO union'
+    },
+    object: (type) => objectToInputGraphQLType(type, internalData),
+    entity: (type) => entityToInputGraphQLType(type, internalData),
+    array: (type) => arrayToInputGraphQLType(type, internalData),
+    wrapper: ({ wrappedType }) => getNullableType(typeToGraphQLInputTypeInternal(wrappedType, internalData)),
+    custom: (type) => {
+      throw 'TODO'
+    },
+  })
+  knownInputTypes.set(type, graphQLType)
+  return graphQLType
+}
+
+// If the given type has some options then it is turned into a scalar (we assume
+// that, since it has some options, it must be considered as a unique and distinct
+// type from all others)
+// If the type doesn't have any options then this function returns the provided
+// default type
+function scalarOrDefault<T extends types.Type>(
+  type: T,
+  defaultType: GraphQLOutputType,
+  defaultName: string | undefined,
+): GraphQLOutputType {
+  const concreteType = types.concretise(type)
+  const options = concreteType.options
+  return !options ? defaultType : scalarFromType(concreteType, options.description, defaultName)
+}
+
+// Turns a type into a GraphQL scalar type
+function scalarFromType<T extends types.Type>(
+  type: types.Concrete<T>,
+  description: string | undefined,
+  defaultName: string | undefined,
+): GraphQLScalarType<types.Infer<T>, JSONType> {
+  const name = generateName(type, defaultName)
+  const serialize = (value: unknown) => {
+    if (!types.isType(type, value)) {
+      throw createGraphQLError('Unexpected type in serialize')
     } else {
-      typeMap[name] = {
-        type: 'type',
-        description,
-        definition: `type ${name} {
-        ${fields.join('\n        ')}
-    }`,
+      const result = type.encode(value as never)
+      if (result.isOk) {
+        return result.value
+      } else {
+        throw createGraphQLError('GraphQL serialization failed')
       }
     }
-
-    return `${isInput ? 'I' : ''}${name}${isRequired}`
   }
-  if (type.kind === types.Kind.Enum) {
-    name = name ?? 'NAME_NEEDED'
-    typeMap[name] = {
-      type: 'enum',
-      description,
-      definition: `enum ${name} {
-      ${type.variants.join('\n        ')}
-    }`,
-    }
-    return `${name}${isRequired}`
-  }
-  if (type.kind === types.Kind.Union) {
-    name = name ?? 'NAME_NEEDED'
-    const ts = Object.entries(type.variants)
-    //If input use @oneOf https://github.com/graphql/graphql-spec/pull/825
-    if (isInput) {
-      const fields = ts.flatMap(([unionName, fieldT]) => {
-        const fieldType = typeToGqlType(fieldT as types.Type, typeMap, typeRef, isInput, false, unionName)
-        const realType =
-          fieldType.charAt(fieldType.length - 1) === '!' ? fieldType.substring(0, fieldType.length - 1) : fieldType
-        return [`${unionName}: ${realType}`]
-      })
-      typeMap[`I${name}`] = {
-        type: 'input',
-        description,
-        definition: `input I${name} {
-          ${fields.join('\n        ')}
-      }`,
-      }
-      return `I${name}${isRequired}`
-    }
-
-    typeMap[name] = {
-      type: 'union',
-      description,
-      definition: `union ${name} = ${ts
-        .map(([k, t], i) => typeToGqlType(t as types.Type, typeMap, typeRef, isInput, true, k))
-        .join(' | ')}`,
-      is: Object.fromEntries(ts.map(([k]) => [k, (v) => (v as Record<string, unknown>)[`__variant_${k}`] === true])),
-    }
-    return `${name}${isRequired}`
-  }
-  if (type.kind === types.Kind.Literal) {
-    const t = typeof type.literalValue
-    const tp = t === 'boolean' ? 'Boolean' : t === 'number' ? 'Float' : t === 'string' ? 'String' : null
-    if (type.literalValue === null) {
-      typeMap['Null'] = {
-        type: 'scalar',
-        impl: types.custom(
-          'null',
-          () => null,
-          () => decoding.succeed(null),
-          (input) => {
-            if (input === null) {
-              return validation.succeed()
-            }
-            return validation.fail('Expected null', input)
-          },
-        ),
-      }
-      return 'Null'
-    }
-    if (tp === null) {
-      throw new Error(`Unknown literal type: ${tp}`)
-    }
-    return `${tp}${isRequired}`
-  }
-  return assertNever(type)
+  // TODO: add parseValue and parseLiteral
+  return new GraphQLScalarType<types.Infer<T>, JSONType>({ name, description, serialize })
 }
 
-function generateTypes<Fs extends functions.Functions>({
-  module,
-}: {
-  module: module.Module<Fs, any>
-}): {
-  typeMap: Record<string, GraphqlType>
-  inputTypeMap: Record<string, GraphqlType>
-} {
-  const typeMap: Record<string, GraphqlType> = {}
-  const typeRef: Map<Function, string> = new Map()
-  const usedTypes: types.Type[] = []
-  for (const functionBody of Object.values(module.functions)) {
-    usedTypes.push(functionBody.output)
-  }
-  for (const type of usedTypes) {
-    typeToGqlType(type, typeMap, typeRef, false, false)
-  }
-  const inputTypeMap: Record<string, GraphqlType> = {}
-  const inputTypeRef: Map<Function, string> = new Map()
-  const usedInputs: types.Type[] = []
-  for (const functionBody of Object.values(module.functions)) {
-    usedInputs.push(functionBody.input)
-  }
-  for (const type of usedInputs) {
-    typeToGqlType(type, inputTypeMap, inputTypeRef, true, false)
-  }
-  return { typeMap, inputTypeMap }
+function enumToGraphQLType(
+  enumeration: types.EnumType<readonly [string, ...string[]]>,
+  defaultName: string | undefined,
+): GraphQLEnumType {
+  const name = generateName(enumeration, defaultName)
+  const variants = enumeration.variants.map((variant, index) => [variant, { value: index }])
+  const values = Object.fromEntries(variants)
+  return new GraphQLEnumType({ name, values })
 }
 
-function generateScalars({ typeMap }: { typeMap: Record<string, GraphqlType> }) {
-  const scalarDefs = Object.entries(typeMap)
-    .flatMap(([id, s]) =>
-      s.type === 'scalar' ? [s.description ? `"""${s.description}"""\nscalar ${id}` : `scalar ${id}`] : [],
-    )
-    .join('\n')
-  const scalarResolvers = Object.fromEntries(
-    Object.entries(typeMap)
-      .filter(([id, s]) => s.type === 'scalar')
-      .map(([id, s]) => {
-        return [
-          id,
-          new GraphQLScalarType({
-            name: id,
-            description: s.description,
-            serialize(input) {
-              return input
-            },
-            parseValue(input) {
-              return input
-            },
-          }),
-        ] as const
-      }),
-  )
-  return { scalarDefs, scalarResolvers }
+// Turns a literal into a GraphQL enum with a single value that represents the
+// given literal value.
+function literalToGraphQLType(
+  literal: types.LiteralType<number | string | null | boolean>,
+  defaultName: string | undefined,
+): GraphQLEnumType {
+  const name = generateName(literal, defaultName)
+  const rawLiteralName = literal.literalValue?.toString().trim() ?? 'null'
+  const literalName = `Literal${toCamelCase(rawLiteralName)}`
+  const values = Object.fromEntries([[literalName, { value: 0 }]])
+  return new GraphQLEnumType({ name, values })
 }
 
-function generateQueryOrMutation<const ServerContext, const Fs extends functions.Functions, const ContextInput>({
-  module,
-  type,
-  api,
-  context,
-  setHeader,
-  error,
-}: {
-  type: 'query' | 'mutation'
+function arrayToGraphQLType(
+  array: types.ArrayType<any, any>,
+  internalData: InternalData,
+): GraphQLList<GraphQLOutputType> {
+  const { defaultName } = internalData
+  const arrayName = generateName(array, defaultName)
+  const itemDefaultName = arrayName + 'Item'
+  const itemsType = typeToGraphQLOutputTypeInternal(array.wrappedType, {
+    ...internalData,
+    defaultName: itemDefaultName,
+  })
+  const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
+  return new GraphQLList(wrappedType)
+}
+
+function arrayToInputGraphQLType(
+  array: types.ArrayType<any, any>,
+  internalData: InternalData,
+): GraphQLList<GraphQLInputType> {
+  const { defaultName } = internalData
+  const arrayName = generateName(array, defaultName)
+  const itemDefaultName = arrayName + 'Item'
+  const itemsType = typeToGraphQLInputTypeInternal(array.wrappedType, {
+    ...internalData,
+    defaultName: itemDefaultName,
+  })
+  const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
+  return new GraphQLList(wrappedType)
+}
+
+function objectToGraphQLType(
+  object: types.ObjectType<any, types.Types>,
+  internalData: InternalData,
+): GraphQLObjectType {
+  const { defaultName } = internalData
+  const objectName = generateName(object, defaultName)
+  const fields = () => mapObject(object.fields, typeToGraphQLObjectField(internalData, objectName))
+  return new GraphQLObjectType({ name: objectName, fields })
+}
+
+function objectToInputGraphQLType(
+  object: types.ObjectType<any, types.Types>,
+  internalData: InternalData,
+): GraphQLInputObjectType {
+  const { defaultName } = internalData
+  const objectName = `${generateName(object, defaultName)}Input`
+  const fields = () => mapObject(object.fields, typeToGraphQLInputObjectField(internalData, objectName))
+  return new GraphQLInputObjectType({ name: objectName, fields })
+}
+
+function entityToGraphQLType(
+  object: types.EntityType<any, types.Types>,
+  internalData: InternalData,
+): GraphQLObjectType {
+  const { defaultName } = internalData
+  const objectName = generateName(object, defaultName)
+  const fields = () => mapObject(object.fields, typeToGraphQLObjectField(internalData, objectName))
+  return new GraphQLObjectType({ name: objectName, fields })
+}
+
+function entityToInputGraphQLType(
+  object: types.EntityType<any, types.Types>,
+  internalData: InternalData,
+): GraphQLInputObjectType {
+  const { defaultName } = internalData
+  const objectName = `${generateName(object, defaultName)}Input`
+  const fields = () => mapObject(object.fields, typeToGraphQLInputObjectField(internalData, objectName))
+  return new GraphQLInputObjectType({ name: objectName, fields })
+}
+
+function typeToGraphQLObjectField(
+  internalData: InternalData,
+  objectName: string,
+): (fieldName: string, fieldType: types.Type) => GraphQLFieldConfig<any, any> {
+  return (fieldName, fieldType) => {
+    const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
+    const concreteType = types.concretise(fieldType)
+    const graphQLType = typeToGraphQLOutputTypeInternal(concreteType, {
+      ...internalData,
+      defaultName: fieldDefaultName,
+    })
+    const canBeMissing = types.isOptional(concreteType) || types.isNullable(concreteType)
+    return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
+  }
+}
+
+function typeToGraphQLInputObjectField(
+  internalData: InternalData,
+  objectName: string,
+): (fieldName: string, fieldType: types.Type) => GraphQLInputFieldConfig {
+  return (fieldName, fieldType) => {
+    const fieldDefaultName = generateName(fieldType, objectName + capitalise(fieldName))
+    const concreteType = types.concretise(fieldType)
+    const graphQLType = typeToGraphQLInputTypeInternal(concreteType, {
+      ...internalData,
+      defaultName: fieldDefaultName,
+    })
+    const canBeMissing = types.isOptional(concreteType) || types.isNullable(concreteType)
+    return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
+  }
+}
+
+function unionToGraphQLType(union: types.UnionType<types.Types>, internalData: InternalData): GraphQLUnionType {
+  const { defaultName } = internalData
+  const unionName = generateName(union, defaultName)
+  const types = Object.entries(union.variants).map(([name, variantType]) => {
+    const variantName = unionName + capitalise(name)
+    const variantValueDefaultName = name + 'Value'
+    const value = typeToGraphQLOutputTypeInternal(variantType, {
+      ...internalData,
+      defaultName: variantValueDefaultName,
+    })
+    const fields = Object.fromEntries([[name, { type: value }]])
+    return new GraphQLObjectType({ name: variantName, fields })
+  })
+  return new GraphQLUnionType({ name: unionName, types })
+}
+
+function customTypeToGraphQLType(
+  type: types.CustomType<string, any, any>,
+  internalData: InternalData,
+): GraphQLScalarType {
+  const { knownCustomTypes } = internalData
+  const knownType = knownCustomTypes.get(type.typeName)
+  if (knownType) {
+    return knownType
+  } else {
+    const scalar = scalarFromType(type, type.options?.description, capitalise(type.typeName))
+    knownCustomTypes.set(type.typeName, scalar)
+    return scalar
+  }
+}
+
+/**
+ * TODO: add doc
+ */
+export type FromModuleInput<ServerContext, Fs extends functions.Functions, ContextInput> = {
   module: module.Module<Fs, ContextInput>
   api: Api<Fs>
   context: (server: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   setHeader: (server: ServerContext, name: string, value: string) => void
-  error?: ErrorHandler<Fs, ServerContext>
-}) {
-  const resolvers = Object.fromEntries(
-    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
-      const partialOutputType = types.partialDeep(functionBody.output)
-      const specifications = api.functions[functionName]
-      if (!specifications) {
-        return []
-      }
-      if (
-        (isArray(specifications) && !specifications.some((s) => s.type === type)) ||
-        (!isArray(specifications) && specifications.type !== type)
-      ) {
-        return []
-      }
-      return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {
-        if (specification.type !== type) {
-          return []
-        }
-        const gqlInputTypeName = specification.inputName ?? 'input'
-
-        const resolver = async (
-          parent: unknown,
-          input: Record<string, unknown>,
-          serverContext: ServerContext,
-          info: GraphQLResolveInfo,
-        ) => {
-          const operationId = utils.randomOperationId()
-          const operationLogger = logger.build({
-            moduleName: module.name,
-            operationId,
-            operationType: specification.type,
-            operationName: specification.name ?? functionName,
-            server: 'GQL',
-          })
-          setHeader(serverContext, 'operation-id', operationId)
-          const decoded = types.concretise(functionBody.input).decode(input[gqlInputTypeName], {
-            typeCastingStrategy: 'tryCasting',
-          })
-          if (!decoded.isOk) {
-            operationLogger.logError('Bad request.')
-            throw createGraphQLError(`Invalid input.`, { extensions: decoded.error })
-          }
-          const gqlProjection = infoToProjection(info, functionBody.output)
-          const proj = projection.decode(functionBody.output, gqlProjection, { typeCastingStrategy: 'tryCasting' })
-          if (!proj.isOk) {
-            operationLogger.logError('Bad request. (projection)')
-            throw createGraphQLError(`Invalid input.`, { extensions: proj.error })
-          }
-
-          const contextInput = await context(serverContext, info)
-          const moduleCtx = await module.context(contextInput, {
-            projection: proj.value,
-            input: decoded.value,
-            operationId,
-            logger: operationLogger,
-          })
-          try {
-            const result = await functionBody.apply({
-              context: moduleCtx,
-              projection: proj.value,
-              input: decoded.value as never,
-              operationId,
-              logger: operationLogger,
-            })
-            if (!result.isOk) {
-              throw new Error(result.error)
-            }
-            const encoded = types.concretise(partialOutputType).encodeWithoutValidation(result.value)
-            //TODO: if union remove tag and set `__variant_${tag}`: true
-            operationLogger.logInfo('Completed.')
-            return encoded
-          } catch (e) {
-            operationLogger.logError('Failed with exception.')
-            if (error) {
-              const result = await error({
-                error: e,
-                log: operationLogger,
-                functionName,
-                operationId,
-                context: moduleCtx,
-                functionArgs: {
-                  projection: proj.value,
-                  input: decoded.value,
-                },
-                ...serverContext,
-              })
-              if (result) {
-                throw createGraphQLError(result.message, result.options)
-              }
-            }
-            throw e
-          }
-        }
-        return [[specification.name ?? functionName, resolver]]
-      })
-    }),
-  )
-
-  const namespaces: Record<string, string[]> = {}
-  const defs = Object.entries(module.functions)
-    .flatMap(([functionName, functionBody]) => {
-      const specifications = api.functions[functionName]
-      if (!specifications) {
-        return []
-      }
-      if (
-        (isArray(specifications) && !specifications.some((s) => s.type === type)) ||
-        (!isArray(specifications) && specifications.type !== type)
-      ) {
-        return []
-      }
-      return (isArray(specifications) ? specifications : [specifications]).flatMap((specification) => {
-        const namespace =
-          specification.namespace !== null ? functionBody.options?.namespace ?? specification.namespace : null
-        if (namespace) {
-          if (namespaces[namespace]) {
-            namespaces[namespace].push(specification.name ?? functionName)
-          } else {
-            namespaces[namespace] = [specification.name ?? functionName]
-          }
-        }
-        const inputIsVoid = false
-        const gqlInputType = inputIsVoid ? null : typeToGqlType(functionBody.input, {}, new Map(), true, false)
-        const gqlOutputType = typeToGqlType(functionBody.output, {}, new Map(), false, false)
-        const description = functionBody.options?.description ? `"""${functionBody.options?.description}"""\n` : null
-        const def = inputIsVoid
-          ? `${specification.name ?? functionName}: ${gqlOutputType}`
-          : `${specification.name ?? functionName}(${
-              specification.inputName ?? 'input'
-            }: ${gqlInputType}): ${gqlOutputType}`
-        const operationType = type === 'query' ? 'Query' : 'Mutation'
-        if (namespace) {
-          return [
-            `type ${operationType} {`,
-            `${namespace}: ${namespace}${operationType}!`,
-            '}',
-            `type ${namespace}${operationType} {`,
-            description,
-            def,
-            '}',
-          ]
-        }
-        return [`type ${operationType} {`, description, def, '}']
-      })
-    })
-    .flatMap((v) => (v != null ? [v] : []))
-    .join('\n')
-
-  const namespacesResolvers = Object.fromEntries(
-    Object.entries(namespaces).map(([namespace, resolverNames]) => [
-      `${namespace}${type === 'query' ? 'Query' : 'Mutation'}`,
-      Object.fromEntries(
-        resolverNames.map((resolverName) => {
-          const result = [resolverName, resolvers[resolverName]]
-          delete resolvers[resolverName]
-          return result
-        }),
-      ),
-    ]),
-  )
-  const otherResolvers = Object.fromEntries(Object.keys(namespaces).map((namespace) => [namespace, () => ({})]))
-  return { defs, resolvers: { ...resolvers, ...otherResolvers }, namespacesResolvers }
+  errorHandler?: ErrorHandler<Fs, ServerContext>
 }
 
-export function fromModule<const ServerContext, const Fs extends functions.Functions, const ContextInput>({
-  module,
-  api,
-  context,
-  setHeader,
-  error,
-}: {
-  module: module.Module<Fs, ContextInput>
-  api: Api<Fs>
-  context: (server: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
-  setHeader: (server: ServerContext, name: string, value: string) => void
-  error?: ErrorHandler<Fs, ServerContext>
-}): GraphQLSchema {
-  const {
-    defs: queryDefs,
-    resolvers: queryResolvers,
-    namespacesResolvers: queryNamespacesResolvers,
-  } = generateQueryOrMutation({
-    module,
-    api,
-    type: 'query',
-    context,
-    setHeader,
-    error,
-  })
-  const {
-    defs: mutationDefs,
-    resolvers: mutationResolvers,
-    namespacesResolvers: mutationNamespacesResolvers,
-  } = generateQueryOrMutation({
-    module,
-    api,
-    type: 'mutation',
-    context,
-    setHeader,
-    error,
-  })
-  const { typeMap, inputTypeMap } = generateTypes({ module })
-  const { scalarDefs, scalarResolvers } = generateScalars({ typeMap: { ...typeMap, ...inputTypeMap } })
-
-  const typeDefs = Object.entries(typeMap)
-    .flatMap(([id, t]) => {
-      if (t.type === 'enum' || t.type === 'type' || t.type === 'union') {
-        return [t.definition]
-      }
-      return []
-    })
-    .join('\n')
-
-  const inputDefs = Object.entries(inputTypeMap)
-    .flatMap(([id, t]) => {
-      if (t.type === 'input') {
-        return [t.definition]
-      }
-      return []
-    })
-    .join('\n')
-
-  const unions = Object.fromEntries(
-    Object.entries(typeMap).flatMap(([id, t]) => {
-      if (t.type === 'union' && t.is) {
-        return Object.entries(t.is)
-      }
-      return []
-    }),
+/**
+ * Creates a new `GraphQLSchema` from the given module.
+ * Each function appearing in the module's API is either turned into a query or a mutation according to the
+ * provided specification.
+ */
+export function fromModule<const ServerContext, const Fs extends functions.Functions, const ContextInput>(
+  input: FromModuleInput<ServerContext, Fs, ContextInput>,
+): GraphQLSchema {
+  const { module, api, context, setHeader, errorHandler } = input
+  const moduleFunctions = Object.entries(module.functions)
+  const internalData: InternalData = {
+    knownOutputTypes: new Map(),
+    knownInputTypes: new Map(),
+    knownCustomTypes: new Map(),
+    defaultName: undefined,
+  }
+  const queriesArray = moduleFunctions.flatMap(([name, fun]) =>
+    toQueries(
+      module.name,
+      name,
+      fun,
+      api.functions[name],
+      setHeader,
+      context,
+      module.context,
+      errorHandler,
+      internalData,
+    ),
   )
+  const mutationsArray = moduleFunctions.flatMap(([name, fun]) =>
+    toMutations(
+      module.name,
+      name,
+      fun,
+      api.functions[name],
+      setHeader,
+      context,
+      module.context,
+      errorHandler,
+      internalData,
+    ),
+  )
+  const query =
+    queriesArray.length === 0
+      ? undefined
+      : new GraphQLObjectType({ name: 'Query', fields: Object.fromEntries(queriesArray) })
+  const mutation =
+    mutationsArray.length === 0
+      ? undefined
+      : new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutationsArray) })
 
-  const schemaDefs = `
-  ${scalarDefs}
-  ${typeDefs}
-  ${inputDefs}
-  ${queryDefs}
-  ${mutationDefs}
-  `
-  const unionResolvers = Object.fromEntries(Object.entries(unions).map(([k, v]) => [k, { __isTypeOf: v }]))
-  try {
-    const schema = makeExecutableSchema({
-      typeDefs: schemaDefs,
-      resolvers: {
-        ...(Object.keys(queryResolvers).length > 0 ? { Query: queryResolvers } : {}),
-        ...(Object.keys(mutationResolvers).length > 0 ? { Mutation: mutationResolvers } : {}),
-        ...scalarResolvers,
-        ...unionResolvers,
-        ...queryNamespacesResolvers,
-        ...mutationNamespacesResolvers,
-      },
+  const schema = new GraphQLSchema({ query, mutation })
+  return schema
+}
+
+/**
+ * Turns a function into the list of queries defined by its specification(s).
+ * Each query is tagged by its name as defined by the specification.
+ */
+function toQueries(
+  moduleName: string,
+  functionName: string,
+  fun: functions.FunctionImplementation,
+  spec: FunctionSpecifications | readonly FunctionSpecifications[] | undefined,
+  setHeader: (server: any, name: string, value: string) => void,
+  getContextInput: (server: any, info: GraphQLResolveInfo) => Promise<any>,
+  getModuleContext: any,
+  errorHandler: ErrorHandler<any, any> | undefined,
+  internalData: InternalData,
+): [string, GraphQLFieldConfig<any, any>][] {
+  return asSpecs(spec)
+    .filter((spec) => spec.type === 'query')
+    .map((spec) => {
+      const queryName = spec.name ?? functionName
+      return makeOperation(
+        'query',
+        moduleName,
+        queryName,
+        fun,
+        setHeader,
+        getContextInput,
+        getModuleContext,
+        errorHandler,
+        internalData,
+      )
     })
-    //console.log(schemaDefs)
-    return schema
-  } catch (error) {
-    console.log(schemaDefs)
+}
+
+/**
+ * Turns a function into the list of mutations defined by its specification(s).
+ * Each mutations is tagged by its name as defined by the specification.
+ */
+function toMutations(
+  moduleName: string,
+  functionName: string,
+  fun: functions.FunctionImplementation,
+  spec: FunctionSpecifications | readonly FunctionSpecifications[] | undefined,
+  setHeader: (server: any, name: string, value: string) => void,
+  getContextInput: (server: any, info: GraphQLResolveInfo) => Promise<any>,
+  getModuleContext: any,
+  errorHandler: ErrorHandler<any, any> | undefined,
+  internalData: InternalData,
+): [string, GraphQLFieldConfig<any, any>][] {
+  return asSpecs(spec)
+    .filter((spec) => spec.type === 'mutation')
+    .map((spec) => {
+      const mutationName = spec.name ?? functionName
+      return makeOperation(
+        'mutation',
+        moduleName,
+        mutationName,
+        fun,
+        setHeader,
+        getContextInput,
+        getModuleContext,
+        errorHandler,
+        internalData,
+      )
+    })
+}
+
+/**
+ * Turns a spec as obtained by the API into a single list that is easier to work with.
+ */
+function asSpecs(
+  spec: FunctionSpecifications | readonly FunctionSpecifications[] | undefined,
+): FunctionSpecifications[] {
+  if (spec === undefined) {
+    return []
+  } else if (spec instanceof Array) {
+    return [...spec]
+  } else {
+    return [spec]
+  }
+}
+
+/**
+ * Creates a tuple with the operation name and a configuration for a resolver for the given operation.
+ *
+ * The operation is created according to the given function's input and output types.
+ * `setHeader`, `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
+ * somehow needed by the resolver implementation.
+ */
+function makeOperation(
+  operationType: 'query' | 'mutation',
+  moduleName: string,
+  operationName: string,
+  fun: functions.FunctionImplementation,
+  setHeader: (server: any, name: string, value: string) => void,
+  getContextInput: (server: any, info: GraphQLResolveInfo) => Promise<any>,
+  getModuleContext: any,
+  errorHandler: ErrorHandler<any, any> | undefined,
+  internalData: InternalData,
+): [string, GraphQLFieldConfig<any, any>] {
+  const resolve = async (
+    _parent: unknown,
+    resolverInput: Record<string, unknown>,
+    serverContext: unknown,
+    info: GraphQLResolveInfo,
+  ) => {
+    // TODO: I have no idea where this should come from, it looks like something from
+    // the context, maybe?
+    const retrieveValue = undefined as unknown as GenericRetrieve
+
+    // Setup logging
+    const operationId = utils.randomOperationId()
+    const logger = logging.build({ moduleName, operationId, operationType, operationName, server: 'GQL' })
+    setHeader(serverContext, 'operation-id', operationId)
+
+    // Decode all the needed bits to call the function
+    const graphQLInputTypeName = 'input'
+    const input = decodeInput(fun.input, resolverInput[graphQLInputTypeName], logger) as never
+    const partialOutputType = types.partialDeep(fun.output)
+
+    // Retrieve the contexts
+    const inputContext = await getContextInput(serverContext, info)
+    const context = await getModuleContext(inputContext, { retrieve: retrieveValue, input, operationId, logger })
+
+    // Call the function and handle a possible failure
+    const contexts = { serverContext, context }
+    const operationData = { operationId, functionName: operationName, retrieve: retrieveValue, input }
+    const handlerInput = { logger, ...operationData, errorHandler, ...contexts }
+    return fun
+      .apply({ context: context, retrieve: retrieveValue, input, operationId, logger })
+      .then((res) => handleFunctionResult(res, partialOutputType, handlerInput))
+      .catch((error) => handleFunctionError({ ...handlerInput, error }))
+  }
+
+  const retrieveTypeResult = retrieve.fromType(fun.input, fun.retrieve)
+  if (!retrieveTypeResult.isOk) {
+    const input = { type: typeToGraphQLInputTypeInternal(fun.input, internalData) }
+    const type = typeToGraphQLOutputTypeInternal(fun.output, internalData)
+    return [operationName, { type, args: { input }, resolve }]
+  } else {
+    const retrieveType = types.concretise(retrieveTypeResult.value).setName(operationName + 'Retrieve')
+    const input = { type: typeToGraphQLInputTypeInternal(fun.input, internalData) }
+    const retrieve = { type: typeToGraphQLInputTypeInternal(retrieveType, internalData) }
+    const type = typeToGraphQLOutputTypeInternal(fun.output, internalData)
+    return [operationName, { type, args: { retrieve, input }, resolve }]
+  }
+}
+
+/**
+ * Tries to decode the given raw input, throwing a graphql error if the process fails.
+ * A logger is needed to perform additional logging and keep track of the decoding result.
+ */
+function decodeInput(inputType: types.Type, rawInput: unknown, log: MondrianLogger) {
+  const decoded = types.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
+  if (decoded.isOk) {
+    log.logInfo('Input decoded')
+    return decoded.value
+  } else {
+    log.logError('Bad request. (input)')
+    throw createGraphQLError(`Invalid input.`, { extensions: decoded.error })
+  }
+}
+
+/**
+ * Given the result of the execution of a function's body it tries to handle it accordingly.
+ * If the result is an `Ok` value (or a barebone non-result value) it is unwrapped, encoded and returned.
+ * If the result is an `Error` then the `errorHandler` function is called and an error is thrown.
+ */
+function handleFunctionResult(
+  res: unknown,
+  partialOutputType: types.Type,
+  handleErrorInput: Omit<HandleErrorInput, 'error'>,
+) {
+  if (result.isFailureResult(res)) {
+    handleFunctionError({ ...handleErrorInput, error: res.error })
+  } else {
+    const value = result.isOkResult(res) ? res.value : res
+    const encodedOutput = types.concretise(partialOutputType).encodeWithoutValidation(value as never)
+    handleErrorInput.logger.logInfo('Completed.')
+    return encodedOutput
+  }
+}
+
+type HandleErrorInput = {
+  functionName: string
+  operationId: string
+  logger: MondrianLogger
+  context: unknown
+  serverContext: any
+  retrieve: retrieve.GenericRetrieve | undefined
+  input: unknown
+  errorHandler: ErrorHandler<any, any> | undefined
+  error: unknown
+}
+
+/**
+ * Handles a failing result. If an `errorHandler` is not defined, the error value is simply rethrown.
+ * If an `errorHandler` is defined, the error and other additional context is passed to it.
+ */
+// TODO: chiedere a edo cosa fa un error handler per poter documentare meglio l'intento
+async function handleFunctionError(handleErrorInput: HandleErrorInput) {
+  const { error, logger: log, errorHandler } = handleErrorInput
+  log.logError('Failed with error.')
+  if (!errorHandler) {
     throw error
+  } else {
+    log.logInfo('Performing cleanup action.')
+    const { context, serverContext, operationId, input, functionName, retrieve } = handleErrorInput
+    const functionArgs = { retrieve, input }
+    const errorHandlerInput = { error, log, functionName, operationId, context, functionArgs, ...serverContext }
+    const result = await errorHandler(errorHandlerInput)
+    if (result) {
+      throw createGraphQLError(result.message, result.options)
+    } else {
+      throw error
+    }
   }
 }

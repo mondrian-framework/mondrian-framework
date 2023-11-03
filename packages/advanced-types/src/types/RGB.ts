@@ -1,5 +1,6 @@
 import { fromRegexes } from './builder'
 import { m } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 const RGB_REGEX =
   /^rgb\(\s*(-?\d+|-?\d*\.\d+(?=%))(%?)\s*,\s*(-?\d+|-?\d*\.\d+(?=%))(\2)\s*,\s*(-?\d+|-?\d*\.\d+(?=%))(\2)\s*\)$/
@@ -7,5 +8,11 @@ const RGB_REGEX =
 export type RGBType = m.CustomType<'RGB', {}, string>
 
 export function rgb(options?: m.BaseOptions): RGBType {
-  return fromRegexes('RGB', 'Invalid CSS RGB color', options, RGB_REGEX)
+  return fromRegexes(
+    'RGB',
+    'Invalid CSS RGB color',
+    options,
+    gen.array(gen.integer({ min: 0, max: 255 }), { minLength: 3, maxLength: 3 }).map((v) => `rgb(${v.join(',')})`),
+    RGB_REGEX,
+  )
 }

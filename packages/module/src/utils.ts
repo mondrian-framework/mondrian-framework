@@ -1,5 +1,4 @@
 import { types } from '@mondrian-framework/model'
-import { assertNever } from '@mondrian-framework/utils'
 import crypto from 'crypto'
 
 /**
@@ -12,67 +11,38 @@ export function randomOperationId() {
   return crypto.randomUUID()
 }
 
+/**
+ * Return a set with all the unique types referenced by the given type.
+ *
+ * @example For example if the given type is an object the resulting set will
+ *          contain not only the object type itself, but also the types of its
+ *          fields
+ */
 export function uniqueTypes(from: types.Type): Set<types.Type> {
   return gatherUniqueTypes(new Set(), from)
 }
 
+/**
+ * Retruns a set with all the unique types referenced by the given list of types.
+ */
 export function allUniqueTypes(from: types.Type[]): Set<types.Type> {
   return from.reduce(gatherUniqueTypes, new Set())
 }
 
+// Returns a set of unique types referenced by the given type. The first argument
+// is a set that contains the types that have already been inspected and is updated
+// _in place_!
 function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): Set<types.Type> {
   if (inspectedTypes.has(type)) {
     return inspectedTypes
   } else {
     inspectedTypes.add(type)
   }
-
-  if (typeof type === 'function') {
-    const concreteType = type()
-    switch (concreteType.kind) {
-      case types.Kind.Union:
-        return gatherTypesReferencedByUnion(inspectedTypes, concreteType)
-      case types.Kind.Object:
-        return gatherTypesReferencedByObject(inspectedTypes, concreteType)
-      default:
-        assertNever(concreteType)
-    }
-  } else {
-    switch (type.kind) {
-      case types.Kind.Number:
-      case types.Kind.String:
-      case types.Kind.Boolean:
-      case types.Kind.Enum:
-      case types.Kind.Literal:
-      case types.Kind.Custom:
-        return inspectedTypes
-      case types.Kind.Array:
-      case types.Kind.Optional:
-      case types.Kind.Nullable:
-        return gatherUniqueTypes(inspectedTypes, type.wrappedType)
-      case types.Kind.Union:
-        return gatherTypesReferencedByUnion(inspectedTypes, type)
-      case types.Kind.Object:
-        return gatherTypesReferencedByObject(inspectedTypes, type)
-      default:
-        assertNever(type)
-    }
-  }
-}
-
-function gatherTypesReferencedByUnion(inspectedTypes: Set<types.Type>, type: types.UnionType<any>): Set<types.Type> {
-  const variants = type.variants as Record<string, types.Type>
-  return Object.values(variants).reduce(gatherUniqueTypes, inspectedTypes)
-}
-
-function gatherTypesReferencedByObject(
-  inspectedTypes: Set<types.Type>,
-  type: types.ObjectType<any, any>,
-): Set<types.Type> {
-  const fields = type.fields as Record<string, types.Field>
-  return Object.values(fields).reduce(gatherTypesReferencedByField, inspectedTypes)
-}
-
-function gatherTypesReferencedByField(inspectedTypes: Set<types.Type>, field: types.Field): Set<types.Type> {
-  return gatherUniqueTypes(inspectedTypes, types.unwrapField(field))
+  return types.match(type, {
+    scalar: () => inspectedTypes,
+    wrapper: ({ wrappedType }) => gatherUniqueTypes(inspectedTypes, wrappedType),
+    union: ({ variants }) => Object.values(variants).reduce(gatherUniqueTypes, inspectedTypes),
+    object: ({ fields }) => Object.values(fields).reduce(gatherUniqueTypes, inspectedTypes),
+    entity: ({ fields }) => Object.values(fields).reduce(gatherUniqueTypes, inspectedTypes),
+  })
 }

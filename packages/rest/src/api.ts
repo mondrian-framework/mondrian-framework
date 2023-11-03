@@ -1,4 +1,4 @@
-import { types } from '@mondrian-framework/model'
+import { retrieve, types } from '@mondrian-framework/model'
 import { functions, logger } from '@mondrian-framework/module'
 import { OpenAPIV3_1 } from 'openapi-types'
 
@@ -7,13 +7,23 @@ export type Api<F extends functions.FunctionsInterfaces> = {
     [K in keyof F]?: FunctionSpecifications<F[K]> | FunctionSpecifications<F[K]>[]
   }
   options?: {
-    introspection?: boolean
+    /**
+     * Default path is /openapi
+     */
+    introspection?: true | { path: string }
     /**
      * Default is /api
      */
     pathPrefix?: string
   }
-  version?: number
+  /**
+   * The current api version. Must be an integer greater than or quelas to 1.
+   */
+  version: number
+  /**
+   * Available openapi securities. The key is used as reference in the function specification.
+   */
+  securities?: Record<string, OpenAPIV3_1.SecuritySchemeObject>
 }
 
 export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch'
@@ -37,8 +47,8 @@ export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
     context: unknown
     operationId: string
     functionArgs: {
-      projection: unknown
-      input: unknown
+      retrieve?: retrieve.GenericRetrieve
+      input?: unknown
     }
   } & RestContext,
 ) => Promise<Response | void>
@@ -57,8 +67,9 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
       query?: string
     }
   }
-  errorCodes?: [F['error']] extends [types.UnionType<infer TS>] ? { [K in keyof TS]?: number } : never
+  errorCodes?: { [K in keyof F['errors']]?: number }
   namespace?: string | null
+  security?: OpenAPIV3_1.SecurityRequirementObject[]
 }
 
 type NullableOperationObject = {

@@ -1,6 +1,7 @@
 import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param wrappedType the {@link types.Type} describing the item held by the new `OptionalType`
@@ -36,11 +37,11 @@ class OptionalTypeImpl<T extends types.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithNoChecks(value: types.Infer<types.OptionalType<T>>): JSONType {
+  encodeWithNoChecks(value: undefined | types.Infer<T>): JSONType {
     return value === undefined ? null : types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 
-  validate(value: types.Infer<types.OptionalType<T>>, validationOptions?: validation.Options): validation.Result {
+  validate(value: undefined | types.Infer<T>, validationOptions?: validation.Options): validation.Result {
     return value === undefined
       ? validation.succeed()
       : types.concretise(this.wrappedType).validate(value as never, validationOptions)
@@ -49,12 +50,21 @@ class OptionalTypeImpl<T extends types.Type>
   decodeWithoutValidation(
     value: unknown,
     decodingOptions?: decoding.Options,
-  ): decoding.Result<types.Infer<types.OptionalType<T>>> {
+  ): decoding.Result<undefined | types.Infer<T>> {
     return value === undefined || value === null
       ? decoding.succeed(undefined)
       : types
           .concretise(this.wrappedType)
           .decodeWithoutValidation(value, decodingOptions)
           .mapError((errors) => errors.map(decoding.addExpected('undefined')))
+  }
+
+  arbitrary(maxDepth: number): gen.Arbitrary<undefined | types.Infer<T>> {
+    if (maxDepth <= 0) {
+      return gen.constant(undefined)
+    } else {
+      const concreteType = types.concretise(this.wrappedType)
+      return gen.oneof(gen.constant(undefined), concreteType.arbitrary(maxDepth - 1))
+    }
   }
 }

@@ -1,7 +1,8 @@
 import { decoding, types, validation } from '../../'
-import { failWithInternalError, prependVariantToAll } from '../../utils'
+import { failWithInternalError } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param variants a record with the different variants of the union
@@ -47,42 +48,31 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
   }
 
   encodeWithNoChecks(value: types.Infer<types.UnionType<Ts>>): JSONType {
-    const failureMessage =
-      'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system'
-    const variantName = singleKeyFromObject(value)
-    if (variantName === undefined) {
-      failWithInternalError(failureMessage)
+    const variantName = this.variantOwnership(value)
+    const variantType = this.variants[variantName]
+    if (variantType === undefined) {
+      failWithInternalError(
+        'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system',
+      )
     } else {
-      const variantType = this.variants[variantName]
-      if (variantType === undefined) {
-        failWithInternalError(failureMessage)
-      } else {
-        const concreteVariantType = types.concretise(variantType)
-        const rawVariantValue = value[variantName]
-        const encoded = concreteVariantType.encodeWithoutValidation(rawVariantValue as never)
-        if (this.isTaggedUnion()) {
-          return Object.fromEntries([[variantName, encoded]])
-        } else {
-          return encoded
-        }
-      }
+      const concreteVariantType = types.concretise(variantType)
+      const encoded = concreteVariantType.encodeWithoutValidation(value as never)
+      return encoded
     }
   }
 
   validate(value: types.Infer<types.UnionType<Ts>>, validationOptions?: validation.Options): validation.Result {
-    const failureMessage =
-      "I tried to validate an object that is not a union's variant. This should have been prevented by the type system"
-    const variantName = Object.keys(value)[0]
-    if (variantName === undefined) {
-      failWithInternalError(failureMessage)
+    const decoded = this.decodeAndTryToValidate(value, undefined, validationOptions)
+    if (!decoded.isOk) {
+      failWithInternalError(
+        'Type system should have prevented this error in validation. This values does not match with any variant of this union.',
+      )
+    }
+    const { validated, validationErrors } = decoded.value
+    if (validated) {
+      return validation.succeed()
     } else {
-      const variantType = this.variants[variantName]
-      if (variantType === undefined) {
-        failWithInternalError(failureMessage)
-      } else {
-        const result = types.concretise(variantType).validate(value[variantName] as never, validationOptions)
-        return result.mapError((errors) => prependVariantToAll(errors, variantName))
-      }
+      return validation.failWithErrors(validationErrors)
     }
   }
 
@@ -90,67 +80,70 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
     value: unknown,
     decodingOptions?: decoding.Options,
   ): decoding.Result<types.Infer<types.UnionType<Ts>>> {
-    if (this.isTaggedUnion()) {
-      if (typeof value === 'object' && value) {
-        const object = value as Record<string, any>
-        const variantName = singleKeyFromObject(object)
-        if (variantName !== undefined && Object.keys(this.variants).includes(variantName)) {
-          return types
-            .concretise(this.variants[variantName])
-            .decodeWithoutValidation(object[variantName], decodingOptions)
-            .map((value) => Object.fromEntries([[variantName, value]]) as types.Infer<types.UnionType<Ts>>)
-            .mapError((errors) => prependVariantToAll(errors, variantName))
-        }
-      }
-      const prettyVariants = Object.keys(this.variants).join(' | ')
-      return decoding.fail(`union (${prettyVariants})`, value)
-    } else {
-      if (decodingOptions?.typeCastingStrategy === 'tryCasting') {
-        //before using casting try to decode without casting in order to select the corret variant
-        const resultWithNoCasting = this.decodeWithoutValidation(value, {
-          ...decodingOptions,
-          typeCastingStrategy: 'expectExactTypes',
-        })
-        if (resultWithNoCasting.isOk) {
-          return resultWithNoCasting
-        }
-      }
-      const errors: decoding.Error[] = []
-      let potentialDecoded: types.Infer<types.UnionType<Ts>> | null = null
-      for (const [variantName, variantType] of Object.entries(this.variants)) {
-        const concrete = types.concretise(variantType)
-        const result = concrete.decodeWithoutValidation(value, decodingOptions)
-        if (result.isOk) {
-          //look ahead with `validate` in order to get a correct variant if possible
-          const validateResult = concrete.validate(result.value as never)
-          if (validateResult.isOk) {
-            return result.map((v) => ({ [variantName]: v } as types.Infer<types.UnionType<Ts>>))
-          } else if (potentialDecoded === null) {
-            //keep this as potential variant but it will not validate
-            potentialDecoded = { [variantName]: result.value } as types.Infer<types.UnionType<Ts>>
-          }
-        } else {
-          errors.push(...result.error)
-        }
-      }
-      if (potentialDecoded !== null) {
-        //returns the non validating variant
-        return decoding.succeed(potentialDecoded)
-      }
-      return decoding.failWithErrors(errors)
+    return this.decodeAndTryToValidate(value, decodingOptions).map(({ value }) => value)
+  }
+
+  arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<types.UnionType<Ts>>> {
+    const variantsGenerators = Object.values(this.variants).map((variantType) =>
+      types.concretise(variantType).arbitrary(maxDepth - 1),
+    )
+    return gen.oneof(...variantsGenerators) as gen.Arbitrary<types.Infer<types.UnionType<Ts>>>
+  }
+
+  variantOwnership(value: types.Infer<types.UnionType<Ts>>): keyof Ts & string {
+    const decoded = this.decodeAndTryToValidate(value)
+    if (!decoded.isOk) {
+      failWithInternalError(
+        'Type system should have prevented this error. This values does not match with any variant of this union.',
+      )
     }
+    return decoded.value.variantName as keyof Ts & string
   }
 
-  isTaggedUnion(): boolean {
-    return this.options?.useTags === true || this.options?.useTags === undefined
+  private decodeAndTryToValidate(
+    value: unknown,
+    decodingOptions?: decoding.Options,
+    validationOptions?: validation.Options,
+  ): decoding.Result<{
+    variantName: keyof Ts
+    value: types.Infer<types.UnionType<Ts>>
+    validated: boolean
+    validationErrors: validation.Error[]
+  }> {
+    if (decodingOptions?.typeCastingStrategy === 'tryCasting') {
+      //before using casting try to decode without casting in order to select the corret variant
+      const resultWithNoCasting = this.decodeAndTryToValidate(value, {
+        ...decodingOptions,
+        typeCastingStrategy: 'expectExactTypes',
+      })
+      if (resultWithNoCasting.isOk) {
+        return resultWithNoCasting
+      }
+    }
+    const decodingErrors: decoding.Error[] = []
+    const validationErrors: validation.Error[] = []
+    let potentialDecoded: { variantName: keyof Ts; value: types.Infer<types.UnionType<Ts>> } | null = null
+    for (const [variantName, variantType] of Object.entries(this.variants)) {
+      const concrete = types.concretise(variantType)
+      const result = concrete.decodeWithoutValidation(value, decodingOptions)
+      if (result.isOk) {
+        //look ahead with `validate` in order to get a correct variant if possible
+        const validateResult = concrete.validate(result.value as never, validationOptions)
+        if (validateResult.isOk) {
+          return decoding.succeed({ variantName, value: result.value, validated: true, validationErrors: [] })
+        } else if (potentialDecoded === null) {
+          //keep this as potential variant but it will not validate
+          validationErrors.push(...validateResult.error)
+          potentialDecoded = { variantName, value: result.value }
+        }
+      } else {
+        decodingErrors.push(...result.error)
+      }
+    }
+    if (potentialDecoded !== null) {
+      //returns the non validating variant
+      return decoding.succeed({ ...potentialDecoded, validated: false, validationErrors })
+    }
+    return decoding.failWithErrors(decodingErrors)
   }
-}
-
-/**
- * @param object the object from which to extract a single key
- * @returns the key of the object if it has exactly one key; otherwise, it returns `undefined`
- */
-function singleKeyFromObject(object: object): string | undefined {
-  const keys = Object.keys(object)
-  return keys.length === 1 ? keys[0] : undefined
 }

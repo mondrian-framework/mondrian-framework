@@ -1,5 +1,3 @@
-import { failWithInternalError } from '../src/utils'
-import { expectToThrowErrorMatching } from './testing-utils'
 import { fc as gen, test } from '@fast-check/vitest'
 import { areSameArray, filterMap, filterMapObject } from '@mondrian-framework/utils'
 import { describe, expect } from 'vitest'
@@ -23,27 +21,6 @@ describe.concurrent('filterMapObject', () => {
     const expected = Object.fromEntries(filterMappedEntries)
     const actual = filterMapObject(object, mapper)
     expect(actual).toEqual(expected)
-  })
-})
-
-describe.concurrent('failWithInternalError', () => {
-  test('throws when called', () => {
-    expect(() => failWithInternalError('foo')).toThrowError(/.*\[internal error\].*/)
-  })
-
-  test.prop([gen.string({ minLength: 10 })])('has the given message', (message) => {
-    expectToThrowErrorMatching(
-      () => failWithInternalError(message),
-      (error) => error.message.includes(message),
-    )
-  })
-
-  const issuePage = 'https://github.com/twinlogix/mondrian-framework/issues'
-  test('Reports the repo issue page', () => {
-    expectToThrowErrorMatching(
-      () => failWithInternalError('message'),
-      (error) => error.message.includes(issuePage),
-    )
   })
 })
 

@@ -1,11 +1,10 @@
 import { slotProvider } from '../../rate-limiter'
-import { idType, unauthorizedType } from '../common/model'
+import { idType, unauthorizedType, notLoggedInType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { userType } from './model'
 import advancedTypes from '@mondrian-framework/advanced-types'
-import { projection, result, types } from '@mondrian-framework/model'
+import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { utils as prismaUtils } from '@mondrian-framework/prisma'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
@@ -19,25 +18,20 @@ const loginInputType = types.object(
 )
 const loginOutputType = types.object(
   {
-    user: userType,
     jwt: types.string(),
   },
   { name: 'LoginOutput' },
 )
-const loginErrorType = types.union(
-  {
-    invalidLogin: types.string(),
-    tooManyRequests: types.string(),
-  },
-  {
-    name: 'LoginError',
-  },
-)
+const loginErrorType = {
+  invalidLogin: types.literal('invalid username or password'),
+  tooManyRequests: types.literal('Too many requests. Retry in few minutes.'),
+} as const
 
 const loginRateLimiter = rateLimiter.build<
   typeof loginInputType,
   typeof loginOutputType,
   typeof loginErrorType,
+  undefined,
   Context
 >({
   key: ({ input }) => input.email,
@@ -52,8 +46,9 @@ const loginRateLimiter = rateLimiter.build<
 export const login = functions.withContext<Context>().build({
   input: loginInputType,
   output: loginOutputType,
-  error: loginErrorType,
-  body: async ({ input, context, projection: proj }) => {
+  errors: loginErrorType,
+  retrieve: undefined,
+  body: async ({ input, context, retrieve: thisRetrieve }) => {
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {
@@ -63,12 +58,9 @@ export const login = functions.withContext<Context>().build({
       where: { id: loggedUser.id },
       data: { metadata: { update: { lastLogin: new Date() } } },
     })
-    const userProjection = projection.subProjection(proj ?? (true as any), ['user'])
-    const select = prismaUtils.projectionToSelection<Prisma.UserSelect>(userType, userProjection)
-    const user = await context.prisma.user.findFirstOrThrow({ where: { id: loggedUser.id }, select })
     const secret = process.env.JWT_SECRET ?? 'secret'
     const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
-    return result.ok({ user, jwt })
+    return result.ok({ jwt })
   },
   middlewares: [loginRateLimiter],
   options: { namespace: 'user' },
@@ -85,21 +77,15 @@ const registerInputType = types.object(
     name: 'RegisterInput',
   },
 )
-const registerErrorType = types.union(
-  {
-    emailAlreadyTaken: types.string(),
-  },
-  {
-    name: 'RegisterError',
-  },
-)
 
 export const register = functions.withContext<Context>().build({
   input: registerInputType,
   output: userType,
-  error: registerErrorType,
-  body: async ({ input, context, projection }) => {
-    const select = prismaUtils.projectionToSelection<Prisma.UserSelect>(userType, projection)
+  errors: {
+    emailAlreadyTaken: types.literal('Email already taken'),
+  },
+  retrieve: { select: true },
+  body: async ({ input, context, retrieve }) => {
     try {
       const user = await context.prisma.user.create({
         data: {
@@ -111,12 +97,11 @@ export const register = functions.withContext<Context>().build({
             },
           },
         },
-        select,
       })
       return result.ok(user)
     } catch {
       //TODO: check if error is "email duplicate"
-      return result.fail({ emailAlreadyTaken: 'This email si already taken' })
+      return result.fail({ emailAlreadyTaken: 'Email already taken' })
     }
   },
   options: { namespace: 'user' },
@@ -125,13 +110,18 @@ export const register = functions.withContext<Context>().build({
 export const follow = functions.withContext<LoggedUserContext>().build({
   input: types.object({ userId: idType }),
   output: userType,
-  error: types.union({ ...unauthorizedType.variants, userNotExists: types.string() }),
-  body: async ({ input, context, projection }) => {
+  errors: {
+    unauthorizedType,
+    notLoggedInType,
+    userNotExists: types.literal('User does not exists'),
+  },
+  retrieve: { select: true },
+  body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {
-      return result.fail({ notLoggedIn: 'Invalid authentication' as const })
+      return result.fail({ notLoggedInType: 'Invalid authentication' })
     }
     if (input.userId === context.userId || (await context.prisma.user.count({ where: { id: input.userId } })) === 0) {
-      return result.fail({ userNotExists: "This user doesn't exists." })
+      return result.fail({ userNotExists: 'User does not exists' })
     }
     await context.prisma.follower.upsert({
       create: {
@@ -146,8 +136,12 @@ export const follow = functions.withContext<LoggedUserContext>().build({
       },
       update: {},
     })
-    const select = prismaUtils.projectionToSelection<Prisma.UserSelect>(userType, projection)
-    const user = await context.prisma.user.findFirstOrThrow({ where: { id: context.userId }, select })
+    const args = retrieve.merge<Prisma.UserFindFirstOrThrowArgs>(
+      userType,
+      { where: { id: context.userId }, select: { id: true } },
+      thisRetrieve,
+    )
+    const user = await context.prisma.user.findFirstOrThrow(args)
     return result.ok(user)
   },
   options: { namespace: 'user' },

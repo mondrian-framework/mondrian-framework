@@ -38,7 +38,7 @@ export type Failure<A, E> = {
  * @param value the value to wrap in an {@link Ok} result
  * @returns a {@link Result} that always succeeds with the given value
  */
-export function ok<A, E>(value: A): Ok<A, E> {
+export function ok<const A, const E>(value: A): Ok<A, E> {
   return new OkImpl(value)
 }
 
@@ -46,7 +46,7 @@ export function ok<A, E>(value: A): Ok<A, E> {
  * @param error the error to wrap in a {@link Failure} result
  * @returns a {@link Result} that always fails with the given error
  */
-export function fail<A, E>(error: E): Failure<A, E> {
+export function fail<const A, const E>(error: E): Failure<A, E> {
   return new FailureImpl(error)
 }
 
@@ -62,7 +62,7 @@ type ResultUtility<A, E> = {
    *          error("fail").chain((n) => error("fail again")) // -> error("fail")
    *          ```
    */
-  chain<B, E1 = E>(f: (value: A) => Result<B, E1>): Result<B, E | E1>
+  chain<const B, const E1 = E>(f: (value: A) => Result<B, E1>): Result<B, E | E1>
 
   /**
    * @param value the new value to replace an {@link Ok}'s value
@@ -73,7 +73,7 @@ type ResultUtility<A, E> = {
    *          result.fail("error").replace(2) // -> result.fail("error")
    *          ```
    */
-  replace<B>(value: B): Result<B, E>
+  replace<const B>(value: B): Result<B, E>
 
   /**
    * @param f the function to apply to the result's held value
@@ -84,7 +84,7 @@ type ResultUtility<A, E> = {
    *          result.fail("error").map((n) => n + 1) // -> result.fail("error")
    *          ```
    */
-  map<B>(f: (value: A) => B): Result<B, E>
+  map<const B>(f: (value: A) => B): Result<B, E>
 
   /**
    * @param f the function to apply to the result's error
@@ -95,7 +95,7 @@ type ResultUtility<A, E> = {
    *          result.ok(1).mapError((error) => `scary ${error}`) // -> result.ok(1)
    *          ```
    */
-  mapError<E1>(f: (error: E) => E1): Result<A, E1>
+  mapError<const E1>(f: (error: E) => E1): Result<A, E1>
 
   /**
    * @param fromError a function used to generate a value `A` from an error `E`
@@ -165,10 +165,10 @@ class OkImpl<A, E> implements Ok<A, E> {
     this.value = value
   }
 
-  chain = <B, E1>(f: (value: A) => Result<B, E1>): Result<B, E | E1> => f(this.value)
-  replace = <B>(value: B): Result<B, E> => ok(value)
-  map = <B>(f: (value: A) => B): Result<B, E> => ok(f(this.value))
-  mapError = <E1>(_f: (error: E) => E1): Result<A, E1> => ok(this.value)
+  chain = <const B, const E1>(f: (value: A) => Result<B, E1>): Result<B, E | E1> => f(this.value)
+  replace = <const B>(value: B): Result<B, E> => ok(value)
+  map = <const B>(f: (value: A) => B): Result<B, E> => ok(f(this.value))
+  mapError = <const E1>(_f: (error: E) => E1): Result<A, E1> => ok(this.value)
   recover = (_fromError: (error: E) => A): A => this.value
   or = (_other: Result<A, E>): Result<A, E> => this
   lazyOr = (_other: (error: E) => Result<A, E>): Result<A, E> => this
@@ -182,10 +182,10 @@ class FailureImpl<A, E> implements Failure<A, E> {
     this.error = error
   }
 
-  chain = <B, E1>(_f: (value: A) => Result<B, E1>): Result<B, E | E1> => fail(this.error)
-  replace = <B>(_value: B): Result<B, E> => fail(this.error)
-  map = <B>(_f: (value: A) => B): Result<B, E> => fail(this.error)
-  mapError = <E1>(f: (error: E) => E1): Result<A, E1> => fail(f(this.error))
+  chain = <const B, const E1>(_f: (value: A) => Result<B, E1>): Result<B, E | E1> => fail(this.error)
+  replace = <const B>(_value: B): Result<B, E> => fail(this.error)
+  map = <const B>(_f: (value: A) => B): Result<B, E> => fail(this.error)
+  mapError = <const E1>(f: (error: E) => E1): Result<A, E1> => fail(f(this.error))
   recover = (fromError: (error: E) => A): A => fromError(this.error)
   or = (other: Result<A, E>): Result<A, E> => other
   lazyOr = (other: (error: E) => Result<A, E>): Result<A, E> => other(this.error)
@@ -281,4 +281,20 @@ export function tryEachFailFast<A, R, R1, E>(
     }
   }
   return ok(valuesAccumulator)
+}
+
+/**
+ * @param value the value you want to check if is a result or not
+ * @returns Returns true if the given unknown value is actually a result
+ */
+export function isResult(value: unknown): value is Result<unknown, unknown> {
+  return value instanceof OkImpl || value instanceof FailureImpl
+}
+
+export function isOkResult(value: unknown): value is Ok<unknown, unknown> {
+  return isResult(value) && value.isOk
+}
+
+export function isFailureResult(value: unknown): value is Failure<unknown, unknown> {
+  return isResult(value) && !value.isOk
 }

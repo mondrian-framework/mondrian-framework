@@ -1,6 +1,7 @@
 import { decoding, types, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param wrappedType the {@link types.Type} describing the item held by the new `NullableType`
@@ -36,23 +37,17 @@ class NullableTypeImpl<T extends types.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithNoChecks(value: types.Infer<types.NullableType<T>>): JSONType {
+  encodeWithNoChecks(value: null | types.Infer<T>): JSONType {
     return value === null ? null : types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 
-  validate(
-    value: types.Infer<types.NullableType<T>>,
-    validationOptions?: validation.Options | undefined,
-  ): validation.Result {
+  validate(value: null | types.Infer<T>, validationOptions?: validation.Options | undefined): validation.Result {
     return value === null
       ? validation.succeed()
       : types.concretise(this.wrappedType).validate(value as never, validationOptions)
   }
 
-  decodeWithoutValidation(
-    value: unknown,
-    decodingOptions?: decoding.Options,
-  ): decoding.Result<types.Infer<types.NullableType<T>>> {
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<null | types.Infer<T>> {
     if (value === null) {
       return decoding.succeed(null)
     } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === undefined) {
@@ -62,6 +57,15 @@ class NullableTypeImpl<T extends types.Type>
         .concretise(this.wrappedType)
         .decodeWithoutValidation(value, decodingOptions)
         .mapError((errors) => errors.map(decoding.addExpected('null')))
+    }
+  }
+
+  arbitrary(maxDepth: number): gen.Arbitrary<null | types.Infer<T>> {
+    if (maxDepth <= 0) {
+      return gen.constant(null)
+    } else {
+      const concreteType = types.concretise(this.wrappedType)
+      return gen.oneof(gen.constant(null), concreteType.arbitrary(maxDepth - 1))
     }
   }
 }

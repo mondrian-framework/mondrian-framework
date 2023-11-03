@@ -7,5 +7,5 @@ const VERSION_REGEX =
 export type VersionType = m.CustomType<'version', {}, string>
 
 export function version(options?: m.BaseOptions): VersionType {
-  return fromRegexes('version', 'Invalid semantic version', options, VERSION_REGEX)
+  return fromRegexes('version', 'Invalid semantic version', options, undefined, VERSION_REGEX)
 }

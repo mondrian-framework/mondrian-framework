@@ -2,6 +2,7 @@ import { decoding, result, types, validation } from '../../'
 import { prependIndexToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType, always, mergeArrays } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * @param wrappedType the {@link types.Type} describing the items held by the new `ArrayType`
@@ -136,6 +137,18 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
   ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
     return objectToArray(object).chain((object) => this.decodeArrayValues(Object.values(object), decodingOptions))
   }
+
+  arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<types.ArrayType<M, T>>> {
+    if (maxDepth <= 0 && (this.options?.minItems ?? 0) <= 0) {
+      return gen.constant([])
+    } else {
+      const concreteType = types.concretise(this.wrappedType)
+      return gen.array(concreteType.arbitrary(maxDepth), {
+        minLength: this.options?.minItems,
+        maxLength: this.options?.maxItems,
+      })
+    }
+  }
 }
 
 /**
@@ -157,6 +170,9 @@ function objectToArray(object: Object): decoding.Result<any[]> {
  */
 function keysAsConsecutiveNumbers(object: Object): number[] | undefined {
   const keys = Object.keys(object).map(Number).sort()
+  if (keys.length === 0) {
+    return []
+  }
   const startsAtZero = keys.at(0) === 0
   return startsAtZero && allConsecutive(keys) ? keys : undefined
 }

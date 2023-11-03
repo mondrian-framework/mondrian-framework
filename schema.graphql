@@ -1,0 +1,42 @@
+type Mutation {
+  prova(retrieve: ProvaRetrieveInput, input: UserInput): User
+}
+
+type User {
+  id: String!
+  name: String!
+  friends: [User!]
+}
+
+input ProvaRetrieveInput {
+  where: UserWhereInput
+}
+
+input UserWhereInput {
+  id: UserWhereInputIdInput
+  name: UserWhereInputNameInput
+  friends: UserWhereInputFriendsInput
+  AND: [UserWhereInput!]
+  OR: [UserWhereInput!]
+  NOT: UserWhereInput
+}
+
+input UserWhereInputIdInput {
+  equals: String
+}
+
+input UserWhereInputNameInput {
+  equals: String
+}
+
+input UserWhereInputFriendsInput {
+  some: UserWhereInput
+  every: UserWhereInput
+  none: UserWhereInput
+}
+
+input UserInput {
+  id: String!
+  name: String!
+  friends: [UserInput!]
+}

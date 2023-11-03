@@ -13,5 +13,8 @@ export function never(): NeverType {
     () => {
       throw new Error('Tried validating a never value')
     },
+    () => {
+      throw new Error('Tried generating a never value')
+    },
   )
 }

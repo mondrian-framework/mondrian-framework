@@ -1,4 +1,5 @@
 import { decoding, m, validation } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 export type EmailType = m.CustomType<'email', {}, string>
 
@@ -8,6 +9,7 @@ export function email(options?: m.BaseOptions): EmailType {
     (value) => value,
     (value) => (typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a mail string', value)),
     validateEmail,
+    () => gen.emailAddress(),
     options,
   )
 }

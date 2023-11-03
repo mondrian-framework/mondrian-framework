@@ -1,4 +1,4 @@
-import { path } from 'src'
+import { path, types } from '.'
 
 /**
  * @param message the message to display in the error
@@ -19,28 +19,6 @@ export function failWithInternalError(message: string): never {
  */
 export function assertNever(_value: never, errorMessage: string): never {
   failWithInternalError(errorMessage)
-}
-
-/**
- * @param taggedVariant an object that should represent a tagged variant (that is, it has a single field)
- * @returns a tuple with the name of the single field of the object and its value
- * @throws an {@link failWithInternalError internal error} if the given object has 0 or more than one fields
- *         this function should only be used for internal purposes _if you are 100% sure_ that the given
- *         object is a tagged variant
- * @example ```ts
- *          unsafeObjectToTaggedVariant({ foo: 1 }) // -> ["foo", 1]
- *          unsafeObjectToTaggedVariant({}) // -> Exception!
- *          unsafeObjectToTaggedVariant({ foo: 1, bar: 1 }) // -> Exception!
- *          ```
- */
-export function unsafeObjectToTaggedVariant<T>(taggedVariant: Record<string, T>): [string, T] {
-  if (taggedVariant) {
-    const entries = Object.entries(taggedVariant)
-    const entry = entries[0]
-    return entry ? entry : failWithInternalError('I tried to get the variant name out of an empty object')
-  } else {
-    failWithInternalError('I tried to get the variant name out of a null or undefined object')
-  }
 }
 
 /**
@@ -72,14 +50,35 @@ export function prependIndexToAll<Data extends Record<string, any>, T extends Wi
   return values.map((value) => ({ ...value, path: value.path.prependIndex(index) }))
 }
 
-/**
- * @param values an array of item that all have a `path` field
- * @param variantName the variant to prepend to the path of each item of the given array
- * @returns an array of item with the path updated with the prepended variant
- */
-export function prependVariantToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
-  values: T[],
-  variantName: string,
-): T[] {
-  return values.map((value) => ({ ...value, path: value.path.prependVariant(variantName) }))
+type TypeTransformer<T extends types.Type> = (type: T, lazyType: T) => types.Type
+export function memoizeTypeTransformation<T extends types.Type>(mapper: TypeTransformer<T>): (type: T) => types.Type {
+  const cache = new Map<types.Type, types.Type>()
+  return (type: T) => {
+    const cachedResult = cache.get(type)
+    if (cachedResult) {
+      return cachedResult
+    }
+    if (typeof type === 'function') {
+      const lazyResult = () => mapper(types.concretise(type), type)
+      cache.set(type, lazyResult)
+      return lazyResult
+    }
+    const result = mapper(type, type)
+    cache.set(type, result)
+    return result
+  }
+}
+
+export function memoizeTransformation<T, R>(mapper: (t: T) => R): (t: T) => R {
+  const cache: Map<T, R> = new Map()
+  function f(t: T): R {
+    const cachedResult = cache.get(t)
+    if (cachedResult) {
+      return cachedResult
+    }
+    const result = mapper(t)
+    cache.set(t, result)
+    return result
+  }
+  return f
 }

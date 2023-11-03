@@ -1,5 +1,7 @@
 import { decoding, encoding, result, types, validation } from '../../'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
+import prand from 'pure-rand'
 
 export abstract class DefaultMethods<T extends types.Type> {
   readonly options?: types.OptionsOf<T>
@@ -13,6 +15,7 @@ export abstract class DefaultMethods<T extends types.Type> {
   abstract encodeWithNoChecks(value: types.Infer<T>, encodingOptions?: encoding.Options): JSONType
   abstract decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<types.Infer<T>>
   abstract validate(value: types.Infer<T>, validationOptions?: validation.Options): validation.Result
+  abstract arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<T>>
 
   encodeWithoutValidation(value: types.Infer<T>, encodingOptions?: encoding.Options): JSONType {
     return encodingOptions?.sensitiveInformationStrategy === 'hide'
@@ -39,6 +42,13 @@ export abstract class DefaultMethods<T extends types.Type> {
     return this.decodeWithoutValidation(value, decodingOptions)
       .mapError((errors) => errors as validation.Error[] | decoding.Error[])
       .chain((decodedValue) => this.validate(decodedValue, validationOptions).replace(decodedValue))
+  }
+
+  example(args?: { maxDepth?: number; seed?: number }): types.Infer<T> {
+    const randomSeed = args?.seed ?? Date.now() ^ (Math.random() * 0x100000000)
+    const random = new gen.Random(prand.xoroshiro128plus(randomSeed))
+    const value = this.arbitrary(args?.maxDepth ?? 1).generate(random, undefined)
+    return value.value
   }
 
   optional = (options: types.OptionalTypeOptions) => types.optional(this.getThis(), options)

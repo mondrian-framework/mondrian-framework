@@ -20,36 +20,37 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): APIGatewayProxyHandlerV2 {
-  const pathPrefix = `/${module.name.toLocaleLowerCase()}${api.options?.pathPrefix ?? '/api'}`
-  const server = lambdaApi({ base: pathPrefix })
-  const globalMaxVersion = utils.getMaxApiVersion(api)
+  utils.assertApiValidity(api)
+  const server = lambdaApi()
   if (api.options?.introspection) {
+    const introspectionPath =
+      typeof api.options.introspection === 'object' ? api.options.introspection.path : `/openapi`
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `${pathPrefix}/doc/v${globalMaxVersion}/schema.json`)
-    server.get(`/doc/swagger-initializer.js`, (req: Request, res: Response) => res.send(indexContent))
-    server.get(`/doc`, (req: Request, res: Response) => {
-      res.redirect(`${pathPrefix}/doc/index.html`)
+      .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}/v${api.version}/schema.json`)
+    server.get(`${introspectionPath}/swagger-initializer.js`, (req: Request, res: Response) => res.send(indexContent))
+    server.get(`${introspectionPath}`, (req: Request, res: Response) => {
+      res.redirect(`${introspectionPath}/index.html`)
     })
-    server.get(`/doc/:v/schema.json`, (req: Request, res: Response) => {
+    server.get(`${introspectionPath}/:v/schema.json`, (req: Request, res: Response) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
-      if (Number.isNaN(version) || version < 1 || version > globalMaxVersion) {
+      if (Number.isNaN(version) || !Number.isInteger(version) || version < 1 || version > api.version) {
         res.status(404)
-        return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${globalMaxVersion}` }
+        return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${api.version}` }
       }
       return rest.openapi.fromModule({ module, api, version })
     })
     // file deepcode ignore NoRateLimitingForExpensiveWebOperation: could disable this by disabling introspection in production environment
-    server.get(`/doc/*`, (req: Request, res: Response) => {
+    server.get(`${introspectionPath}/*`, (req: Request, res: Response) => {
       //avoid path traversal
       if (req.path.match(/\.\.\//g) !== null) {
         res.status(404)
         return
       }
       const file = `${getAbsoluteFSPath()}/${req.path}`
-      const path = file.replace(`${pathPrefix}/doc/`, '')
+      const path = file.replace(`${introspectionPath}/`, '')
       res.sendFile(path)
     })
   }

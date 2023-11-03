@@ -1,4 +1,5 @@
 import { decoding, m, validation } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 const MIN_LAT = -90.0
 const MAX_LAT = 90.0
@@ -13,6 +14,7 @@ export function latitude(options?: m.BaseOptions): LatitudeType {
     (value) =>
       typeof value === 'number' ? decoding.succeed(value) : decoding.fail('Expected a latitude number', value),
     validateLatitude,
+    () => gen.integer({ min: MIN_LAT * 1000, max: MAX_LAT * 1000 }).map((v) => v / 1000),
     options,
   )
 }

@@ -1,7 +1,7 @@
 import { Api, FunctionSpecifications } from './api'
-import { projection, types } from '@mondrian-framework/model'
+import { retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { JSONType, isArray, setTraversingValue, mapObject } from '@mondrian-framework/utils'
+import { JSONType, isArray, setTraversingValue, mapObject, flatMapObject } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
   return internalEncodeQueryObject(input, prefix).join('&')
@@ -33,7 +33,7 @@ function internalEncodeQueryObject(input: JSONType, prefix: string): string[] {
  * FROM { "input[id]": "id", "input[meta][info]": 123 }
  * TO   { id: "id", meta: { info: 123 } }
  */
-export function decodeQueryObject(input: Record<string, unknown>, prefix: string): JSONType {
+export function decodeQueryObject(input: Record<string, unknown>, prefix: string): JSONType | undefined {
   const output = {}
   for (const [key, value] of Object.entries(input)) {
     if (!key.startsWith(prefix)) {
@@ -48,43 +48,113 @@ export function decodeQueryObject(input: Record<string, unknown>, prefix: string
     }
     setTraversingValue(value, path, output)
   }
+  if (Object.keys(output).length === 0) {
+    return undefined
+  }
   return output
 }
 
-export function getPathFromSpecification(functionName: string, spec: FunctionSpecifications, prefix: string): string {
-  return `${prefix}/:v${spec.path ?? `/${functionName}`}`
-}
-
-export function getMaxApiVersion(api: Api<functions.Functions>): number {
-  return Object.values(api.functions)
-    .flatMap((v) => (v ? (isArray(v) ? v : [v]) : []))
-    .map((v) => Math.max(v.version?.max ?? 0, v.version?.min ?? 0))
-    .reduce((p, c) => Math.max(p, c), api.version ?? 1)
+export function getPathsFromSpecification({
+  functionName,
+  specification,
+  prefix,
+  globalMaxVersion,
+}: {
+  functionName: string
+  specification: FunctionSpecifications
+  prefix: string
+  globalMaxVersion: number
+}): string[] {
+  const paths = []
+  for (let i = specification.version?.min ?? 1; i <= (specification.version?.max ?? globalMaxVersion); i++) {
+    paths.push(`${prefix}/v${i}${specification.path ?? `/${functionName}`}`)
+  }
+  return paths
 }
 
 /**
- * Add all non-virtual fields that was excluded in the projection.
+ * Checks the validity of a rest api configuration.
+ * Checks:
+ *  - versions min, max boundaries
+ *  - paths syntax
+ * @param api the api configuration
  */
-export function completeProjection(projection: projection.Projection, type: types.Type): projection.Projection {
-  if (projection === true) {
-    return true
+export function assertApiValidity(api: Api<functions.FunctionsInterfaces>) {
+  if (api.version < 1 || !Number.isInteger(api.version) || api.version > 100) {
+    throw new Error(`Invalid api version. Must be between 1 and 100 and be an integer. Got ${api.version}`)
   }
-  const t = types.concretise(type)
-  if (t.kind === types.Kind.Object) {
-    const allNonVirtual = mapObject(t.fields as types.Fields, (_, fieldType) =>
-      'virtual' in fieldType ? undefined : true,
-    )
-    const previousSelected = mapObject(projection, (fieldName, fieldProjection) =>
-      fieldProjection ? completeProjection(fieldProjection, types.unwrapField(t.fields[fieldName])) : undefined,
-    )
-    return { ...allNonVirtual, ...previousSelected }
-  } else if (t.kind === types.Kind.Union) {
-    return mapObject(t.variants, (variantName, variantType) => {
-      const p = projection[variantName]
-      return p ? completeProjection(p, variantType as types.Type) : true
-    })
-  } else if ('wrappedType' in t) {
-    return completeProjection(projection, t.wrappedType)
+  for (const [functionName, specifications] of Object.entries(api.functions)) {
+    for (const specification of Array.isArray(specifications) ? specifications : [specifications]) {
+      //TODO: Check path syntax, other checks?
+      if (
+        specification?.version?.max != null &&
+        (specification.version.max < 1 ||
+          specification.version.max > api.version ||
+          !Number.isInteger(specification.version.max))
+      ) {
+        throw new Error(
+          `Invalid version for function ${functionName}. 'max' must be between 1 and ${api.version} and be an integer`,
+        )
+      }
+      if (
+        specification?.version?.min != null &&
+        (specification.version.min < 1 ||
+          specification.version.min > api.version ||
+          !Number.isInteger(specification.version.min))
+      ) {
+        throw new Error(
+          `Invalid version for function ${functionName}. 'min' must be between 1 and ${api.version} and be an integer`,
+        )
+      }
+      if (
+        specification?.version?.min != null &&
+        specification.version.max != null &&
+        specification.version.min > specification.version.max
+      ) {
+        throw new Error(`Invalid version for function ${functionName}. 'min' must be less than or equals to 'max'`)
+      }
+    }
   }
-  return projection
+}
+
+/**
+ * Add all non-entity fields that was excluded in the selection will be included.
+ */
+export function completeRetrieve(
+  retr: retrieve.GenericRetrieve | undefined,
+  type: types.Type,
+): retrieve.GenericRetrieve | undefined {
+  if (!retr) {
+    return undefined
+  }
+  //TODO: GenericRetrieve coul be inside an object
+  return types.match(type, {
+    wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
+    entity: ({ fields }) =>
+      retrieve.merge(type, retr, {
+        select: mapObject(fields, (fieldName, fieldType) => {
+          if (types.unwrap(fieldType).kind === types.Kind.Entity) {
+            const subRetrieve = (retr.select ?? {})[fieldName]
+            if (subRetrieve && subRetrieve !== true) {
+              return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)
+            } else {
+              return undefined
+            }
+          }
+          return true
+        }),
+      }) as retrieve.GenericRetrieve,
+    object: ({ fields }) =>
+      flatMapObject(fields, (fieldName, fieldType) =>
+        types.match(types.unwrap(fieldType), {
+          entity: (_, entity) =>
+            [[fieldName, completeRetrieve(((retr ?? {}) as any)[fieldName], entity)]] as [
+              string,
+              retrieve.GenericRetrieve,
+            ][],
+          otherwise: () => [],
+        }),
+      ),
+    otherwise: () => retr,
+  })
 }

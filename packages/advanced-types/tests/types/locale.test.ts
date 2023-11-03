@@ -1,5 +1,5 @@
 import { m } from '../../src/index'
-import { testTypeEncodingAndDecoding } from './property-helper'
+import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
@@ -9,9 +9,11 @@ const invalidValues = gen.string().filter((value) => !knownValidValues.includes(
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(m.locale, {
+  testTypeEncodingAndDecoding(m.locale(), {
     knownValidValues,
     knownInvalidValues,
     invalidValues,
   }),
 )
+
+describe('arbitrary based test', testWithArbitrary(m.locale()))

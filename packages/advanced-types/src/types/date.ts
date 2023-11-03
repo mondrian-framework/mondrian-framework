@@ -1,4 +1,5 @@
 import { m, validation, decoding } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 const DATE_REGEX = /^[+-]?(\d\d*-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01]))$/
 
@@ -10,7 +11,14 @@ export type DateTypeAdditionalOptions = {
 export type DateType = m.CustomType<'date', DateTypeAdditionalOptions, Date>
 
 export function date(options?: m.OptionsOf<DateType>): DateType {
-  return m.custom('date', (value) => value.toISOString().split('T')[0], decodeDate, validateDate, options)
+  return m.custom(
+    'date',
+    (value) => value.toISOString().split('T')[0],
+    decodeDate,
+    validateDate,
+    dateArbitrary,
+    options,
+  )
 }
 
 function decodeDate(value: unknown): decoding.Result<Date> {
@@ -27,4 +35,10 @@ function validateDate(
   options?: m.OptionsOf<DateType>,
 ): validation.Result {
   return m.dateTime(options).validate(value, validationOptions)
+}
+
+function dateArbitrary(_maxDepth: number, options?: m.OptionsOf<DateType>): gen.Arbitrary<Date> {
+  return gen
+    .date({ min: options?.minimum, max: options?.maximum })
+    .map((d) => new Date(Date.parse(d.toISOString().split('T')[0])))
 }

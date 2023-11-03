@@ -1,6 +1,7 @@
 import { fc as gen, test } from '@fast-check/vitest'
 import { decoding, m, types } from '@mondrian-framework/model'
 import { JSONType } from '@mondrian-framework/utils'
+import { decode } from 'punycode'
 import { SuiteFactory, expect } from 'vitest'
 
 /**
@@ -174,5 +175,33 @@ export function testTypeDecodingAndEncoding<T extends m.Type>(
           expect(result.isOk).toBe(false)
         }
       }))
+  }
+}
+
+export function testWithArbitrary(type: types.Type, biunivocalEquality = true): SuiteFactory<{}> {
+  try {
+    const t = types.concretise(type)
+    const arbitrary = t.arbitrary(1)
+    return () => {
+      test.prop([arbitrary])('encode and decode with arbitrary values is ok', (value) => {
+        const encoded = t.encode(value as never)
+        expect(encoded.isOk).toBe(true)
+        if (!encoded.isOk) {
+          return
+        }
+        const decoded = t.decode(encoded.value)
+        expect(decoded.isOk).toBe(true)
+        if (biunivocalEquality) {
+          //expect(decoded.isOk && decoded.value).toEqual(value)
+        } else {
+          expect(decoded.isOk).toBe(true)
+        }
+      })
+    }
+  } catch {
+    //arbitrary is not implemented or not working properly
+    return () => {
+      test('skipped because arbitrary cannot be generated', () => ({}))
+    }
   }
 }

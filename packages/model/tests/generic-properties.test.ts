@@ -14,17 +14,19 @@ describe.concurrent('encoding', () => {
 
   const typeAndEncodedValue = arbitrary
     .typeAndValue()
-    .map(([type, value]) => [type, types.concretise(type).encodeWithoutValidation(value)] as const)
+    .map(([type, value]) => [type, types.concretise(type).encodeWithoutValidation(value), value] as const)
 
   // A note on why the inverse is not true (that is `∃x. decoding(encoding(x)) !== x`)
   // Consider the following type: number().nullable().optional(): a valid value might be
   // `null`; however, both `null` and `undefined` are both encoded to the JSON value `null`!
   // This means that, in the decoding process, when faced with null and the above type
   // the decoded result would be undefined (and not the original null)
-  test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded]) => {
+  test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded, originalValue]) => {
     //encoding(decoding(x)) = x
-    const decoded = assertOk(types.concretise(type).decode(encoded), prettyErrors)
-    const encodedAgain = assertOk(types.concretise(type).encode(decoded as never), prettyErrors)
+    const decodedResult = types.concretise(type).decode(encoded)
+    const decoded = assertOk(decodedResult, prettyErrors)
+    const encodedResult = types.concretise(type).encode(decoded as never)
+    const encodedAgain = assertOk(encodedResult, prettyErrors)
     expect(encodedAgain).toEqual(encoded)
   })
 })

@@ -12,6 +12,7 @@ type RateLimitMiddlewareInput<
   I extends types.Type,
   O extends types.Type,
   E extends functions.ErrorType,
+  C extends functions.OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
 > = {
   /**
@@ -21,7 +22,7 @@ type RateLimitMiddlewareInput<
    * @param args The function arguments.
    * @returns The key of the group or null.
    */
-  key: (args: functions.FunctionArguments<I, O, Context>) => string | null
+  key: (args: functions.FunctionArguments<I, O, C, Context>) => string | null
 
   /**
    * The rate limit to apply to requests passing through this middleware.
@@ -34,7 +35,7 @@ type RateLimitMiddlewareInput<
    * @param args The function arguments.
    * @returns A function result instance.
    */
-  onLimit?: (args: functions.FunctionArguments<I, O, Context>) => functions.FunctionResult<O, E>
+  onLimit?: (args: functions.FunctionArguments<I, O, C, Context>) => functions.FunctionResult<O, E, C>
 
   /**
    * The actual implementation of the rate-limiter storage. If undefined is passed, then an {@link InMemorySlotProvider} is used.
@@ -79,13 +80,14 @@ export function build<
   const I extends types.Type,
   const O extends types.Type,
   const E extends functions.ErrorType,
+  const R extends functions.OutputRetrieveCapabilities,
   const Context extends Record<string, unknown>,
 >({
   key,
   rate,
   slotProvider,
   onLimit,
-}: RateLimitMiddlewareInput<I, O, E, Context>): functions.Middleware<I, O, E, Context> {
+}: RateLimitMiddlewareInput<I, O, E, R, Context>): functions.Middleware<I, O, E, R, Context> {
   const provider = new SlidingWindowProvider({
     rate: typeof rate === 'string' ? parseRate(rate) : rate,
     slotProvider: slotProvider ?? new InMemorySlotProvider(),

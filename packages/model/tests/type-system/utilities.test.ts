@@ -1,63 +1,8 @@
 import { arbitrary, types } from '../../src'
 import { object } from '../../src/types-exports'
 import { assertOk } from '../testing-utils'
-import { fc as gen, test } from '@fast-check/vitest'
+import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
-
-describe('merge', () => {
-  test('Lazyness is supported', () => {
-    const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const t3 = () => types.merge(t1(), t2())
-    const t4 = () => types.merge(t3(), types.object({}))
-    const result = t4().validate({ n: 1, s: '1', t2: { s: '2' } })
-    expect(result.isOk).toBe(true)
-  })
-})
-
-describe('pick', () => {
-  test('Lazyness is supported', () => {
-    const t3 = () => types.pick(t1(), { t2: true })
-    const t4 = () => types.merge(t3(), types.object({}))
-    const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
-    expect(result.isOk).toBe(true)
-  })
-})
-
-describe('omit', () => {
-  test('Lazyness is supported', () => {
-    const t3 = () => types.omit(t1(), { n: true })
-    const t4 = () => types.merge(t3(), types.object({}))
-    const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
-    expect(result.isOk).toBe(true)
-  })
-})
-
-describe('omitReferences', () => {
-  test('Lazyness is supported', () => {
-    const t3 = () => types.omitVirtualFields(t1())
-    const t4 = () => types.merge(t3(), types.object({}))
-    const t1 = () => types.object({ n: { virtual: types.number() }, t2: types.optional(t2) })
-    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
-    expect(result.isOk).toBe(true)
-  })
-})
-
-describe('partial', () => {
-  test('Lazyness is supported', () => {
-    const t3 = () => types.partial(t1())
-    const t4 = () => types.merge(t3(), types.object({}))
-    const t1 = () => types.object({ n: types.number(), t2: types.optional(t2) })
-    const t2 = () => types.object({ s: types.string(), t1: types.optional(t1) })
-    const result = t4().validate({ t2: { s: '2' } })
-    expect(result.isOk).toBe(true)
-  })
-})
 
 describe('Utilities', () => {
   test('isArray', () => {
@@ -124,11 +69,11 @@ describe('partialDeep', () => {
     assertOk(partialModel().validate({ model: { field1: '' } }))
   })
   test('validate with recursive union', () => {
-    const model = () => types.union({ field1: types.string(), field2: types.string(), model })
+    const model = () => types.union({ field1: types.string(), field2: types.object({ inner: model }) })
     const partialModel = types.partialDeep(model)
-    assertOk(partialModel().validate({ field1: '' }))
-    assertOk(partialModel().validate({ field2: '' }))
-    assertOk(partialModel().validate({ model: { field1: '' } }))
-    assertOk(partialModel().validate({ model: { field2: '' } }))
+    assertOk(partialModel().validate(''))
+    assertOk(partialModel().validate({ inner: '' }))
+    assertOk(partialModel().validate({ inner: { inner: undefined } }))
+    assertOk(partialModel().validate({ inner: { inner: '' } }))
   })
 })

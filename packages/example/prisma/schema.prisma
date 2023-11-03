@@ -51,6 +51,10 @@ model Post {
   authorId    String         @db.ObjectId
   author      User           @relation(fields: [authorId], references: [id])
   likes       Like[]
+
+  //embedded  ExampleType
+  //embeddeds ExampleType[]
+  //optional  Int?
 }
 
 model Like {
@@ -63,3 +67,4 @@ model Like {
 
   @@unique([userId, postId])
 }
+

@@ -1,5 +1,6 @@
 import { types, decoding, validation } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * The type of a timestamp, defined as a custom type.
@@ -16,7 +17,7 @@ export type TimestampOptions = { minimum?: Date; maximum?: Date }
  * @returns a {@link CustomType `CustomType`} representing a timestamp
  */
 export function timestamp(options?: types.OptionsOf<TimestampType>): TimestampType {
-  return types.custom('timestamp', encodeTimestamp, decodeTimestamp, validateTimestamp, options)
+  return types.custom('timestamp', encodeTimestamp, decodeTimestamp, validateTimestamp, timestampArbitrary, options)
 }
 
 function encodeTimestamp(timestamp: Date): JSONType {
@@ -57,4 +58,8 @@ function validateTimestamp(
     return validation.fail(`Timestamp must be minimum ${minimum.toISOString()}`, input)
   }
   return validation.succeed()
+}
+
+function timestampArbitrary(_maxDepth: number, options?: types.TimestampOptions): gen.Arbitrary<Date> {
+  return gen.date({ min: options?.minimum, max: options?.maximum })
 }

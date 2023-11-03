@@ -1,6 +1,7 @@
 import { module, utils } from '.'
 import { result, types, validation } from '@mondrian-framework/model'
 import { JSONType, areJsonsEquals, assertNever, mapObject } from '@mondrian-framework/utils'
+import gen from 'fast-check'
 
 /**
  * Specify how a custom type should be serialized.
@@ -70,7 +71,9 @@ function serializeTypes(
   typeMap: Record<string, TypeSchema>
   nameMap: Map<types.Type, string>
 } {
-  const allTypes = Object.values(moduleInterface.functions).flatMap((f) => [f.input, f.output, f.error])
+  const allTypes = Object.values(moduleInterface.functions).flatMap((f) =>
+    f.errors ? [f.input, f.output, ...Object.values(f.errors)] : [f.input, f.output],
+  )
   const uniqueTypes = utils.allUniqueTypes(allTypes)
   const nameMap: Map<types.Type, string> = new Map()
   const typeMap: Record<string, TypeSchema> = {}
@@ -129,78 +132,71 @@ function serializeType(
   switch (concreteType.kind) {
     case types.Kind.String:
       return {
-        string: {
-          type: 'string',
-          options: concreteType.options
-            ? {
-                ...concreteType.options,
-                regex: concreteType.options.regex ? concreteType.options.regex.source : undefined,
-              }
-            : undefined,
-        },
+        type: 'string',
+        options: concreteType.options
+          ? {
+              ...concreteType.options,
+              regex: concreteType.options.regex ? concreteType.options.regex.source : undefined,
+            }
+          : undefined,
       }
     case types.Kind.Number:
-      return { number: { type: 'number', options: concreteType.options } }
+      return { type: 'number', options: concreteType.options }
     case types.Kind.Boolean:
-      return { boolean: { type: 'boolean', options: concreteType.options } }
+      return { type: 'boolean', options: concreteType.options }
     case types.Kind.Literal:
-      const literalValue =
-        concreteType.literalValue === null
-          ? { null: null }
-          : typeof concreteType.literalValue === 'string'
-          ? { string: concreteType.literalValue }
-          : typeof concreteType.literalValue === 'number'
-          ? { number: concreteType.literalValue }
-          : { boolean: concreteType.literalValue as boolean }
-      return { literal: { type: 'literal', literalValue, options: concreteType.options } }
+      return { type: 'literal', literalValue: concreteType.literalValue, options: concreteType.options }
     case types.Kind.Enum:
-      return { enumeration: { type: 'enumeration', variants: concreteType.variants, options: concreteType.options } }
+      return { type: 'enumeration', variants: concreteType.variants, options: concreteType.options }
     case types.Kind.Array:
-      return { array: { type: 'array', wrappedType: resolve(concreteType.wrappedType), options: concreteType.options } }
+      return { type: 'array', wrappedType: resolve(concreteType.wrappedType), options: concreteType.options }
     case types.Kind.Nullable:
       return {
-        nullable: { type: 'nullable', wrappedType: resolve(concreteType.wrappedType), options: concreteType.options },
+        type: 'nullable',
+        wrappedType: resolve(concreteType.wrappedType),
+        options: concreteType.options,
       }
     case types.Kind.Optional:
       return {
-        optional: { type: 'optional', wrappedType: resolve(concreteType.wrappedType), options: concreteType.options },
+        type: 'optional',
+        wrappedType: resolve(concreteType.wrappedType),
+        options: concreteType.options,
       }
     case types.Kind.Object:
       return {
-        object: {
-          type: 'object',
-          fields: mapObject(concreteType.fields, (_, field: types.Field) =>
-            'virtual' in field ? { type: resolve(field.virtual), virtual: true } : { type: resolve(field) },
-          ),
-          options: concreteType.options,
-          lazy: typeof type === 'function' ? true : undefined,
-        },
+        type: 'object',
+        fields: mapObject(concreteType.fields, (_, field: types.Type) => resolve(field)),
+        options: concreteType.options,
+        lazy: typeof type === 'function' ? true : undefined,
+      }
+    case types.Kind.Entity:
+      return {
+        type: 'entity',
+        fields: mapObject(concreteType.fields, (_, field: types.Type) => resolve(field)),
+        options: concreteType.options,
+        lazy: typeof type === 'function' ? true : undefined,
       }
     case types.Kind.Union:
       return {
-        union: {
-          type: 'union',
-          variants: mapObject(concreteType.variants, (_, variantType: types.Type) => ({ type: resolve(variantType) })),
-          options: concreteType.options,
-          lazy: typeof type === 'function' ? true : undefined,
-        },
+        type: 'union',
+        variants: mapObject(concreteType.variants, (_, variantType: types.Type) => ({ type: resolve(variantType) })),
+        options: concreteType.options,
+        lazy: typeof type === 'function' ? true : undefined,
       }
     case types.Kind.Custom:
       const customSerializer = customSerializers[concreteType.typeName]
       const customSerialization = customSerializer ? customSerializer(concreteType, (type) => resolve(type)) : undefined
       return {
-        custom: {
-          type: 'custom',
-          typeName: concreteType.typeName,
-          options: concreteType.options
-            ? {
-                name: concreteType.options.name,
-                description: concreteType.options.description,
-                sensitive: concreteType.options.sensitive,
-              }
-            : undefined,
-          custom: customSerialization,
-        },
+        type: 'custom',
+        typeName: concreteType.typeName,
+        options: concreteType.options
+          ? {
+              name: concreteType.options.name,
+              description: concreteType.options.description,
+              sensitive: concreteType.options.sensitive,
+            }
+          : undefined,
+        custom: customSerialization,
       }
     default:
       assertNever(concreteType)
@@ -218,8 +214,12 @@ function serializeFunctions(
   const functionMap = mapObject(moduleInterface.functions, (_, functionInterface) => {
     const input = nameMap.get(functionInterface.input)!
     const output = nameMap.get(functionInterface.output)!
-    const error = nameMap.get(functionInterface.error)!
-    return { input, output, error, options: functionInterface.options }
+    if (functionInterface.errors) {
+      const errors = mapObject(functionInterface.errors, (_, errorType) => nameMap.get(errorType)!)
+      return { input, output, errors, options: functionInterface.options }
+    } else {
+      return { input, output, options: functionInterface.options }
+    }
   })
   return functionMap
 }
@@ -295,7 +295,13 @@ const optionalTypeSchema = types.object({
 })
 const objectTypeSchema = types.object({
   type: types.literal('object'),
-  fields: types.record(types.object({ type: types.string(), virtual: types.boolean().optional() })),
+  fields: types.record(types.string()),
+  lazy: types.boolean().optional(),
+  options: types.object(baseOptionsFields).optional(),
+})
+const entityTypeSchema = types.object({
+  type: types.literal('entity'),
+  fields: types.record(types.string()),
   lazy: types.boolean().optional(),
   options: types.object(baseOptionsFields).optional(),
 })
@@ -314,27 +320,26 @@ const customTypeSchema = types.object({
       'json',
       (v) => v,
       (v) => (v === undefined ? result.ok(null) : result.ok(v as JSONType)),
-      (v) => validation.succeed(),
+      () => validation.succeed(),
+      () => gen.constant({}),
     )
     .optional(),
 })
 const typeSchema = types
-  .union(
-    {
-      string: stringTypeSchema,
-      number: numberTypeSchema,
-      boolean: booleanTypeSchema,
-      literal: literalTypeSchema,
-      enumeration: enumTypeSchema,
-      array: arrayTypeSchema,
-      nullable: nullableTypeSchema,
-      optional: optionalTypeSchema,
-      object: objectTypeSchema,
-      union: unionTypeSchema,
-      custom: customTypeSchema,
-    },
-    { useTags: false },
-  )
+  .union({
+    string: stringTypeSchema,
+    number: numberTypeSchema,
+    boolean: booleanTypeSchema,
+    literal: literalTypeSchema,
+    enumeration: enumTypeSchema,
+    array: arrayTypeSchema,
+    nullable: nullableTypeSchema,
+    optional: optionalTypeSchema,
+    object: objectTypeSchema,
+    entity: entityTypeSchema,
+    union: unionTypeSchema,
+    custom: customTypeSchema,
+  })
   .setName('TypeSchema')
 type TypeSchema = types.Infer<typeof typeSchema>
 
@@ -342,7 +347,16 @@ const functionSchema = types
   .object({
     input: types.string({ minLength: 1 }),
     output: types.string({ minLength: 1 }),
-    error: types.string({ minLength: 1 }),
+    errors: types.record(types.string({ minLength: 1 })).optional(),
+    retrieve: types
+      .object({
+        where: types.literal(true).optional(),
+        select: types.literal(true).optional(),
+        orderBy: types.literal(true).optional(),
+        take: types.literal(true).optional(),
+        skip: types.literal(true).optional(),
+      })
+      .optional(),
     options: types
       .object({
         namespace: types.string().optional(),

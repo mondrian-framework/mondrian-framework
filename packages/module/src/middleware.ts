@@ -1,6 +1,6 @@
 import { functions } from '.'
-import { ErrorType } from './function'
-import { projection, result, types } from '@mondrian-framework/model'
+import { ErrorType, OutputRetrieveCapabilities } from './function'
+import { decoding, result, retrieve, types, validation } from '@mondrian-framework/model'
 import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -8,17 +8,19 @@ import { SeverityNumber } from '@opentelemetry/api-logs'
  * This middleware checks if the requested projection does not exceed the maximum given depth.
  * @param maxDepth the maximum depth.
  */
-export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<types.Type, types.Type, ErrorType, {}> {
+export function checkMaxProjectionDepth(
+  maxDepth: number,
+): functions.Middleware<types.Type, types.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check max projection depth',
-    apply: (args, next) => {
-      const depth = projection.depth(args.projection ?? true)
+    apply: (args, next, thisFunction) => {
+      const depth = retrieve.selectionDepth(thisFunction.output, args.retrieve ?? {})
       if (depth > maxDepth) {
-        const errorMessage = `Max projection depth reached: requested projection have a depth of ${depth}. The maximum is ${maxDepth}.`
+        const errorMessage = `Max selection depth reached: requested selection have a depth of ${depth}. The maximum is ${maxDepth}.`
         args.logger.emit({
           body: errorMessage,
           attributes: {
-            projection: JSON.stringify(projection),
+            projection: JSON.stringify(retrieve),
             depth,
             maxDepth,
           },
@@ -37,47 +39,63 @@ export function checkMaxProjectionDepth(maxDepth: number): functions.Middleware<
  * @param onFailure the action to take on failure.
  */
 export function checkOutputType(
+  functionName: string,
   onFailure: 'log' | 'throw',
-): functions.Middleware<types.Type, types.Type, ErrorType, {}> {
+): functions.Middleware<types.Type, types.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
-      const nextRes = await next(args)
-      if (!nextRes.isOk) {
+      const nextRes: any = await next(args)
+      let outputValue
+      //Unwrap the value
+      if (thisFunction.errors && !nextRes.isOk) {
         return nextRes
+      } else if (thisFunction.errors) {
+        outputValue = nextRes.value
+      } else {
+        outputValue = nextRes
       }
-      const res = nextRes.value
-
-      const outputPartialDeepType = types.concretise(types.partialDeep(thisFunction.output))
-      const checkResult = projection
-        .respectsProjection(thisFunction.output, args.projection ?? (true as never), res)
-        .chain((trimmed) => outputPartialDeepType.validate(trimmed).replace(trimmed))
-
-      if (!checkResult.isOk) {
-        const errorsMessage = JSON.stringify(checkResult.error)
+      const trimResult = retrieve.trimToSelection(thisFunction.output, args.retrieve ?? {}, outputValue as never)
+      if (!trimResult.isOk) {
+        const errorStrings = trimResult.error.map((error) => {
+          if ('expected' in error) {
+            return decoding.errorToString(error)
+          } else {
+            validation.errorToString(error)
+          }
+        })
         args.logger.emit({
           body: 'Invalid output',
           attributes: {
-            projection: JSON.stringify(projection),
-            output: JSON.stringify(
-              outputPartialDeepType.encodeWithoutValidation(res, { sensitiveInformationStrategy: 'hide' }),
+            retrieve: JSON.stringify(retrieve),
+            errors: Object.fromEntries(
+              trimResult.error.map((v, i) => [
+                i,
+                { ...v, gotJSON: JSON.stringify(v.got), got: `${v.got}`, path: v.path.format() },
+              ]),
             ),
-            errors: errorsMessage,
           },
           severityNumber: SeverityNumber.ERROR,
         })
 
         switch (onFailure) {
           case 'log':
-            return res
+            return outputValue
           case 'throw':
-            throw new Error(`Invalid output: ${errorsMessage}`)
+            throw new Error(
+              `Invalid output on function ${functionName}. Errors: ${errorStrings
+                .map((v, i) => `(${i + 1}) ${v}`)
+                .join('; ')}`,
+            )
           default:
             assertNever(onFailure)
         }
       }
-
-      return result.ok(checkResult.value)
+      if (thisFunction.errors) {
+        return result.ok(trimResult.value)
+      } else {
+        return trimResult.value
+      }
     },
   }
 }

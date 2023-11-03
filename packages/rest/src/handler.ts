@@ -1,7 +1,7 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateOpenapiInput } from './openapi'
-import { completeProjection } from './utils'
-import { decoding, projection, result, types } from '@mondrian-framework/model'
+import { completeRetrieve } from './utils'
+import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -25,7 +25,11 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 }): (args: { request: Request; serverContext: ServerContext }) => Promise<Response> {
   const minVersion = specification.version?.min ?? 1
   const maxVersion = specification.version?.max ?? globalMaxVersion
-  const inputExtractor = getInputExtractor({ functionBody, specification })
+  const getInputFromRequest = specification.openapi
+    ? specification.openapi.input
+    : generateGetInputFromRequest({ functionBody, specification })
+  const inputType = functionBody.input
+  const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = types.concretise(types.partialDeep(functionBody.output))
 
   const thisLogger = logger.build({
@@ -45,63 +49,83 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     const operationLogger = thisLogger.updateContext({ operationId })
     const responseHeaders = { 'operation-id': operationId }
 
-    //Check version
-    const version = checkVersion({ request, minVersion, maxVersion })
-    if (!version.isOk) {
-      operationLogger.logError('Bad request. (version)')
-      endSpanWithError({ span, failure: version })
-      return addHeadersToResponse(version.error, responseHeaders)
-    }
-
     //Decode input
-    const input = specification.openapi ? specification.openapi.input(request) : inputExtractor(request)
-    const decoded = decodeInput({ input, inputType: functionBody.input })
-    if (!decoded.isOk) {
-      operationLogger.logError('Bad request. (input)')
-      endSpanWithError({ span, failure: decoded })
-      return addHeadersToResponse(decoded.error, responseHeaders)
+    let input: unknown = null
+    if (!types.isNever(inputType)) {
+      const rawInput = getInputFromRequest(request)
+      const decoded = decodeRawInput({ input: rawInput, type: inputType })
+      if (!decoded.isOk) {
+        operationLogger.logError('Bad request. (input)')
+        endSpanWithError({ span, failure: decoded })
+        return addHeadersToResponse(decoded.error, responseHeaders)
+      }
+      input = decoded.value
+      span?.addEvent('Input decoded')
     }
-    span?.addEvent('Input decoded')
 
-    //Decode projection
-    const decodedProjection = decodeProjection({ request, outputType: functionBody.output })
-    if (!decodedProjection.isOk) {
-      operationLogger.logError('Bad request. (projection)')
-      endSpanWithError({ span, failure: decodedProjection })
-      return addHeadersToResponse(decodedProjection.error, responseHeaders)
+    //Decode retrieve
+    let retrieveValue: retrieve.GenericRetrieve | undefined = undefined
+    if (retrieveType.isOk) {
+      const rawRetrieve = request.headers['retrieve']
+      if (rawRetrieve && typeof rawRetrieve === 'string') {
+        let jsonRawRetrieve
+        try {
+          jsonRawRetrieve = JSON.parse(rawRetrieve)
+        } catch {
+          jsonRawRetrieve = 'Invalid JSON'
+        }
+        const decodedRetrieve = decodeRawRetrieve({ input: jsonRawRetrieve, type: retrieveType.value })
+        if (!decodedRetrieve.isOk) {
+          operationLogger.logError('Bad request. (retrieve)')
+          endSpanWithError({ span, failure: decodedRetrieve })
+          return addHeadersToResponse(decodedRetrieve.error, responseHeaders)
+        }
+        retrieveValue = completeRetrieve(decodedRetrieve.value as retrieve.GenericRetrieve, functionBody.output)
+      } else {
+        retrieveValue = completeRetrieve({}, functionBody.output)
+      }
+      span?.addEvent('Retrieve decoded')
     }
-    const givenProjection = completeProjection(decodedProjection.value, functionBody.output)
-    span?.addEvent('Projection decoded')
 
     let moduleContext
     try {
       const contextInput = await context(serverContext)
       moduleContext = await module.context(contextInput, {
-        projection: givenProjection,
-        input: decoded.value,
+        retrieve: retrieveValue,
+        input,
         operationId,
         logger: operationLogger,
       })
-      const result = await functionBody.apply({
-        projection: givenProjection as projection.FromType<types.Type>,
+      const res = (await functionBody.apply({
+        retrieve: retrieveValue ?? {},
+        input: input as never,
         context: moduleContext as Record<string, unknown>,
-        input: decoded.value as never,
         operationId,
         logger: operationLogger,
-      })
-      if (result.isOk) {
-        const encoded = partialOutputType.encodeWithoutValidation(result.value)
+      })) as any
+
+      if (result.isResult(res) && !res.isOk) {
+        const codes = (specification.errorCodes ?? {}) as Record<string, number>
+        if (functionBody.errors) {
+          const key = Object.keys(res.error as Record<string, unknown>)[0]
+          const status = key ? codes[key] ?? 400 : 400
+          const encoded = types.concretise(functionBody.errors[key]).encodeWithoutValidation(res.error as never)
+          const response: Response = { status, body: encoded, headers: responseHeaders }
+          operationLogger.logInfo('Completed with error.')
+          endSpanWithResponse({ span, response })
+          return response
+        } else {
+          const reason =
+            "Function failed with an error but it explicitly stated it couldn't fail since its error field is undefined"
+          const failure = result.fail({ status: 500, body: { reason } })
+          endSpanWithError({ span, failure })
+          return addHeadersToResponse(failure.error, responseHeaders)
+        }
+      } else {
+        let value = result.isResult(res) && res.isOk ? res.value : res
+        const encoded = partialOutputType.encodeWithoutValidation(value as never)
         const response: Response = { status: 200, body: encoded, headers: responseHeaders }
         operationLogger.logInfo('Completed.')
-        endSpanWithResponse({ span, response })
-        return response
-      } else {
-        const codes = (specification.errorCodes ?? {}) as Record<string, number>
-        const key = Object.keys(result.error)[0]
-        const status = codes[key] ?? 400
-        const encoded = functionBody.error.encodeWithoutValidation(result.error)
-        const response: Response = { status, body: encoded, headers: responseHeaders }
-        operationLogger.logInfo('Completed with error.')
         endSpanWithResponse({ span, response })
         return response
       }
@@ -118,10 +142,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           functionName,
           operationId,
           context: moduleContext,
-          functionArgs: {
-            projection: decodedProjection.value,
-            input: decoded.value,
-          },
+          functionArgs: { input, retrieve: retrieveValue },
           ...serverContext,
         })
         if (result !== undefined) {
@@ -134,9 +155,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
       throw e
     }
   }
-
-  return async ({ request, serverContext }) => {
-    if (tracer) {
+  if (tracer) {
+    return async ({ request, serverContext }) => {
       return tracer.startActiveSpan(
         `mondrian:rest-handler:${functionName}`,
         {
@@ -149,66 +169,29 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         },
         (span) => handler(request, serverContext, span),
       )
-    } else {
-      return handler(request, serverContext)
     }
+  } else {
+    return ({ request, serverContext }) => handler(request, serverContext)
   }
 }
 
-function getInputExtractor(args: {
+function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }
 
-function checkVersion({
-  request,
-  minVersion,
-  maxVersion,
-}: {
-  request: Request
-  minVersion: number
-  maxVersion: number
-}): result.Result<number, Response> {
-  const v = (request.params as Record<string, string>).v
-  const version = Number(v ? v.replace('v', '') : Number.NaN)
-  if (Number.isNaN(version) || version < minVersion || version > maxVersion) {
-    return result.fail({
-      status: 404,
-      body: { error: 'Invalid version', minVersion: `v${minVersion}`, maxVersion: `v${maxVersion}`, got: version },
-      headers: {},
-    })
-  }
-  return result.ok(version)
+function decodeRawInput({ input, type }: { input: unknown; type: types.Type }): result.Result<unknown, Response> {
+  const decoded = types.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
+  return decoded.mapError((error) => ({ status: 400, body: { errors: error, message: 'Invalid input' }, headers: {} }))
 }
 
-function decodeInput({
-  input,
-  inputType,
-}: {
-  input: unknown
-  inputType: types.Type
-}): result.Result<unknown, Response> {
-  const decoded = types.concretise(inputType).decode(input, { typeCastingStrategy: 'tryCasting' })
-  return decoded.mapError((error) => ({ status: 400, body: { errors: error }, headers: {} }))
-}
-
-function decodeProjection({
-  request,
-  outputType,
-}: {
-  request: Request
-  outputType: types.Type
-}): result.Result<projection.Projection, Response> {
-  const projectionHeader = request.headers.projection
-  const projectionObject = typeof projectionHeader === 'string' ? JSON.parse(projectionHeader) : null
-  const givenProjection = projection.decode(outputType, projectionObject != null ? projectionObject : true, {
-    typeCastingStrategy: 'tryCasting',
-  }) as decoding.Result<projection.Projection>
-  return givenProjection.mapError((error) => ({
+function decodeRawRetrieve({ input, type }: { input: unknown; type: types.Type }): result.Result<unknown, Response> {
+  const decoded = types.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
+  return decoded.mapError((error) => ({
     status: 400,
-    body: { errors: error, message: "On 'projection' header" },
+    body: { errors: error, message: 'Invalid retrieve' },
     headers: {},
   }))
 }
@@ -225,6 +208,8 @@ function endSpanWithError({ span, failure }: { span?: Span; failure: result.Fail
 
 function endSpanWithResponse({ span, response }: { span?: Span; response: Response }): void {
   span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, response.status)
-  span?.setStatus({ code: response.status.toString().slice(0, 1) === '2' ? SpanStatusCode.OK : SpanStatusCode.ERROR })
+  const responseHasSuccessStatusCode = 200 <= response.status && response.status <= 299
+  const spanStatusCode = responseHasSuccessStatusCode ? SpanStatusCode.OK : SpanStatusCode.ERROR
+  span?.setStatus({ code: spanStatusCode })
   span?.end()
 }

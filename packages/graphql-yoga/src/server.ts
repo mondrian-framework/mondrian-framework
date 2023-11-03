@@ -40,7 +40,7 @@ export function start<const Fs extends functions.Functions, const ContextInput>(
     logging: true,
   })
   server.route({
-    url: api.options?.pathPrefix ?? `/${module.name.toLocaleLowerCase()}/graphql`,
+    url: api.options?.pathPrefix ?? `/graphql`,
     method: ['GET', 'POST', 'OPTIONS'],
     handler: async (request, reply) => {
       const ctx = { request, reply }

@@ -203,8 +203,11 @@ export function trimToSelection<T extends types.Type>(
   return result
 }
 
-export function fromType(type: types.Type, capabilities: Capabilities | undefined): result.Result<types.Type, null> {
-  if (!capabilities) {
+export function fromType(
+  type: types.Type,
+  capabilities: Capabilities | undefined,
+): result.Result<types.ObjectType<types.Mutability.Immutable, types.Types>, null> {
+  if (!capabilities || Object.keys(capabilities).length === 0) {
     return result.fail(null)
   }
   const res = types.match(type, {
@@ -212,10 +215,13 @@ export function fromType(type: types.Type, capabilities: Capabilities | undefine
     entity: (_, type) => result.ok(retrieve(type, capabilities)),
     otherwise: () => result.fail(null),
   }) as result.Result<types.Type, null>
-  return res
+  return res as result.Result<types.ObjectType<types.Mutability.Immutable, types.Types>, null>
 }
 
-function retrieve(entity: types.Lazy<types.EntityType<any, any>>, capabilities: Capabilities): types.Type {
+function retrieve(
+  entity: types.Lazy<types.EntityType<any, any>>,
+  capabilities: Capabilities,
+): types.ObjectType<types.Mutability.Immutable, types.Types> {
   return types.object({
     ...(capabilities.select ? { select: types.optional(entitySelect(entity)) } : {}),
     ...(capabilities.where ? { where: types.optional(entityWhere(entity)) } : {}),

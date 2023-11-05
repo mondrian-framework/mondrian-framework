@@ -9,7 +9,7 @@ const api: graphql.Api<module.Functions> = {
     login: { type: 'query' },
     follow: { type: 'mutation' },
     writePost: { type: 'mutation' },
-    readPosts: { type: 'query' },
+    readPosts: { type: 'query', name: 'posts' },
     likePost: { type: 'mutation' },
   },
   options: { introspection: true },

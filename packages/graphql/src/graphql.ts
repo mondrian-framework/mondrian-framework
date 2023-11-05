@@ -91,6 +91,8 @@ type InternalData = {
   readonly usedNames: Map<string, number>
   // The default name to assign to the current type in the iteration process
   readonly defaultName: string | undefined
+  // a map of errorName -> errorType -> generatedErrorType
+  readonly errorTypes: Map<string, Map<types.Type, types.ObjectType<any, any>>>
 }
 
 function typeToGraphQLOutputType(type: types.Type, internalData: InternalData): GraphQLOutputType {
@@ -213,7 +215,7 @@ function literalToGraphQLType(
       `Literal value of type ${
         typeof literal.literalValue === 'object' ? 'null' : typeof literal.literalValue
       }. Value: ${literal.literalValue}`,
-    name: literal.options?.name ?? `Literal${capitalise(`${literal.literalValue}`)}`,
+    name: literal.options?.name,
   })
   return scalarFromType(mappedLiteral, internalData)
 }
@@ -460,6 +462,7 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
     knownCustomTypes: new Map(),
     defaultName: undefined,
     usedNames: new Map(),
+    errorTypes: new Map(),
   }
   const queriesArray = moduleFunctions.flatMap(([name, fun]) =>
     toQueries(
@@ -490,11 +493,11 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
   const query =
     queriesArray.length === 0
       ? undefined
-      : new GraphQLObjectType({ name: 'Query', fields: Object.fromEntries(queriesArray) })
+      : new GraphQLObjectType({ name: 'Query', fields: () => Object.fromEntries(queriesArray) })
   const mutation =
     mutationsArray.length === 0
       ? undefined
-      : new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutationsArray) })
+      : new GraphQLObjectType({ name: 'Mutation', fields: () => Object.fromEntries(mutationsArray) })
 
   const schema = new GraphQLSchema({ query, mutation })
   const schemaPrinted = printSchema(schema)
@@ -629,32 +632,69 @@ function makeOperation(
     const contexts = { serverContext, context }
     const operationData = { operationId, functionName: operationName, retrieve: retrieveValue, input }
     const handlerInput = { logger, ...operationData, errorHandler, ...contexts }
-    return fun
-      .apply({ context: context, retrieve: retrieveValue, input, operationId, logger })
-      .then((res) => handleFunctionResult(res, partialOutputType, handlerInput))
-      .catch((error) => handleFunctionError({ ...handlerInput, error }))
+    try {
+      const res = await fun.apply({ context: context, retrieve: retrieveValue, input, operationId, logger })
+      return handleFunctionResult(res, partialOutputType, handlerInput)
+    } catch (error) {
+      return handleFunctionError({ ...handlerInput, error })
+    }
   }
 
-  const input = {
-    type: typeToGraphQLInputType(fun.input, {
-      ...internalData,
-      defaultName: `${capitalise(operationName)}Input`,
-    }),
-  }
-  const type = typeToGraphQLOutputType(fun.output, {
+  const plainInput = typeToGraphQLInputType(fun.input, {
+    ...internalData,
+    defaultName: `${capitalise(operationName)}Input`,
+  })
+  const isInputNullable = types.isOptional(fun.input) || types.isNullable(fun.input)
+  const input = { type: isInputNullable ? plainInput : new GraphQLNonNull(plainInput) }
+
+  const outputType = getFunctionOutputTypeWithErrors(fun, operationName, internalData)
+  const plainOutput = typeToGraphQLOutputType(outputType, {
     ...internalData,
     defaultName: `${capitalise(operationName)}Result`,
   })
+  const isOutputNullable = types.isOptional(outputType) || types.isNullable(outputType)
+  const output = isOutputNullable ? plainOutput : new GraphQLNonNull(plainOutput)
 
   const capabilities = fun.retrieve ?? {}
   delete fun.retrieve?.select
   const retrieveType = retrieve.fromType(fun.output, capabilities)
   if (retrieveType.isOk) {
     const graphqlRetrieveArgs = retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
-    return [operationName, { type, args: { input, ...graphqlRetrieveArgs }, resolve }]
+    return [operationName, { type: output, args: { input, ...graphqlRetrieveArgs }, resolve }]
   } else {
-    return [operationName, { type, args: { input }, resolve }]
+    return [operationName, { type: output, args: { input }, resolve }]
   }
+}
+
+function getFunctionOutputTypeWithErrors(
+  fun: functions.FunctionInterface,
+  functionName: string,
+  internalData: InternalData,
+): types.Type {
+  if (!fun.errors) {
+    return fun.output
+  }
+  const wrappedOutput =
+    types.isEntity(fun.output) || types.isObject(fun.output)
+      ? fun.output
+      : types.object({ result: fun.output }).setName(`${capitalise(functionName)}WrappedResult`)
+  const errors = mapObject(fun.errors, (errorName, errorType) => {
+    const newError = types.object({ [errorName]: errorType }).setName(capitalise(errorName))
+    const errorsWithThisName = internalData.errorTypes.get(errorName)
+    if (errorsWithThisName) {
+      const oldError = errorsWithThisName.get(errorType)
+      if (oldError) {
+        return oldError
+      } else {
+        errorsWithThisName.set(errorType, newError)
+        return newError
+      }
+    } else {
+      internalData.errorTypes.set(errorName, new Map([[errorType, newError]]))
+      return newError
+    }
+  })
+  return types.union({ ...errors, result: wrappedOutput }).setName(`${capitalise(functionName)}Result`)
 }
 
 /**
@@ -677,13 +717,13 @@ function decodeInput(inputType: types.Type, rawInput: unknown, log: MondrianLogg
  * If the result is an `Ok` value (or a barebone non-result value) it is unwrapped, encoded and returned.
  * If the result is an `Error` then the `errorHandler` function is called and an error is thrown.
  */
-function handleFunctionResult(
+async function handleFunctionResult(
   res: unknown,
   partialOutputType: types.Type,
   handleErrorInput: Omit<HandleErrorInput, 'error'>,
 ) {
   if (result.isFailureResult(res)) {
-    handleFunctionError({ ...handleErrorInput, error: res.error })
+    return res.error
   } else {
     const value = result.isOkResult(res) ? res.value : res
     const encodedOutput = types.concretise(partialOutputType).encodeWithoutValidation(value as never)
@@ -710,11 +750,9 @@ type HandleErrorInput = {
  */
 // TODO: chiedere a edo cosa fa un error handler per poter documentare meglio l'intento
 async function handleFunctionError(handleErrorInput: HandleErrorInput) {
-  const { error, logger: log, errorHandler } = handleErrorInput
+  const { error, logger: log, errorHandler, functionName } = handleErrorInput
   log.logError('Failed with error.')
-  if (!errorHandler) {
-    throw error
-  } else {
+  if (errorHandler) {
     log.logInfo('Performing cleanup action.')
     const { context, serverContext, operationId, input, functionName, retrieve } = handleErrorInput
     const functionArgs = { retrieve, input }
@@ -722,8 +760,12 @@ async function handleFunctionError(handleErrorInput: HandleErrorInput) {
     const result = await errorHandler(errorHandlerInput)
     if (result) {
       throw createGraphQLError(result.message, result.options)
-    } else {
-      throw error
     }
+  }
+
+  if (error instanceof Error) {
+    throw createGraphQLError(`Internal server error: ${error.message}`, { originalError: error, path: [functionName] })
+  } else {
+    throw createGraphQLError(`Internal server error.`, { path: [functionName] })
   }
 }

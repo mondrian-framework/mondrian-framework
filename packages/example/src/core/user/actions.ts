@@ -23,8 +23,8 @@ const loginOutputType = types.object(
   { name: 'LoginOutput' },
 )
 const loginErrorType = {
-  invalidLogin: types.literal('invalid username or password'),
-  tooManyRequests: types.literal('Too many requests. Retry in few minutes.'),
+  invalidLogin: types.string(),
+  tooManyRequests: types.string(),
 } as const
 
 const loginRateLimiter = rateLimiter.build<
@@ -113,7 +113,7 @@ export const follow = functions.withContext<LoggedUserContext>().build({
   errors: {
     unauthorizedType,
     notLoggedInType,
-    userNotExists: types.literal('User does not exists'),
+    userNotExists: types.string(),
   },
   retrieve: { select: true },
   body: async ({ input, context, retrieve: thisRetrieve }) => {

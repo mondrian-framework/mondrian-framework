@@ -7,5 +7,5 @@ export const idType = types.string({
   regex: /^[0-9a-f]{24}$/,
 })
 
-export const notLoggedInType = types.literal('Invalid authentication')
-export const unauthorizedType = types.literal('Unauthorized')
+export const notLoggedInType = types.string()
+export const unauthorizedType = types.string()

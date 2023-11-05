@@ -2215,6 +2215,30 @@ export const isScalar: (type: Type) => boolean = matcher({
 })
 
 /**
+ * Checks if the {@link unwrap}ped type is a object type.
+ * @param type the type to check
+ * @returns true only for {@link EntityType}
+ */
+export const isObject: (type: Type) => boolean = matcher({
+  object: () => true,
+  array: () => false,
+  wrapper: ({ wrappedType }) => isObject(wrappedType),
+  otherwise: () => false,
+})
+
+/**
+ * Checks if the {@link unwrap}ped type is a entity type.
+ * @param type the type to check
+ * @returns true only for {@link ObjectType}
+ */
+export const isEntity: (type: Type) => boolean = matcher({
+  entity: () => true,
+  array: () => false,
+  wrapper: ({ wrappedType }) => isEntity(wrappedType),
+  otherwise: () => false,
+})
+
+/**
  * Matches a given `type` with the corresponding function in `cases`.
  * The return type of each function is generic and can be specified by the user.
  * Some types can be gouped toghether with this keys: scalar, wrapper, otherwhise.

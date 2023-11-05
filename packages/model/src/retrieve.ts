@@ -149,6 +149,7 @@ function removeEmbeddedEntities(type: types.Type): types.Type {
     array: ({ wrappedType }) => types.array(removeEmbeddedEntities(wrappedType)),
     entity: ({ fields }) => types.entity(omitEntityFields(fields)),
     object: ({ fields }) => types.object(omitEntityFields(fields)),
+    union: ({ variants }) => types.union(mapObject(variants, (_, variantType) => removeEmbeddedEntities(variantType))),
     otherwise: (_, t) => t,
   })
 }
@@ -158,8 +159,11 @@ function removeEmbeddedEntities(type: types.Type): types.Type {
  * @param retrieve the retrieve with a selection.
  * @returns the specific sub-type of the root type.
  */
-export function selectedType<T extends types.Type>(type: T, retrieve: FromType<T, { select: true }>): types.Type {
-  const select = retrieve.select
+export function selectedType<T extends types.Type>(
+  type: T,
+  retrieve: FromType<T, { select: true }> | undefined,
+): types.Type {
+  const select = retrieve?.select
   if (!select) {
     return removeEmbeddedEntities(type)
   }
@@ -175,7 +179,7 @@ export function selectedType<T extends types.Type>(type: T, retrieve: FromType<T
         } else if (typeof selection === 'object' && selection.select) {
           return [[fieldName, selectedType(fieldType, selection)]]
         } else {
-          return []
+          return [[fieldName, types.optional(fieldType)]]
         }
       })
       return types.object(selectedFields)

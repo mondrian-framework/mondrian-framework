@@ -9,7 +9,7 @@ export const userType = () =>
     {
       id: idType,
       firstName: types.string(),
-      lastName: types.string(),
+      lastName: types.string({ description: 'Lastname of user' }),
       email: advancedTypes.email(),
       posts: types.array(postType),
       givenLikes: types.array(likeType),

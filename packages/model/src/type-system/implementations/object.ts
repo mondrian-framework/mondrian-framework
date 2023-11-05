@@ -1,4 +1,4 @@
-import { decoding, result, types, validation } from '../../'
+import { decoding, path, result, types, validation } from '../../'
 import { prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType, always, filterMapObject, mergeArrays } from '@mondrian-framework/utils'
@@ -133,21 +133,31 @@ function decodeObjectProperties(
   object: Record<string, unknown>,
   decodingOptions?: decoding.Options,
 ): decoding.Result<any> {
-  const addDecodedEntry = (accumulator: [string, unknown][], [fieldName, value]: readonly [string, unknown]) => {
-    accumulator.push([fieldName, value])
-    return accumulator
+  const keySet = new Set([...Object.keys(fields), ...Object.keys(object)])
+  const errors: decoding.Error[] = []
+  const result: Record<string, unknown> = {}
+  for (const key of keySet) {
+    if (errors.length > 0 && decodingOptions?.errorReportingStrategy !== 'allErrors') {
+      break
+    }
+    const type = fields[key]
+    const value = object[key]
+    if (!type && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
+      errors.push({ expected: 'undefined', got: value, path: path.empty().prependField(key) })
+      continue
+    } else if (!type) {
+      continue
+    }
+    const decodedValue = types.concretise(type).decodeWithoutValidation(value, decodingOptions)
+    if (decodedValue.isOk) {
+      result[key] = decodedValue.value
+    } else {
+      errors.push(...prependFieldToAll(decodedValue.error, key))
+    }
   }
-  const decodeEntry = ([fieldName, fieldType]: [string, types.Type]) =>
-    types
-      .concretise(fieldType)
-      .decodeWithoutValidation(object[fieldName], decodingOptions)
-      .map((value) => [fieldName, value] as const)
-      .mapError((errors) => prependFieldToAll(errors, fieldName))
-
-  const entries = Object.entries(fields)
-  const decodedEntries =
-    decodingOptions?.errorReportingStrategy === 'allErrors'
-      ? result.tryEach(entries, [], addDecodedEntry, [] as decoding.Error[], mergeArrays, decodeEntry)
-      : result.tryEachFailFast(entries, [], addDecodedEntry, decodeEntry)
-  return decodedEntries.map(Object.fromEntries)
+  if (errors.length > 0) {
+    return decoding.failWithErrors(errors)
+  } else {
+    return decoding.succeed(result)
+  }
 }

@@ -55,7 +55,13 @@ export function checkOutputType(
       } else {
         outputValue = nextRes
       }
-      const trimResult = retrieve.trimToSelection(thisFunction.output, args.retrieve ?? {}, outputValue as never)
+      const retrieveType = retrieve.fromType(thisFunction.output, thisFunction.retrieve)
+      const defaultRetrieve = retrieveType.isOk ? { select: {} } : {}
+      const trimResult = retrieve.trimToSelection(
+        thisFunction.output,
+        args.retrieve ?? defaultRetrieve,
+        outputValue as never,
+      )
       if (!trimResult.isOk) {
         const errorStrings = trimResult.error.map((error) => {
           if ('expected' in error) {

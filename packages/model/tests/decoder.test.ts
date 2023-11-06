@@ -608,7 +608,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
     test('works with more than needed fields', () => {
       const object = { field1: 1, field3: 1 }
-      checkValue(model.decodeWithoutValidation(object, { typeCastingStrategy: 'tryCasting' }), { field1: 1 })
+      checkValue(model.decodeWithoutValidation(object, { fieldStrictness: 'allowAdditionalFields' }), { field1: 1 })
       checkError(model.decodeWithoutValidation(object), [
         { expected: 'undefined', got: 1, path: path.empty().prependField('field3') },
       ])

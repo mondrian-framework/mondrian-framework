@@ -142,7 +142,9 @@ function decodeEntityProperties(
     }
     const type = fields[key]
     const value = entity[key]
-    if (!type && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
+    if (type === undefined && value === undefined) {
+      continue
+    } else if (!type && decodingOptions?.fieldStrictness === 'expectExactFields') {
       errors.push({ expected: 'undefined', got: value, path: path.empty().prependField(key) })
       continue
     } else if (!type) {

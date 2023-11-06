@@ -57,13 +57,14 @@ export function checkOutputType(
       }
       const retrieveType = retrieve.fromType(thisFunction.output, thisFunction.retrieve)
       const defaultRetrieve = retrieveType.isOk ? { select: {} } : {}
-      const trimResult = retrieve.trimToSelection(
-        thisFunction.output,
-        args.retrieve ?? defaultRetrieve,
-        outputValue as never,
-      )
-      if (!trimResult.isOk) {
-        const errorStrings = trimResult.error.map((error) => {
+
+      const typeToRespect = retrieve.selectedType(thisFunction.output, args.retrieve ?? defaultRetrieve)
+      const respectResult = types.concretise(typeToRespect).decode(outputValue as never, {
+        errorReportingStrategy: 'allErrors',
+      })
+
+      if (!respectResult.isOk) {
+        const errorStrings = respectResult.error.map((error) => {
           if ('expected' in error) {
             return decoding.errorToString(error)
           } else {
@@ -75,7 +76,7 @@ export function checkOutputType(
           attributes: {
             retrieve: JSON.stringify(retrieve),
             errors: Object.fromEntries(
-              trimResult.error.map((v, i) => [
+              respectResult.error.map((v, i) => [
                 i,
                 { ...v, gotJSON: JSON.stringify(v.got), got: `${v.got}`, path: v.path.format() },
               ]),
@@ -98,9 +99,9 @@ export function checkOutputType(
         }
       }
       if (thisFunction.errors) {
-        return result.ok(trimResult.value)
+        return result.ok(respectResult.value)
       } else {
-        return trimResult.value
+        return respectResult.value
       }
     },
   }

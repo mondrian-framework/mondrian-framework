@@ -11,8 +11,6 @@ import { PrismaInstrumentation } from '@prisma/instrumentation'
 export const opentelemetry = { setup }
 
 function setup(serviceName: string, serviceVersion: string) {
-  //Until https://github.com/prisma/prisma/issues/14887 is closed
-  return
   const provider = new NodeTracerProvider({
     resource: new Resource({
       [SemanticResourceAttributes.SERVICE_NAME]: serviceName,

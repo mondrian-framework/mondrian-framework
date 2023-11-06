@@ -188,25 +188,6 @@ export function selectedType<T extends types.Type>(
   })
 }
 
-/**
- * Trims a value in function of it's {@link types.Type Type} and a selection
- * @param type the value {@link types.Type Type}
- * @param retrieve the retrieve with a selection
- * @param value the value to be trimmed
- * @returns a trimmed value
- */
-export function trimToSelection<T extends types.Type>(
-  type: T,
-  retrieve: FromType<T, { select: true }>,
-  value: types.Infer<types.PartialDeep<T>>,
-): result.Result<types.Infer<types.PartialDeep<T>>, decoding.Error[] | validation.Error[]> {
-  const typeToRespect = selectedType(type, retrieve)
-  const result = types.concretise(typeToRespect).decode(value, {
-    errorReportingStrategy: 'allErrors',
-  })
-  return result
-}
-
 export function fromType(
   type: types.Type,
   capabilities: Capabilities | undefined,

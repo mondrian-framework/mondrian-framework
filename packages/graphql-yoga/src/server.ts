@@ -5,7 +5,7 @@ import { GraphQLResolveInfo } from 'graphql'
 import { NoSchemaIntrospectionCustomRule } from 'graphql'
 import { createYoga, Plugin } from 'graphql-yoga'
 
-export type Context = { fastify: { request: FastifyRequest; reply: FastifyReply } }
+export type ServerContext = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
 export function start<const Fs extends functions.Functions, const ContextInput>({
   module,
@@ -17,8 +17,8 @@ export function start<const Fs extends functions.Functions, const ContextInput>(
   module: module.Module<Fs, ContextInput>
   api: graphql.Api<Fs>
   server: FastifyInstance
-  context: (serve: Context, info: GraphQLResolveInfo) => Promise<ContextInput>
-  errorHandler?: graphql.ErrorHandler<Fs, Context>
+  context: (serve: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
+  errorHandler?: graphql.ErrorHandler<Fs, ContextInput>
 }): void {
   const schema = graphql.fromModule({
     module,

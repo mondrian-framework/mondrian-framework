@@ -179,7 +179,7 @@ export function selectedType<T extends types.Type>(
         } else if (typeof selection === 'object' && selection.select) {
           return [[fieldName, selectedType(fieldType, selection)]]
         } else {
-          return [[fieldName, types.optional(fieldType)]]
+          return []
         }
       })
       return types.object(selectedFields)

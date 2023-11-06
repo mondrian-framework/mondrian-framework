@@ -61,6 +61,7 @@ export function checkOutputType(
       const typeToRespect = retrieve.selectedType(thisFunction.output, args.retrieve ?? defaultRetrieve)
       const respectResult = types.concretise(typeToRespect).decode(outputValue as never, {
         errorReportingStrategy: 'allErrors',
+        fieldStrictness: 'allowAdditionalFields',
       })
 
       if (!respectResult.isOk) {

@@ -142,7 +142,9 @@ function decodeObjectProperties(
     }
     const type = fields[key]
     const value = object[key]
-    if (!type && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
+    if (type === undefined && value === undefined) {
+      continue
+    } else if (!type && decodingOptions?.fieldStrictness !== 'allowAdditionalFields') {
       errors.push({ expected: 'undefined', got: value, path: path.empty().prependField(key) })
       continue
     } else if (!type) {

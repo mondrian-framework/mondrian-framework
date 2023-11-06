@@ -4,16 +4,19 @@ import { WithPath } from './utils'
 /**
  * The options that can be used when decoding a type:
  * - `typeCastingStrategy` its possible values are:
- *   - `"expectExactTypes"`: no casts will be attempted in the decoding process
+ *   - `"expectExactTypes"` (default): no casts will be attempted in the decoding process
  *   - `"tryCasting"`: type casting may be attempted in the decoding process
  * - `errorReportingStrategy`: its possible values are:
- *   - `"stopAtFirstError"`: the decoding process will stop and fail at the first error it encounters
+ *   - `"stopAtFirstError"` (default): the decoding process will stop and fail at the first error it encounters
  *   - `"allErrors"`: the decoding process will try and gather as much errors as possible before failing
+ * - `fieldStrictness`: its possible values are:
+ *   - `"expectExactFields"` (default): when decoding objects or entities it will return an error if additional fields are present
+ *   - `"allowAdditionalFields"`:  when decoding objects or entities it will ignore additional fields if present
  */
 export type Options = {
   typeCastingStrategy?: 'tryCasting' | 'expectExactTypes'
   errorReportingStrategy?: 'allErrors' | 'stopAtFirstError'
-  // TODO: object strictness?
+  fieldStrictness?: 'allowAdditionalFields' | 'expectExactFields'
 }
 
 /**

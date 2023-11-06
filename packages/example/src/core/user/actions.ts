@@ -16,12 +16,7 @@ const loginInputType = types.object(
   },
   { name: 'LoginInput' },
 )
-const loginOutputType = types.object(
-  {
-    jwt: types.string(),
-  },
-  { name: 'LoginOutput' },
-)
+const loginOutputType = types.string({ name: 'LoginOutput' })
 const loginErrorType = {
   invalidLogin: types.string(),
   tooManyRequests: types.string(),
@@ -60,7 +55,7 @@ export const login = functions.withContext<Context>().build({
     })
     const secret = process.env.JWT_SECRET ?? 'secret'
     const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
-    return result.ok({ jwt })
+    return result.ok(jwt)
   },
   middlewares: [loginRateLimiter],
   options: { namespace: 'user' },

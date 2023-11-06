@@ -1,4 +1,4 @@
-import { Api, FunctionSpecifications, Request } from './api'
+import { Api, FunctionSpecifications } from './api'
 import { generateOpenapiInput } from './openapi'
 import { retrieve, result, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
@@ -87,26 +87,10 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
           if (!res.isOk) {
             throw new Error(JSON.stringify(res.error))
           }
-          if (retrieveType.isOk) {
-            const trimmedValue = retrieve.trimToSelection(
-              functionBody.output,
-              retrieve as retrieve.GenericRetrieve,
-              res.value as never,
-            )
-            if (!trimmedValue.isOk) {
-              throw new Error(JSON.stringify(trimmedValue.error))
-            }
-            if (functionBody.errors) {
-              return result.ok(trimmedValue.value)
-            } else {
-              return trimmedValue.value
-            }
+          if (functionBody.errors) {
+            return result.ok(res.value)
           } else {
-            if (functionBody.errors) {
-              return result.ok(res.value)
-            } else {
-              return res.value
-            }
+            return res.value
           }
         } else if (functionBody.errors) {
           const json = await response.json()

@@ -31,46 +31,44 @@ const post = () =>
     { name: 'Post' },
   )
 
-describe('trimToSelection', () => {
+describe('selectedType', () => {
   test('empty trim', () => {
-    const res = retrieve.trimToSelection(user, { select: {} }, { name: 'Jonh' })
-    expect(res.isOk && res.value).toStrictEqual({})
+    const type = retrieve.selectedType(user, { select: {} })
+    const res = types.concretise(type).decode({ name: 'Jonh' })
+    expect(res.isOk && res.value).toEqual({ name: 'Jonh' })
   })
   test('select one scalar', () => {
-    const res1 = retrieve.trimToSelection(user, { select: { name: true } }, { name: 'Jonh' })
-    expect(res1.isOk && res1.value).toStrictEqual({ name: 'Jonh' })
-    const res2 = retrieve.trimToSelection(user, { select: { name: true } }, {})
+    const type1 = retrieve.selectedType(user, { select: { name: true } })
+    const res1 = types.concretise(type1).decode({ name: 'Jonh' })
+    expect(res1.isOk && res1.value).toEqual({ name: 'Jonh' })
+    const type2 = retrieve.selectedType(user, { select: { name: true } })
+    const res2 = types.concretise(type2).decode({})
     expect(res2.isOk).toBe(false)
-    const res3 = retrieve.trimToSelection(user, { select: { name: true } }, { name: 1 as any })
+    const type3 = retrieve.selectedType(user, { select: { name: true } })
+    const res3 = types.concretise(type2).decode({ name: 1 })
     expect(res3.isOk).toBe(false)
   })
   test('select one scalar and one entity', () => {
-    const res1 = retrieve.trimToSelection(user, { select: { name: true, posts: {} } }, { name: 'Jonh' })
-    expect(res1.isOk && res1.value).toStrictEqual({ name: 'Jonh' })
-    const res2 = retrieve.trimToSelection(user, { select: { name: true, posts: { select: {} } } }, { name: 'Jonh' })
+    const type1 = retrieve.selectedType(user, { select: { name: true, posts: {} } })
+    const res1 = types.concretise(type1).decode({ name: 'Jonh' })
+    expect(res1.isOk && res1.value).toEqual({ name: 'Jonh' })
+    const type2 = retrieve.selectedType(user, { select: { name: true, posts: { select: {} } } })
+    const res2 = types.concretise(type2).decode({ name: 'Jonh' })
     expect(res2.isOk).toBe(false)
-    const res3 = retrieve.trimToSelection(
-      user,
-      { select: { name: true, posts: { select: {} } } },
-      { name: 'Jonh', posts: [{ title: 'Title' }] },
-    )
-    expect(res3.isOk && res3.value).toStrictEqual({ name: 'Jonh', posts: [{}] })
-    const res4 = retrieve.trimToSelection(
-      user,
-      { select: { name: true, posts: { select: { title: true } } } },
-      { name: 'Jonh', posts: [{ title: 'Title' }] },
-    )
-    expect(res4.isOk && res4.value).toStrictEqual({ name: 'Jonh', posts: [{ title: 'Title' }] })
+    const type3 = retrieve.selectedType(user, { select: { name: true, posts: { select: {} } } })
+    const res3 = types.concretise(type3).decode({ name: 'Jonh', posts: [{ title: 'Title' }] })
+    expect(res3.isOk && res3.value).toEqual({ name: 'Jonh', posts: [{ title: 'Title' }] })
+    const type4 = retrieve.selectedType(user, { select: { name: true, posts: { select: { title: true } } } })
+    const res4 = types.concretise(type4).decode({ name: 'Jonh', posts: [{ title: 'Title' }] })
+    expect(res4.isOk && res4.value).toEqual({ name: 'Jonh', posts: [{ title: 'Title' }] })
   })
   test('select one whole embedded', () => {
     const now = new Date()
-    const res1 = retrieve.trimToSelection(
-      user,
-      { select: { metadata: true } },
-      { metadata: { loggedInAt: now, registeredAt: now } },
-    )
-    expect(res1.isOk && res1.value).toStrictEqual({ metadata: { loggedInAt: now, registeredAt: now } })
-    const res2 = retrieve.trimToSelection(user, { select: { metadata: true } }, { metadata: { registeredAt: now } })
+    const type1 = retrieve.selectedType(user, { select: { metadata: true } })
+    const res1 = types.concretise(type1).decode({ metadata: { loggedInAt: now, registeredAt: now } })
+    expect(res1.isOk && res1.value).toEqual({ metadata: { loggedInAt: now, registeredAt: now } })
+    const type2 = retrieve.selectedType(user, { select: { metadata: true } })
+    const res2 = types.concretise(type2).decode({ metadata: { registeredAt: now } })
     expect(res2.isOk).toBe(false)
   })
 })
@@ -240,11 +238,7 @@ test('selectionDepth', () => {
 describe('fromType', () => {
   test('empty retrieve', () => {
     const computedUserRetrieve = retrieve.fromType(user, {})
-    const expectedUserRetrieve = types.object({})
-    expect(computedUserRetrieve.isOk).toBe(true)
-    if (computedUserRetrieve.isOk) {
-      expect(types.areEqual(expectedUserRetrieve, computedUserRetrieve.value)).toBe(true)
-    }
+    expect(computedUserRetrieve.isOk).toBe(false)
   })
   test('no retrieve', () => {
     const computedUserRetrieve = retrieve.fromType(user, undefined)

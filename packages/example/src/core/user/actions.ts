@@ -58,7 +58,7 @@ export const login = functions.withContext<Context>().build({
     return result.ok(jwt)
   },
   middlewares: [loginRateLimiter],
-  options: { namespace: 'user' },
+  options: {  },
 })
 
 const registerInputType = types.object(

@@ -4,6 +4,7 @@ import { result, retrieve, types } from '@mondrian-framework/model'
 import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
 import { functions, logger, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
+import { groupBy } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject, toCamelCase } from '@mondrian-framework/utils'
 import fs from 'fs'
 import {
@@ -104,7 +105,7 @@ function typeToGraphQLOutputType(type: types.Type, internalData: InternalData): 
   const graphQLType = types.match(type, {
     number: (type) => scalarOrDefault(type, type.options?.isInteger ? GraphQLInt : GraphQLFloat, internalData),
     string: (type) => scalarOrDefault(type, GraphQLString, internalData),
-    boolean: () => scalarOrDefault(type, GraphQLBoolean, internalData),
+    boolean: (type) => scalarOrDefault(type, GraphQLBoolean, internalData),
     literal: (type) => literalToGraphQLType(type, internalData),
     enum: (type) => enumToGraphQLType(type, internalData),
     custom: (type) => customTypeToGraphQLType(type, internalData),
@@ -112,10 +113,7 @@ function typeToGraphQLOutputType(type: types.Type, internalData: InternalData): 
     object: (type) => objectToGraphQLType(type, internalData),
     entity: (type) => entityToGraphQLType(type, internalData),
     array: (type) => arrayToGraphQLType(type, internalData),
-    wrapper: ({ wrappedType }) => {
-      const type = typeToGraphQLOutputType(wrappedType, internalData)
-      return getNullableType(type)
-    },
+    wrapper: ({ wrappedType }) => getNullableType(typeToGraphQLOutputType(wrappedType, internalData)),
   })
   setKnownType(type, graphQLType, internalData)
   return graphQLType
@@ -129,7 +127,7 @@ function typeToGraphQLInputType(type: types.Type, internalData: InternalData): G
   const graphQLType: GraphQLInputType = types.match(type, {
     number: (type) => scalarOrDefault(type, type.options?.isInteger ? GraphQLInt : GraphQLFloat, internalData),
     string: (type) => scalarOrDefault(type, GraphQLString, internalData),
-    boolean: () => scalarOrDefault(type, GraphQLBoolean, internalData),
+    boolean: (type) => scalarOrDefault(type, GraphQLBoolean, internalData),
     literal: (type) => literalToGraphQLType(type, internalData),
     enum: (type) => enumToGraphQLType(type, internalData),
     custom: (type) => customTypeToGraphQLType(type, internalData),
@@ -137,10 +135,7 @@ function typeToGraphQLInputType(type: types.Type, internalData: InternalData): G
     object: (type) => objectToInputGraphQLType(type, internalData),
     entity: (type) => entityToInputGraphQLType(type, internalData),
     array: (type) => arrayToInputGraphQLType(type, internalData),
-    wrapper: ({ wrappedType }) => {
-      const type = typeToGraphQLInputType(wrappedType, internalData)
-      return getNullableType(type)
-    },
+    wrapper: ({ wrappedType }) => getNullableType(typeToGraphQLInputType(wrappedType, internalData)),
   })
   setKnownType(type, graphQLType, internalData)
   return graphQLType
@@ -447,45 +442,81 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
     defaultName: undefined,
     usedNames: new Map(),
   }
-  const queriesArray = moduleFunctions.flatMap(([name, fun]) =>
-    toQueries(
+  const queriesArray = moduleFunctions.map(([functionName, functionBody]) => ({
+    namespace: functionBody.options?.namespace ?? '',
+    fields: toQueries(
       module.name,
-      name,
-      fun,
-      api.functions[name],
+      functionName,
+      functionBody,
+      api.functions[functionName],
       setHeader,
       context,
       module.context,
       errorHandler,
       internalData,
     ),
-  )
-  const mutationsArray = moduleFunctions.flatMap(([name, fun]) =>
-    toMutations(
+  }))
+  const queries = splitIntoNamespaces(queriesArray, 'Query')
+  const mutationsArray = moduleFunctions.map(([functionName, functionBody]) => ({
+    namespace: functionBody.options?.namespace ?? '',
+    fields: toMutations(
       module.name,
-      name,
-      fun,
-      api.functions[name],
+      functionName,
+      functionBody,
+      api.functions[functionName],
       setHeader,
       context,
       module.context,
       errorHandler,
       internalData,
     ),
-  )
+  }))
+  const mutations = splitIntoNamespaces(mutationsArray, 'Mutation')
   const query =
-    queriesArray.length === 0
-      ? undefined
-      : new GraphQLObjectType({ name: 'Query', fields: () => Object.fromEntries(queriesArray) })
+    queries.length === 0 ? undefined : new GraphQLObjectType({ name: 'Query', fields: Object.fromEntries(queries) })
   const mutation =
-    mutationsArray.length === 0
+    queries.length === 0
       ? undefined
-      : new GraphQLObjectType({ name: 'Mutation', fields: () => Object.fromEntries(mutationsArray) })
+      : new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutations) })
 
   const schema = new GraphQLSchema({ query, mutation })
   const schemaPrinted = printSchema(schema)
   fs.writeFileSync('schema.graphql', schemaPrinted, {})
   return schema
+}
+
+function splitIntoNamespaces(
+  operations: {
+    namespace: string
+    fields: [string, GraphQLFieldConfig<any, any, any>][]
+  }[],
+  type: 'Mutation' | 'Query',
+): [string, GraphQLFieldConfig<any, any, any>][] {
+  const mutationsMap = groupBy(operations, (v) => v.namespace)
+  const splittedOperations: [string, GraphQLFieldConfig<any, any, any>][] = Object.entries(mutationsMap).flatMap(
+    ([namespace, mutations]) => {
+      const fields = mutations.flatMap((v) => v.fields)
+      if (fields.length === 0) {
+        return []
+      }
+      if (namespace === '') {
+        return fields
+      }
+      return [
+        [
+          namespace,
+          {
+            type: new GraphQLObjectType({
+              name: `${capitalise(namespace)}${type}Namespace`,
+              fields: Object.fromEntries(fields),
+            }),
+            resolve: () => ({}),
+          },
+        ],
+      ]
+    },
+  )
+  return splittedOperations
 }
 
 /**
@@ -620,8 +651,8 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
 function makeOperation<const ServerContext, const ContextInput>(
   operationType: 'query' | 'mutation',
   moduleName: string,
-  operationName: string,
-  fun: functions.FunctionImplementation,
+  functionName: string,
+  functionBody: functions.FunctionImplementation,
   setHeader: (context: ServerContext, name: string, value: string) => void,
   getContextInput: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>,
   getModuleContext: (
@@ -636,26 +667,26 @@ function makeOperation<const ServerContext, const ContextInput>(
   errorHandler: ErrorHandler<functions.Functions, ContextInput> | undefined,
   internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>] {
-  const plainInput = typeToGraphQLInputType(fun.input, {
+  const plainInput = typeToGraphQLInputType(functionBody.input, {
     ...internalData,
-    defaultName: `${capitalise(operationName)}Input`,
+    defaultName: `${capitalise(functionName)}Input`,
   })
-  const isInputNullable = types.isOptional(fun.input) || types.isNullable(fun.input)
+  const isInputNullable = types.isOptional(functionBody.input) || types.isNullable(functionBody.input)
   const input = { type: isInputNullable ? plainInput : new GraphQLNonNull(plainInput) }
 
-  const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(fun, operationName)
+  const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, functionName)
   const partialOutputType = types.concretise(types.partialDeep(outputType))
   const plainOutput = typeToGraphQLOutputType(outputType, {
     ...internalData,
-    defaultName: `${capitalise(operationName)}Result`,
+    defaultName: `${capitalise(functionName)}Result`,
   })
   const isOutputNullable = types.isOptional(outputType) || types.isNullable(outputType)
   const output = isOutputNullable ? plainOutput : new GraphQLNonNull(plainOutput)
 
-  const capabilities = fun.retrieve ?? {}
-  delete fun.retrieve?.select
-  const retrieveType = retrieve.fromType(fun.output, capabilities)
-  const completeRetrieveType = retrieve.fromType(fun.output, { ...capabilities, select: true })
+  const capabilities = functionBody.retrieve ?? {}
+  delete functionBody.retrieve?.select
+  const retrieveType = retrieve.fromType(functionBody.output, capabilities)
+  const completeRetrieveType = retrieve.fromType(functionBody.output, { ...capabilities, select: true })
 
   //TODO: opentelemetry span
   const resolve = async (
@@ -666,12 +697,12 @@ function makeOperation<const ServerContext, const ContextInput>(
   ) => {
     // Setup logging
     const operationId = utils.randomOperationId()
-    const logger = logging.build({ moduleName, operationId, operationType, operationName, server: 'GQL' })
+    const logger = logging.build({ moduleName, operationId, operationType, operationName: functionName, server: 'GQL' })
     setHeader(serverContext, 'operation-id', operationId)
 
     // Decode all the needed bits to call the function
     const graphQLInputTypeName = 'input'
-    const input = decodeInput(fun.input, resolverInput[graphQLInputTypeName], logger) as never
+    const input = decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger) as never
     const retrieveValue = completeRetrieveType.isOk ? decodeRetrieve(info, completeRetrieveType.value) : {}
 
     // Retrieve the contexts
@@ -680,7 +711,7 @@ function makeOperation<const ServerContext, const ContextInput>(
 
     // Call the function and handle a possible failure
     try {
-      const applyOutput = await fun.apply({
+      const applyOutput = await functionBody.apply({
         context: context as Record<string, unknown>,
         retrieve: retrieveValue,
         input,
@@ -688,7 +719,7 @@ function makeOperation<const ServerContext, const ContextInput>(
         logger,
       })
       let outputValue
-      if (fun.errors) {
+      if (functionBody.errors) {
         const applyResult = applyOutput as result.Result<unknown, Record<string, unknown>>
         if (applyResult.isOk) {
           const v = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
@@ -708,7 +739,7 @@ function makeOperation<const ServerContext, const ContextInput>(
           context,
           error,
           functionArgs: { retrieve: retrieveValue, input },
-          functionName: operationName,
+          functionName: functionName,
           log: logger,
           operationId,
           ...contextInput,
@@ -727,9 +758,9 @@ function makeOperation<const ServerContext, const ContextInput>(
 
   if (retrieveType.isOk) {
     const graphqlRetrieveArgs = retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
-    return [operationName, { type: output, args: { input, ...graphqlRetrieveArgs }, resolve }]
+    return [functionName, { type: output, args: { input, ...graphqlRetrieveArgs }, resolve }]
   } else {
-    return [operationName, { type: output, args: { input }, resolve }]
+    return [functionName, { type: output, args: { input }, resolve }]
   }
 }
 

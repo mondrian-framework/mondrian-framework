@@ -97,6 +97,26 @@ type InternalData = {
   readonly defaultName: string | undefined
 }
 
+function emptyInternalData(): InternalData {
+  return {
+    knownOutputTypes: new Map(),
+    knownInputTypes: new Map(),
+    knownCustomTypes: new Map(),
+    usedNames: new Map(),
+    defaultName: undefined,
+  }
+}
+
+function clearInternalData(internalData: InternalData) {
+  internalData.knownOutputTypes.clear()
+  internalData.knownInputTypes.clear()
+  internalData.knownCustomTypes.clear()
+  internalData.usedNames.clear()
+}
+
+/**
+ * Maps a mondrian {@link types.Type Type} into a {@link GraphQLOutputType}.
+ */
 function typeToGraphQLOutputType(type: types.Type, internalData: InternalData): GraphQLOutputType {
   const knownOutputType = internalData.knownOutputTypes.get(type)
   if (knownOutputType) {
@@ -119,6 +139,9 @@ function typeToGraphQLOutputType(type: types.Type, internalData: InternalData): 
   return graphQLType
 }
 
+/**
+ * Maps a mondrian {@link types.Type Type} into a {@link GraphQLInputType}.
+ */
 function typeToGraphQLInputType(type: types.Type, internalData: InternalData): GraphQLInputType {
   const knownInputType = internalData.knownInputTypes.get(type)
   if (knownInputType) {
@@ -417,6 +440,9 @@ function customTypeToGraphQLType(
   }
 }
 
+/**
+ * Information needed to create a graphql schema from a mondrian module.
+ */
 export type FromModuleInput<ServerContext, Fs extends functions.Functions, ContextInput> = {
   module: module.Module<Fs, ContextInput>
   api: Api<Fs>
@@ -433,44 +459,28 @@ export type FromModuleInput<ServerContext, Fs extends functions.Functions, Conte
 export function fromModule<const ServerContext, const Fs extends functions.Functions, const ContextInput>(
   input: FromModuleInput<ServerContext, Fs, ContextInput>,
 ): GraphQLSchema {
-  const { module, api, context, setHeader, errorHandler } = input
+  const { module, api } = input
   const moduleFunctions = Object.entries(module.functions)
-  const internalData: InternalData = {
-    knownOutputTypes: new Map(),
-    knownInputTypes: new Map(),
-    knownCustomTypes: new Map(),
-    defaultName: undefined,
-    usedNames: new Map(),
-  }
-  const queriesArray = moduleFunctions.map(([functionName, functionBody]) => ({
-    namespace: functionBody.options?.namespace ?? '',
-    fields: toQueries(
-      module.name,
-      functionName,
-      functionBody,
-      api.functions[functionName],
-      setHeader,
-      context,
-      module.context,
-      errorHandler,
-      internalData,
-    ),
-  }))
+  const internalData: InternalData = emptyInternalData()
+  const queriesArray = moduleFunctions.map(([functionName, functionBody]) => {
+    const specs = api.functions[functionName]
+    return {
+      namespace: functionBody.options?.namespace ?? '',
+      fields: (specs && isArray(specs) ? specs : specs ? [specs] : [])
+        .filter((spec) => spec.type === 'query')
+        .map((spec) => makeOperation(module, spec, functionName, functionBody, input, internalData)),
+    }
+  })
   const queries = splitIntoNamespaces(queriesArray, 'Query')
-  const mutationsArray = moduleFunctions.map(([functionName, functionBody]) => ({
-    namespace: functionBody.options?.namespace ?? '',
-    fields: toMutations(
-      module.name,
-      functionName,
-      functionBody,
-      api.functions[functionName],
-      setHeader,
-      context,
-      module.context,
-      errorHandler,
-      internalData,
-    ),
-  }))
+  const mutationsArray = moduleFunctions.map(([functionName, functionBody]) => {
+    const specs = api.functions[functionName]
+    return {
+      namespace: functionBody.options?.namespace ?? '',
+      fields: (specs && isArray(specs) ? specs : specs ? [specs] : [])
+        .filter((spec) => spec.type === 'mutation')
+        .map((spec) => makeOperation(module, spec, functionName, functionBody, input, internalData)),
+    }
+  })
   const mutations = splitIntoNamespaces(mutationsArray, 'Mutation')
   const query =
     queries.length === 0 ? undefined : new GraphQLObjectType({ name: 'Query', fields: Object.fromEntries(queries) })
@@ -480,11 +490,24 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
       : new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutations) })
 
   const schema = new GraphQLSchema({ query, mutation })
-  const schemaPrinted = printSchema(schema)
-  fs.writeFileSync('schema.graphql', schemaPrinted, {})
+  clearInternalData(internalData) //clear because this is kept is some closure
+  //const schemaPrinted = printSchema(schema)
+  //fs.writeFileSync('schema.graphql', schemaPrinted, {})
   return schema
 }
 
+/**
+ * Splits the variuos query (or mutation) fields in namespaces.
+ * ```graphql
+ * type Query {
+ *   user: UserQueryNamespaces # resolve always as '{}'
+ *   otherQueryWithNoNamspace: YourOutput
+ * }
+ * type UserQueryNamespaces {
+ *    #... your queries under 'user' namespace
+ * }
+ * ```
+ */
 function splitIntoNamespaces(
   operations: {
     namespace: string
@@ -520,87 +543,9 @@ function splitIntoNamespaces(
 }
 
 /**
- * Turns a function into the list of queries defined by its specification(s).
- * Each query is tagged by its name as defined by the specification.
+ * Extracts the retrieve value by traversing the {@link GraphQLResolveInfo} and then decode it with the
+ * respective retrieveType.
  */
-function toQueries<const ServerContext, const ContextInput>(
-  moduleName: string,
-  functionName: string,
-  fun: functions.FunctionImplementation,
-  spec: FunctionSpecifications | readonly FunctionSpecifications[] | undefined,
-  setHeader: (context: ServerContext, name: string, value: string) => void,
-  getContextInput: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>,
-  getModuleContext: (
-    input: ContextInput,
-    args: {
-      input: unknown
-      retrieve: retrieve.GenericRetrieve | undefined
-      operationId: string
-      logger: logger.MondrianLogger
-    },
-  ) => Promise<unknown>,
-  errorHandler: ErrorHandler<functions.Functions, ContextInput> | undefined,
-  internalData: InternalData,
-): [string, GraphQLFieldConfig<any, any>][] {
-  return (spec && isArray(spec) ? spec : spec ? [spec] : [])
-    .filter((spec) => spec.type === 'query')
-    .map((spec) => {
-      const queryName = spec.name ?? functionName
-      return makeOperation(
-        'query',
-        moduleName,
-        queryName,
-        fun,
-        setHeader,
-        getContextInput,
-        getModuleContext,
-        errorHandler,
-        internalData,
-      )
-    })
-}
-
-/**
- * Turns a function into the list of mutations defined by its specification(s).
- * Each mutations is tagged by its name as defined by the specification.
- */
-function toMutations<const ServerContext, const ContextInput>(
-  moduleName: string,
-  functionName: string,
-  functionBody: functions.FunctionImplementation,
-  spec: FunctionSpecifications | readonly FunctionSpecifications[] | undefined,
-  setHeader: (context: ServerContext, name: string, value: string) => void,
-  getContextInput: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>,
-  getModuleContext: (
-    input: ContextInput,
-    args: {
-      input: unknown
-      retrieve: retrieve.GenericRetrieve | undefined
-      operationId: string
-      logger: logger.MondrianLogger
-    },
-  ) => Promise<unknown>,
-  errorHandler: ErrorHandler<functions.Functions, ContextInput> | undefined,
-  internalData: InternalData,
-): [string, GraphQLFieldConfig<any, any>][] {
-  return (spec && isArray(spec) ? spec : spec ? [spec] : [])
-    .filter((spec) => spec.type === 'mutation')
-    .map((spec) => {
-      const mutationName = spec.name ?? functionName
-      return makeOperation(
-        'mutation',
-        moduleName,
-        mutationName,
-        functionBody,
-        setHeader,
-        getContextInput,
-        getModuleContext,
-        errorHandler,
-        internalData,
-      )
-    })
-}
-
 function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: types.Type): GenericRetrieve {
   if (info.fieldNodes.length !== 1) {
     throw createGraphQLError(
@@ -618,6 +563,9 @@ function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: types.Type): Gen
   }
 }
 
+/**
+ * Gathers retrieve infomartion by traversing the graphql nodes of the request.
+ */
 function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericSelect, null> {
   if (info.kind === Kind.FIELD) {
     const argumentEntries = info.arguments?.map((arg) => {
@@ -648,37 +596,28 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
  * `setHeader`, `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
  * somehow needed by the resolver implementation.
  */
-function makeOperation<const ServerContext, const ContextInput>(
-  operationType: 'query' | 'mutation',
-  moduleName: string,
+function makeOperation<Fs extends functions.Functions, ServerContext, ContextInput>(
+  module: module.Module<Fs, ContextInput>,
+  specification: FunctionSpecifications,
   functionName: string,
   functionBody: functions.FunctionImplementation,
-  setHeader: (context: ServerContext, name: string, value: string) => void,
-  getContextInput: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>,
-  getModuleContext: (
-    input: ContextInput,
-    args: {
-      input: unknown
-      retrieve: retrieve.GenericRetrieve | undefined
-      operationId: string
-      logger: logger.MondrianLogger
-    },
-  ) => Promise<unknown>,
-  errorHandler: ErrorHandler<functions.Functions, ContextInput> | undefined,
+  fromModuleInput: FromModuleInput<ServerContext, Fs, ContextInput>,
   internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>] {
+  const operationName = specification.name ?? functionName
   const plainInput = typeToGraphQLInputType(functionBody.input, {
     ...internalData,
-    defaultName: `${capitalise(functionName)}Input`,
+    defaultName: `${capitalise(operationName)}Input`,
   })
   const isInputNullable = types.isOptional(functionBody.input) || types.isNullable(functionBody.input)
   const input = { type: isInputNullable ? plainInput : new GraphQLNonNull(plainInput) }
+  const graphQLInputTypeName = specification.inputName ?? 'input'
 
-  const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, functionName)
+  const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, operationName)
   const partialOutputType = types.concretise(types.partialDeep(outputType))
   const plainOutput = typeToGraphQLOutputType(outputType, {
     ...internalData,
-    defaultName: `${capitalise(functionName)}Result`,
+    defaultName: `${capitalise(operationName)}Result`,
   })
   const isOutputNullable = types.isOptional(outputType) || types.isNullable(outputType)
   const output = isOutputNullable ? plainOutput : new GraphQLNonNull(plainOutput)
@@ -697,17 +636,22 @@ function makeOperation<const ServerContext, const ContextInput>(
   ) => {
     // Setup logging
     const operationId = utils.randomOperationId()
-    const logger = logging.build({ moduleName, operationId, operationType, operationName: functionName, server: 'GQL' })
-    setHeader(serverContext, 'operation-id', operationId)
+    const logger = logging.build({
+      moduleName: module.name,
+      operationId,
+      operationType: specification.type,
+      operationName,
+      server: 'GQL',
+    })
+    fromModuleInput.setHeader(serverContext, 'operation-id', operationId)
 
     // Decode all the needed bits to call the function
-    const graphQLInputTypeName = 'input'
     const input = decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger) as never
     const retrieveValue = completeRetrieveType.isOk ? decodeRetrieve(info, completeRetrieveType.value) : {}
 
-    // Retrieve the contexts
-    const contextInput = await getContextInput(serverContext, info)
-    const context = await getModuleContext(contextInput, { retrieve: retrieveValue, input, operationId, logger })
+    // Build the contexts
+    const contextInput = await fromModuleInput.context(serverContext, info)
+    const context = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
 
     // Call the function and handle a possible failure
     try {
@@ -722,8 +666,9 @@ function makeOperation<const ServerContext, const ContextInput>(
       if (functionBody.errors) {
         const applyResult = applyOutput as result.Result<unknown, Record<string, unknown>>
         if (applyResult.isOk) {
-          const v = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
-          outputValue = partialOutputType.encodeWithoutValidation(v as never)
+          //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
+          const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
+          outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
         } else {
           outputValue = partialOutputType.encodeWithoutValidation(applyResult.error as never)
         }
@@ -734,12 +679,12 @@ function makeOperation<const ServerContext, const ContextInput>(
       return outputValue
     } catch (error) {
       logger.logError('Failed.')
-      if (errorHandler) {
-        const result = await errorHandler({
+      if (fromModuleInput.errorHandler) {
+        const result = await fromModuleInput.errorHandler({
           context,
           error,
           functionArgs: { retrieve: retrieveValue, input },
-          functionName: functionName,
+          functionName: operationName,
           log: logger,
           operationId,
           ...contextInput,
@@ -758,12 +703,19 @@ function makeOperation<const ServerContext, const ContextInput>(
 
   if (retrieveType.isOk) {
     const graphqlRetrieveArgs = retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
-    return [functionName, { type: output, args: { input, ...graphqlRetrieveArgs }, resolve }]
+    return [operationName, { type: output, args: { [graphQLInputTypeName]: input, ...graphqlRetrieveArgs }, resolve }]
   } else {
-    return [functionName, { type: output, args: { input }, resolve }]
+    return [operationName, { type: output, args: { [graphQLInputTypeName]: input }, resolve }]
   }
 }
 
+/**
+ * Gets the function output type based on errors support and function output type.
+ * If function.errors is not set -> the function output is returned and not wrapped
+ * If function.erros is defined -> returns a output that is the union between function output type
+ *   and the function errors. The function output type is wrapped in an object if it's not an object
+ *   nor an entity.
+ */
 function getFunctionOutputTypeWithErrors(
   fun: functions.FunctionInterface,
   functionName: string,

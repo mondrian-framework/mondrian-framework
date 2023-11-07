@@ -4,6 +4,7 @@ import { GraphQLErrorOptions } from 'graphql'
 export type FunctionSpecifications = {
   type: 'query' | 'mutation'
   name?: string
+  inputName?: string
   namespace?: string | null
 }
 

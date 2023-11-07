@@ -991,7 +991,7 @@ export type LiteralType<L extends number | string | boolean | null = number | st
 export type LiteralTypeOptions = BaseOptions
 
 /**
- * The model of a tagged union of types in the Mondrian framework.
+ * The model of a union of types in the Mondrian framework.
  * TODO: add examples (e.g. result/optional/list)
  */
 export type UnionType<Ts extends Types> = {

@@ -5,7 +5,7 @@ import { areSameArray } from '@mondrian-framework/utils'
  * The type of a fragment composing a path in a mondrian type. It can either be:
  *  - `Field`: if it denotes the field of an object
  *  - `Index`: if it denotes an index used to access an array
- *  - `Variant`: if it denotes one of the variants of a tagged union
+ *  - `Variant`: if it denotes one of the variants of a union
  */
 export type Fragment =
   | { kind: FragmentKind.Field; fieldName: string }

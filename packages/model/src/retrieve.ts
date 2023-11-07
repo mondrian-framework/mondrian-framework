@@ -1,8 +1,16 @@
-import { decoding, result, types, validation } from '.'
+import { result, types } from '.'
 import { memoizeTypeTransformation } from './utils'
-import { deepMerge, flatMapObject, mapObject } from '@mondrian-framework/utils'
+import { flatMapObject, mapObject } from '@mondrian-framework/utils'
 import { randomUUID } from 'crypto'
 
+/**
+ * Express the retrieve capabilities of a type or a function
+ *  - where: it can be filtered
+ *  - select: can select a sub-type
+ *  - orderBy: can be sorted
+ *  - take: (if list) can be limited to a fixed size
+ *  - skip: can skip first results
+ */
 export type Capabilities = {
   where?: true
   select?: true
@@ -11,6 +19,10 @@ export type Capabilities = {
   skip?: true
 }
 
+/**
+ * Definition of a generic retrieve type.
+ * It should be equals to prisma args.
+ */
 export type GenericRetrieve = {
   where?: GenericWhere
   select?: GenericSelect
@@ -22,6 +34,9 @@ export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere
 export type GenericSelect = null | { readonly [K in string]: undefined | GenericRetrieve | boolean }
 export type GenericOrderBy = {} | {}[]
 
+/**
+ * Builds a retrieve type of a known mondrian type.
+ */
 // prettier-ignore
 export type FromType<T extends types.Type, C extends Capabilities | undefined>
   = [types.Type] extends [T] ? GenericRetrieve 
@@ -137,7 +152,10 @@ export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType
   })
 }
 
-function removeEmbeddedEntities(type: types.Type): types.Type {
+/**
+ * Makes optionals all fields that are entity type.
+ */
+function optionalizeEmbeddedEntities(type: types.Type): types.Type {
   function optionalizeEntityFields(fields: types.Types): types.Types {
     return flatMapObject(fields, (fieldName, fieldType) =>
       types.unwrap(fieldType).kind === types.Kind.Entity
@@ -146,15 +164,17 @@ function removeEmbeddedEntities(type: types.Type): types.Type {
     )
   }
   return types.match(type, {
-    optional: ({ wrappedType }) => types.optional(removeEmbeddedEntities(wrappedType)),
-    nullable: ({ wrappedType }) => types.nullable(removeEmbeddedEntities(wrappedType)),
-    array: ({ wrappedType }) => types.array(removeEmbeddedEntities(wrappedType)),
+    optional: ({ wrappedType }) => types.optional(optionalizeEmbeddedEntities(wrappedType)),
+    nullable: ({ wrappedType }) => types.nullable(optionalizeEmbeddedEntities(wrappedType)),
+    array: ({ wrappedType }) => types.array(optionalizeEmbeddedEntities(wrappedType)),
     entity: ({ fields }) => types.entity(optionalizeEntityFields(fields)),
     object: ({ fields }) => types.object(optionalizeEntityFields(fields)),
-    union: ({ variants }) => types.union(mapObject(variants, (_, variantType) => removeEmbeddedEntities(variantType))),
+    union: ({ variants }) =>
+      types.union(mapObject(variants, (_, variantType) => optionalizeEmbeddedEntities(variantType))),
     otherwise: (_, t) => t,
   })
 }
+
 /**
  * Gets a projected {@link types.Type Type} in function of the given type and the retrieve selection.
  * @param type the root type.
@@ -167,7 +187,7 @@ export function selectedType<T extends types.Type>(
 ): types.Type {
   const select = retrieve?.select
   if (!select) {
-    return removeEmbeddedEntities(type)
+    return optionalizeEmbeddedEntities(type)
   }
   return types.match(type, {
     optional: ({ wrappedType }) => types.optional(selectedType(wrappedType, retrieve)),
@@ -177,7 +197,7 @@ export function selectedType<T extends types.Type>(
       const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {
         const selection = select[fieldName]
         if (selection === true) {
-          return [[fieldName, removeEmbeddedEntities(fieldType)]]
+          return [[fieldName, optionalizeEmbeddedEntities(fieldType)]]
         } else if (typeof selection === 'object' && selection.select) {
           return [[fieldName, selectedType(fieldType, selection)]]
         } else {
@@ -190,6 +210,9 @@ export function selectedType<T extends types.Type>(
   })
 }
 
+/**
+ * Gets the mondrian retrieve type of the given mondrian type.
+ */
 export function fromType(
   type: types.Type,
   capabilities: Capabilities | undefined,
@@ -340,21 +363,14 @@ function orderBy(type: types.Type): types.Type {
   })
 }
 
-/**
- * TODO
- */
 export type MergeOptions = {
   orderByOrder?: 'left-before' | 'right-before'
   skipOrder?: 'left-before' | 'right-before'
   takeOrder?: 'left-before' | 'right-before'
 }
+
 /**
- * TODO
- * @param type
- * @param left
- * @param right
- * @param options
- * @returns
+ * Merges two retrieves. The logic can be modified by the options.
  */
 export function merge<const T extends GenericRetrieve>(
   type: types.Type,

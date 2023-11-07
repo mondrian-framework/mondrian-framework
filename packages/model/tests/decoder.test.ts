@@ -651,11 +651,11 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
   describe.concurrent('union value', () => {
     const model = types.union({ variant1: types.number(), variant2: types.string().optional() })
 
-    test.prop([number.filter((n) => n % 2 === 0)])('can decode its tagged variant', (number) => {
+    test.prop([number.filter((n) => n % 2 === 0)])('can decode its variant', (number) => {
       checkValue(model.decodeWithoutValidation(number), number)
     })
 
-    test.prop([gen.string()])('can decode its other tagged variant', (string) => {
+    test.prop([gen.string()])('can decode its other variant', (string) => {
       checkValue(model.decodeWithoutValidation(string), string)
     })
 
@@ -706,7 +706,6 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
     const options = {
       typeCastingStrategy: 'tryCasting',
       errorReportingStrategy: 'allErrors',
-      unionDecodingStrategy: 'taggedUnions',
     } as const
     test.prop([gen.anything()])('calls the provided decoder', (value) => {
       // spy function: https://vitest.dev/api/expect.html#tohavebeencalled

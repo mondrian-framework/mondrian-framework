@@ -192,25 +192,6 @@ export function always<A>(value: A): (_: any) => A {
   return (_) => value
 }
 
-/**
- * @param values an array of values to count
- * @returns a map with a key for each element and the number of its occurrences
- *          in the array as the associated value
- */
-export function count<A>(values: A[]): Map<A, number> {
-  return values.reduce(increaseCount, new Map<A, number>())
-}
-
-function increaseCount<A>(map: Map<A, number>, key: A): Map<A, number> {
-  const value = map.get(key)
-  if (value) {
-    map.set(key, value + 1)
-  } else {
-    map.set(key, 1)
-  }
-  return map
-}
-
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 
 export function areJsonsEquals(left: JSONType, right: JSONType): boolean {
@@ -266,6 +247,9 @@ export function toCamelCase(text: string): string {
   return text.split(/\s+/).map(capitalise).join('')
 }
 
+/**
+ * Groups the list element base on a string property.
+ */
 export function groupBy<O, K extends string>(list: O[], getKey: (item: O) => K): Record<K, O[]> {
   return list.reduce((previous, currentItem) => {
     const group = getKey(currentItem)

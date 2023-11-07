@@ -227,11 +227,10 @@ export type GeneratorsRecord<R extends Record<string, any>> = { [Key in keyof R]
 export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionType<any>>> {
   return gen.record({
     ...baseOptions,
-    // This can cause problem on tests like 'encoding is the inverse of decoding' because with untagged union
+    // This can cause problem on tests like 'encoding is the inverse of decoding' because with union
     // this is not always true. Take for example this type:
-    // types.union({ v1: types.object({}), v2: types.object({ a:types.number() }) }, { useTags:false })
-    // the encoding of { v2: { a: 1 } } is { a: 1 }, the decoding of { a: 1 } is { v1: {} }
-    // this is because object type does not strictly checks for additional properties
+    // types.union({ v1: types.object({}), v2: types.object({ a: types.number() }) })
+    // the encoding of { a: 1 } is { a: 1 }, the decoding of { a: 1 } could be {} if we enable 'allowAdditionalFields' option
   })
 }
 

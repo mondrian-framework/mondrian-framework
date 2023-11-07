@@ -7,12 +7,12 @@
 
 ## Usage example
 
-In this section, we’ll walk through an example of how to use the Mondrian framework in TypeScript. We’ll create a simple registration function, add typed errors, and expose it through a REST API.
+In this section, we’ll walk through an example of how to use the Mondrian framework in TypeScript. We’ll create a simple registration function, add typed errors, and serve it through a REST API.
 
 - [Build functions](#build-functions)
 - [Build module](#build-module)
-- [Expose module as REST endpoint](#expose-module-rest)
-- [Expose module as GRAPHQL endpoint](#expose-module-graphql)
+- [Serve module as REST endpoint](#serve-module-rest)
+- [Serve module as GRAPHQL endpoint](#serve-module-graphql)
 
 ### Build functions
 
@@ -86,9 +86,9 @@ const moduleInstance = module.build({
 })
 ```
 
-### Expose module REST
+### Serve module REST
 
-This is how we can expose the module as a REST API endpoint:
+This is how we can serve the module as a REST API endpoint:
 
 ```typescript
 import { rest } from '@mondrian-framework/rest'
@@ -130,11 +130,11 @@ fastifyInstance.listen({ port: 4000 }).then((address) => {
 })
 ```
 
-With REST introspection enabled, you can visit http://localhost:4000/api/doc to view the Swagger documentation with the OpenAPI v3 specification of our exposed functions. Enjoy exploring your newly created API!
+With REST introspection enabled, you can visit http://localhost:4000/api/doc to view the Swagger documentation with the OpenAPI v3 specification of our served functions. Enjoy exploring your newly created API!
 
-### Expose module GRAPHQL
+### Serve module GRAPHQL
 
-We also could expose the module as a GraphQL endpoint:
+We also could serve the module as a GraphQL endpoint:
 
 ```typescript
 import { graphql } from '@mondrian-framework/graphql'

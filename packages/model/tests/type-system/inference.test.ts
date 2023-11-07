@@ -131,7 +131,7 @@ describe('Infer', () => {
     expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: string }>()
   })
 
-  test('UnionType inferred as tagged union of types', () => {
+  test('UnionType inferred as union of types', () => {
     const model = types.union({
       variant1: types.string(),
       variant2: types.object({ field1: types.string(), field2: types.boolean() }),

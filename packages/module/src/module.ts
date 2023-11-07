@@ -5,7 +5,7 @@ import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
 import { retrieve, types } from '@mondrian-framework/model'
-import { UnionToIntersection, count } from '@mondrian-framework/utils'
+import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
@@ -86,13 +86,13 @@ function assertUniqueNames(functions: functions.FunctionsInterfaces) {
   })
 
   const allTypes = allUniqueTypes(functionTypes)
-  const allNames = [...allTypes.values()]
-    .map((t) => types.concretise(t).options?.name)
-    .filter((name) => name !== undefined)
-  const namesCount = count(allNames)
-  namesCount.forEach((value, key) => {
-    if (value > 1) {
-      throw new Error(`Duplicated type name "${key}"`)
+  const allNames = [...allTypes.values()].flatMap((t) => {
+    const name = types.concretise(t).options?.name
+    return name != null ? [name] : []
+  })
+  allNames.forEach((name, index) => {
+    if (allNames.indexOf(name) !== index) {
+      throw new Error(`Duplicated type name "${name}"`)
     }
   })
 }

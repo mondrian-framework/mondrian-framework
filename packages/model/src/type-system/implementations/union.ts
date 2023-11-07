@@ -24,8 +24,8 @@ import gen from 'fast-check'
  *            })
  *          })
  *
- *          const successResponse: Response = { success: 1 }
- *          const failureResponse: Response = { failure: { errorCode: 418, errorMessage: "I'm a teapot" } }
+ *          const successResponse: Response = 1
+ *          const failureResponse: Response = { errorCode: 418, errorMessage: "I'm a teapot" }
  *          ```
  */
 export function union<Ts extends types.Types>(
@@ -110,16 +110,21 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
     validated: boolean
     validationErrors: validation.Error[]
   }> {
-    if (decodingOptions?.typeCastingStrategy === 'tryCasting') {
+    if (
+      decodingOptions?.typeCastingStrategy === 'tryCasting' ||
+      decodingOptions?.fieldStrictness === 'allowAdditionalFields'
+    ) {
       //before using casting try to decode without casting in order to select the corret variant
       const resultWithNoCasting = this.decodeAndTryToValidate(value, {
         ...decodingOptions,
         typeCastingStrategy: 'expectExactTypes',
+        fieldStrictness: 'expectExactFields',
       })
       if (resultWithNoCasting.isOk) {
         return resultWithNoCasting
       }
     }
+
     const decodingErrors: decoding.Error[] = []
     const validationErrors: validation.Error[] = []
     let potentialDecoded: { variantName: keyof Ts; value: types.Infer<types.UnionType<Ts>> } | null = null

@@ -14,7 +14,7 @@ In this section, we’ll walk through an example of how to use the Mondrian fram
 - [Serve module as REST endpoint](#serve-module-rest)
 - [Serve module as GRAPHQL endpoint](#serve-module-graphql)
 
-For this example we'll need this packages: 
+For this example we'll need to install this packages: 
 ```
 npm i @mondrian-framework/model \
       @mondrian-framework/module \
@@ -49,7 +49,7 @@ const register = functions.build({
 })
 ```
 
-This is your first Mondrian function! Notice the `error` and `retrieve` parameters? Let’s dive deeper into these with another example:
+This is your first Mondrian function! Notice the `errors` and `retrieve` parameters? Let’s dive deeper into these with another example:
 
 ```typescript
 import { types, result } from '@mondrian-framework/model'

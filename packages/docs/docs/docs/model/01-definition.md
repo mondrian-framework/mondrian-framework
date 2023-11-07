@@ -77,13 +77,11 @@ const greeting = types.literal('Hello, World!')
 
 Besides the primitive types you can find in `@mondrian-framework/model`, there's
 also a wide range of utility types that are already implemented and ready to use.
-In order to minimize package size and required dependencies, these additional
-types are provided in a separate package named `@mondrian-framework/advanced-types`.
 
 To use those definitions you can import the package like this:
 
 ```ts showLineNumbers
-import types from '@mondrian-framework/advanced-types'
+import types from '@mondrian-framework/model'
 ```
 
 There are definitions related to date and time:

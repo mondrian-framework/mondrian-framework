@@ -2,7 +2,6 @@ import { slotProvider } from '../../rate-limiter'
 import { idType, unauthorizedType, notLoggedInType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { userType } from './model'
-import advancedTypes from '@mondrian-framework/advanced-types'
 import { result, retrieve, types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
@@ -11,7 +10,7 @@ import jsonwebtoken from 'jsonwebtoken'
 
 const loginInputType = types.object(
   {
-    email: advancedTypes.email(),
+    email: types.email(),
     password: types.string().sensitive(),
   },
   { name: 'LoginInput' },
@@ -58,13 +57,13 @@ export const login = functions.withContext<Context>().build({
     return result.ok(jwt)
   },
   middlewares: [loginRateLimiter],
-  options: {  },
+  options: {},
 })
 
 const registerInputType = types.object(
   {
     password: types.string().sensitive(),
-    email: advancedTypes.email(),
+    email: types.email(),
     firstName: types.string(),
     lastName: types.string(),
   },

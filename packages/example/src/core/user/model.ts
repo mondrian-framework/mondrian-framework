@@ -1,6 +1,5 @@
 import { idType } from '../common/model'
 import { likeType, postType } from '../post/model'
-import advancedTypes from '@mondrian-framework/advanced-types'
 import { types } from '@mondrian-framework/model'
 
 export type UserType = types.Infer<typeof userType>
@@ -10,7 +9,7 @@ export const userType = () =>
       id: idType,
       firstName: types.string(),
       lastName: types.string({ description: 'Lastname of user' }),
-      email: advancedTypes.email(),
+      email: types.email(),
       posts: types.array(postType),
       givenLikes: types.array(likeType),
       followers: types.array(followerType),

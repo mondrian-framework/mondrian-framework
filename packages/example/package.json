@@ -19,7 +19,6 @@
     "@mondrian-framework/aws-sqs": "*",
     "@mondrian-framework/cron": "*",
     "@mondrian-framework/model": "*",
-    "@mondrian-framework/advanced-types": "*",
     "@mondrian-framework/module": "*",
     "@mondrian-framework/rest-fastify": "*",
     "@mondrian-framework/graphql-yoga": "*",

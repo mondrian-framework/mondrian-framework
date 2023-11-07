@@ -4,7 +4,7 @@ import { functions, module } from '@mondrian-framework/module'
 import { describe, expect, test } from 'vitest'
 
 describe('module to openapi', () => {
-  //TODO: add more tests when openapi conversion is stable
+  //TODO [Good first issue]: add more tests
   test('works on simple module', () => {
     const m = module.define({
       name: 'name',

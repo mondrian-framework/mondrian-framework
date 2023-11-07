@@ -85,7 +85,7 @@ export function assertApiValidity(api: Api<functions.FunctionsInterfaces>) {
   }
   for (const [functionName, specifications] of Object.entries(api.functions)) {
     for (const specification of Array.isArray(specifications) ? specifications : [specifications]) {
-      //TODO: Check path syntax, other checks?
+      //TODO [Good first issue]: Check path syntax, other checks?
       if (
         specification?.version?.max != null &&
         (specification.version.max < 1 ||
@@ -127,7 +127,7 @@ export function completeRetrieve(
   if (!retr) {
     return undefined
   }
-  //TODO: GenericRetrieve coul be inside an object
+  //TODO: GenericRetrieve could be inside an object
   return types.match(type, {
     wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
     entity: ({ fields }) =>

@@ -3,9 +3,6 @@ import { types } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
-/**
- * TODO: doc
- */
 export type Api<Fs extends functions.Functions> = {
   functions: {
     [K in keyof Fs]?: FunctionSpecifications
@@ -22,9 +19,6 @@ type FunctionSpecifications = {
   maxConcurrency?: number
 }
 
-/**
- * TODO: doc
- */
 export function start<const Fs extends functions.Functions, const CI>({
   module,
   api,
@@ -102,7 +96,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
       if (!message.Messages || message.Messages.length !== 1) {
         continue
       }
-      //TODO: execute in a separate handler (concurrency)
+      //TODO [Good first issue]: execute in a separate handler (concurrency)
       const operationId = utils.randomOperationId()
       const m = message.Messages[0]
       const operationLogger = baseLogger.updateContext({ operationId })

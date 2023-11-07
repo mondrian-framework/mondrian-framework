@@ -992,7 +992,7 @@ export type LiteralTypeOptions = BaseOptions
 
 /**
  * The model of a union of types in the Mondrian framework.
- * TODO: add examples (e.g. result/optional/list)
+ * TODO [Good first issue]: add examples (e.g. result/optional/list)
  */
 export type UnionType<Ts extends Types> = {
   readonly kind: Kind.Union
@@ -1128,8 +1128,7 @@ export type UnionType<Ts extends Types> = {
   example(args?: { maxDepth?: number; seed?: number }): InferUnion<Ts>
 
   /**
-   * TODO
-   * @param value
+   * Gets the variant name of the given variant instance.
    */
   variantOwnership(value: InferUnion<Ts>): keyof Ts & string
 }
@@ -2029,7 +2028,7 @@ const partialDeepInternal = memoizeTypeTransformation(
 )
 
 /**
- * TODO: add documentation and tests
+ * TODO [Good first issue]: add documentation and tests
  * TODO: not working with recursive types
  * @param one the first type to compare
  * @param other the second type to compare

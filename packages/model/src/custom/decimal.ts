@@ -75,6 +75,6 @@ function validateDecimal(
 }
 
 function decimalArbitrary(_maxDepth: number, options?: types.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {
-  //TODO Implementation of decimal arbitrary needed 🙏
+  //TODO [Good first issue] Implementation of decimal arbitrary needed 🙏
   throw new Error('Arbitrary of `decimal` type not implemented yet!')
 }

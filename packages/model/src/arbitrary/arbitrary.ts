@@ -594,7 +594,6 @@ export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen
     })
 }
 
-// TODO: doc
 export function canGenerateValueFrom(type: types.Type): boolean {
   // This is just an ugly hack for now but really effective! If the constructor does not throw then I can
   // generate a type for it

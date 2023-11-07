@@ -2,11 +2,10 @@ import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
 import { result, retrieve, types } from '@mondrian-framework/model'
 import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
-import { functions, logger, logger as logging, module, utils } from '@mondrian-framework/module'
+import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { groupBy } from '@mondrian-framework/utils'
-import { JSONType, capitalise, isArray, mapObject, toCamelCase } from '@mondrian-framework/utils'
-import fs from 'fs'
+import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
 import {
   GraphQLScalarType,
   GraphQLObjectType,
@@ -25,7 +24,6 @@ import {
   GraphQLInputType,
   GraphQLFloat,
   GraphQLInputFieldConfig,
-  printSchema,
   GraphQLFieldConfigArgumentMap,
   GraphQLInt,
   isOutputType,
@@ -194,7 +192,6 @@ function scalarOrDefault(
 function scalarFromType(type: types.Type, internalData: InternalData): GraphQLScalarType<unknown, JSONType> {
   const concreteType = types.concretise(type)
   const name = generateName(type, internalData)
-  // TODO: add parseValue and parseLiteral and serialize?
   return new GraphQLScalarType({ name, description: concreteType.options?.description })
 }
 

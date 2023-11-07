@@ -3,7 +3,7 @@ import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helpe
 import { describe } from 'vitest'
 
 const knownInvalidValues = [
-  //'2000-02-31', TODO: fix this
+  //'2000-02-31', TODO [Good first issue]: this date should not decode
   '2020-04-32',
   '2020-06-32',
   '2020-09-32',

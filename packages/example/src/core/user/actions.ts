@@ -31,7 +31,7 @@ const loginRateLimiter = rateLimiter.build<
   key: ({ input }) => input.email,
   rate: '10 requests in 1 minute',
   onLimit: async () => {
-    //TODO: warn the user, maybe block the account
+    //Improvement: warn the user, maybe block the account
     return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
   },
   slotProvider,
@@ -94,7 +94,7 @@ export const register = functions.withContext<Context>().build({
       })
       return result.ok(user)
     } catch {
-      //TODO: check if error is "email duplicate"
+      //unique index fail
       return result.fail({ emailAlreadyTaken: 'Email already taken' })
     }
   },

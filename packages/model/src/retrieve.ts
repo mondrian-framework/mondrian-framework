@@ -238,7 +238,7 @@ function retrieve(
     ...(capabilities.orderBy ? { orderBy: types.array(entityOrderBy(entity)).optional() } : {}),
     ...(capabilities.skip ? { skip: types.integer({ minimum: 0 }).optional() } : {}),
     ...(capabilities.take ? { take: types.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
-    //distinct: types.unknown(), //TODO
+    //distinct: types.unknown(),
   })
 }
 

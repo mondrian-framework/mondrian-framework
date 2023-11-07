@@ -76,7 +76,7 @@ describe('Sliding window in memory', async () => {
   })
 })
 
-//TODO: redis provider test?
+//TODO [Good first issue]: redis provider test
 describe('Sliding window redis', async () => {
   const memory: Record<string, number> = { 'test::90': 0 }
   const client = {

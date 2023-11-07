@@ -70,11 +70,6 @@ type ContextType<F extends functions.Functions> = UnionToIntersection<
 >
 
 /**
- * TODO: understand if this is needed
- */
-type AuthenticationMethod = { type: 'bearer'; format: 'jwt' }
-
-/**
  * Checks for name collisions in the types that appear in the given function's signature.
  * If there's at least two different types sharing the same name, this function will throw
  * an error.

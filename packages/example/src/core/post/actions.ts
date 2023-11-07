@@ -27,7 +27,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
         publishedAt: new Date(),
         authorId: context.userId,
       },
-      select: retrieve?.select as never, //TODO
+      select: retrieve?.select,
     })
     return result.ok(newPost)
   },

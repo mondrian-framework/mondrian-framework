@@ -23,7 +23,7 @@ test('Two recursive lazy type are not equals because of optionality', () => {
   expect(types.areEqual(t1, t2)).toBe(false)
 })
 
-/* //TODO: at the moment this test do not pass bu should pass. This are limit cases and for now we do not consider this important
+/* //TODO: at the moment this test do not pass but should pass. This are limit cases and for now we do not consider this important
 test('Two lazy type are equals', () => {
   const t1 = () => types.object({ c: types.optional(t2), b: types.number({ minimum: 0 }) })
   const t2 = () => types.object({ c: types.optional(t1), b: types.number() })

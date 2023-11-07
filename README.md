@@ -14,6 +14,17 @@ In this section, we’ll walk through an example of how to use the Mondrian fram
 - [Serve module as REST endpoint](#serve-module-rest)
 - [Serve module as GRAPHQL endpoint](#serve-module-graphql)
 
+For this example we'll need this packages: 
+```
+npm i @mondrian-framework/model \
+      @mondrian-framework/module \
+      @mondrian-framework/rest \
+      @mondrian-framework/graphql \
+      @mondrian-framework/graphql-fastify \
+      @mondrian-framework/rest-fastify \
+      fastify
+```
+
 ### Build functions
 
 In this first example, we’re creating a simple registration function using the Mondrian framework. The function takes an email and password as input and returns a JSON web token as output:

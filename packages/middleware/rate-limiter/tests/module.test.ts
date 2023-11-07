@@ -13,16 +13,26 @@ test('Rate limiter middleware', async () => {
     .setName('LoginInput')
   const LoginOutput = types.object({ jwt: types.string() }).nullable().setName('LoginOuput')
   type SharedContext = { ip: string }
-  const LoginError = types.union({ invalidUsernameOrPassword: types.string(), tooManyRequests: types.string() })
-  const rateLimitByIpEmail = rateLimiter.build<typeof LoginInput, typeof LoginOutput, typeof LoginError, SharedContext>(
-    {
-      key: ({ context, input }) => (input.email === 'admin@domain.com' ? null : `${context.ip}-${input.email}`),
-      rate: '1 requests in 1 minutes',
-      onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
-    },
-  )
+  const LoginError = { invalidUsernameOrPassword: types.string(), tooManyRequests: types.string() }
+  const rateLimitByIpEmail = rateLimiter.build<
+    typeof LoginInput,
+    typeof LoginOutput,
+    typeof LoginError,
+    undefined,
+    SharedContext
+  >({
+    key: ({ context, input }) => (input.email === 'admin@domain.com' ? null : `${context.ip}-${input.email}`),
+    rate: '1 requests in 1 minutes',
+    onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
+  })
 
-  const rateLimitByEmail = rateLimiter.build<typeof LoginInput, typeof LoginOutput, typeof LoginError, SharedContext>({
+  const rateLimitByEmail = rateLimiter.build<
+    typeof LoginInput,
+    typeof LoginOutput,
+    typeof LoginError,
+    undefined,
+    SharedContext
+  >({
     key: ({ input }) => input.email,
     rate: new Rate({ requests: 1, period: 1, scale: 'hour' }),
   })
@@ -30,7 +40,8 @@ test('Rate limiter middleware', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
-    error: LoginError,
+    errors: LoginError,
+    retrieve: undefined,
     body: async ({ input }) => {
       if (input.email === 'test@domain.com' && input.password === '1234') {
         return result.ok({ jwt: '...' })
@@ -43,7 +54,6 @@ test('Rate limiter middleware', async () => {
   const m = module.build({
     name: 'test',
     version: '1.0.0',
-    options: { checks: { maxProjectionDepth: 2 } },
     functions: { login },
     context: async ({ ip }: { ip: string }) => {
       return { ip }

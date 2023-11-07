@@ -138,17 +138,19 @@ export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType
 }
 
 function removeEmbeddedEntities(type: types.Type): types.Type {
-  function omitEntityFields(fields: types.Types): types.Types {
+  function optionalizeEntityFields(fields: types.Types): types.Types {
     return flatMapObject(fields, (fieldName, fieldType) =>
-      types.unwrap(fieldType).kind === types.Kind.Entity ? [] : [[fieldName, fieldType]],
+      types.unwrap(fieldType).kind === types.Kind.Entity
+        ? [[fieldName, types.optional(fieldType)]]
+        : [[fieldName, fieldType]],
     )
   }
   return types.match(type, {
     optional: ({ wrappedType }) => types.optional(removeEmbeddedEntities(wrappedType)),
     nullable: ({ wrappedType }) => types.nullable(removeEmbeddedEntities(wrappedType)),
     array: ({ wrappedType }) => types.array(removeEmbeddedEntities(wrappedType)),
-    entity: ({ fields }) => types.entity(omitEntityFields(fields)),
-    object: ({ fields }) => types.object(omitEntityFields(fields)),
+    entity: ({ fields }) => types.entity(optionalizeEntityFields(fields)),
+    object: ({ fields }) => types.object(optionalizeEntityFields(fields)),
     union: ({ variants }) => types.union(mapObject(variants, (_, variantType) => removeEmbeddedEntities(variantType))),
     otherwise: (_, t) => t,
   })

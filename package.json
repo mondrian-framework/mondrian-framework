@@ -34,7 +34,6 @@
     "packages/arbitrary",
     "packages/module",
     "packages/middleware/rate-limiter",
-    "packages/prisma",
     "packages/rest",
     "packages/rest-fastify",
     "packages/graphql",

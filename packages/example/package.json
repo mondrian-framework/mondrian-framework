@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/example",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "private": true,
@@ -22,7 +22,6 @@
     "@mondrian-framework/module": "*",
     "@mondrian-framework/rest-fastify": "*",
     "@mondrian-framework/graphql-yoga": "*",
-    "@mondrian-framework/prisma": "*",
     "@mondrian-framework/rate-limiter": "*",
     "@prisma/client": "5.5.2",
     "prisma": "5.5.2",

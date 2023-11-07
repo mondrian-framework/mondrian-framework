@@ -14,9 +14,6 @@
       "path": "../model"
     },
     {
-      "path": "../prisma"
-    },
-    {
       "path": "../rest-fastify"
     },
     {

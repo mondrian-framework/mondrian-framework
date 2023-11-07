@@ -13,7 +13,6 @@
       "./packages/model/tsconfig.json",
       "./packages/arbitrary/tsconfig.json",
       "./packages/module/tsconfig.json",
-      "./packages/prisma/tsconfig.json",
       "./packages/utils/tsconfig.json",
       "./packages/rest/tsconfig.json",
       "./packages/rest-fastify/tsconfig.json",

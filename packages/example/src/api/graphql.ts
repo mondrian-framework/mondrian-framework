@@ -1,7 +1,6 @@
 import { module } from '../core'
-import { InvalidJwtError } from '../core/errors'
 import { graphql } from '@mondrian-framework/graphql'
-import { server as graphqlServer } from '@mondrian-framework/graphql-yoga'
+import { serve } from '@mondrian-framework/graphql-yoga'
 
 const api: graphql.Api<module.Functions> = {
   functions: {
@@ -16,7 +15,7 @@ const api: graphql.Api<module.Functions> = {
 }
 
 export function startServer(server: any) {
-  graphqlServer.start({
+  serve({
     server,
     module: module.instance,
     api,

@@ -1,1 +1,1 @@
-export * as server from './server'
+export { serve } from './server'

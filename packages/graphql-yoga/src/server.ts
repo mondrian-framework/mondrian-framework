@@ -7,7 +7,7 @@ import { createYoga, Plugin } from 'graphql-yoga'
 
 export type ServerContext = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
-export function start<const Fs extends functions.Functions, const ContextInput>({
+export function serve<const Fs extends functions.Functions, const ContextInput>({
   module,
   server,
   api,

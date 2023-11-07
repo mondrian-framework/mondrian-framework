@@ -9,6 +9,13 @@
 
 In this section, we’ll walk through an example of how to use the Mondrian framework in TypeScript. We’ll create a simple registration function, add typed errors, and expose it through a REST API.
 
+- [Build functions](#build-functions)
+- [Build module](#build-module)
+- [Expose module as REST endpoint](#expose-module-rest)
+- [Expose module as GRAPHQL endpoint](#expose-module-graphql)
+
+### Build functions
+
 In this first example, we’re creating a simple registration function using the Mondrian framework. The function takes an email and password as input and returns a JSON web token as output:
 
 ```typescript
@@ -16,7 +23,7 @@ import { types } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
 const register = functions.build({
-  input: types.object({ email: types.string(), password: types.string() }),
+  input: types.object({ email: types.email(), password: types.string() }),
   output: types.object({ jwt: types.string() }),
   error: undefined,
   retrieve: undefined,
@@ -38,7 +45,7 @@ import { types, result } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
 const register = functions.build({
-  input: types.object({ email: types.string(), password: types.string() }),
+  input: types.object({ email: types.email(), password: types.string() }),
   output: types.object({ jwt: types.string() }),
   error: {
     weakPassword: types.string(),
@@ -61,7 +68,9 @@ const register = functions.build({
 
 Now, we’ve added typed errors to the same function. Isn’t that neat? But what about `retrieve` parameter? That’s a more advanced topic which we’ll cover later. For now, let’s focus on exposing our function through a REST API.
 
-First, we need to build the Mondrian module:
+### Build module
+
+This is how to build the Mondrian module:
 
 ```typescript
 import { module } from '@mondrian-framework/module'
@@ -77,7 +86,9 @@ const moduleInstance = module.build({
 })
 ```
 
-Next, we expose the module as a REST API endpoint:
+### Expose module REST
+
+This is how we can expose the module as a REST API endpoint:
 
 ```typescript
 import { rest } from '@mondrian-framework/rest'
@@ -120,3 +131,36 @@ fastifyInstance.listen({ port: 4000 }).then((address) => {
 ```
 
 With REST introspection enabled, you can visit http://localhost:4000/api/doc to view the Swagger documentation with the OpenAPI v3 specification of our exposed functions. Enjoy exploring your newly created API!
+
+### Expose module GRAPHQL
+
+We also could expose the module as a GraphQL endpoint:
+
+```typescript
+import { graphql } from '@mondrian-framework/graphql'
+import { serve } from '@mondrian-framework/graphql-fastify'
+import { fastify } from 'fastify'
+
+//Define the mapping of Functions<->Methods
+const api: graphql.Api<typeof myFunctions> = {
+  version: 2,
+  functions: {
+    register: { type: 'mutation' },
+  },
+  options: { introspection: true },
+}
+
+//Start the server
+const fastifyInstance = fastify()
+serve({
+  fastifyInstance,
+  module: moduleInstance,
+  api,
+  context: async ({}) => ({}),
+})
+fastifyInstance.listen({ port: 4000 }).then((address) => {
+  console.log(`Server started at address ${address}/graphql`)
+})
+```
+
+With Graphql introspection enabled, you can visit http://localhost:4000/grahql to open the Yoga schema navigator. Enjoy exploring your newly created API! Nothing stops you from exposing the module with both graphql and rest endpoint.

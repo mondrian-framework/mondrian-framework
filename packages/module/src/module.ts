@@ -36,22 +36,24 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
       logger: logger.MondrianLogger
     },
   ) => Promise<ContextType<Fs>>
-  options?: ModuleOptions
+  options?: ModuleOptions<Fs, ContextInput>
 }
 
 /**
  * Mondrian module options.
  */
-export type ModuleOptions = {
+export type ModuleOptions<Fs extends functions.Functions, ContextInput> = {
   /**
    * Checks (at runtime) if the output value of any function is valid.
-   * It also checks if the projection is respected.
+   * It also checks if the eventual selection is respected.
    * Default is 'throw'.
    * With 'ignore' the check is skipped (could be usefull in production environment in order to improve performance)
    */
   checkOutputType?: 'ignore' | 'log' | 'throw'
   /**
-   * Maximum projection depth allowed. If the requested projection is deeper an error is thrown.
+   * Maximum selection depth allowed. If the requested selection is deeper an error is thrown.
+   * The default is any depth.
+   * In production it is suggested to set a limit (like 3) in order to prevent denial of service attack.
    */
   maxSelectionDepth?: number
   /**

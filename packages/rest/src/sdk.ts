@@ -1,4 +1,4 @@
-import { Api, FunctionSpecifications } from './api'
+import { ApiSpecification, FunctionSpecifications } from './api'
 import { generateOpenapiInput } from './openapi'
 import { retrieve, result, types } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
@@ -35,7 +35,7 @@ function getRequestBuilder(args: { specification: FunctionSpecifications; functi
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).request
 }
 
-export function build<const Fs extends functions.FunctionsInterfaces, const API extends Api<Fs>>({
+export function build<const Fs extends functions.FunctionsInterfaces, const API extends ApiSpecification<Fs>>({
   module,
   api,
   endpoint,

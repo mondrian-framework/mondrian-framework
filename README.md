@@ -25,7 +25,7 @@ import { functions } from '@mondrian-framework/module'
 const register = functions.build({
   input: types.object({ email: types.email(), password: types.string() }),
   output: types.object({ jwt: types.string() }),
-  error: undefined,
+  errors: undefined,
   retrieve: undefined,
   async body({ input: { email, password } }) {
     // weak password check
@@ -47,7 +47,7 @@ import { functions } from '@mondrian-framework/module'
 const register = functions.build({
   input: types.object({ email: types.email(), password: types.string() }),
   output: types.object({ jwt: types.string() }),
-  error: {
+  errors: {
     weakPassword: types.string(),
     emailAlreadyUsed: types.string(),
   },
@@ -96,7 +96,8 @@ import { serve } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods
-const api: rest.Api<typeof myFunctions> = {
+const api = rest.build({
+  module: moduleInstance,
   version: 2,
   functions: {
     register: [
@@ -118,19 +119,14 @@ const api: rest.Api<typeof myFunctions> = {
 }
 
 //Start the server
-const fastifyInstance = fastify()
-serve({
-  fastifyInstance,
-  module: moduleInstance,
-  api,
-  context: async ({}) => ({}),
-})
-fastifyInstance.listen({ port: 4000 }).then((address) => {
-  console.log(`Server started at address ${address}/api/doc`)
+const server = fastify()
+serve({ server, api, context: async ({}) => ({}) })
+server.listen({ port: 4000 }).then((address) => {
+  console.log(`Server started at address ${address}/openapi`)
 })
 ```
 
-With REST introspection enabled, you can visit http://localhost:4000/api/doc to view the Swagger documentation with the OpenAPI v3 specification of our served functions. Enjoy exploring your newly created API!
+With REST introspection enabled, you can visit http://localhost:4000/openapi to view the Swagger documentation with the OpenAPI v3 specification of our served functions. Enjoy exploring your newly created API!
 
 ### Serve module GRAPHQL
 
@@ -142,7 +138,8 @@ import { serve } from '@mondrian-framework/graphql-fastify'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods
-const api: graphql.Api<typeof myFunctions> = {
+const api = graphql.build({
+  module: moduleInstance,
   version: 2,
   functions: {
     register: { type: 'mutation' },
@@ -151,13 +148,8 @@ const api: graphql.Api<typeof myFunctions> = {
 }
 
 //Start the server
-const fastifyInstance = fastify()
-serve({
-  fastifyInstance,
-  module: moduleInstance,
-  api,
-  context: async ({}) => ({}),
-})
+const server = fastify()
+serve({ server, api, context: async ({}) => ({}) })
 fastifyInstance.listen({ port: 4000 }).then((address) => {
   console.log(`Server started at address ${address}/graphql`)
 })

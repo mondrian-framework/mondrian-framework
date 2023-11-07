@@ -1,22 +1,20 @@
 import { Api, FunctionSpecifications, Request } from './api'
-import { completeRetrieve, decodeQueryObject, encodeQueryObject } from './utils'
+import { decodeQueryObject, encodeQueryObject } from './utils'
 import { retrieve, types } from '@mondrian-framework/model'
-import { functions, module } from '@mondrian-framework/module'
+import { functions } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
-export function fromModule<Fs extends functions.FunctionsInterfaces>({
-  module,
+export function fromModule<Fs extends functions.Functions, ContextInput>({
   api,
   version,
 }: {
-  module: module.ModuleInterface<Fs>
-  api: Api<Fs>
+  api: Api<Fs, ContextInput>
   version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
-  const { components, typeMap, typeRef } = openapiComponents({ module, version, api })
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  const { components, typeMap, typeRef } = openapiComponents({ version, api })
+  for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -43,7 +41,11 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
         for (const [errorName, errorType] of Object.entries(functionBody.errors)) {
           const code = (errorCodes[errorName] ?? 400).toString()
           const ts = errorMap[code] ?? []
-          const { schema } = typeToSchemaObject(types.object({ [errorName]: errorType }), typeMap, typeRef)
+          const { schema } = typeToSchemaObject(
+            types.object({ [errorName]: errorType as types.Type }),
+            typeMap,
+            typeRef,
+          )
           ts.push(schema)
           errorMap[code] = ts
         }
@@ -117,7 +119,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
   }
   return {
     openapi: '3.1.0',
-    info: { version: module.version, title: module.name },
+    info: { version: api.module.version, title: api.module.name },
     servers: [{ url: `${api.options?.pathPrefix ?? '/api'}/v${version}` }],
     paths,
     components: {
@@ -366,21 +368,19 @@ function generatePathParameters({
   return result
 }
 
-function openapiComponents<Fs extends functions.FunctionsInterfaces>({
-  module,
+function openapiComponents<Fs extends functions.Functions, ContextInput>({
   version,
   api,
 }: {
-  module: module.ModuleInterface<Fs>
   version: number
-  api: Api<Fs>
+  api: Api<Fs, ContextInput>
 }): {
   components: OpenAPIV3_1.ComponentsObject
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 } {
   const usedTypes: types.Type[] = []
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue

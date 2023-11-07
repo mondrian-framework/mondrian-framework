@@ -1,8 +1,10 @@
 import { module } from '../core'
 import { graphql } from '@mondrian-framework/graphql'
 import { serve } from '@mondrian-framework/graphql-yoga'
+import { FastifyInstance } from 'fastify'
 
-const api: graphql.Api<module.Functions> = {
+const api = graphql.build({
+  module: module.instance,
   functions: {
     register: { type: 'mutation' },
     login: { type: 'query' },
@@ -12,12 +14,11 @@ const api: graphql.Api<module.Functions> = {
     likePost: { type: 'mutation' },
   },
   options: { introspection: true },
-}
+})
 
-export function startServer(server: any) {
+export function startServer(server: FastifyInstance) {
   serve({
     server,
-    module: module.instance,
     api,
     context: async ({ fastify }) => ({
       authorization: fastify.request.headers.authorization,

@@ -441,8 +441,7 @@ function customTypeToGraphQLType(
  * Information needed to create a graphql schema from a mondrian module.
  */
 export type FromModuleInput<ServerContext, Fs extends functions.Functions, ContextInput> = {
-  module: module.Module<Fs, ContextInput>
-  api: Api<Fs>
+  api: Api<Fs, ContextInput>
   context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   setHeader: (context: ServerContext, name: string, value: string) => void
   errorHandler?: ErrorHandler<Fs, ContextInput>
@@ -456,8 +455,8 @@ export type FromModuleInput<ServerContext, Fs extends functions.Functions, Conte
 export function fromModule<const ServerContext, const Fs extends functions.Functions, const ContextInput>(
   input: FromModuleInput<ServerContext, Fs, ContextInput>,
 ): GraphQLSchema {
-  const { module, api } = input
-  const moduleFunctions = Object.entries(module.functions)
+  const { api } = input
+  const moduleFunctions = Object.entries(api.module.functions)
   const internalData: InternalData = emptyInternalData()
   const queriesArray = moduleFunctions.map(([functionName, functionBody]) => {
     const specs = api.functions[functionName]
@@ -465,7 +464,7 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
       namespace: functionBody.options?.namespace ?? '',
       fields: (specs && isArray(specs) ? specs : specs ? [specs] : [])
         .filter((spec) => spec.type === 'query')
-        .map((spec) => makeOperation(module, spec, functionName, functionBody, input, internalData)),
+        .map((spec) => makeOperation(api.module, spec, functionName, functionBody, input, internalData)),
     }
   })
   const queries = splitIntoNamespaces(queriesArray, 'Query')
@@ -475,7 +474,7 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
       namespace: functionBody.options?.namespace ?? '',
       fields: (specs && isArray(specs) ? specs : specs ? [specs] : [])
         .filter((spec) => spec.type === 'mutation')
-        .map((spec) => makeOperation(module, spec, functionName, functionBody, input, internalData)),
+        .map((spec) => makeOperation(api.module, spec, functionName, functionBody, input, internalData)),
     }
   })
   const mutations = splitIntoNamespaces(mutationsArray, 'Mutation')

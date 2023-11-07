@@ -79,7 +79,7 @@ export function getPathsFromSpecification({
  *  - paths syntax
  * @param api the api configuration
  */
-export function assertApiValidity(api: Api<functions.FunctionsInterfaces>) {
+export function assertApiValidity<Fs extends functions.Functions, ContextInput>(api: Api<Fs, ContextInput>) {
   if (api.version < 1 || !Number.isInteger(api.version) || api.version > 100) {
     throw new Error(`Invalid api version. Must be between 1 and 100 and be an integer. Got ${api.version}`)
   }

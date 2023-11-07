@@ -10,13 +10,11 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 export type Context = { lambdaApi: { request: Request; response: Response } }
 
 export function build<const Fs extends functions.Functions, const ContextInput>({
-  module,
   api,
   context,
   error,
 }: {
-  module: module.Module<Fs, ContextInput>
-  api: rest.Api<Fs>
+  api: rest.Api<Fs, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): APIGatewayProxyHandlerV2 {
@@ -40,7 +38,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         res.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${api.version}` }
       }
-      return rest.openapi.fromModule({ module, api, version })
+      return rest.openapi.fromModule({ api, version })
     })
     // file deepcode ignore NoRateLimitingForExpensiveWebOperation: could disable this by disabling introspection in production environment
     server.get(`${introspectionPath}/*`, (req: Request, res: Response) => {
@@ -54,6 +52,6 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
       res.sendFile(path)
     })
   }
-  attachRestMethods({ module, api, context, server, error })
+  attachRestMethods({ api, context, server, error })
   return (event, context) => server.run(event, context)
 }

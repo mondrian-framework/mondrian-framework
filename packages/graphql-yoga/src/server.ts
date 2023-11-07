@@ -1,5 +1,5 @@
 import { graphql } from '@mondrian-framework/graphql'
-import { functions, module } from '@mondrian-framework/module'
+import { functions } from '@mondrian-framework/module'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { GraphQLResolveInfo } from 'graphql'
 import { NoSchemaIntrospectionCustomRule } from 'graphql'
@@ -8,20 +8,17 @@ import { createYoga, Plugin } from 'graphql-yoga'
 export type ServerContext = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
 export function serve<const Fs extends functions.Functions, const ContextInput>({
-  module,
   server,
   api,
   context,
   errorHandler,
 }: {
-  module: module.Module<Fs, ContextInput>
-  api: graphql.Api<Fs>
+  api: graphql.Api<Fs, ContextInput>
   server: FastifyInstance
   context: (serve: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   errorHandler?: graphql.ErrorHandler<Fs, ContextInput>
 }): void {
   const schema = graphql.fromModule({
-    module,
     api,
     context,
     setHeader: (ctx, name, value) => {

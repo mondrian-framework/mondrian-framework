@@ -1,23 +1,21 @@
 import { Context } from './handler'
-import { functions, module } from '@mondrian-framework/module'
+import { functions } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
 import { API, HandlerFunction, METHODS } from 'lambda-api'
 
 export function attachRestMethods<const Fs extends functions.Functions, const ContextInput>({
-  module,
   server,
   api,
   context,
   error,
 }: {
-  module: module.Module<Fs, ContextInput>
   server: API
-  api: rest.Api<Fs>
+  api: rest.Api<Fs, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): void {
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -30,7 +28,7 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
         globalMaxVersion: api.version,
       })
       const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
-        module,
+        module: api.module,
         context,
         specification,
         functionName,

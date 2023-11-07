@@ -1,25 +1,23 @@
 import { Context } from './server'
-import { functions, module } from '@mondrian-framework/module'
+import { functions } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { isArray } from '@mondrian-framework/utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 export function attachRestMethods<Fs extends functions.Functions, ContextInput>({
-  module,
-  fastifyInstance,
+  server,
   api,
   context,
   pathPrefix,
   error,
 }: {
-  module: module.Module<Fs, ContextInput>
-  fastifyInstance: FastifyInstance
-  api: rest.Api<Fs>
+  server: FastifyInstance
+  api: rest.Api<Fs, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   pathPrefix: string
   error?: rest.ErrorHandler<Fs, Context>
 }): void {
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -29,7 +27,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
         .getPathsFromSpecification({ functionName, specification, prefix: pathPrefix, globalMaxVersion: api.version })
         .map((p) => p.replace(/{(.*?)}/g, ':$1'))
       const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
-        module,
+        module: api.module,
         context,
         specification,
         functionName,
@@ -56,7 +54,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
         return result.body
       }
       for (const path of paths) {
-        fastifyInstance[specification.method](path, fastifyHandler)
+        server[specification.method](path, fastifyHandler)
       }
     }
   }

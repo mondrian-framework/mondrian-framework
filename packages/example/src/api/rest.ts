@@ -4,7 +4,8 @@ import { rest } from '@mondrian-framework/rest'
 import { serve } from '@mondrian-framework/rest-fastify'
 import { FastifyInstance } from 'fastify'
 
-const api: rest.Api<module.Functions> = {
+const api = rest.build({
+  module: module.instance,
   version: 2,
   functions: {
     register: [
@@ -21,12 +22,11 @@ const api: rest.Api<module.Functions> = {
     loggedUser: { type: 'http', scheme: 'bearer' },
   },
   options: { introspection: true },
-}
+})
 
-export function startServer(fastifyInstance: FastifyInstance) {
+export function startServer(server: FastifyInstance) {
   serve({
-    fastifyInstance,
-    module: module.instance,
+    server,
     api,
     context: async ({ fastify }) => ({
       authorization: fastify.request.headers.authorization,

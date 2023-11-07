@@ -69,7 +69,7 @@ export const likePost = functions.withContext<LoggedUserContext>().build({
   errors: {
     unauthorizedType,
     notLoggedInType,
-    postNotFound: types.literal('Post not found'),
+    postNotFound: types.string(),
   },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {

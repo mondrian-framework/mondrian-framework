@@ -12,7 +12,6 @@ const config = {
   projectName: 'mondrian-framework',
   deploymentBranch: 'docs',
   trailingSlash: false,
-
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
 

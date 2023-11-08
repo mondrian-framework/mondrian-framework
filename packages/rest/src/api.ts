@@ -1,5 +1,5 @@
 import { assertApiValidity } from './utils'
-import { retrieve, types } from '@mondrian-framework/model'
+import { retrieve, model } from '@mondrian-framework/model'
 import { functions, logger, module } from '@mondrian-framework/module'
 import { OpenAPIV3_1 } from 'openapi-types'
 
@@ -77,7 +77,7 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   openapi?: {
     specification: NullableOperationObject
     input: (request: Request) => unknown
-    request?: (input: types.Infer<F['input']>) => {
+    request?: (input: model.Infer<F['input']>) => {
       body?: unknown
       params?: Record<string, string>
       query?: string

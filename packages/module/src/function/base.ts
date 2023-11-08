@@ -1,13 +1,13 @@
 import { functions } from '..'
 import { ErrorType, FunctionResult, OutputRetrieveCapabilities } from '../function'
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 
 /**
  * Basic function implementation.
  */
 export class BaseFunction<
-  I extends types.Type,
-  O extends types.Type,
+  I extends model.Type,
+  O extends model.Type,
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,

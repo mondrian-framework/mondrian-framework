@@ -1,4 +1,4 @@
-import { types, decoding, validation } from '../../'
+import { model, decoding, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -20,19 +20,19 @@ import gen from 'fast-check'
  *          const exampleMeasurement: Measurement = 28.2
  *          ```
  */
-export function number(options?: types.NumberTypeOptions): types.NumberType {
+export function number(options?: model.NumberTypeOptions): model.NumberType {
   return new NumberTypeImpl(options)
 }
 
 /**
- * @param options the {@link types.NumberTypeOptions} used to define the new `NumberType`
- * @returns a {@link types.NumberType} where the `isInteger` flag is set to true
+ * @param options the {@link model.NumberTypeOptions} used to define the new `NumberType`
+ * @returns a {@link model.NumberType} where the `isInteger` flag is set to true
  * @example Imagine you have to deal with the age of a users: it can be thought of as an integer number that can never
  *          be lower than zero. A model for such a data type could be defined like this:
  *
  *          ```ts
- *          type Age = types.Infer<typeof age>
- *          const age = types.integer({
+ *          type Age = model.Infer<typeof age>
+ *          const age = model.integer({
  *            name: "age",
  *            description: "an age that is never negative",
  *            inclusiveMinimum: 0,
@@ -41,17 +41,17 @@ export function number(options?: types.NumberTypeOptions): types.NumberType {
  *          const exampleAge: Age = 24
  *           ```
  */
-export function integer(options?: types.NumberTypeOptions): types.NumberType {
+export function integer(options?: model.NumberTypeOptions): model.NumberType {
   return number({ ...options, isInteger: true })
 }
 
-class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.NumberType {
-  readonly kind = types.Kind.Number
+class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.NumberType {
+  readonly kind = model.Kind.Number
 
   getThis = () => this
   fromOptions = number
 
-  constructor(options?: types.NumberTypeOptions) {
+  constructor(options?: model.NumberTypeOptions) {
     super(options)
     const minimum = options?.minimum
     const exclusiveMinimum = options?.exclusiveMinimum
@@ -72,11 +72,11 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
     }
   }
 
-  encodeWithNoChecks(value: types.Infer<types.NumberType>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.NumberType>): JSONType {
     return value
   }
 
-  validate(value: types.Infer<types.NumberType>, _validationOptions?: validation.Options): validation.Result {
+  validate(value: model.Infer<model.NumberType>, _validationOptions?: validation.Options): validation.Result {
     if (this.options === undefined) {
       return validation.succeed()
     }
@@ -99,7 +99,7 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
   decodeWithoutValidation(
     value: unknown,
     decodingOptions?: decoding.Options,
-  ): decoding.Result<types.Infer<types.NumberType>> {
+  ): decoding.Result<model.Infer<model.NumberType>> {
     if (typeof value === 'number') {
       return decoding.succeed(value)
     } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
@@ -110,14 +110,14 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
   }
 
   arbitrary(): gen.Arbitrary<number> {
-    function doubleMatchingOptions(options: types.NumberTypeOptions): gen.Arbitrary<number> {
+    function doubleMatchingOptions(options: model.NumberTypeOptions): gen.Arbitrary<number> {
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
       const min = selectMinimum(minimum, exclusiveMinimum)
       const max = selectMaximum(maximum, exclusiveMaximum)
       return gen.double({ ...min, ...max, noNaN: true })
     }
 
-    function integerMatchingOptions(options: types.NumberTypeOptions): gen.Arbitrary<number> {
+    function integerMatchingOptions(options: model.NumberTypeOptions): gen.Arbitrary<number> {
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
       if (
         (minimum && !Number.isInteger(minimum)) ||

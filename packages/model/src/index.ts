@@ -1,6 +1,6 @@
 import * as m from './types-exports'
 
-export * as types from './types-exports'
+export * as model from './types-exports'
 export * as encoding from './encoding'
 export * as decoding from './decoding'
 export * as validation from './validation'

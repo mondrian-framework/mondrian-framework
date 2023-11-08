@@ -1,7 +1,7 @@
 import { functions, module, utils } from '.'
 import { logger as mondrianLogger } from '.'
 import { ErrorType } from './function'
-import { retrieve, result, types } from '@mondrian-framework/model'
+import { retrieve, result, model } from '@mondrian-framework/model'
 
 export type Sdk<F extends functions.Functions, Metadata> = {
   functions: SdkFunctions<F, Metadata>
@@ -13,31 +13,31 @@ type SdkFunctions<F extends functions.Functions, Metadata> = {
 }
 
 type SdkFunction<
-  InputType extends types.Type,
-  OutputType extends types.Type,
+  InputType extends model.Type,
+  OutputType extends model.Type,
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   Metadata,
 > = <const P extends retrieve.FromType<OutputType, C>>(
-  input: types.Infer<InputType>,
+  input: model.Infer<InputType>,
   options?: { retrieve?: P; metadata?: Metadata; operationId?: string },
 ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
-  O extends types.Type,
+  O extends model.Type,
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   P extends retrieve.FromType<O, C>,
-> = [E] extends [types.Types] ? result.Result<Project<O, P>, { [K in keyof E]: types.Infer<E[K]> }> : Project<O, P>
+> = [E] extends [model.Types] ? result.Result<Project<O, P>, { [K in keyof E]: model.Infer<E[K]> }> : Project<O, P>
 
 /**
  * Infer a subset of a Mondrian type `T` based on a retrieve `P`
  * If not explicitly required, all embedded entities are excluded.
  **/
 // prettier-ignore
-export type Project<T extends types.Type, P extends retrieve.GenericRetrieve> //TODO
-  = [P] extends [Record<string, unknown>] ? types.Infer<types.PartialDeep<T>> 
-  : types.Infer<T>
+export type Project<T extends model.Type, P extends retrieve.GenericRetrieve> //TODO
+  = [P] extends [Record<string, unknown>] ? model.Infer<model.PartialDeep<T>> 
+  : model.Infer<T>
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata

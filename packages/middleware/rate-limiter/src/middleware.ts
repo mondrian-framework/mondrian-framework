@@ -2,15 +2,15 @@ import { InMemorySlotProvider } from './implementation/in-memory'
 import { Rate, RateLiteral, parseRate } from './rate'
 import { SlidingWindowProvider } from './sliding-window-provider'
 import { SlotProvider } from './slot-provider'
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
 /**
  * Input needed to instantiate a rate limiter middleware.
  */
 type RateLimitMiddlewareInput<
-  I extends types.Type,
-  O extends types.Type,
+  I extends model.Type,
+  O extends model.Type,
   E extends functions.ErrorType,
   C extends functions.OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
@@ -77,8 +77,8 @@ type RateLimitMiddlewareInput<
  * ```
  */
 export function build<
-  const I extends types.Type,
-  const O extends types.Type,
+  const I extends model.Type,
+  const O extends model.Type,
   const E extends functions.ErrorType,
   const R extends functions.OutputRetrieveCapabilities,
   const Context extends Record<string, unknown>,

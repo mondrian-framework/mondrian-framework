@@ -1,5 +1,5 @@
 import { Api, FunctionSpecifications } from './api'
-import { retrieve, types } from '@mondrian-framework/model'
+import { retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { JSONType, isArray, setTraversingValue, mapObject, flatMapObject } from '@mondrian-framework/utils'
 
@@ -122,18 +122,18 @@ export function assertApiValidity<Fs extends functions.Functions, ContextInput>(
  */
 export function completeRetrieve(
   retr: retrieve.GenericRetrieve | undefined,
-  type: types.Type,
+  type: model.Type,
 ): retrieve.GenericRetrieve | undefined {
   if (!retr) {
     return undefined
   }
   //TODO: GenericRetrieve could be inside an object
-  return types.match(type, {
+  return model.match(type, {
     wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
     entity: ({ fields }) =>
       retrieve.merge(type, retr, {
         select: mapObject(fields, (fieldName, fieldType) => {
-          if (types.unwrap(fieldType).kind === types.Kind.Entity) {
+          if (model.unwrap(fieldType).kind === model.Kind.Entity) {
             const subRetrieve = (retr.select ?? {})[fieldName]
             if (subRetrieve && subRetrieve !== true) {
               return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)
@@ -146,7 +146,7 @@ export function completeRetrieve(
       }) as retrieve.GenericRetrieve,
     object: ({ fields }) =>
       flatMapObject(fields, (fieldName, fieldType) =>
-        types.match(types.unwrap(fieldType), {
+        model.match(model.unwrap(fieldType), {
           entity: (_, entity) =>
             [[fieldName, completeRetrieve(((retr ?? {}) as any)[fieldName], entity)]] as [
               string,

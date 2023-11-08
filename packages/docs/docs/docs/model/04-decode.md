@@ -14,20 +14,20 @@ go check it out, it will really help in understanding the following examples.
 Let's look at an example of how decoding can work out for a Mondrian type:
 
 ```ts showLineNumbers
-type SearchQuery = types.Infer<typeof searchQuery>
-const searchQuery = types.object({
-    name: types.string(),
-    limit: types.number().optional(),
-    skip: types.number().optional(),
+type SearchQuery = model.Infer<typeof SearchQuery>
+const SearchQuery = model.object({
+    name: model.string(),
+    limit: model.number().optional(),
+    skip: model.number().optional(),
 })
 
 // Imagine this value comes from an HTTP request, or anywhere else:
 // it actually is unknown and we have to decode it
 const rawQuery: unknown = { name: "Mondrian", skip: 10 }
-searchQuery.decode(rawQuery) // -> ok({ name: "Mondrian", skip: 10 })
+SearchQuery.decode(rawQuery) // -> ok({ name: "Mondrian", skip: 10 })
 
 const rawWrongQuery: unknown = { skip: 10, limit: 5 }
-searchQuery.decode(rawWrongQuery) // -> error([ { expected: string, got: undefined, path: "$.name" } ])
+SearchQuery.decode(rawWrongQuery) // -> error([ { expected: string, got: undefined, path: "$.name" } ])
 ```
 
 If you take a look at the `decode` method return type you'll see that it returns
@@ -42,16 +42,16 @@ give us an insight into how the decoding process works:
   sure that the value also respects those
 
 ```ts showLineNumbers
-type NonNegativeNumber = types.Infer<typeof nonNegativeNumber>
-const nonNegativeNumber = types.number({ minimum: 0 })
+type NonNegativeNumber = model.Infer<typeof NonNegativeNumber>
+const NonNegativeNumber = model.number({ minimum: 0 })
 
-nonNegativeNumber.decode("not-a-number")
+NonNegativeNumber.decode("not-a-number")
 // -> error([{ expected: "a number", got: "not-a-number", path: "$" }])
 
-nonNegativeNumber.decode(-1)
+NonNegativeNumber.decode(-1)
 // -> error([{ assertion: ">= 0", got: -1, path: "$" }])
 
-nonNegativeNumber.decode(10)
+NonNegativeNumber.decode(10)
 // -> ok(10)
 ```
 

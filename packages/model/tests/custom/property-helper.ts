@@ -1,4 +1,4 @@
-import { decoding, types } from '../../src'
+import { decoding, model } from '../../src'
 import { fc as gen, test } from '@fast-check/vitest'
 import { JSONType } from '@mondrian-framework/utils'
 import { SuiteFactory, expect } from 'vitest'
@@ -15,7 +15,7 @@ import { SuiteFactory, expect } from 'vitest'
  * @param knownValidValues an array of valid values you want to make sure are tested to pass decoding
  * @param knownInvalidValues an array of invalid values you want to make sure are tested to fail decoding
  */
-export function testTypeEncodingAndDecoding<T extends types.Type>(
+export function testTypeEncodingAndDecoding<T extends model.Type>(
   type: T,
   generators: {
     validValues?: gen.Arbitrary<unknown>
@@ -40,7 +40,7 @@ export function testTypeEncodingAndDecoding<T extends types.Type>(
       // If the decoded value is not the same as the raw value (e.g. in Time where the raw can be a string
       // and the decoded is a Date)
       const { raw, expected } = rawValueAndExpectedValueFromUnknown(rawValue)
-      const decoded = types.concretise(type).decode(raw)
+      const decoded = model.concretise(type).decode(raw)
       expect(decoded.isOk).toBe(true)
       if (decoded.isOk) {
         expect(decoded.value).toEqual(expected)
@@ -48,16 +48,16 @@ export function testTypeEncodingAndDecoding<T extends types.Type>(
     }
 
     const checkIsNotDecoded = (rawValue: unknown) =>
-      types.concretise(type).decode(rawValue).isOk
+      model.concretise(type).decode(rawValue).isOk
         ? expect.fail(`${rawValue} was decoded but I expected the decoding to fail`)
         : true
 
     // informally, we check that `encode(decode(x)) = x`
     const checkEncodeInverseOfDecode = (rawValue: unknown) => {
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
-      const decoded = types.concretise(type).decode(raw)
+      const decoded = model.concretise(type).decode(raw)
       if (decoded.isOk) {
-        expect(types.concretise(type).encodeWithoutValidation(decoded.value as never)).toEqual(raw)
+        expect(model.concretise(type).encodeWithoutValidation(decoded.value as never)).toEqual(raw)
       } else {
         // If the decoding fails I fail the test, it doesn't make sense to check for inverse in that case
         return expect.fail(
@@ -71,16 +71,16 @@ export function testTypeEncodingAndDecoding<T extends types.Type>(
       // We expect to receive as input only raw valid values. First we decode them expecting the result to be valid
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValidValue)
 
-      const decodingResult = types.concretise(type).decode(raw)
+      const decodingResult = model.concretise(type).decode(raw)
       if (!decodingResult.isOk) {
         expect.fail(`I was expecting to get only valid raw values as input but got ${rawValidValue}.
         Most likely there is a bug in the \`validValues\` passed as input`)
       } else {
         // If we got a valid value `Infer<T>` we check that by encoding and decoding we get back the same result
         const validValue = decodingResult.value
-        const encodedValue = types.concretise(type).encodeWithoutValidation(validValue as never)
+        const encodedValue = model.concretise(type).encodeWithoutValidation(validValue as never)
 
-        const decoded = types.concretise(type).decode(encodedValue)
+        const decoded = model.concretise(type).decode(encodedValue)
         expect(decoded.isOk).toBe(true)
         if (decoded.isOk) {
           expect(decoded.value).toEqual(validValue)
@@ -128,7 +128,7 @@ export function testTypeEncodingAndDecoding<T extends types.Type>(
  * @param validValues an array valid raw, decoded and encoded sequence
  * @param knownInvalidValues an array of invalid values that does not pass the decode step
  */
-export function testTypeDecodingAndEncoding<T extends types.Type>(
+export function testTypeDecodingAndEncoding<T extends model.Type>(
   type: T,
   {
     validValues,
@@ -136,7 +136,7 @@ export function testTypeDecodingAndEncoding<T extends types.Type>(
   }: {
     validValues: {
       raw: JSONType
-      decoded: types.Infer<T>
+      decoded: model.Infer<T>
       encoded: JSONType
     }[]
     invalidValues: JSONType[]
@@ -146,7 +146,7 @@ export function testTypeDecodingAndEncoding<T extends types.Type>(
   return () => {
     test('decoding works for valid values', () =>
       validValues.forEach(({ raw, decoded }) => {
-        const result = types.concretise(type).decode(raw, decodingOptions)
+        const result = model.concretise(type).decode(raw, decodingOptions)
         if (result.isOk) {
           expect(result.value).toEqual(decoded)
         } else {
@@ -156,7 +156,7 @@ export function testTypeDecodingAndEncoding<T extends types.Type>(
       }))
     test('encoding works for valid values', () =>
       validValues.forEach(({ decoded, encoded }) => {
-        const result = types.concretise(type).encode(decoded as never)
+        const result = model.concretise(type).encode(decoded as never)
         if (result.isOk) {
           expect(result.value).toEqual(encoded)
         } else {
@@ -166,7 +166,7 @@ export function testTypeDecodingAndEncoding<T extends types.Type>(
       }))
     test('decoding fails for invalid values', () =>
       invalidValues.forEach((v) => {
-        const result = types.concretise(type).decode(v, decodingOptions)
+        const result = model.concretise(type).decode(v, decodingOptions)
         if (!result.isOk) {
           expect(result.error.length).greaterThan(0)
         } else {
@@ -177,9 +177,9 @@ export function testTypeDecodingAndEncoding<T extends types.Type>(
   }
 }
 
-export function testWithArbitrary(type: types.Type, biunivocalEquality = true): SuiteFactory<{}> {
+export function testWithArbitrary(type: model.Type, biunivocalEquality = true): SuiteFactory<{}> {
   try {
-    const t = types.concretise(type)
+    const t = model.concretise(type)
     const arbitrary = t.arbitrary(1)
     return () => {
       test.prop([arbitrary])('encode and decode with arbitrary values is ok', (value) => {

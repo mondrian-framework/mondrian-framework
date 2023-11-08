@@ -30,12 +30,12 @@ npm i @mondrian-framework/model \
 In this first example, we’re creating a simple registration function using the Mondrian framework. The function takes an email and password as input and returns a JSON web token as output:
 
 ```typescript
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
 const register = functions.build({
-  input: types.object({ email: types.email(), password: types.string() }),
-  output: types.object({ jwt: types.string() }),
+  input: model.object({ email: model.email(), password: model.string() }),
+  output: model.object({ jwt: model.string() }),
   errors: undefined,
   retrieve: undefined,
   async body({ input: { email, password } }) {
@@ -52,15 +52,15 @@ const register = functions.build({
 This is your first Mondrian function! Notice the `errors` and `retrieve` parameters? Let’s dive deeper into these with another example:
 
 ```typescript
-import { types, result } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
 const register = functions.build({
-  input: types.object({ email: types.email(), password: types.string() }),
-  output: types.object({ jwt: types.string() }),
+  input: model.object({ email: model.email(), password: model.string() }),
+  output: model.object({ jwt: model.string() }),
   errors: {
-    weakPassword: types.string(),
-    emailAlreadyUsed: types.string(),
+    weakPassword: model.string(),
+    emailAlreadyUsed: model.string(),
   },
   retrieve: undefined,
   async body({ input: { email, password } }) {

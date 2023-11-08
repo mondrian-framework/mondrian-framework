@@ -2,23 +2,23 @@ import { slotProvider } from '../../rate-limiter'
 import { idType, unauthorizedType, notLoggedInType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { userType } from './model'
-import { result, retrieve, types } from '@mondrian-framework/model'
+import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
-const loginInputType = types.object(
+const loginInputType = model.object(
   {
-    email: types.email(),
-    password: types.string().sensitive(),
+    email: model.email(),
+    password: model.string().sensitive(),
   },
   { name: 'LoginInput' },
 )
-const loginOutputType = types.string({ name: 'LoginOutput' })
+const loginOutputType = model.string({ name: 'LoginOutput' })
 const loginErrorType = {
-  invalidLogin: types.string(),
-  tooManyRequests: types.string(),
+  invalidLogin: model.string(),
+  tooManyRequests: model.string(),
 } as const
 
 const loginRateLimiter = rateLimiter.build<
@@ -60,12 +60,12 @@ export const login = functions.withContext<Context>().build({
   options: {},
 })
 
-const registerInputType = types.object(
+const registerInputType = model.object(
   {
-    password: types.string().sensitive(),
-    email: types.email(),
-    firstName: types.string(),
-    lastName: types.string(),
+    password: model.string().sensitive(),
+    email: model.email(),
+    firstName: model.string(),
+    lastName: model.string(),
   },
   {
     name: 'RegisterInput',
@@ -76,7 +76,7 @@ export const register = functions.withContext<Context>().build({
   input: registerInputType,
   output: userType,
   errors: {
-    emailAlreadyTaken: types.literal('Email already taken'),
+    emailAlreadyTaken: model.literal('Email already taken'),
   },
   retrieve: { select: true },
   body: async ({ input, context, retrieve }) => {
@@ -102,12 +102,12 @@ export const register = functions.withContext<Context>().build({
 })
 
 export const follow = functions.withContext<LoggedUserContext>().build({
-  input: types.object({ userId: idType }),
+  input: model.object({ userId: idType }),
   output: userType,
   errors: {
     unauthorizedType,
     notLoggedInType,
-    userNotExists: types.string(),
+    userNotExists: model.string(),
   },
   retrieve: { select: true },
   body: async ({ input, context, retrieve: thisRetrieve }) => {

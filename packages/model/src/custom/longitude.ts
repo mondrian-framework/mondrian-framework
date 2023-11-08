@@ -1,14 +1,14 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
 const MIN_LON = -180.0
 const MAX_LON = 180.0
 const MAX_PRECISION = 8
 
-export type LongitudeType = types.CustomType<'longitude', {}, number>
+export type LongitudeType = model.CustomType<'longitude', {}, number>
 
-export function longitude(options?: types.BaseOptions): types.CustomType<'longitude', {}, number> {
-  return types.custom(
+export function longitude(options?: model.BaseOptions): model.CustomType<'longitude', {}, number> {
+  return model.custom(
     'longitude',
     (number) => number,
     (value) =>

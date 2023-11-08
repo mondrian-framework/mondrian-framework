@@ -1,31 +1,31 @@
 import { module, functions, sdk } from '../src'
-import { result, types } from '@mondrian-framework/model'
+import { result, model } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
 test('Real example', async () => {
   ///Types
   const User = () =>
-    types.entity({
-      email: types.string(),
-      password: types.string(),
-      firstname: types.string().optional(),
-      lastname: types.string().optional(),
-      friend: types.optional(User),
-      metadata: types
-        .record(types.string({ maxLength: 1024 }))
+    model.entity({
+      email: model.string(),
+      password: model.string(),
+      firstname: model.string().optional(),
+      lastname: model.string().optional(),
+      friend: model.optional(User),
+      metadata: model
+        .record(model.string({ maxLength: 1024 }))
         .setName('Metadata')
         .optional(),
     })
-  type User = types.Infer<typeof User>
+  type User = model.Infer<typeof User>
   const LoginInput = () =>
-    types.object(
+    model.object(
       {
-        email: types.string(),
-        password: types.string(),
+        email: model.string(),
+        password: model.string(),
       },
       { name: 'LoginInput' },
     )
-  const LoginOutput = types.object({ jwt: types.string(), user: User }).nullable().setName('LoginOuput')
+  const LoginOutput = model.object({ jwt: model.string(), user: User }).nullable().setName('LoginOuput')
 
   //Functions
   type SharedContext = {
@@ -38,7 +38,7 @@ test('Real example', async () => {
   const login = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
     output: LoginOutput,
-    errors: { invalidEmailOrPassword: types.literal('Invalid email or password') },
+    errors: { invalidEmailOrPassword: model.literal('Invalid email or password') },
     retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
@@ -66,10 +66,10 @@ test('Real example', async () => {
 
   const register = functions.withContext<SharedContext & { from?: string }>().build({
     input: LoginInput,
-    output: types.nullable(User),
+    output: model.nullable(User),
     errors: {
-      weakPassword: types.literal('Weak passowrd'),
-      doubleRegister: types.literal('Double register'),
+      weakPassword: model.literal('Weak passowrd'),
+      doubleRegister: model.literal('Double register'),
     },
     retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
@@ -93,9 +93,9 @@ test('Real example', async () => {
   })
 
   const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
-    input: types.object({ firstname: types.string(), lastname: types.string() }),
+    input: model.object({ firstname: model.string(), lastname: model.string() }),
     output: User,
-    errors: { unauthorized: types.literal('unauthorized') },
+    errors: { unauthorized: model.literal('unauthorized') },
     retrieve: undefined,
     body: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
@@ -193,9 +193,9 @@ test('Real example', async () => {
 
 describe('Unique type name', () => {
   test('Two different type cannot have the same name', () => {
-    const n = types.number().setName('Input')
-    const input = types.number().setName('Input')
-    const output = types.union({ n, v: input.setName('V') })
+    const n = model.number().setName('Input')
+    const input = model.number().setName('Input')
+    const output = model.union({ n, v: input.setName('V') })
     const f = functions.build({
       input,
       output,
@@ -218,7 +218,7 @@ describe('Unique type name', () => {
 
 describe('Default middlewares', () => {
   test('Testing maximum projection depth and output type', async () => {
-    const type = () => types.entity({ type: types.optional(type), value: types.string() })
+    const type = () => model.entity({ type: model.optional(type), value: model.string() })
     const dummy = functions.build({
       input: type,
       output: type,

@@ -1,15 +1,15 @@
 import { functions } from '..'
 import { ErrorType, FunctionResult, OutputRetrieveCapabilities } from '../function'
 import { BaseFunction } from './base'
-import { result, types } from '@mondrian-framework/model'
+import { result, model } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
 
 /**
  * Opentelemetry instrumented function.
  */
 export class OpentelemetryFunction<
-  I extends types.Type,
-  O extends types.Type,
+  I extends model.Type,
+  O extends model.Type,
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
@@ -54,7 +54,7 @@ export class OpentelemetryFunction<
           span.end()
           return result.ok(applyResult)
         } catch (error) {
-          const concreteInputType = types.concretise(this.input)
+          const concreteInputType = model.concretise(this.input)
           span.setAttribute(
             'input.json',
             JSON.stringify(
@@ -66,7 +66,7 @@ export class OpentelemetryFunction<
           }
           span.setStatus({ code: SpanStatusCode.ERROR })
           span.end()
-          return result.fail<types.Infer<types.PartialDeep<O>>, unknown>(error)
+          return result.fail<model.Infer<model.PartialDeep<O>>, unknown>(error)
         }
       },
     )

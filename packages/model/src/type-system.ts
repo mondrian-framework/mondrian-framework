@@ -1,4 +1,4 @@
-import { decoding, validation, types, result, encoding } from './index'
+import { decoding, validation, model, result, encoding } from './index'
 import { NeverType } from './types-exports'
 import { memoizeTypeTransformation, memoizeTransformation, failWithInternalError } from './utils'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
@@ -61,21 +61,21 @@ export type Types = { readonly [K in string]: Type }
  * A type that turns a Mondrian {@link Type `Type`} into the equivalent TypeScript's type
  *
  * @example ```ts
- *          const model = types.string()
- *          type Type = types.Infer<typeof model>
+ *          const Model = model.string()
+ *          type Model = model.Infer<typeof Model>
  *          // Type = string
  *          ```
  * @example ```ts
- *          const model = types.number().nullable()
- *          type Type = types.Infer<typeof model>
+ *          const Model = model.number().nullable()
+ *          type Model = model.Infer<typeof Model>
  *          // Type = number | null
  *          ```
  * @example ```ts
- *          const model = types.object({
- *            field1: types.number(),
- *            field2: types.string(),
+ *          const Model = model.object({
+ *            field1: model.number(),
+ *            field2: model.string(),
  *          })
- *          type Type = types.Infer<typeof model>
+ *          type Model = model.Infer<typeof Model>
  *          // Type = { field1: number, field2: string }
  *          ```
  */
@@ -154,12 +154,12 @@ type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknow
  * Given an array of types, returns the union of the fields whose type is optional
  *
  * @example ```ts
- *          const model = types.object({
- *            foo: types.string(),
- *            bar: types.number().optional(),
- *            baz: types.boolean().array().optional(),
+ *          const Model = model.object({
+ *            foo: model.string(),
+ *            bar: model.number().optional(),
+ *            baz: model.boolean().array().optional(),
  *          })
- *          OptionalKeys<typeof model> // "bar" | "baz"
+ *          OptionalKeys<typeof Model> // "bar" | "baz"
  *          ```
  */
 type OptionalKeys<T extends Types> = {
@@ -174,12 +174,12 @@ type OptionalKeysReturn<T extends Types> = {
  * Given an array of types, returns the union of the fields whose type is not optional
  *
  * @example ```ts
- *          const model = types.object({
- *            foo: types.string(),
- *            bar: types.number().optional(),
- *            baz: types.boolean().array(),
+ *          const Model = model.object({
+ *            foo: model.string(),
+ *            bar: model.number().optional(),
+ *            baz: model.boolean().array(),
  *          })
- *          OptionalKeys<typeof model> // "foo" | "baz"
+ *          OptionalKeys<typeof Model> // "foo" | "baz"
  *          ```
  */
 type NonOptionalKeys<T extends Types> = {
@@ -195,18 +195,18 @@ type NonOptionalKeysReturn<T extends Types> = {
  * {@link OptionalType optional wrapper}
  *
  * @example ```ts
- *          const model = types.number().optional().reference()
- *          IsOptional<typeof model> // true
+ *          const Model = model.number().optional().reference()
+ *          IsOptional<typeof Model> // true
  *          ```
  *          The top-level decorators are `OptionalType` and `ReferenceType` so the type is optional
  * @example ```ts
- *          const model = types.number().optional()
- *          IsOptional<typeof model> // true
+ *          const Model = model.number().optional()
+ *          IsOptional<typeof Model> // true
  *          ```
  *          The top-level decorator is `OptionalType` so the type is optional
  * @example ```ts
- *          const model = types.number().optional().array()
- *          IsOptional<typeof model> // false
+ *          const Model = model.number().optional().array()
+ *          IsOptional<typeof Model> // false
  *          ```
  *          The top-level decorator is `ArrayType` so the type is not optional
  */
@@ -265,8 +265,8 @@ export enum Mutability {
  * @example if you just work with your own types you will rarely need this function. However,
  *          it can be handy when working with generic types:
  *          ```ts
- *          function do_something<T extends types.Type>(t: T) {
- *            const concrete = types.concretise(t)
+ *          function do_something<T extends model.Type>(t: T) {
+ *            const concrete = model.concretise(t)
  *            // now you can call methods like `validate` on `concrete`
  *          }
  *          ```
@@ -291,7 +291,7 @@ export type BaseOptions = {
 /**
  * The model of a `string` in the Mondrian framework
  *
- * @see {@link types.string} to build a `StringType`
+ * @see {@link model.string} to build a `StringType`
  */
 export type StringType = {
   readonly kind: Kind.String
@@ -301,8 +301,8 @@ export type StringType = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.string().optional()
-   *          types.Infer<typeof model> // string | undefined
+   *          const Model = model.string().optional()
+   *          type Model = model.Infer<typeof Model> // string | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<StringType>
@@ -311,8 +311,8 @@ export type StringType = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.string().nullable()
-   *          types.Infer<typeof model> // string | null
+   *          const Model = model.string().nullable()
+   *          type Model = model.Infer<typeof Model> // string | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<StringType>
@@ -321,8 +321,8 @@ export type StringType = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.string().array()
-   *          types.Infer<typeof model> // string[]
+   *          const Model = model.string().array()
+   *          type Model = model.Infer<typeof Model> // string[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, StringType>
@@ -332,9 +332,9 @@ export type StringType = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.string()
-   *          model.decode("foo") // succeeds with value: "foo"
-   *          model.decode(12) // fails: expected a string, got a number
+   *          const Model = model.string()
+   *          Model.decode("foo") // succeeds with value: "foo"
+   *          Model.decode(12) // fails: expected a string, got a number
    *          ```
    */
   decode(
@@ -371,8 +371,8 @@ export type StringType = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.string()
-   *          model.encode("foo") // succeeds with value: "foo"
+   *          const Model = model.string()
+   *          Model.encode("foo") // succeeds with value: "foo"
    *          ```
    */
   encode(
@@ -434,7 +434,7 @@ export type StringTypeOptions = BaseOptions & {
 /**
  * The model of a `number` in the Mondrian framework
  *
- * @see {@link types.number} to build a `NumberType`
+ * @see {@link model.number} to build a `NumberType`
  */
 export type NumberType = {
   readonly kind: Kind.Number
@@ -444,8 +444,8 @@ export type NumberType = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.number().optional()
-   *          types.Infer<typeof model> // number | undefined
+   *          const Model = model.number().optional()
+   *          type Model = model.Infer<typeof Model> // number | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<NumberType>
@@ -454,8 +454,8 @@ export type NumberType = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.number().nullable()
-   *          types.Infer<typeof model> // number | null
+   *          const Model = model.number().nullable()
+   *          type Model = model.Infer<typeof Model> // number | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<NumberType>
@@ -464,8 +464,8 @@ export type NumberType = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.number().array()
-   *          types.Infer<typeof model> // number[]
+   *          const Model = model.number().array()
+   *          type Model = model.Infer<typeof Model> // number[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, NumberType>
@@ -475,9 +475,9 @@ export type NumberType = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.number()
-   *          model.decode(12) // succeeds with value: 12
-   *          model.decode("foo") // fails: expected a number, got a string
+   *          const Model = model.number()
+   *          Model.decode(12) // succeeds with value: 12
+   *          Model.decode("foo") // fails: expected a number, got a string
    *          ```
    */
   decode(
@@ -514,8 +514,8 @@ export type NumberType = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.number()
-   *          model.encode(11) // succeeds with value: 11
+   *          const Model = model.number()
+   *          Model.encode(11) // succeeds with value: 11
    *          ```
    */
   encode(
@@ -587,8 +587,8 @@ export type BooleanType = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.boolean().optional()
-   *          types.Infer<typeof model> // boolean | undefined
+   *          const Model = model.boolean().optional()
+   *          type Model = model.Infer<typeof Model> // boolean | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<BooleanType>
@@ -597,8 +597,8 @@ export type BooleanType = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.boolean().nullable()
-   *          types.Infer<typeof model> // boolean | null
+   *          const Model = model.boolean().nullable()
+   *          type Model = model.Infer<typeof Model> // boolean | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<BooleanType>
@@ -607,8 +607,8 @@ export type BooleanType = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.boolean().array()
-   *          types.Infer<typeof model> // boolean[]
+   *          const Model = model.boolean().array()
+   *          type Model = model.Infer<typeof Model> // boolean[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, BooleanType>
@@ -618,9 +618,9 @@ export type BooleanType = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.boolean()
-   *          model.decode(true) // succeeds with value: true
-   *          model.decode("foo") // fails: expected boolean, got a string
+   *          const Model = model.boolean()
+   *          Model.decode(true) // succeeds with value: true
+   *          Model.decode("foo") // fails: expected boolean, got a string
    *          ```
    */
   decode(
@@ -657,8 +657,8 @@ export type BooleanType = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.boolean()
-   *          model.encode(true) // succeeds with value: true
+   *          const Model = model.boolean()
+   *          Model.encode(true) // succeeds with value: true
    *          ```
    */
   encode(
@@ -725,8 +725,8 @@ export type EnumType<Vs extends readonly [string, ...string[]] = readonly [strin
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.enumeration(["foo", "bar"]).optional()
-   *          types.Infer<typeof model> // "foo" | "bar" | undefined
+   *          const Model = model.enumeration(["foo", "bar"]).optional()
+   *          type Model = model.Infer<typeof Model> // "foo" | "bar" | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<EnumType<Vs>>
@@ -735,8 +735,8 @@ export type EnumType<Vs extends readonly [string, ...string[]] = readonly [strin
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.enumeration(["foo", "bar"]).nullable()
-   *          types.Infer<typeof model> // "foo" | "bar" | null
+   *          const Model = model.enumeration(["foo", "bar"]).nullable()
+   *          type Model = model.Infer<typeof Model> // "foo" | "bar" | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<EnumType<Vs>>
@@ -745,8 +745,8 @@ export type EnumType<Vs extends readonly [string, ...string[]] = readonly [strin
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.enumeration(["foo", "bar"]).array()
-   *          types.Infer<typeof model> // ("foo" | "bar")[]
+   *          const Model = model.enumeration(["foo", "bar"]).array()
+   *          type Model = model.Infer<typeof Model> // ("foo" | "bar")[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, EnumType<Vs>>
@@ -756,10 +756,10 @@ export type EnumType<Vs extends readonly [string, ...string[]] = readonly [strin
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.enumeration(["foo", "bar"])
-   *          model.decode("foo") // succeeds with value: "foo"
-   *          model.decode("bar") // succeeds with value: "bar"
-   *          model.decode("baz") // fails: expected "foo" or "bar", got "baz"
+   *          const Model = model.enumeration(["foo", "bar"])
+   *          Model.decode("foo") // succeeds with value: "foo"
+   *          Model.decode("bar") // succeeds with value: "bar"
+   *          Model.decode("baz") // fails: expected "foo" or "bar", got "baz"
    *          ```
    */
   decode(
@@ -796,8 +796,8 @@ export type EnumType<Vs extends readonly [string, ...string[]] = readonly [strin
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.enumeration(["foo", "bar"])
-   *          model.encode("foo") // succeeds with value: "foo"
+   *          const Model = model.enumeration(["foo", "bar"])
+   *          Model.encode("foo") // succeeds with value: "foo"
    *          ```
    */
   encode(
@@ -864,8 +864,8 @@ export type LiteralType<L extends number | string | boolean | null = number | st
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.literal(1).optional()
-   *          types.Infer<typeof model> // 1 | undefined
+   *          const Model = model.literal(1).optional()
+   *          type Model = model.Infer<typeof Model> // 1 | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<LiteralType<L>>
@@ -874,8 +874,8 @@ export type LiteralType<L extends number | string | boolean | null = number | st
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.literal(1).nullable()
-   *          types.Infer<typeof model> // 1 | null
+   *          const Model = model.literal(1).nullable()
+   *          type Model = model.Infer<typeof Model> // 1 | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<LiteralType<L>>
@@ -884,8 +884,8 @@ export type LiteralType<L extends number | string | boolean | null = number | st
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.literal(1).array()
-   *          types.Infer<typeof model> // (1)[]
+   *          const Model = model.literal(1).array()
+   *          type Model = model.Infer<typeof Model> // (1)[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, LiteralType<L>>
@@ -895,9 +895,9 @@ export type LiteralType<L extends number | string | boolean | null = number | st
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.literal(1)
-   *          model.decode(1) // succeeds with value: 1
-   *          model.decode(2) // fails: expected literal 1, got 2
+   *          const Model = model.literal(1)
+   *          Model.decode(1) // succeeds with value: 1
+   *          Model.decode(2) // fails: expected literal 1, got 2
    *          ```
    */
   decode(
@@ -934,8 +934,8 @@ export type LiteralType<L extends number | string | boolean | null = number | st
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.literal(1)
-   *          model.encode(1) // succeeds with value: 1
+   *          const Model = model.literal(1)
+   *          Model.encode(1) // succeeds with value: 1
    *          ```
    */
   encode(
@@ -1003,8 +1003,8 @@ export type UnionType<Ts extends Types> = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.union({ v1: types.number(), v2: types.string() }).optional()
-   *          types.Infer<typeof model> // { v1: number } | { v2: string } | undefined
+   *          const Model = model.union({ v1: model.number(), v2: model.string() }).optional()
+   *          type Model = model.Infer<typeof Model> // { v1: number } | { v2: string } | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<UnionType<Ts>>
@@ -1013,8 +1013,8 @@ export type UnionType<Ts extends Types> = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.union({ v1: types.number() }, { v2: types.string() }).nullable()
-   *          types.Infer<typeof model> // { v1: number } | { v2: string } | null
+   *          const Model = model.union({ v1: model.number() }, { v2: model.string() }).nullable()
+   *          type Model = model.Infer<typeof Model> // { v1: number } | { v2: string } | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<UnionType<Ts>>
@@ -1023,8 +1023,8 @@ export type UnionType<Ts extends Types> = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.union({ v1: types.number() }, { v2: types.string() }).array()
-   *          types.Infer<typeof model> // ({ v1: number } | { v2: string })[]
+   *          const Model = model.union({ v1: model.number() }, { v2: model.string() }).array()
+   *          type Model = model.Infer<typeof Model> // ({ v1: number } | { v2: string })[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, UnionType<Ts>>
@@ -1034,10 +1034,10 @@ export type UnionType<Ts extends Types> = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.union({ v1: types.number() }, { v2: types.string() })
-   *          model.decode({ v1: 1 }) // succeeds with value: { v1: 1 }
-   *          model.decode({ v2: "foo" }) // succeeds with value: { v2: "foo" }
-   *          model.decode({ v3: true }) // fails: expected v1 or v2, got v3
+   *          const Model = model.union({ v1: model.number() }, { v2: model.string() })
+   *          Model.decode({ v1: 1 }) // succeeds with value: { v1: 1 }
+   *          Model.decode({ v2: "foo" }) // succeeds with value: { v2: "foo" }
+   *          Model.decode({ v3: true }) // fails: expected v1 or v2, got v3
    *          ```
    */
   decode(
@@ -1074,8 +1074,8 @@ export type UnionType<Ts extends Types> = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.union({ v1: types.number() }, { v2: types.string() })
-   *          model.encode({ v1: 1 }) // succeeds with value: { v1: 1 }
+   *          const Model = model.union({ v1: model.number() }, { v2: model.string() })
+   *          Model.encode({ v1: 1 }) // succeeds with value: { v1: 1 }
    *          ```
    */
   encode(
@@ -1154,8 +1154,8 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.object({ field: types.number() }).optional()
-   *          types.Infer<typeof model> // { readonly field: number } | undefined
+   *          const Model = model.object({ field: model.number() }).optional()
+   *          type Model = model.Infer<typeof Model> // { readonly field: number } | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<ObjectType<M, Ts>>
@@ -1164,8 +1164,8 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.object({ field: types.number() }).nullable()
-   *          types.Infer<typeof model> // { readonly field: number } | null
+   *          const Model = model.object({ field: model.number() }).nullable()
+   *          type Model = model.Infer<typeof Model> // { readonly field: number } | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<ObjectType<M, Ts>>
@@ -1174,8 +1174,8 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.object({ field: types.number() }).array()
-   *          types.Infer<typeof model> // { readonly field: number }[]
+   *          const Model = model.object({ field: model.number() }).array()
+   *          type Model = model.Infer<typeof Model> // { readonly field: number }[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ObjectType<M, Ts>>
@@ -1185,10 +1185,10 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.object({ field: types.number() })
-   *          model.decode({ field: 1 }) // succeeds with value: { field: 1 }
-   *          model.decode({ field: "foo" }) // fails: expected a number in `field`, got a string
-   *          model.decode({}) // fails: `field` missing
+   *          const Model = model.object({ field: model.number() })
+   *          Model.decode({ field: 1 }) // succeeds with value: { field: 1 }
+   *          Model.decode({ field: "foo" }) // fails: expected a number in `field`, got a string
+   *          Model.decode({}) // fails: `field` missing
    *          ```
    */
   decode(
@@ -1225,8 +1225,8 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.object({ field: types.number() })
-   *          model.encode({ field: 1 }) // succeeds with value: { field: 1 }
+   *          const Model = model.object({ field: model.number() })
+   *          Model.encode({ field: 1 }) // succeeds with value: { field: 1 }
    *          ```
    */
   encode(
@@ -1300,8 +1300,8 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.object({ field: types.number() }).optional()
-   *          types.Infer<typeof model> // { readonly field: number } | undefined
+   *          const Model = model.object({ field: model.number() }).optional()
+   *          type Model = model.Infer<typeof Model> // { readonly field: number } | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<EntityType<M, Ts>>
@@ -1310,8 +1310,8 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.object({ field: types.number() }).nullable()
-   *          types.Infer<typeof model> // { readonly field: number } | null
+   *          const Model = model.object({ field: model.number() }).nullable()
+   *          type Model = model.Infer<typeof Model> // { readonly field: number } | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<EntityType<M, Ts>>
@@ -1320,8 +1320,8 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.object({ field: types.number() }).array()
-   *          types.Infer<typeof model> // { readonly field: number }[]
+   *          const Model = model.object({ field: model.number() }).array()
+   *          type Model = model.Infer<typeof Model> // { readonly field: number }[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, EntityType<M, Ts>>
@@ -1331,10 +1331,10 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.object({ field: types.number() })
-   *          model.decode({ field: 1 }) // succeeds with value: { field: 1 }
-   *          model.decode({ field: "foo" }) // fails: expected a number in `field`, got a string
-   *          model.decode({}) // fails: `field` missing
+   *          const Model = model.object({ field: model.number() })
+   *          Model.decode({ field: 1 }) // succeeds with value: { field: 1 }
+   *          Model.decode({ field: "foo" }) // fails: expected a number in `field`, got a string
+   *          Model.decode({}) // fails: `field` missing
    *          ```
    */
   decode(
@@ -1371,8 +1371,8 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.object({ field: types.number() })
-   *          model.encode({ field: 1 }) // succeeds with value: { field: 1 }
+   *          const Model = model.object({ field: model.number() })
+   *          Model.encode({ field: 1 }) // succeeds with value: { field: 1 }
    *          ```
    */
   encode(
@@ -1442,8 +1442,8 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.number().array().optional()
-   *          types.Infer<typeof model> // number[] | undefined
+   *          const Model = model.number().array().optional()
+   *          type Model = model.Infer<typeof Model> // number[] | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<ArrayType<M, T>>
@@ -1452,8 +1452,8 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.number().array().nullable()
-   *          types.Infer<typeof model> // number[] | null
+   *          const Model = model.number().array().nullable()
+   *          type Model = model.Infer<typeof Model> // number[] | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<ArrayType<M, T>>
@@ -1462,8 +1462,8 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.number().array().array()
-   *          types.Infer<typeof model> // number[][]
+   *          const Model = model.number().array().array()
+   *          type Model = model.Infer<typeof Model> // number[][]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, ArrayType<M, T>>
@@ -1473,10 +1473,10 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.number().array()
-   *          model.decode([1, 2, 3]) // succeeds with value: [1, 2, 3]
-   *          model.decode(["foo"]) // fails: expected number, got string in first element
-   *          model.decode(true) // fails: expected array, got boolean
+   *          const Model = model.number().array()
+   *          Model.decode([1, 2, 3]) // succeeds with value: [1, 2, 3]
+   *          Model.decode(["foo"]) // fails: expected number, got string in first element
+   *          Model.decode(true) // fails: expected array, got boolean
    *          ```
    */
   decode(
@@ -1513,8 +1513,8 @@ export type ArrayType<M extends Mutability, T extends Type> = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.number().array()
-   *          model.encode([1, 2, 3]) // succeeds with value: [1, 2, 3]
+   *          const Model = model.number().array()
+   *          Model.encode([1, 2, 3]) // succeeds with value: [1, 2, 3]
    *          ```
    */
   encode(
@@ -1589,8 +1589,8 @@ export type OptionalType<T extends Type> = {
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.number().optional().nullable()
-   *          types.Infer<typeof model> // number | undefined | null
+   *          const Model = model.number().optional().nullable()
+   *          type Model = model.Infer<typeof Model> // number | undefined | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<OptionalType<T>>
@@ -1599,8 +1599,8 @@ export type OptionalType<T extends Type> = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.number().optional().array()
-   *          types.Infer<typeof model> // (number | undefined)[]
+   *          const Model = model.number().optional().array()
+   *          type Model = model.Infer<typeof Model> // (number | undefined)[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, OptionalType<T>>
@@ -1610,10 +1610,10 @@ export type OptionalType<T extends Type> = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.number().optional()
-   *          model.decode(undefined) // succeeds with value: undefined
-   *          model.decode(1) // succeeds with value: 1
-   *          model.decode("foo") // fails: expected number or undefined, got string
+   *          const Model = model.number().optional()
+   *          Model.decode(undefined) // succeeds with value: undefined
+   *          Model.decode(1) // succeeds with value: 1
+   *          Model.decode("foo") // fails: expected number or undefined, got string
    *          ```
    */
   decode(
@@ -1650,9 +1650,9 @@ export type OptionalType<T extends Type> = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.number().optional()
-   *          model.encode(11) // succeeds with value: 11
-   *          model.encode(undefined) // succeeds with value: null
+   *          const Model = model.number().optional()
+   *          Model.encode(11) // succeeds with value: 11
+   *          Model.encode(undefined) // succeeds with value: null
    *          ```
    */
   encode(
@@ -1722,8 +1722,8 @@ export type NullableType<T extends Type> = {
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.number().nullable().optional()
-   *          types.Infer<typeof model> // number | null | undefined
+   *          const Model = model.number().nullable().optional()
+   *          type Model = model.Infer<typeof Model> // number | null | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<NullableType<T>>
@@ -1732,8 +1732,8 @@ export type NullableType<T extends Type> = {
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.number().nullable().array()
-   *          types.Infer<typeof model> // (number | null)[]
+   *          const Model = model.number().nullable().array()
+   *          type Model = model.Infer<typeof Model> // (number | null)[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, NullableType<T>>
@@ -1743,10 +1743,10 @@ export type NullableType<T extends Type> = {
    * @param decodingOptions
    * @param validationOptions
    * @example ```ts
-   *          const model = types.number().nullable()
-   *          model.decode(11) // succeeds with value: 11
-   *          model.decode(null) // succeeds with value: null
-   *          model.decode("foo") // fails: expected number or null, got string
+   *          const Model = model.number().nullable()
+   *          Model.decode(11) // succeeds with value: 11
+   *          Model.decode(null) // succeeds with value: null
+   *          Model.decode("foo") // fails: expected number or null, got string
    *          ```
    */
   decode(
@@ -1783,9 +1783,9 @@ export type NullableType<T extends Type> = {
    *          checks) holding the value encoded as a JSONType. If the type is not valid it is not encoded
    *          and a failing result with the {@link validation.Error validation errors} is returned
    * @example ```ts
-   *          const model = types.number().nullable()
-   *          model.encode(11) // succeeds with value: 11
-   *          model.encode(null) // succeeds with value: null
+   *          const Model = model.number().nullable()
+   *          Model.encode(11) // succeeds with value: 11
+   *          Model.encode(null) // succeeds with value: null
    *          ```
    */
   encode(
@@ -1855,8 +1855,8 @@ export type CustomType<Name extends string = string, Options extends Record<stri
    * Turns this type into an optional version of itself
    *
    * @example ```ts
-   *          const model = types.custom<"my_type", {}, number>(...).optional()
-   *          types.Infer<typeof model> // number | undefined
+   *          const Model = model.custom<"my_type", {}, number>(...).optional()
+   *          type Model = model.Infer<typeof Model> // number | undefined
    *          ```
    */
   optional(options?: OptionalTypeOptions): OptionalType<CustomType<Name, Options, InferredAs>>
@@ -1865,8 +1865,8 @@ export type CustomType<Name extends string = string, Options extends Record<stri
    * Turns this type into a nullable version of itself
    *
    * @example ```ts
-   *          const model = types.custom<"my_type", {}, number>(...).nullable()
-   *          types.Infer<typeof model> // number | null
+   *          const Model = model.custom<"my_type", {}, number>(...).nullable()
+   *          type Model = model.Infer<typeof Model> // number | null
    *          ```
    */
   nullable(options?: NullableTypeOptions): NullableType<CustomType<Name, Options, InferredAs>>
@@ -1874,8 +1874,8 @@ export type CustomType<Name extends string = string, Options extends Record<stri
    * Turns this type into an array of elements of this type
    *
    * @example ```ts
-   *          const model = types.custom<"my_type", {}, number>(...).array()
-   *          types.Infer<typeof model> // number[]
+   *          const Model = model.custom<"my_type", {}, number>(...).array()
+   *          type Model = model.Infer<typeof Model> // number[]
    *          ```
    */
   array(options?: ArrayTypeOptions): ArrayType<Mutability.Immutable, CustomType<Name, Options, InferredAs>>
@@ -1979,16 +1979,16 @@ export type CustomTypeOptions<AdditionalOptions extends Record<string, unknown>>
  * optional fields
  *
  * @example ```ts
- *          const model = types.number()
- *          types.Infer<types.PartialDeep<typeof model>> // number
+ *          const Model = model.number()
+ *          type Model = model.Infer<model.PartialDeep<typeof Model>> // number
  *          ```
  * @example ```ts
- *          const model = types.object({ field: number })
- *          types.Infer<types.PartialDeep<typeof model>> // { field?: number }
+ *          const Model = model.object({ field: number })
+ *          type Model = model.Infer<model.PartialDeep<typeof Model>> // { field?: number }
  *          ```
  * @example ```ts
- *          const model = types.object({ field: number }).array()
- *          types.Infer<types.PartialDeep<typeof model>> // { field?: number }[]
+ *          const Model = model.object({ field: number }).array()
+ *          type Model = model.Infer<model.PartialDeep<typeof Model>> // { field?: number }[]
  *          ```
  */
 //prettier-ignore
@@ -2007,9 +2007,9 @@ export type PartialDeep<T extends Type>
  * @returns a new {@link Type} where the fields of every {@link ObjectType} appearing in it is turned
  *          into an optional field
  * @example ```ts
- *          const model = types.object({ field: types.string() }).array()
- *          types.partialDeep(model)
- *          // -> same as types.object({ field: types.string().optional() }).array()
+ *          const Model = model.object({ field: model.string() }).array()
+ *          model.partialDeep(model)
+ *          // -> same as model.object({ field: model.string().optional() }).array()
  *          ```
  */
 export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
@@ -2017,12 +2017,12 @@ export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
 }
 const partialDeepInternal = memoizeTypeTransformation(
   matcher({
-    nullable: ({ wrappedType }) => types.nullable(partialDeep(wrappedType)),
-    optional: ({ wrappedType }) => types.optional(partialDeep(wrappedType)),
-    array: ({ wrappedType }) => types.array(partialDeep(wrappedType)),
-    union: ({ variants }) => types.union(mapObject(variants, (_, fieldValue) => partialDeep(fieldValue))),
-    object: ({ fields }) => types.object(mapObject(fields, (_, fieldValue) => types.optional(partialDeep(fieldValue)))),
-    entity: ({ fields }) => types.entity(mapObject(fields, (_, fieldValue) => types.optional(partialDeep(fieldValue)))),
+    nullable: ({ wrappedType }) => model.nullable(partialDeep(wrappedType)),
+    optional: ({ wrappedType }) => model.optional(partialDeep(wrappedType)),
+    array: ({ wrappedType }) => model.array(partialDeep(wrappedType)),
+    union: ({ variants }) => model.union(mapObject(variants, (_, fieldValue) => partialDeep(fieldValue))),
+    object: ({ fields }) => model.object(mapObject(fields, (_, fieldValue) => model.optional(partialDeep(fieldValue)))),
+    entity: ({ fields }) => model.entity(mapObject(fields, (_, fieldValue) => model.optional(partialDeep(fieldValue)))),
     otherwise: (_, t) => t,
   }),
 )
@@ -2098,7 +2098,7 @@ export function isType<T extends Type>(
   decodingOptions?: decoding.Options,
   validationOptions?: validation.Options,
 ): value is Infer<T> {
-  return types.concretise(type).decode(value, decodingOptions, validationOptions).isOk
+  return model.concretise(type).decode(value, decodingOptions, validationOptions).isOk
 }
 
 /**
@@ -2113,7 +2113,7 @@ export function assertType<T extends Type>(
   decodingOptions?: decoding.Options,
   validationOptions?: validation.Options,
 ): asserts value is Infer<T> {
-  types
+  model
     .concretise(type)
     .decode(value, decodingOptions, validationOptions)
     .match(
@@ -2249,7 +2249,7 @@ export const isEntity: (type: Type) => boolean = matcher({
  *
  * @example
  * ```typescript
- * types.match(type, {
+ * model.match(type, {
  *   number: (concreteType, type) => // return something,
  *   string: (concreteType, type) => // return something,
  *   boolean: (concreteType, type) => // return something,
@@ -2272,7 +2272,7 @@ export function match<const M extends TypeMatch<unknown>>(
   type: MatcherInputType<M>,
   cases: M,
 ): M extends TypeMatch<infer T> ? T : unknown {
-  const t = types.concretise(type as Type)
+  const t = model.concretise(type as Type)
   const potentialHandlers = {
     [Kind.String]: ['string', 'scalar', 'otherwise'],
     [Kind.Number]: ['number', 'scalar', 'otherwise'],
@@ -2294,7 +2294,7 @@ export function match<const M extends TypeMatch<unknown>>(
       return handler(t, type)
     }
   }
-  throw failWithInternalError('`types.match` with not exhaustive cases occurs')
+  throw failWithInternalError('`model.match` with not exhaustive cases occurs')
 }
 
 /**
@@ -2310,7 +2310,7 @@ export function match<const M extends TypeMatch<unknown>>(
  *
  * @example
  * ```typescript
- * const matchType = types.matcher({
+ * const matchType = model.matcher({
  *   number: (concreteType, type) => // return something,
  *   string: (concreteType, type) => // return something,
  *   boolean: (concreteType, type) => // return something,

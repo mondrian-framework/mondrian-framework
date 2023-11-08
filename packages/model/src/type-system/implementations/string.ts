@@ -1,11 +1,11 @@
-import { decoding, types, validation } from '../../'
+import { decoding, model, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
- * @param options the {@link types.StringTypeOptions} used to define the new `StringType`
- * @returns a {@link types.StringType} with the given `options`
+ * @param options the {@link model.StringTypeOptions} used to define the new `StringType`
+ * @returns a {@link model.StringType} with the given `options`
  * @example Imagine you have to deal with string usernames that can never be empty.
  *          A model for such username could be defined like this:
  *
@@ -20,17 +20,17 @@ import gen from 'fast-check'
  *          const exampleUsername: Username = "my_cool_username"
  *          ```
  */
-export function string(options?: types.StringTypeOptions): types.StringType {
+export function string(options?: model.StringTypeOptions): model.StringType {
   return new StringTypeImpl(options)
 }
 
-class StringTypeImpl extends DefaultMethods<types.StringType> implements types.StringType {
-  readonly kind = types.Kind.String
+class StringTypeImpl extends DefaultMethods<model.StringType> implements model.StringType {
+  readonly kind = model.Kind.String
 
   fromOptions = string
   getThis = () => this
 
-  constructor(options?: types.StringTypeOptions) {
+  constructor(options?: model.StringTypeOptions) {
     super(options)
     const minLength = options?.minLength
     const maxLength = options?.maxLength
@@ -49,11 +49,11 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
     }
   }
 
-  encodeWithNoChecks(value: types.Infer<types.StringType>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.StringType>): JSONType {
     return value
   }
 
-  validate(value: types.Infer<types.StringType>, _validationOptions?: validation.Options): validation.Result {
+  validate(value: model.Infer<model.StringType>, _validationOptions?: validation.Options): validation.Result {
     if (this.options === undefined) {
       return validation.succeed()
     }
@@ -73,7 +73,7 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
   decodeWithoutValidation(
     value: unknown,
     decodingOptions?: decoding.Options,
-  ): decoding.Result<types.Infer<types.StringType>> {
+  ): decoding.Result<model.Infer<model.StringType>> {
     if (typeof value === 'string') {
       return decoding.succeed(value)
     } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {

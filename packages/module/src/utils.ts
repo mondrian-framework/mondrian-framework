@@ -1,4 +1,4 @@
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import crypto from 'crypto'
 
 /**
@@ -18,27 +18,27 @@ export function randomOperationId() {
  *          contain not only the object type itself, but also the types of its
  *          fields
  */
-export function uniqueTypes(from: types.Type): Set<types.Type> {
+export function uniqueTypes(from: model.Type): Set<model.Type> {
   return gatherUniqueTypes(new Set(), from)
 }
 
 /**
  * Retruns a set with all the unique types referenced by the given list of types.
  */
-export function allUniqueTypes(from: types.Type[]): Set<types.Type> {
+export function allUniqueTypes(from: model.Type[]): Set<model.Type> {
   return from.reduce(gatherUniqueTypes, new Set())
 }
 
 // Returns a set of unique types referenced by the given type. The first argument
 // is a set that contains the types that have already been inspected and is updated
 // _in place_!
-function gatherUniqueTypes(inspectedTypes: Set<types.Type>, type: types.Type): Set<types.Type> {
+function gatherUniqueTypes(inspectedTypes: Set<model.Type>, type: model.Type): Set<model.Type> {
   if (inspectedTypes.has(type)) {
     return inspectedTypes
   } else {
     inspectedTypes.add(type)
   }
-  return types.match(type, {
+  return model.match(type, {
     scalar: () => inspectedTypes,
     wrapper: ({ wrappedType }) => gatherUniqueTypes(inspectedTypes, wrappedType),
     union: ({ variants }) => Object.values(variants).reduce(gatherUniqueTypes, inspectedTypes),

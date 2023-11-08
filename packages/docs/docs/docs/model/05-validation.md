@@ -9,11 +9,11 @@ Before diving deep into the validation API, let's take a look at an example to
 get a sense of how this works:
 
 ```ts showLineNumbers
-type NonEmpty = types.Infer<typeof nonEmpty>
-const nonEmpty = types.number().array({ minItems: 1 })
+type NonEmpty = model.Infer<typeof NonEmpty>
+const NonEmpty = model.number().array({ minItems: 1 })
 
-nonEmpty.validate([1, 2, 3]) // -> ok
-nonEmpty.validate([]) // -> error([{ assertion: ".length >= 1", got: [], path: "$" }])
+NonEmpty.validate([1, 2, 3]) // -> ok
+NonEmpty.validate([]) // -> error([{ assertion: ".length >= 1", got: [], path: "$" }])
 ```
 
 ## How types get validated
@@ -52,13 +52,13 @@ optionals, and nullables behave like you would expect: for such a type to be val
 all of their wrapped items must themselves be valid:
 
 ```ts showLineNumbers
-type User = types.Infer<typeof user>
-const user = types.object({
-    username: types.string({ minLength: 1 }),
+type User = model.Infer<typeof User>
+const User = model.object({
+  username: model.string({ minLength: 1 }),
 })
 
-user.validate({ username: "" }) // -> error([{ assertion: ".length >= 1", got: "", path: "$.username" }])
-user.validate({ username: "Giacomo" }) // -> ok
+User.validate({ username: '' }) // -> error([{ assertion: ".length >= 1", got: "", path: "$.username" }])
+User.validate({ username: 'Giacomo' }) // -> ok
 ```
 
 ## Tweaking the validation process
@@ -68,10 +68,10 @@ providing it additional options. The type for those options is defined in the
 `validation` namespace:
 
 ```ts showLineNumbers
-import { validation } from "@mondrian-framework/model"
+import { validation } from '@mondrian-framework/model'
 
 const exampleOptions: validation.Options = {
-    errorReportingStrategy: "allErrors"
+  errorReportingStrategy: 'allErrors',
 }
 ```
 
@@ -83,7 +83,7 @@ const exampleOptions: validation.Options = {
 ```ts showLineNumbers
 const array = number({ minimum: 0 }).array()
 
-array.validate([-1, 0, -2], { errorReportingStrategy: "allErrors" })
+array.validate([-1, 0, -2], { errorReportingStrategy: 'allErrors' })
 // -> error([
 //   { assertion: ">= 0", got: -1, path: "$[0]" },
 //   { assertion: ">= 0", got: -2, path: "$[2]" },
@@ -116,16 +116,16 @@ skipping all the validation checks.
 > validating your data allowing sneaky bugs to enter your codebase.
 >
 > ```ts showLineNumbers
-> type Username = types.Infer<typeof username>
-> const username = types.string()
+> type Username = model.Infer<typeof Username>
+> const Username = model.string()
 >
-> type User = types.Infer<typeof user>
-> const user = types.object({ id: types.number(), username })
-> 
-> async function registerNewUser(input: { username: Username }) { 
->     const encoded = username.encodeWithoutValidation(input.username) // <- this is super unsafe
->     const id = await saveUserToDB(encoded)
->     return id
+> type User = model.Infer<typeof User>
+> const User = model.object({ id: model.number(), username })
+>
+> async function registerNewUser(input: { username: Username }) {
+>   const encoded = Username.encodeWithoutValidation(input.username) // <- this is super unsafe
+>   const id = await saveUserToDB(encoded)
+>   return id
 > }
 > ```
 >
@@ -133,18 +133,18 @@ skipping all the validation checks.
 > register with an empty string as username, so you add further validation:
 >
 > ```ts showLineNumbers
-> type Username = types.Infer<typeof username>
+> type Username = model.Infer<typeof Username>
 > // highlight-start
-> const username = types.string({ minLenght: 1 })
+> const Username = model.string({ minLenght: 1 })
 > // highlight-end
 >
-> type User = types.Infer<typeof user>
-> const user = types.object({ id: types.number(), username })
-> 
-> async function registerNewUser(input: { username: Username }) { 
->     const encoded = username.encodeWithoutValidation(input.username)
->     const id = await saveUserToDB(encoded)
->     return id
+> type User = model.Infer<typeof User>
+> const User = model.object({ id: model.number(), username })
+>
+> async function registerNewUser(input: { username: Username }) {
+>   const encoded = Username.encodeWithoutValidation(input.username)
+>   const id = await saveUserToDB(encoded)
+>   return id
 > }
 > ```
 >
@@ -157,14 +157,14 @@ skipping all the validation checks.
 > compiler to handle any possible error case and wouldn't have missed that:
 >
 > ```ts showLineNumbers
-> async function registerNewUser(input: { username: Username }) { 
->     const encodedUsername = username.encode(input.username)
->     if (encodedUsername.isOk) {
->         const id = await saveUserToDB(encoded)
->         return id
->     } else {
->         logger.log(LogKind.Error, "invalid input", encodedUsername.error)
->         return undefined
->     }
+> async function registerNewUser(input: { username: Username }) {
+>   const encodedUsername = Username.encode(input.username)
+>   if (encodedUsername.isOk) {
+>     const id = await saveUserToDB(encoded)
+>     return id
+>   } else {
+>     logger.log(LogKind.Error, 'invalid input', encodedUsername.error)
+>     return undefined
+>   }
 > }
 > ```

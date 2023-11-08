@@ -1,14 +1,14 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
 const MIN_LAT = -90.0
 const MAX_LAT = 90.0
 const MAX_PRECISION = 8
 
-export type LatitudeType = types.CustomType<'latitude', {}, number>
+export type LatitudeType = model.CustomType<'latitude', {}, number>
 
-export function latitude(options?: types.BaseOptions): LatitudeType {
-  return types.custom(
+export function latitude(options?: model.BaseOptions): LatitudeType {
+  return model.custom(
     'latitude',
     (number) => number,
     (value) =>

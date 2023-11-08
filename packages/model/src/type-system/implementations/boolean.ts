@@ -1,17 +1,17 @@
-import { decoding, types, validation } from '../../'
+import { decoding, model, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
- * @param options the {@link types.BooleanTypeOptions} used to define the new `BooleanType`
- * @returns a {@link types.BooleanType} with the given options
+ * @param options the {@link model.BooleanTypeOptions} used to define the new `BooleanType`
+ * @returns a {@link model.BooleanType} with the given options
  * @example Imagine you have to keep track of a flag that is used to check wether a user is an admin or not.
  *          The corresponding model could be defined like this:
  *
  *          ```ts
- *          type AdminFlag = types.Infer<typeof adminFlag>
- *          const adminFlag = types.boolean({
+ *          type AdminFlag = model.Infer<typeof adminFlag>
+ *          const adminFlag = model.boolean({
  *            name: "isAdmin",
  *            description: "a flag that is True if the user is also an admin",
  *          })
@@ -19,25 +19,25 @@ import gen from 'fast-check'
  *          const exampleAdminFlag: AdminFlag = true
  *          ```
  */
-export function boolean(options?: types.BooleanTypeOptions): types.BooleanType {
+export function boolean(options?: model.BooleanTypeOptions): model.BooleanType {
   return new BooleanTypeImpl(options)
 }
 
-class BooleanTypeImpl extends DefaultMethods<types.BooleanType> implements types.BooleanType {
-  readonly kind = types.Kind.Boolean
+class BooleanTypeImpl extends DefaultMethods<model.BooleanType> implements model.BooleanType {
+  readonly kind = model.Kind.Boolean
 
   getThis = () => this
   fromOptions = boolean
 
-  constructor(options?: types.BooleanTypeOptions) {
+  constructor(options?: model.BooleanTypeOptions) {
     super(options)
   }
 
-  encodeWithNoChecks(value: types.Infer<types.BooleanType>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.BooleanType>): JSONType {
     return value
   }
 
-  validate(_value: types.Infer<types.BooleanType>, _validationOptions?: validation.Options): validation.Result {
+  validate(_value: model.Infer<model.BooleanType>, _validationOptions?: validation.Options): validation.Result {
     return validation.succeed()
   }
 

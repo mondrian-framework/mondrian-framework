@@ -1,4 +1,4 @@
-import { path, types } from '.'
+import { path, model } from '.'
 
 /**
  * @param message the message to display in the error
@@ -50,16 +50,16 @@ export function prependIndexToAll<Data extends Record<string, any>, T extends Wi
   return values.map((value) => ({ ...value, path: value.path.prependIndex(index) }))
 }
 
-type TypeTransformer<T extends types.Type> = (type: T, lazyType: T) => types.Type
-export function memoizeTypeTransformation<T extends types.Type>(mapper: TypeTransformer<T>): (type: T) => types.Type {
-  const cache = new Map<types.Type, types.Type>()
+type TypeTransformer<T extends model.Type> = (type: T, lazyType: T) => model.Type
+export function memoizeTypeTransformation<T extends model.Type>(mapper: TypeTransformer<T>): (type: T) => model.Type {
+  const cache = new Map<model.Type, model.Type>()
   return (type: T) => {
     const cachedResult = cache.get(type)
     if (cachedResult) {
       return cachedResult
     }
     if (typeof type === 'function') {
-      const lazyResult = () => mapper(types.concretise(type), type)
+      const lazyResult = () => mapper(model.concretise(type), type)
       cache.set(type, lazyResult)
       return lazyResult
     }

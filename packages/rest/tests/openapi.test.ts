@@ -1,5 +1,5 @@
 import { rest } from '../src'
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { describe, expect, test } from 'vitest'
 
@@ -11,8 +11,8 @@ describe('module to openapi', () => {
       version: '0.0.0',
       functions: {
         toString: functions.define({
-          input: types.number(),
-          output: types.string(),
+          input: model.number(),
+          output: model.string(),
           errors: undefined,
           retrieve: undefined,
         }),
@@ -50,35 +50,35 @@ describe('module to openapi', () => {
   })
 
   test('works on more complex module', () => {
-    const postCategory = types.enumeration(['FUNNY', 'QUESTION']).setName('PostCategory')
+    const postCategory = model.enumeration(['FUNNY', 'QUESTION']).setName('PostCategory')
     const user = () =>
-      types.entity({
-        username: types.string(),
-        posts: types.array(post),
-        registeredAt: types.datetime(),
+      model.entity({
+        username: model.string(),
+        posts: model.array(post),
+        registeredAt: model.datetime(),
       })
     const post = () =>
-      types.entity({
-        title: types.string({ minLength: 1, maxLength: 2000 }),
-        content: types.string(),
-        author: types.nullable(user),
-        likes: types.array(user),
-        visualizations: types.integer({ minimum: 0 }),
-        categories: types.array(postCategory).optional(),
+      model.entity({
+        title: model.string({ minLength: 1, maxLength: 2000 }),
+        content: model.string(),
+        author: model.nullable(user),
+        likes: model.array(user),
+        visualizations: model.integer({ minimum: 0 }),
+        categories: model.array(postCategory).optional(),
       })
     const m = module.define({
       name: 'name',
       version: '0.0.0',
       functions: {
         getPosts: functions.define({
-          input: types.object({ userId: types.string(), limit: types.integer().optional() }),
-          output: types.array(post),
+          input: model.object({ userId: model.string(), limit: model.integer().optional() }),
+          output: model.array(post),
           errors: undefined,
           retrieve: undefined,
         }),
         getUsers: functions.define({
-          input: types.object({ start: types.integer(), limit: types.integer() }),
-          output: types.array(user),
+          input: model.object({ start: model.integer(), limit: model.integer() }),
+          output: model.array(user),
           errors: undefined,
           retrieve: undefined,
         }),

@@ -1,10 +1,10 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
-export type TimezoneType = types.CustomType<'timezone', {}, string>
+export type TimezoneType = model.CustomType<'timezone', {}, string>
 
-export function timezone(options?: types.BaseOptions): TimezoneType {
-  return types.custom(
+export function timezone(options?: model.BaseOptions): TimezoneType {
+  return model.custom(
     'timezone',
     (value) => value,
     (value) =>

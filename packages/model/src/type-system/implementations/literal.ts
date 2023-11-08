@@ -1,19 +1,19 @@
-import { types, decoding, validation } from '../../'
+import { model, decoding, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
  * @param value the literal value held by the new `LiteralType`
- * @param options the {@link types.LiteralTypeOptions} used to define the new `LiteralType`
- * @returns a {@link types.LiteralType} representing the literal type of `value`
+ * @param options the {@link model.LiteralTypeOptions} used to define the new `LiteralType`
+ * @returns a {@link model.LiteralType} representing the literal type of `value`
  * @example Imagine you have to deal with HTTP requests whose HTTP version must be `"2.0"`.
  *          The version field could be modelled with a literal type to can guarantee that a request can only be built
  *          if its version is the string `"2.0"`:
  *
  *          ```ts
- *          type RequiredVersion = types.Infer<typeof requiredVersion>
- *          const requiredVersion = types.literal("2.0", {
+ *          type RequiredVersion = model.Infer<typeof requiredVersion>
+ *          const requiredVersion = model.literal("2.0", {
  *            name: "requiredVersion",
  *            description: "the required version for the HTTPS requests",
  *          })
@@ -23,27 +23,27 @@ import gen from 'fast-check'
  */
 export function literal<const L extends number | string | boolean | null>(
   literalValue: L,
-  options?: types.LiteralTypeOptions,
-): types.LiteralType<L> {
+  options?: model.LiteralTypeOptions,
+): model.LiteralType<L> {
   return new LiteralTypeImpl(literalValue, options)
 }
 
 class LiteralTypeImpl<L extends number | string | boolean | null>
-  extends DefaultMethods<types.LiteralType<L>>
-  implements types.LiteralType<L>
+  extends DefaultMethods<model.LiteralType<L>>
+  implements model.LiteralType<L>
 {
-  readonly kind = types.Kind.Literal
+  readonly kind = model.Kind.Literal
   readonly literalValue: L
 
-  fromOptions = (options: types.LiteralTypeOptions) => literal(this.literalValue, options)
+  fromOptions = (options: model.LiteralTypeOptions) => literal(this.literalValue, options)
   getThis = () => this
 
-  constructor(literalValue: L, options?: types.LiteralTypeOptions) {
+  constructor(literalValue: L, options?: model.LiteralTypeOptions) {
     super(options)
     this.literalValue = literalValue
   }
 
-  encodeWithNoChecks(value: types.Infer<types.LiteralType<L>>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.LiteralType<L>>): JSONType {
     return value
   }
 
@@ -54,7 +54,7 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
   decodeWithoutValidation(
     value: unknown,
     decodingOptions?: decoding.Options,
-  ): decoding.Result<types.Infer<types.LiteralType<L>>> {
+  ): decoding.Result<model.Infer<model.LiteralType<L>>> {
     if (value === this.literalValue) {
       return decoding.succeed(this.literalValue)
     } else if (

@@ -1,70 +1,70 @@
-import { decoding, types, validation } from '../../'
+import { decoding, model, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
- * @param wrappedType the {@link types.Type} describing the item held by the new `NullableType`
- * @param options the {@link types.NullableTypeOptions} used to define the new `NullableType`
- * @returns a {@link types.NullableType} holding an item of the given type
+ * @param wrappedType the {@link model.Type} describing the item held by the new `NullableType`
+ * @param options the {@link model.NullableTypeOptions} used to define the new `NullableType`
+ * @returns a {@link model.NullableType} holding an item of the given type
  * @example ```ts
- *          type NullableString = types.Infer<typeof nullableString>
- *          const nullableString = types.nullable(types.string()) // or types.string().nullable()
+ *          type NullableString = model.Infer<typeof nullableString>
+ *          const nullableString = model.nullable(model.string()) // or model.string().nullable()
  *
  *          const exampleNull: NullableString = null
  *          const examplePresent: NullableString = "Hello, Mondrian!"
  *          ```
  */
-export function nullable<T extends types.Type>(
+export function nullable<T extends model.Type>(
   wrappedType: T,
-  options?: types.NullableTypeOptions,
-): types.NullableType<T> {
+  options?: model.NullableTypeOptions,
+): model.NullableType<T> {
   return new NullableTypeImpl(wrappedType, options)
 }
 
-class NullableTypeImpl<T extends types.Type>
-  extends DefaultMethods<types.NullableType<T>>
-  implements types.NullableType<T>
+class NullableTypeImpl<T extends model.Type>
+  extends DefaultMethods<model.NullableType<T>>
+  implements model.NullableType<T>
 {
-  readonly kind = types.Kind.Nullable
+  readonly kind = model.Kind.Nullable
   readonly wrappedType: T
 
-  fromOptions = (options: types.NullableTypeOptions) => nullable(this.wrappedType, options)
+  fromOptions = (options: model.NullableTypeOptions) => nullable(this.wrappedType, options)
   getThis = () => this
 
-  constructor(wrappedType: T, options?: types.NullableTypeOptions) {
+  constructor(wrappedType: T, options?: model.NullableTypeOptions) {
     super(options)
     this.wrappedType = wrappedType
   }
 
-  encodeWithNoChecks(value: null | types.Infer<T>): JSONType {
-    return value === null ? null : types.concretise(this.wrappedType).encodeWithoutValidation(value as never)
+  encodeWithNoChecks(value: null | model.Infer<T>): JSONType {
+    return value === null ? null : model.concretise(this.wrappedType).encodeWithoutValidation(value as never)
   }
 
-  validate(value: null | types.Infer<T>, validationOptions?: validation.Options | undefined): validation.Result {
+  validate(value: null | model.Infer<T>, validationOptions?: validation.Options | undefined): validation.Result {
     return value === null
       ? validation.succeed()
-      : types.concretise(this.wrappedType).validate(value as never, validationOptions)
+      : model.concretise(this.wrappedType).validate(value as never, validationOptions)
   }
 
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<null | types.Infer<T>> {
+  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<null | model.Infer<T>> {
     if (value === null) {
       return decoding.succeed(null)
     } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === undefined) {
       return decoding.succeed(null)
     } else {
-      return types
+      return model
         .concretise(this.wrappedType)
         .decodeWithoutValidation(value, decodingOptions)
         .mapError((errors) => errors.map(decoding.addExpected('null')))
     }
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<null | types.Infer<T>> {
+  arbitrary(maxDepth: number): gen.Arbitrary<null | model.Infer<T>> {
     if (maxDepth <= 0) {
       return gen.constant(null)
     } else {
-      const concreteType = types.concretise(this.wrappedType)
+      const concreteType = model.concretise(this.wrappedType)
       return gen.oneof(gen.constant(null), concreteType.arbitrary(maxDepth - 1))
     }
   }

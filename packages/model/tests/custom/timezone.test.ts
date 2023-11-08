@@ -1,4 +1,4 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { describe } from 'vitest'
 
@@ -7,10 +7,10 @@ const knownInvalidValues = ['', 'Europe ', 'Rome', 'Europe-Rome', 'Cairo', 'Afri
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(types.timezone(), {
+  testTypeEncodingAndDecoding(model.timezone(), {
     knownValidValues,
     knownInvalidValues,
   }),
 )
 
-describe('arbitrary based test', testWithArbitrary(types.timezone()))
+describe('arbitrary based test', testWithArbitrary(model.timezone()))

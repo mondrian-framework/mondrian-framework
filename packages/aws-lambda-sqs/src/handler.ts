@@ -1,4 +1,4 @@
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
@@ -71,7 +71,7 @@ export function build<const Fs extends functions.Functions, CI>({
           batchItemFailures.push({ itemIdentifier: m.messageId })
         }
 
-        const decoded = types.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
+        const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
         if (!decoded.isOk) {
           operationLogger.logError(`Bad message: ${JSON.stringify(decoded.error)}`)
           if (specification.malformedMessagePolicy === 'delete') {

@@ -1,6 +1,6 @@
 import { ApiSpecification, FunctionSpecifications, Request } from './api'
 import { decodeQueryObject, encodeQueryObject } from './utils'
-import { retrieve, types } from '@mondrian-framework/model'
+import { retrieve, model } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { assertNever, isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
@@ -44,7 +44,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
           const code = (errorCodes[errorName] ?? 400).toString()
           const ts = errorMap[code] ?? []
           const { schema } = typeToSchemaObject(
-            types.object({ [errorName]: errorType as types.Type }),
+            model.object({ [errorName]: errorType as model.Type }),
             typeMap,
             typeRef,
           )
@@ -138,7 +138,7 @@ export function generateOpenapiInput({
   typeRef,
 }: {
   specification: FunctionSpecifications
-  functionBody: functions.FunctionInterface<types.Type, types.Type, functions.ErrorType>
+  functionBody: functions.FunctionInterface<model.Type, model.Type, functions.ErrorType>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): {
@@ -171,21 +171,21 @@ export function generateOpenapiInput({
     ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
     : []
   const inputType = functionBody.input
-  if (types.isNever(inputType)) {
+  if (model.isNever(inputType)) {
     return {
       parameters: [],
       input: () => null,
       request: () => ({}),
     }
   }
-  const concreteInputType = types.concretise(inputType)
-  const isScalar = types.isScalar(concreteInputType)
-  const isArray = types.isArray(concreteInputType)
+  const concreteInputType = model.concretise(inputType)
+  const isScalar = model.isScalar(concreteInputType)
+  const isArray = model.isArray(concreteInputType)
   const isRequired = isInputRequired(concreteInputType)
-  const t = types.unwrap(concreteInputType)
-  if (t.kind === types.Kind.Object || t.kind === types.Kind.Entity) {
+  const t = model.unwrap(concreteInputType)
+  if (t.kind === model.Kind.Object || t.kind === model.Kind.Entity) {
     for (const p of parametersInPath) {
-      if (!t.fields[p] || !types.isScalar(t.fields[p]) || !isInputRequired(t.fields[p])) {
+      if (!t.fields[p] || !model.isScalar(t.fields[p]) || !isInputRequired(t.fields[p])) {
         throw new Error(
           `Error while generating openapi input type. Path parameter ${p} can only be scalar type and not nullable nor optional. Path ${specification.path}`,
         )
@@ -216,7 +216,7 @@ export function generateOpenapiInput({
     }
   }
   if (specification.method === 'get' || specification.method === 'delete') {
-    if (t.kind === types.Kind.Object) {
+    if (t.kind === model.Kind.Object) {
       const parameters = generatePathParameters({ parameters: parametersInPath, type: t, typeMap, typeRef })
       for (const [key, subtype] of Object.entries(t.fields)
         .map(([k, v]) => [k, v] as const)
@@ -226,7 +226,7 @@ export function generateOpenapiInput({
           name: key,
           in: 'query',
           required: isInputRequired(subtype),
-          style: types.isScalar(subtype) ? undefined : 'deepObject',
+          style: model.isScalar(subtype) ? undefined : 'deepObject',
           explode: true,
           schema: schema as any,
         })
@@ -240,7 +240,7 @@ export function generateOpenapiInput({
           for (const [key, subtype] of Object.entries(t.fields).filter(
             ([fieldName]) => !parametersInPath.includes(fieldName),
           )) {
-            if (types.isScalar(subtype)) {
+            if (model.isScalar(subtype)) {
               object[key] = request.query[key]
             } else {
               object[key] = decodeQueryObject(request.query, key)
@@ -253,7 +253,7 @@ export function generateOpenapiInput({
             Object.entries(t.fields)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
-                const fieldType = types.concretise(field)
+                const fieldType = model.concretise(field)
                 const encoded = fieldType.encodeWithoutValidation(input[fieldName])
                 return [fieldName, `${encoded}`] as const
               }),
@@ -261,9 +261,9 @@ export function generateOpenapiInput({
           const queries = Object.entries(t.fields)
             .filter(([fieldName]) => !parametersInPath.includes(fieldName))
             .map(([fieldName, field]) => {
-              const fieldType = types.concretise(field)
+              const fieldType = model.concretise(field)
               const encoded = fieldType.encodeWithoutValidation(input[fieldName])
-              if (types.isScalar(field)) {
+              if (model.isScalar(field)) {
                 return [fieldName, encoded]
               } else {
                 return [fieldName, encodeQueryObject(encoded, fieldName)]
@@ -313,10 +313,10 @@ export function generateOpenapiInput({
         },
       }
     }
-    if (t.kind === types.Kind.Object || t.kind === types.Kind.Entity) {
+    if (t.kind === model.Kind.Object || t.kind === model.Kind.Entity) {
       const parameters = generatePathParameters({ parameters: parametersInPath, type: t, typeMap, typeRef })
       const remainingFields = Object.entries(t.fields).filter((v) => !parametersInPath.includes(v[0]))
-      const remainingObject = types.object(Object.fromEntries(remainingFields))
+      const remainingObject = model.object(Object.fromEntries(remainingFields))
       const { schema } = typeToSchemaObject(remainingObject, typeMap, typeRef)
       return {
         parameters,
@@ -333,7 +333,7 @@ export function generateOpenapiInput({
             Object.entries(t.fields)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
-                const fieldType = types.concretise(field)
+                const fieldType = model.concretise(field)
                 const encoded = fieldType.encodeWithoutValidation(input[fieldName])
                 return [fieldName, `${encoded}`] as const
               }),
@@ -347,8 +347,8 @@ export function generateOpenapiInput({
   throw new Error(`Error while generating openapi input type. Not supported. Path ${specification.path}`)
 }
 
-function isInputRequired(type: types.Type): boolean {
-  return !types.isNullable(type) && !types.isOptional(type)
+function isInputRequired(type: model.Type): boolean {
+  return !model.isNullable(type) && !model.isOptional(type)
 }
 function generatePathParameters({
   parameters,
@@ -357,7 +357,7 @@ function generatePathParameters({
   typeRef,
 }: {
   parameters: string[]
-  type: types.ObjectType<any, any> | types.EntityType<any, any>
+  type: model.ObjectType<any, any> | model.EntityType<any, any>
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 }): OpenAPIV3_1.ParameterObject[] {
@@ -383,7 +383,7 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>
   typeRef: Map<Function, string>
 } {
-  const usedTypes: types.Type[] = []
+  const usedTypes: model.Type[] = []
   for (const [functionName, functionBody] of Object.entries(module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
@@ -417,7 +417,7 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
 }
 
 function typeToSchemaObject(
-  type: types.Type,
+  type: model.Type,
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
   ignoreFirstLevelOptionality?: boolean,
@@ -428,7 +428,7 @@ function typeToSchemaObject(
     if (alreadyConvertedTypeName) {
       return { name: alreadyConvertedTypeName, schema: { $ref: `#/components/schemas/${alreadyConvertedTypeName}` } }
     }
-    lazyTypeName = types.concretise(type()).options?.name ?? `ANONYMOUS_TYPE_${typeRef.size}`
+    lazyTypeName = model.concretise(type()).options?.name ?? `ANONYMOUS_TYPE_${typeRef.size}`
     typeRef.set(type, lazyTypeName)
   }
   const { name, schema } = typeToSchemaObjectInternal(type, lazyTypeName, typeMap, typeRef, ignoreFirstLevelOptionality)
@@ -443,16 +443,16 @@ function typeToSchemaObject(
 }
 
 function typeToSchemaObjectInternal(
-  t: types.Type,
+  t: model.Type,
   nameOverride: string | null,
   typeMap: Record<string, OpenAPIV3_1.SchemaObject>, //type name -> definition
   typeRef: Map<Function, string>, // function -> type name
   ignoreFirstLevelOptionality?: boolean,
 ): { name: string | undefined; schema: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } {
-  const type = types.concretise(t)
+  const type = model.concretise(t)
   const name: string | undefined = nameOverride ?? type.options?.name
   const description = type.options?.description
-  if (type.kind === types.Kind.String) {
+  if (type.kind === model.Kind.String) {
     return {
       name,
       schema: {
@@ -464,23 +464,23 @@ function typeToSchemaObjectInternal(
       },
     }
   }
-  if (type.kind === types.Kind.Custom) {
+  if (type.kind === model.Kind.Custom) {
     //convert known types based on name
-    if (type.typeName === types.record(types.unknown()).typeName) {
-      const fieldsType = typeToSchemaObject((type.options as types.RecordOptions).fieldsType, typeMap, typeRef)
+    if (type.typeName === model.record(model.unknown()).typeName) {
+      const fieldsType = typeToSchemaObject((type.options as model.RecordOptions).fieldsType, typeMap, typeRef)
       return { name, schema: { type: 'object', additionalProperties: fieldsType.schema, description } }
-    } else if (type.typeName === types.datetime().typeName) {
+    } else if (type.typeName === model.datetime().typeName) {
       return { name, schema: { type: 'string', format: 'date-time', description } }
-    } else if (type.typeName === types.timestamp().typeName) {
+    } else if (type.typeName === model.timestamp().typeName) {
       return { name, schema: { type: 'integer', description: description ?? 'unix timestamp' } }
     }
     //otherwise don't known how to convert this type to openapi
     return { name, schema: { description } }
   }
-  if (type.kind === types.Kind.Boolean) {
+  if (type.kind === model.Kind.Boolean) {
     return { name, schema: { type: 'boolean', description } }
   }
-  if (type.kind === types.Kind.Number) {
+  if (type.kind === model.Kind.Number) {
     return {
       name,
       schema: {
@@ -493,7 +493,7 @@ function typeToSchemaObjectInternal(
       },
     }
   }
-  if (type.kind === types.Kind.Literal) {
+  if (type.kind === model.Kind.Literal) {
     const t = typeof type.literalValue
     const tp = t === 'boolean' ? t : t === 'number' ? t : t === 'string' ? t : null
     if (type.literalValue === null) {
@@ -504,11 +504,11 @@ function typeToSchemaObjectInternal(
     }
     return { name, schema: { type: tp, const: type.literalValue, example: type.literalValue, description } }
   }
-  if (type.kind === types.Kind.Array) {
+  if (type.kind === model.Kind.Array) {
     const { schema } = typeToSchemaObject(type.wrappedType, typeMap, typeRef)
     return { name, schema: { type: 'array', items: schema, description } }
   }
-  if (type.kind === types.Kind.Optional) {
+  if (type.kind === model.Kind.Optional) {
     const { name: subname, schema } = typeToSchemaObject(
       type.wrappedType,
       typeMap,
@@ -520,7 +520,7 @@ function typeToSchemaObjectInternal(
     }
     return { name, schema: { anyOf: [schema, { type: 'null', description: 'optional' }], description } }
   }
-  if (type.kind === types.Kind.Nullable) {
+  if (type.kind === model.Kind.Nullable) {
     const { name: subname, schema } = typeToSchemaObject(
       type.wrappedType,
       typeMap,
@@ -532,11 +532,11 @@ function typeToSchemaObjectInternal(
     }
     return { name, schema: { anyOf: [schema, { const: null }], description } }
   }
-  if (type.kind === types.Kind.Object || type.kind === types.Kind.Entity) {
-    const fields = Object.entries(type.fields as types.Types).map(([fieldName, fieldType]) => {
+  if (type.kind === model.Kind.Object || type.kind === model.Kind.Entity) {
+    const fields = Object.entries(type.fields as model.Types).map(([fieldName, fieldType]) => {
       const { schema } = typeToSchemaObject(
-        types.unwrap(fieldType).kind === types.Kind.Entity && !types.isOptional(fieldType)
-          ? types.optional(fieldType)
+        model.unwrap(fieldType).kind === model.Kind.Entity && !model.isOptional(fieldType)
+          ? model.optional(fieldType)
           : fieldType,
         typeMap,
         typeRef,
@@ -565,7 +565,7 @@ function typeToSchemaObjectInternal(
     }
     return { name, schema }
   }
-  if (type.kind === types.Kind.Enum) {
+  if (type.kind === model.Kind.Enum) {
     return {
       name,
       schema: {
@@ -575,8 +575,8 @@ function typeToSchemaObjectInternal(
       } as const,
     }
   }
-  if (type.kind === types.Kind.Union) {
-    const anyOf = Object.values(type.variants).map((t) => typeToSchemaObject(t as types.Type, typeMap, typeRef).schema)
+  if (type.kind === model.Kind.Union) {
+    const anyOf = Object.values(type.variants).map((t) => typeToSchemaObject(t as model.Type, typeMap, typeRef).schema)
     return { name, schema: { anyOf, description } }
   }
   return assertNever(type)

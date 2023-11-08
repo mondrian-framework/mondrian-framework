@@ -1,5 +1,5 @@
 import * as AWS from '@aws-sdk/client-sqs'
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
@@ -110,7 +110,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         operationLogger.logError(`Bad message: not a valid json ${m.Body}`)
         continue
       }
-      const decoded = types.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
+      const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
       if (!decoded.isOk) {
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })

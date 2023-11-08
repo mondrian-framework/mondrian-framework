@@ -1,6 +1,6 @@
 import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
-import { result, retrieve, types } from '@mondrian-framework/model'
+import { result, retrieve, model } from '@mondrian-framework/model'
 import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
 import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
@@ -39,8 +39,8 @@ import {
  * - If the default name is defined uses that, otherwise
  * - Generates a random name in the form "TYPE{N}" where "N" is a random integer
  */
-function generateName(type: types.Type, internalData: InternalData): string {
-  const concreteType = types.concretise(type)
+function generateName(type: model.Type, internalData: InternalData): string {
+  const concreteType = model.concretise(type)
   const name = concreteType.options?.name
     ? capitalise(concreteType.options.name)
     : internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`
@@ -50,8 +50,8 @@ function generateName(type: types.Type, internalData: InternalData): string {
 /**
  * Same as {@link generateName} but this happens 'Input' at the type name if not already present.
  */
-function generateInputName(type: types.Type, internalData: InternalData): string {
-  const concreteType = types.concretise(type)
+function generateInputName(type: model.Type, internalData: InternalData): string {
+  const concreteType = model.concretise(type)
   const name = concreteType.options?.name
     ? capitalise(concreteType.options.name)
     : internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`
@@ -82,9 +82,9 @@ function checkNameOccurencies(name: string, internalData: InternalData): string 
 // all relevant information that has to be used throughout the recursive calls.
 type InternalData = {
   // A map from <explored type> to already generated output type(s)
-  readonly knownOutputTypes: Map<types.Type, GraphQLOutputType>
+  readonly knownOutputTypes: Map<model.Type, GraphQLOutputType>
   // A map from <explored type> to already generated input type(s)
-  readonly knownInputTypes: Map<types.Type, GraphQLInputType>
+  readonly knownInputTypes: Map<model.Type, GraphQLInputType>
   // A map for all custom types that have already been explored. Here we just
   // save their name
   readonly knownCustomTypes: Map<string, GraphQLScalarType>
@@ -113,14 +113,14 @@ function clearInternalData(internalData: InternalData) {
 }
 
 /**
- * Maps a mondrian {@link types.Type Type} into a {@link GraphQLOutputType}.
+ * Maps a mondrian {@link model.Type Type} into a {@link GraphQLOutputType}.
  */
-function typeToGraphQLOutputType(type: types.Type, internalData: InternalData): GraphQLOutputType {
+function typeToGraphQLOutputType(type: model.Type, internalData: InternalData): GraphQLOutputType {
   const knownOutputType = internalData.knownOutputTypes.get(type)
   if (knownOutputType) {
     return knownOutputType
   }
-  const graphQLType = types.match(type, {
+  const graphQLType = model.match(type, {
     number: (type) => scalarOrDefault(type, type.options?.isInteger ? GraphQLInt : GraphQLFloat, internalData),
     string: (type) => scalarOrDefault(type, GraphQLString, internalData),
     boolean: (type) => scalarOrDefault(type, GraphQLBoolean, internalData),
@@ -138,14 +138,14 @@ function typeToGraphQLOutputType(type: types.Type, internalData: InternalData): 
 }
 
 /**
- * Maps a mondrian {@link types.Type Type} into a {@link GraphQLInputType}.
+ * Maps a mondrian {@link model.Type Type} into a {@link GraphQLInputType}.
  */
-function typeToGraphQLInputType(type: types.Type, internalData: InternalData): GraphQLInputType {
+function typeToGraphQLInputType(type: model.Type, internalData: InternalData): GraphQLInputType {
   const knownInputType = internalData.knownInputTypes.get(type)
   if (knownInputType) {
     return knownInputType
   }
-  const graphQLType: GraphQLInputType = types.match(type, {
+  const graphQLType: GraphQLInputType = model.match(type, {
     number: (type) => scalarOrDefault(type, type.options?.isInteger ? GraphQLInt : GraphQLFloat, internalData),
     string: (type) => scalarOrDefault(type, GraphQLString, internalData),
     boolean: (type) => scalarOrDefault(type, GraphQLBoolean, internalData),
@@ -163,7 +163,7 @@ function typeToGraphQLInputType(type: types.Type, internalData: InternalData): G
 }
 
 function setKnownType(
-  type: types.Type,
+  type: model.Type,
   graphqlType: GraphQLOutputType | GraphQLInputType,
   internalData: InternalData,
 ): void {
@@ -179,24 +179,24 @@ function setKnownType(
 // If the type doesn't have any name then this function returns the provided
 // default type
 function scalarOrDefault(
-  type: types.Type,
+  type: model.Type,
   defaultType: GraphQLScalarType,
   internalData: InternalData,
 ): GraphQLScalarType {
-  const concreteType = types.concretise(type)
+  const concreteType = model.concretise(type)
   const hasName = concreteType.options?.name != null
   return !hasName ? defaultType : scalarFromType(type, internalData)
 }
 
 // Turns a type into a GraphQL scalar type
-function scalarFromType(type: types.Type, internalData: InternalData): GraphQLScalarType<unknown, JSONType> {
-  const concreteType = types.concretise(type)
+function scalarFromType(type: model.Type, internalData: InternalData): GraphQLScalarType<unknown, JSONType> {
+  const concreteType = model.concretise(type)
   const name = generateName(type, internalData)
   return new GraphQLScalarType({ name, description: concreteType.options?.description })
 }
 
 function enumToGraphQLType(
-  enumeration: types.EnumType<readonly [string, ...string[]]>,
+  enumeration: model.EnumType<readonly [string, ...string[]]>,
   internalData: InternalData,
 ): GraphQLEnumType {
   const name = generateName(enumeration, internalData)
@@ -207,7 +207,7 @@ function enumToGraphQLType(
 
 // Turns a literal into a GraphQL scalar.
 function literalToGraphQLType(
-  literal: types.LiteralType<number | string | null | boolean>,
+  literal: model.LiteralType<number | string | null | boolean>,
   internalData: InternalData,
 ): GraphQLScalarType {
   //Set a default description and a default name
@@ -224,7 +224,7 @@ function literalToGraphQLType(
 }
 
 function arrayToGraphQLType(
-  array: types.ArrayType<any, any>,
+  array: model.ArrayType<any, any>,
   internalData: InternalData,
 ): GraphQLList<GraphQLOutputType> {
   const arrayName = generateName(array, internalData)
@@ -233,12 +233,12 @@ function arrayToGraphQLType(
     ...internalData,
     defaultName: itemDefaultName,
   })
-  const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
+  const wrappedType = model.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
   return new GraphQLList(wrappedType)
 }
 
 function arrayToInputGraphQLType(
-  array: types.ArrayType<any, any>,
+  array: model.ArrayType<any, any>,
   internalData: InternalData,
 ): GraphQLList<GraphQLInputType> {
   const arrayName = generateInputName(array, internalData)
@@ -247,12 +247,12 @@ function arrayToInputGraphQLType(
     ...internalData,
     defaultName: itemDefaultName,
   })
-  const wrappedType = types.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
+  const wrappedType = model.isOptional(array.wrappedType) ? itemsType : new GraphQLNonNull(itemsType)
   return new GraphQLList(wrappedType)
 }
 
 function objectToGraphQLType(
-  object: types.ObjectType<any, types.Types>,
+  object: model.ObjectType<any, model.Types>,
   internalData: InternalData,
 ): GraphQLObjectType {
   const objectName = generateName(object, internalData)
@@ -262,7 +262,7 @@ function objectToGraphQLType(
 }
 
 function objectToInputGraphQLType(
-  object: types.ObjectType<any, types.Types>,
+  object: model.ObjectType<any, model.Types>,
   internalData: InternalData,
 ): GraphQLInputObjectType {
   const objectName = generateInputName(object, internalData)
@@ -272,7 +272,7 @@ function objectToInputGraphQLType(
 }
 
 function entityToGraphQLType(
-  entity: types.EntityType<any, types.Types>,
+  entity: model.EntityType<any, model.Types>,
   internalData: InternalData,
 ): GraphQLObjectType {
   const objectName = generateName(entity, internalData)
@@ -282,7 +282,7 @@ function entityToGraphQLType(
 }
 
 function entityToInputGraphQLType(
-  entity: types.EntityType<any, types.Types>,
+  entity: model.EntityType<any, model.Types>,
   internalData: InternalData,
 ): GraphQLInputObjectType {
   const objectName = generateInputName(entity, internalData)
@@ -294,7 +294,7 @@ function entityToInputGraphQLType(
 function typeToGraphQLObjectField(
   internalData: InternalData,
   objectName: string,
-): (fieldName: string, fieldType: types.Type) => GraphQLFieldConfig<any, any> {
+): (fieldName: string, fieldType: model.Type) => GraphQLFieldConfig<any, any> {
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateName(fieldType, {
       ...internalData,
@@ -305,9 +305,9 @@ function typeToGraphQLObjectField(
       ...internalData,
       defaultName: fieldDefaultName,
     })
-    const canBeMissing = types.isOptional(fieldType) || types.isNullable(fieldType)
-    const unwrappedFieldType = types.unwrap(fieldType)
-    const canBeRetrieved = unwrappedFieldType.kind === types.Kind.Entity && types.isArray(fieldType)
+    const canBeMissing = model.isOptional(fieldType) || model.isNullable(fieldType)
+    const unwrappedFieldType = model.unwrap(fieldType)
+    const canBeRetrieved = unwrappedFieldType.kind === model.Kind.Entity && model.isArray(fieldType)
     let graphqlRetrieveArgs: GraphQLFieldConfigArgumentMap | undefined = undefined
     if (canBeRetrieved) {
       const retrieveType = retrieve.fromType(fieldType, { where: true, skip: true, take: true, orderBy: true })
@@ -328,7 +328,7 @@ function typeToGraphQLObjectField(
 }
 
 function retrieveTypeToGraphqlArgs(
-  retrieveType: types.ObjectType<types.Mutability.Immutable, types.Types>,
+  retrieveType: model.ObjectType<model.Mutability.Immutable, model.Types>,
   internalData: InternalData,
   capabilities: retrieve.Capabilities,
 ): GraphQLFieldConfigArgumentMap {
@@ -347,7 +347,7 @@ function retrieveTypeToGraphqlArgs(
 function typeToGraphQLInputObjectField(
   internalData: InternalData,
   objectName: string,
-): (fieldName: string, fieldType: types.Type) => GraphQLInputFieldConfig {
+): (fieldName: string, fieldType: model.Type) => GraphQLInputFieldConfig {
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateInputName(fieldType, {
       ...internalData,
@@ -358,12 +358,12 @@ function typeToGraphQLInputObjectField(
       ...internalData,
       defaultName: fieldDefaultName,
     })
-    const canBeMissing = types.isOptional(fieldType) || types.isNullable(fieldType)
+    const canBeMissing = model.isOptional(fieldType) || model.isNullable(fieldType)
     return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
   }
 }
 
-function unionToGraphQLType(union: types.UnionType<types.Types>, internalData: InternalData): GraphQLUnionType {
+function unionToGraphQLType(union: model.UnionType<model.Types>, internalData: InternalData): GraphQLUnionType {
   const unionName = generateName(union, internalData)
   const unionTypes = Object.entries(union.variants).map(([name, variantType]) => {
     const variantName = unionName + capitalise(name)
@@ -384,7 +384,7 @@ function unionToGraphQLType(union: types.UnionType<types.Types>, internalData: I
     types: unionTypes,
     resolveType: (value) => {
       const i = Object.keys(union.variants).findIndex((variantName) => {
-        return variantName === types.partialDeep(union).variantOwnership(value as never)
+        return variantName === model.partialDeep(union).variantOwnership(value as never)
       })
       return unionTypes[i].name
     },
@@ -392,7 +392,7 @@ function unionToGraphQLType(union: types.UnionType<types.Types>, internalData: I
 }
 
 function unionToInputGraphQLType(
-  union: types.UnionType<types.Types>,
+  union: model.UnionType<model.Types>,
   internalData: InternalData,
 ): GraphQLInputObjectType {
   const unionName = generateInputName(union, internalData)
@@ -404,7 +404,7 @@ function unionToInputGraphQLType(
 function typeToGraphQLInputUnionVariant(
   internalData: InternalData,
   unionName: string,
-): (fieldName: string, fieldType: types.Type) => GraphQLInputFieldConfig {
+): (fieldName: string, fieldType: model.Type) => GraphQLInputFieldConfig {
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateInputName(fieldType, {
       ...internalData,
@@ -420,7 +420,7 @@ function typeToGraphQLInputUnionVariant(
 }
 
 function customTypeToGraphQLType(
-  type: types.CustomType<string, any, any>,
+  type: model.CustomType<string, any, any>,
   internalData: InternalData,
 ): GraphQLScalarType {
   const { knownCustomTypes } = internalData
@@ -542,7 +542,7 @@ function splitIntoNamespaces(
  * Extracts the retrieve value by traversing the {@link GraphQLResolveInfo} and then decode it with the
  * respective retrieveType.
  */
-function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: types.Type): GenericRetrieve {
+function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: model.Type): GenericRetrieve {
   if (info.fieldNodes.length !== 1) {
     throw createGraphQLError(
       'Invalid field nodes count. Probably you are requesting the same query or mutation multiple times.',
@@ -551,7 +551,7 @@ function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: types.Type): Gen
   const node = info.fieldNodes[0]
   const retrieve = selectionNodeToRetrieve(node)
   const rawRetrieve = retrieve[node.name.value] as GenericRetrieve
-  const result = types.concretise(retrieveType).decode(rawRetrieve)
+  const result = model.concretise(retrieveType).decode(rawRetrieve)
   if (result.isOk) {
     return result.value
   } else {
@@ -605,17 +605,17 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
     ...internalData,
     defaultName: `${capitalise(operationName)}Input`,
   })
-  const isInputNullable = types.isOptional(functionBody.input) || types.isNullable(functionBody.input)
+  const isInputNullable = model.isOptional(functionBody.input) || model.isNullable(functionBody.input)
   const input = { type: isInputNullable ? plainInput : new GraphQLNonNull(plainInput) }
   const graphQLInputTypeName = specification.inputName ?? 'input'
 
   const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, operationName)
-  const partialOutputType = types.concretise(types.partialDeep(outputType))
+  const partialOutputType = model.concretise(model.partialDeep(outputType))
   const plainOutput = typeToGraphQLOutputType(outputType, {
     ...internalData,
     defaultName: `${capitalise(operationName)}Result`,
   })
-  const isOutputNullable = types.isOptional(outputType) || types.isNullable(outputType)
+  const isOutputNullable = model.isOptional(outputType) || model.isNullable(outputType)
   const output = isOutputNullable ? plainOutput : new GraphQLNonNull(plainOutput)
 
   const capabilities = functionBody.retrieve ?? {}
@@ -715,19 +715,19 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
 function getFunctionOutputTypeWithErrors(
   fun: functions.FunctionInterface,
   functionName: string,
-): { outputType: types.Type; isOutputTypeWrapped: boolean } {
+): { outputType: model.Type; isOutputTypeWrapped: boolean } {
   if (!fun.errors) {
     return { outputType: fun.output, isOutputTypeWrapped: false }
   }
-  const isOutputTypeWrapped = !types.isEntity(fun.output) && !types.isObject(fun.output)
+  const isOutputTypeWrapped = !model.isEntity(fun.output) && !model.isObject(fun.output)
   const success = isOutputTypeWrapped
-    ? types.object({ value: fun.output }).setName(`${capitalise(functionName)}Success`)
+    ? model.object({ value: fun.output }).setName(`${capitalise(functionName)}Success`)
     : fun.output
-  const error = types
-    .object(mapObject(fun.errors, (_, errorType) => types.optional(errorType)))
+  const error = model
+    .object(mapObject(fun.errors, (_, errorType) => model.optional(errorType)))
     .setName(`${capitalise(functionName)}Failure`)
   return {
-    outputType: types.union({ error, success }).setName(`${capitalise(functionName)}Result`),
+    outputType: model.union({ error, success }).setName(`${capitalise(functionName)}Result`),
     isOutputTypeWrapped,
   }
 }
@@ -736,8 +736,8 @@ function getFunctionOutputTypeWithErrors(
  * Tries to decode the given raw input, throwing a graphql error if the process fails.
  * A logger is needed to perform additional logging and keep track of the decoding result.
  */
-function decodeInput(inputType: types.Type, rawInput: unknown, log: MondrianLogger) {
-  const decoded = types.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
+function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogger) {
+  const decoded = model.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
   if (decoded.isOk) {
     log.logInfo('Input decoded')
     return decoded.value

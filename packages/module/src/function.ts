@@ -1,22 +1,22 @@
 import { logger } from '.'
 import { BaseFunction } from './function/base'
-import { result, retrieve, types } from '@mondrian-framework/model'
+import { result, retrieve, model } from '@mondrian-framework/model'
 
 /**
  * Mondrian function interface.
  */
 export interface FunctionInterface<
-  I extends types.Type = types.Type,
-  O extends types.Type = types.Type,
+  I extends model.Type = model.Type,
+  O extends model.Type = model.Type,
   E extends ErrorType = ErrorType,
   R extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
 > {
   /**
-   * Function input {@link types.Type Type}.
+   * Function input {@link model.Type Type}.
    */
   readonly input: I
   /**
-   * Function output {@link types.Type Type}.
+   * Function output {@link model.Type Type}.
    */
   readonly output: O
   /**
@@ -37,8 +37,8 @@ export interface FunctionInterface<
  * Mondrian function.
  */
 export interface Function<
-  I extends types.Type = types.Type,
-  O extends types.Type = types.Type,
+  I extends model.Type = model.Type,
+  O extends model.Type = model.Type,
   E extends ErrorType = undefined,
   C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
   Context extends Record<string, unknown> = Record<string, unknown>,
@@ -57,8 +57,8 @@ export interface Function<
  * Mondrian function implemetation.
  */
 export interface FunctionImplementation<
-  I extends types.Type = types.Type,
-  O extends types.Type = types.Type,
+  I extends model.Type = model.Type,
+  O extends model.Type = model.Type,
   E extends ErrorType = ErrorType,
   C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
   Context extends Record<string, unknown> = Record<string, unknown>,
@@ -87,15 +87,15 @@ export type FunctionOptions = {
  * Arguments of a function invokation.
  */
 export type FunctionArguments<
-  I extends types.Type,
-  O extends types.Type,
+  I extends model.Type,
+  O extends model.Type,
   C extends OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
 > = {
   /**
-   * Function's input. It respects the function input {@link types.Type Type}.
+   * Function's input. It respects the function input {@link model.Type Type}.
    */
-  readonly input: types.Infer<I>
+  readonly input: model.Infer<I>
   /**
    * Wanted retrieve. The return value must respects this retrieve object.
    */
@@ -114,11 +114,11 @@ export type FunctionArguments<
   readonly logger: logger.MondrianLogger
 }
 
-export type ErrorType = types.Types | undefined
+export type ErrorType = model.Types | undefined
 
 export type OutputRetrieveCapabilities = retrieve.Capabilities | undefined
 
-export type FunctionResult<O extends types.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> = Promise<
+export type FunctionResult<O extends model.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> = Promise<
   FunctionResultInternal<O, E, C>
 >
 
@@ -129,16 +129,16 @@ export type FunctionResult<O extends types.Type, E extends ErrorType, C extends 
  * - if the error is a union then the function will return a `Result` that can fail with the given error
  */
 //prettier-ignore
-type FunctionResultInternal<O extends types.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> 
+type FunctionResultInternal<O extends model.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> 
   = [C] extends [{ select: true }] ?
-      [E] extends [types.Types] ? result.Result<types.Infer<types.PartialDeep<O>>, InferErrorType<E>>
-    : [E] extends [undefined] ? types.Infer<types.PartialDeep<O>>
+      [E] extends [model.Types] ? result.Result<model.Infer<model.PartialDeep<O>>, InferErrorType<E>>
+    : [E] extends [undefined] ? model.Infer<model.PartialDeep<O>>
     : any
-  :   [E] extends [types.Types] ? result.Result<types.Infer<O>, InferErrorType<E>>
-    : [E] extends [undefined] ? types.Infer<O>
+  :   [E] extends [model.Types] ? result.Result<model.Infer<O>, InferErrorType<E>>
+    : [E] extends [undefined] ? model.Infer<O>
     : any
 
-type InferErrorType<Ts extends types.Types> = { [K in keyof Ts]: { [K2 in K]: types.Infer<Ts[K]> } }[keyof Ts]
+type InferErrorType<Ts extends model.Types> = { [K in keyof Ts]: { [K2 in K]: model.Infer<Ts[K]> } }[keyof Ts]
 
 /**
  * Mondrian function's middleware type. Applied before calling the {@link Function}'s body.
@@ -156,8 +156,8 @@ type InferErrorType<Ts extends types.Types> = { [K in keyof Ts]: { [K2 in K]: ty
  * ```
  */
 export type Middleware<
-  I extends types.Type,
-  O extends types.Type,
+  I extends model.Type,
+  O extends model.Type,
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Context extends Record<string, unknown>,
@@ -204,12 +204,12 @@ export type FunctionsInterfaces = {
  *
  * Example:
  * ```typescript
- * import { types } from '@mondrian-framework/model'
+ * import { model } from '@mondrian-framework/model'
  * import { functions } from '@mondrian-framework/module'
  *
  * const loginFunction = functions.build({
- *   input: type.object({ username: types.stirng(), password: types.string() }),
- *   output: types.string(),
+ *   input: type.object({ username: model.stirng(), password: model.string() }),
+ *   output: model.string(),
  *   body: async ({ input: { username, password }, context: { db } }) => {
  *     const user = await db.findUser({ username })
  *     // ...
@@ -224,8 +224,8 @@ export type FunctionsInterfaces = {
  * ```
  */
 export function build<
-  const I extends types.Type,
-  const O extends types.Type,
+  const I extends model.Type,
+  const O extends model.Type,
   const E extends ErrorType,
   const C extends OutputRetrieveCapabilities,
 >(func: Function<I, O, E, C, {}>): FunctionImplementation<I, O, E, C, {}> {
@@ -237,14 +237,14 @@ export function build<
  *
  * Example:
  * ```typescript
- * import { types } from '@mondrian-framework/model'
+ * import { model } from '@mondrian-framework/model'
  * import { functions } from '@mondrian-framework/module'
  *
  * const loginFunction = functions
  *   .withContext<{ db: Db }>()
  *   .build({
- *     input: type.object({ username: types.stirng(), password: types.string() }),
- *     output: types.string(),
+ *     input: type.object({ username: model.stirng(), password: model.string() }),
+ *     output: model.string(),
  *     body: async ({ input: { username, password }, context: { db } }) => {
  *       return 'something'
  *     }
@@ -265,8 +265,8 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
    * @returns A Mondrian function.
    */
   public build<
-    const I extends types.Type,
-    const O extends types.Type,
+    const I extends model.Type,
+    const O extends model.Type,
     const E extends ErrorType,
     const R extends OutputRetrieveCapabilities,
   >(func: Function<I, O, E, R, Context>): FunctionImplementation<I, O, E, R, Context> {
@@ -280,8 +280,8 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
  * @returns the function interface
  */
 export function define<
-  const I extends types.Type,
-  const O extends types.Type,
+  const I extends model.Type,
+  const O extends model.Type,
   const E extends ErrorType,
   R extends OutputRetrieveCapabilities,
 >(func: FunctionInterface<I, O, E, R>): FunctionInterface<I, O, E, R> {

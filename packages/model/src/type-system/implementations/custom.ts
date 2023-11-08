@@ -1,28 +1,28 @@
-import { decoding, types, validation } from '../../'
+import { decoding, model, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 type CustomEncoder<Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
-  options?: types.CustomTypeOptions<Options>,
+  options?: model.CustomTypeOptions<Options>,
 ) => JSONType
 
 type CustomDecoder<Options extends Record<string, any>, InferredAs> = (
   value: unknown,
   decodingOptions?: decoding.Options,
-  options?: types.CustomTypeOptions<Options>,
+  options?: model.CustomTypeOptions<Options>,
 ) => decoding.Result<InferredAs>
 
 type CustomValidator<Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
   validationOptions?: validation.Options,
-  options?: types.CustomTypeOptions<Options>,
+  options?: model.CustomTypeOptions<Options>,
 ) => validation.Result
 
 type CustomArbitrary<Options extends Record<string, any>, InferredAs> = (
   maxDepth: number,
-  options?: types.CustomTypeOptions<Options>,
+  options?: model.CustomTypeOptions<Options>,
 ) => gen.Arbitrary<InferredAs>
 
 /**
@@ -40,8 +40,8 @@ type CustomArbitrary<Options extends Record<string, any>, InferredAs> = (
  *          const encoder = (date) => date.toString()
  *          const decoder = (value) => decoder.succeed(new Date(value))
  *
- *          type MyDate = types.Infer<typeof myDate> // -> Date
- *          const myDate = types.custom<"date, {}, Date>("date", encoder, decoder, validator.succeed)
+ *          type MyDate = model.Infer<typeof myDate> // -> Date
+ *          const myDate = model.custom<"date, {}, Date>("date", encoder, decoder, validator.succeed)
  *          const value: MyDate = new Date("11-10-1998")
  *          ```
  *
@@ -55,16 +55,16 @@ export function custom<Name extends string, Options extends Record<string, unkno
   decoder: CustomDecoder<Options, InferredAs>,
   validator: CustomValidator<Options, InferredAs>,
   arbitrary: CustomArbitrary<Options, InferredAs>,
-  options?: types.CustomTypeOptions<Options>,
-): types.CustomType<Name, Options, InferredAs> {
+  options?: model.CustomTypeOptions<Options>,
+): model.CustomType<Name, Options, InferredAs> {
   return new CustomTypeImpl(typeName, encodeWithoutValidation, decoder, validator, arbitrary, options)
 }
 
 class CustomTypeImpl<Name extends string, Options extends Record<string, any>, InferredAs>
-  extends DefaultMethods<types.CustomType<Name, Options, InferredAs>>
-  implements types.CustomType<Name, Options, InferredAs>
+  extends DefaultMethods<model.CustomType<Name, Options, InferredAs>>
+  implements model.CustomType<Name, Options, InferredAs>
 {
-  readonly kind = types.Kind.Custom
+  readonly kind = model.Kind.Custom
   readonly typeName: Name
   readonly encoder: CustomEncoder<Options, InferredAs>
   readonly decoder: CustomDecoder<Options, InferredAs>
@@ -72,7 +72,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
   readonly arbitraryFromOptions: CustomArbitrary<Options, InferredAs>
 
   getThis = () => this
-  fromOptions = (options: types.CustomTypeOptions<Options>) =>
+  fromOptions = (options: model.CustomTypeOptions<Options>) =>
     custom(this.typeName, this.encodeWithNoChecks, this.decoder, this.validator, this.arbitrary, options)
 
   constructor(
@@ -81,7 +81,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     decoder: CustomDecoder<Options, InferredAs>,
     validator: CustomValidator<Options, InferredAs>,
     arbitrary: CustomArbitrary<Options, InferredAs>,
-    options?: types.CustomTypeOptions<Options>,
+    options?: model.CustomTypeOptions<Options>,
   ) {
     super(options)
     this.typeName = typeName
@@ -91,12 +91,12 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     this.arbitraryFromOptions = arbitrary
   }
 
-  encodeWithNoChecks(value: types.Infer<types.CustomType<Name, Options, InferredAs>>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.CustomType<Name, Options, InferredAs>>): JSONType {
     return this.encoder(value, this.options)
   }
 
   validate(
-    value: types.Infer<types.CustomType<Name, Options, InferredAs>>,
+    value: model.Infer<model.CustomType<Name, Options, InferredAs>>,
     options?: validation.Options,
   ): validation.Result {
     return this.validator(value, options, this.options)

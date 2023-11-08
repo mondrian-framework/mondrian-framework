@@ -1,84 +1,84 @@
-import { types, decoding, validation } from '../../src'
+import { model, decoding, validation } from '../../src'
 import { test } from '@fast-check/vitest'
 import { expectTypeOf, describe } from 'vitest'
 
 describe('Infer', () => {
   test('NumberType inferred as number', () => {
-    const model = types.number()
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<number>()
+    const Model = model.number()
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<number>()
   })
 
   test('StringType inferred as string', () => {
-    const model = types.string()
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<string>()
+    const Model = model.string()
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<string>()
   })
 
   test('BooleanType inferred as boolean', () => {
-    const model = types.boolean()
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<boolean>()
+    const Model = model.boolean()
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<boolean>()
   })
 
   test('DateTimeType inferred as Date', () => {
-    const model = types.datetime()
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<Date>()
+    const Model = model.datetime()
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<Date>()
   })
 
   test('TimestampType inferred as Date', () => {
-    const model = types.timestamp()
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<Date>()
+    const Model = model.timestamp()
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<Date>()
   })
 
   test('UnknownType inferred as unknown', () => {
-    const model = types.unknown()
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<unknown>()
+    const Model = model.unknown()
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<unknown>()
   })
 
   test('EnumType inferred as enum', () => {
-    const model = types.enumeration(['one', 'two', 'three'])
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<'one' | 'two' | 'three'>()
+    const Model = model.enumeration(['one', 'two', 'three'])
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<'one' | 'two' | 'three'>()
   })
 
   describe('LiteralType', () => {
     test('LiteralType of number inferred as literal number', () => {
-      const model = types.literal(1)
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<1>()
+      const Model = model.literal(1)
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<1>()
     })
 
     test('LiteralType of string inferred as literal string', () => {
-      const model = types.literal('mondrian')
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<'mondrian'>()
+      const Model = model.literal('mondrian')
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<'mondrian'>()
     })
 
     test('LiteralType of boolean inferred as literal boolean', () => {
-      const model = types.literal(true)
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<true>()
+      const Model = model.literal(true)
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<true>()
     })
 
     test('LiteralType of null inferred as literal null', () => {
-      const model = types.literal(null)
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<null>()
+      const Model = model.literal(null)
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<null>()
     })
   })
 
   describe('ObjectType', () => {
     test('immutable ObjectType inferred with immutable fields', () => {
-      const model = types.object({
-        field1: types.number(),
-        field2: types.string(),
-        field3: types.object({ inner: types.boolean() }).mutable(),
+      const Model = model.object({
+        field1: model.number(),
+        field2: model.string(),
+        field3: model.object({ inner: model.boolean() }).mutable(),
       })
-      type Inferred = types.Infer<typeof model>
+      type Model = model.Infer<typeof Model>
       type Expected = {
         readonly field1: number
         readonly field2: string
@@ -86,65 +86,65 @@ describe('Infer', () => {
           inner: boolean
         }
       }
-      expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
+      expectTypeOf<Model>().toEqualTypeOf<Expected>()
     })
 
     test('mutable ObjectType inferred with mutable fields', () => {
-      const model = types.mutableObject({
-        field1: types.number(),
-        field2: types.string(),
+      const Model = model.mutableObject({
+        field1: model.number(),
+        field2: model.string(),
       })
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<{ field1: number; field2: string }>()
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<{ field1: number; field2: string }>()
     })
   })
 
   describe('ArrayType', () => {
     test('immutable ArrayType inferred as readonly array', () => {
-      const model = types.array(types.number())
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<readonly number[]>()
+      const Model = model.array(model.number())
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<readonly number[]>()
     })
 
     test('mutable ArrayType inferred as array', () => {
-      const model = types.mutableArray(types.number())
-      type Inferred = types.Infer<typeof model>
-      expectTypeOf<Inferred>().toEqualTypeOf<number[]>()
+      const Model = model.mutableArray(model.number())
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<number[]>()
     })
   })
 
   test('OptionalType inferred as union with undefined', () => {
-    const model = types.optional(types.number())
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<number | undefined>()
+    const Model = model.optional(model.number())
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<number | undefined>()
   })
 
   test('NullableType inferred as union with null', () => {
-    const model = types.nullable(types.number())
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<number | null>()
+    const Model = model.nullable(model.number())
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<number | null>()
   })
 
   test('Function returning type is inferred as the returned type', () => {
-    const model = () => types.object({ field: types.string() })
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<{ readonly field: string }>()
+    const Model = () => model.object({ field: model.string() })
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<{ readonly field: string }>()
   })
 
   test('UnionType inferred as union of types', () => {
-    const model = types.union({
-      variant1: types.string(),
-      variant2: types.object({ field1: types.string(), field2: types.boolean() }),
-      variant3: types.boolean(),
+    const Model = model.union({
+      variant1: model.string(),
+      variant2: model.object({ field1: model.string(), field2: model.boolean() }),
+      variant3: model.boolean(),
     })
-    type Inferred = types.Infer<typeof model>
-    type InferredObject = { readonly field1: string; readonly field2: boolean }
-    type Expected = string | InferredObject | boolean
-    expectTypeOf<Inferred>().toEqualTypeOf<Expected>()
+    type Model = model.Infer<typeof Model>
+    type ModelObject = { readonly field1: string; readonly field2: boolean }
+    type Expected = string | ModelObject | boolean
+    expectTypeOf<Model>().toEqualTypeOf<Expected>()
   })
 
   test('CustomType inferred as the specified type', () => {
-    const model = types.custom<'myCustomType', {}, number>(
+    const Model = model.custom<'myCustomType', {}, number>(
       'myCustomType',
       () => null,
       () => decoding.fail('test', 'test'),
@@ -153,7 +153,7 @@ describe('Infer', () => {
         throw 'error'
       },
     )
-    type Inferred = types.Infer<typeof model>
-    expectTypeOf<Inferred>().toEqualTypeOf<number>()
+    type Model = model.Infer<typeof Model>
+    expectTypeOf<Model>().toEqualTypeOf<number>()
   })
 })

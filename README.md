@@ -19,9 +19,9 @@ For this example we'll need to install this packages:
 npm i @mondrian-framework/model \
       @mondrian-framework/module \
       @mondrian-framework/rest \
+      @mondrian-framework/rest-fastify \
       @mondrian-framework/graphql \
       @mondrian-framework/graphql-fastify \
-      @mondrian-framework/rest-fastify \
       fastify
 ```
 
@@ -127,7 +127,7 @@ const api = rest.build({
     ],
   },
   options: { introspection: true },
-}
+})
 
 //Start the server
 const server = fastify()

@@ -1,4 +1,4 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { describe } from 'vitest'
 
@@ -25,10 +25,10 @@ const knownInvalidValues = [
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(types.rgba(), {
+  testTypeEncodingAndDecoding(model.rgba(), {
     knownValidValues,
     knownInvalidValues,
   }),
 )
 
-describe('arbitrary based test', testWithArbitrary(types.rgba()))
+describe('arbitrary based test', testWithArbitrary(model.rgba()))

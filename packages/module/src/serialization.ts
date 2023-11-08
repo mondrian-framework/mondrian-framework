@@ -1,5 +1,5 @@
 import { module, utils } from '.'
-import { result, types, validation } from '@mondrian-framework/model'
+import { result, model, validation } from '@mondrian-framework/model'
 import { JSONType, areJsonsEquals, assertNever, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -10,12 +10,12 @@ export type CustomSerializer = (
   /**
    * type to serialize
    */
-  custom: types.CustomType<any, any, any>,
+  custom: model.CustomType<any, any, any>,
   /**
    * this utility resolve any sub-type if needed.
    * Takes the sub-type(s) of this custom type and returns the reference name.
    */
-  resolve: (type: types.Type) => string,
+  resolve: (type: model.Type) => string,
 ) => JSONType
 export type CustomSerializers = { readonly [key in string]?: CustomSerializer }
 
@@ -23,16 +23,16 @@ export type CustomSerializers = { readonly [key in string]?: CustomSerializer }
  * Default custom serializer for known types.
  */
 const defaultCustomSerializers: CustomSerializers = {
-  record: (custom: types.RecordType<types.Type>, resolve) => ({
+  record: (custom: model.RecordType<model.Type>, resolve) => ({
     wrappedType: resolve(custom.options!.fieldsType),
   }),
-  datetime: (custom: types.DateTimeType) => ({
+  datetime: (custom: model.DateTimeType) => ({
     customOptions: {
       minimum: custom.options?.minimum?.getTime(),
       maximum: custom.options?.maximum?.getTime(),
     },
   }),
-  timestamp: (custom: types.TimestampType) => ({
+  timestamp: (custom: model.TimestampType) => ({
     customOptions: {
       minimum: custom.options?.minimum?.getTime(),
       maximum: custom.options?.maximum?.getTime(),
@@ -69,13 +69,13 @@ function serializeTypes(
   customSerializers: CustomSerializers,
 ): {
   typeMap: Record<string, TypeSchema>
-  nameMap: Map<types.Type, string>
+  nameMap: Map<model.Type, string>
 } {
   const allTypes = Object.values(moduleInterface.functions).flatMap((f) =>
     f.errors ? [f.input, f.output, ...Object.values(f.errors)] : [f.input, f.output],
   )
   const uniqueTypes = utils.allUniqueTypes(allTypes)
-  const nameMap: Map<types.Type, string> = new Map()
+  const nameMap: Map<model.Type, string> = new Map()
   const typeMap: Record<string, TypeSchema> = {}
   for (const t of uniqueTypes.values()) {
     resolveTypeSerialization(t, nameMap, typeMap, customSerializers)
@@ -85,11 +85,11 @@ function serializeTypes(
 
 /**
  * For the given type checks if it was alredy serialized.
- * If not the serialization is added to the maps and serialize also all subtypes.
+ * If not the serialization is added to the maps and serialize also all submodel.
  */
 function resolveTypeSerialization(
-  type: types.Type,
-  nameMap: Map<types.Type, string>,
+  type: model.Type,
+  nameMap: Map<model.Type, string>,
   typeMap: Record<string, TypeSchema>,
   customSerializers: CustomSerializers,
 ): string {
@@ -97,7 +97,7 @@ function resolveTypeSerialization(
   if (cachedName !== undefined) {
     return cachedName
   }
-  const concreteType = types.concretise(type)
+  const concreteType = model.concretise(type)
   const name =
     concreteType.options?.name ??
     `ANONYMOUS_TYPE_${Object.keys(typeMap).filter((k) => k.startsWith('ANONYMOUS_TYPE_')).length}`
@@ -124,13 +124,13 @@ function resolveTypeSerialization(
  * @param resolve this function must be like a map [type] -> [type name]
  */
 function serializeType(
-  type: types.Type,
-  resolve: (subType: types.Type) => string,
+  type: model.Type,
+  resolve: (subType: model.Type) => string,
   customSerializers: CustomSerializers,
 ): TypeSchema {
-  const concreteType = types.concretise(type)
+  const concreteType = model.concretise(type)
   switch (concreteType.kind) {
-    case types.Kind.String:
+    case model.Kind.String:
       return {
         type: 'string',
         options: concreteType.options
@@ -140,50 +140,50 @@ function serializeType(
             }
           : undefined,
       }
-    case types.Kind.Number:
+    case model.Kind.Number:
       return { type: 'number', options: concreteType.options }
-    case types.Kind.Boolean:
+    case model.Kind.Boolean:
       return { type: 'boolean', options: concreteType.options }
-    case types.Kind.Literal:
+    case model.Kind.Literal:
       return { type: 'literal', literalValue: concreteType.literalValue, options: concreteType.options }
-    case types.Kind.Enum:
+    case model.Kind.Enum:
       return { type: 'enumeration', variants: concreteType.variants, options: concreteType.options }
-    case types.Kind.Array:
+    case model.Kind.Array:
       return { type: 'array', wrappedType: resolve(concreteType.wrappedType), options: concreteType.options }
-    case types.Kind.Nullable:
+    case model.Kind.Nullable:
       return {
         type: 'nullable',
         wrappedType: resolve(concreteType.wrappedType),
         options: concreteType.options,
       }
-    case types.Kind.Optional:
+    case model.Kind.Optional:
       return {
         type: 'optional',
         wrappedType: resolve(concreteType.wrappedType),
         options: concreteType.options,
       }
-    case types.Kind.Object:
+    case model.Kind.Object:
       return {
         type: 'object',
-        fields: mapObject(concreteType.fields, (_, field: types.Type) => resolve(field)),
+        fields: mapObject(concreteType.fields, (_, field: model.Type) => resolve(field)),
         options: concreteType.options,
         lazy: typeof type === 'function' ? true : undefined,
       }
-    case types.Kind.Entity:
+    case model.Kind.Entity:
       return {
         type: 'entity',
-        fields: mapObject(concreteType.fields, (_, field: types.Type) => resolve(field)),
+        fields: mapObject(concreteType.fields, (_, field: model.Type) => resolve(field)),
         options: concreteType.options,
         lazy: typeof type === 'function' ? true : undefined,
       }
-    case types.Kind.Union:
+    case model.Kind.Union:
       return {
         type: 'union',
-        variants: mapObject(concreteType.variants, (_, variantType: types.Type) => ({ type: resolve(variantType) })),
+        variants: mapObject(concreteType.variants, (_, variantType: model.Type) => ({ type: resolve(variantType) })),
         options: concreteType.options,
         lazy: typeof type === 'function' ? true : undefined,
       }
-    case types.Kind.Custom:
+    case model.Kind.Custom:
       const customSerializer = customSerializers[concreteType.typeName]
       const customSerialization = customSerializer ? customSerializer(concreteType, (type) => resolve(type)) : undefined
       return {
@@ -209,7 +209,7 @@ function serializeType(
  */
 function serializeFunctions(
   moduleInterface: module.ModuleInterface,
-  nameMap: Map<types.Type, string>,
+  nameMap: Map<model.Type, string>,
 ): Record<string, FunctionSchema> {
   const functionMap = mapObject(moduleInterface.functions, (_, functionInterface) => {
     const input = nameMap.get(functionInterface.input)!
@@ -225,97 +225,97 @@ function serializeFunctions(
 }
 
 const baseOptionsFields = {
-  name: types.string({ minLength: 1 }).optional(),
-  description: types.string().optional(),
-  sensitive: types.boolean().optional(),
+  name: model.string({ minLength: 1 }).optional(),
+  description: model.string().optional(),
+  sensitive: model.boolean().optional(),
 }
-const stringTypeSchema = types.object({
-  type: types.literal('string'),
-  options: types
+const stringTypeSchema = model.object({
+  type: model.literal('string'),
+  options: model
     .object({
       ...baseOptionsFields,
-      minLength: types.integer({ minimum: 0 }).optional(),
-      maxLength: types.integer({ minimum: 0 }).optional(),
-      regex: types.string().optional(),
+      minLength: model.integer({ minimum: 0 }).optional(),
+      maxLength: model.integer({ minimum: 0 }).optional(),
+      regex: model.string().optional(),
     })
     .optional(),
 })
-const numberTypeSchema = types.object({
-  type: types.literal('number'),
-  options: types
+const numberTypeSchema = model.object({
+  type: model.literal('number'),
+  options: model
     .object({
       ...baseOptionsFields,
-      isInteger: types.boolean().optional(),
-      minimum: types.number().optional(),
-      exclusiveMinimum: types.number().optional(),
-      maximum: types.number().optional(),
-      exclusiveMaximum: types.number().optional(),
+      isInteger: model.boolean().optional(),
+      minimum: model.number().optional(),
+      exclusiveMinimum: model.number().optional(),
+      maximum: model.number().optional(),
+      exclusiveMaximum: model.number().optional(),
     })
     .optional(),
 })
-const booleanTypeSchema = types.object({
-  type: types.literal('boolean'),
-  options: types.object(baseOptionsFields).optional(),
+const booleanTypeSchema = model.object({
+  type: model.literal('boolean'),
+  options: model.object(baseOptionsFields).optional(),
 })
-const literalTypeSchema = types.object({
-  type: types.literal('literal'),
-  literalValue: types.union({
-    null: types.literal(null),
-    string: types.string(),
-    boolean: types.boolean(),
-    number: types.number(),
+const literalTypeSchema = model.object({
+  type: model.literal('literal'),
+  literalValue: model.union({
+    null: model.literal(null),
+    string: model.string(),
+    boolean: model.boolean(),
+    number: model.number(),
   }),
-  options: types.object(baseOptionsFields).optional(),
+  options: model.object(baseOptionsFields).optional(),
 })
-const enumTypeSchema = types.object({
-  type: types.literal('enumeration'),
-  variants: types.string().array(),
-  options: types.object(baseOptionsFields).optional(),
+const enumTypeSchema = model.object({
+  type: model.literal('enumeration'),
+  variants: model.string().array(),
+  options: model.object(baseOptionsFields).optional(),
 })
-const arrayTypeSchema = types.object({
-  type: types.literal('array'),
-  wrappedType: types.string(),
-  options: types
+const arrayTypeSchema = model.object({
+  type: model.literal('array'),
+  wrappedType: model.string(),
+  options: model
     .object({
       ...baseOptionsFields,
-      minItems: types.integer({ minimum: 0 }).optional(),
-      maxItems: types.integer({ minimum: 0 }).optional(),
+      minItems: model.integer({ minimum: 0 }).optional(),
+      maxItems: model.integer({ minimum: 0 }).optional(),
     })
     .optional(),
 })
-const nullableTypeSchema = types.object({
-  type: types.literal('nullable'),
-  wrappedType: types.string(),
-  options: types.object(baseOptionsFields).optional(),
+const nullableTypeSchema = model.object({
+  type: model.literal('nullable'),
+  wrappedType: model.string(),
+  options: model.object(baseOptionsFields).optional(),
 })
-const optionalTypeSchema = types.object({
-  type: types.literal('optional'),
-  wrappedType: types.string(),
-  options: types.object(baseOptionsFields).optional(),
+const optionalTypeSchema = model.object({
+  type: model.literal('optional'),
+  wrappedType: model.string(),
+  options: model.object(baseOptionsFields).optional(),
 })
-const objectTypeSchema = types.object({
-  type: types.literal('object'),
-  fields: types.record(types.string()),
-  lazy: types.boolean().optional(),
-  options: types.object(baseOptionsFields).optional(),
+const objectTypeSchema = model.object({
+  type: model.literal('object'),
+  fields: model.record(model.string()),
+  lazy: model.boolean().optional(),
+  options: model.object(baseOptionsFields).optional(),
 })
-const entityTypeSchema = types.object({
-  type: types.literal('entity'),
-  fields: types.record(types.string()),
-  lazy: types.boolean().optional(),
-  options: types.object(baseOptionsFields).optional(),
+const entityTypeSchema = model.object({
+  type: model.literal('entity'),
+  fields: model.record(model.string()),
+  lazy: model.boolean().optional(),
+  options: model.object(baseOptionsFields).optional(),
 })
-const unionTypeSchema = types.object({
-  type: types.literal('union'),
-  variants: types.record(types.object({ type: types.string() })),
-  lazy: types.boolean().optional(),
-  options: types.object(baseOptionsFields).optional(),
+const unionTypeSchema = model.object({
+  type: model.literal('union'),
+  variants: model.record(model.object({ type: model.string() })),
+  lazy: model.boolean().optional(),
+  options: model.object(baseOptionsFields).optional(),
 })
-const customTypeSchema = types.object({
-  type: types.literal('custom'),
-  typeName: types.string(),
-  options: types.object(baseOptionsFields).optional(),
-  custom: types
+const customTypeSchema = model.object({
+  type: model.literal('custom'),
+  typeName: model.string(),
+  options: model.object(baseOptionsFields).optional(),
+  custom: model
     .custom<'json', {}, JSONType>(
       'json',
       (v) => v,
@@ -325,7 +325,7 @@ const customTypeSchema = types.object({
     )
     .optional(),
 })
-const typeSchema = types
+const typeSchema = model
   .union({
     string: stringTypeSchema,
     number: numberTypeSchema,
@@ -341,47 +341,47 @@ const typeSchema = types
     custom: customTypeSchema,
   })
   .setName('TypeSchema')
-type TypeSchema = types.Infer<typeof typeSchema>
+type TypeSchema = model.Infer<typeof typeSchema>
 
-const functionSchema = types
+const functionSchema = model
   .object({
-    input: types.string({ minLength: 1 }),
-    output: types.string({ minLength: 1 }),
-    errors: types.record(types.string({ minLength: 1 })).optional(),
-    retrieve: types
+    input: model.string({ minLength: 1 }),
+    output: model.string({ minLength: 1 }),
+    errors: model.record(model.string({ minLength: 1 })).optional(),
+    retrieve: model
       .object({
-        where: types.literal(true).optional(),
-        select: types.literal(true).optional(),
-        orderBy: types.literal(true).optional(),
-        take: types.literal(true).optional(),
-        skip: types.literal(true).optional(),
+        where: model.literal(true).optional(),
+        select: model.literal(true).optional(),
+        orderBy: model.literal(true).optional(),
+        take: model.literal(true).optional(),
+        skip: model.literal(true).optional(),
       })
       .optional(),
-    options: types
+    options: model
       .object({
-        namespace: types.string().optional(),
-        description: types.string().optional(),
+        namespace: model.string().optional(),
+        description: model.string().optional(),
       })
       .optional(),
   })
   .setName('FunctionSchema')
-type FunctionSchema = types.Infer<typeof functionSchema>
+type FunctionSchema = model.Infer<typeof functionSchema>
 
 /**
  * The mondrian type of a {@link module.ModuleInterface ModuleInterface} schema.
  * A schema containts all the information about the functions signatures and types.
  * Does not contains any implementation details (e.g. the CustomTypes implementation or functions bodies).
  */
-export const moduleSchema = types
+export const moduleSchema = model
   .object({
-    name: types.string({ minLength: 1 }),
-    version: types.string(),
-    types: types.record(typeSchema),
-    functions: types.record(functionSchema),
+    name: model.string({ minLength: 1 }),
+    version: model.string(),
+    types: model.record(typeSchema),
+    functions: model.record(functionSchema),
   })
   .setName('ModuleSchema')
 
 /**
  * The type of a {@link module.ModuleInterface ModuleInterface} schema.
  */
-export type ModuleSchema = types.Infer<typeof moduleSchema>
+export type ModuleSchema = model.Infer<typeof moduleSchema>

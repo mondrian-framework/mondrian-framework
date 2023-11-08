@@ -1,4 +1,4 @@
-import { result, types } from '../src'
+import { result, model } from '../src'
 import { expect } from 'vitest'
 
 export function assertOk<A, E>(
@@ -21,6 +21,6 @@ export function assertFailure<A, E>(
   )
 }
 
-export function expectSameTypes(t1: types.Type, t2: types.Type): void {
-  expect(types.areEqual(t1, t2)).toBe(true)
+export function expectSameTypes(t1: model.Type, t2: model.Type): void {
+  expect(model.areEqual(t1, t2)).toBe(true)
 }

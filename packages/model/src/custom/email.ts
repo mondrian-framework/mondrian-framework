@@ -1,10 +1,10 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
-export type EmailType = types.CustomType<'email', {}, string>
+export type EmailType = model.CustomType<'email', {}, string>
 
-export function email(options?: types.BaseOptions): EmailType {
-  return types.custom(
+export function email(options?: model.BaseOptions): EmailType {
+  return model.custom(
     'email',
     (value) => value,
     (value) => (typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a mail string', value)),

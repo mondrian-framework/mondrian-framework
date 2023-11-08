@@ -1,4 +1,4 @@
-import m, { arbitrary, decoding, encoder, types, validator } from '../../src'
+import m, { arbitrary, decoding, encoder, model, validator } from '../../src'
 import { fc as gen } from '@fast-check/vitest'
 import prand from 'pure-rand'
 import { describe, bench } from 'vitest'
@@ -20,7 +20,7 @@ const Post = () =>
   })
 const generator = arbitrary.fromType(User, {}, 3)
 const random = new gen.Random(prand.xoroshiro128plus(0))
-const values: types.Infer<typeof User>[] = []
+const values: model.Infer<typeof User>[] = []
 const encodedValues: unknown[] = []
 
 for (let i = 0; i < 5000; i++) {

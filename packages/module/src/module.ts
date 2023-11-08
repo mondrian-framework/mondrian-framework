@@ -4,7 +4,7 @@ import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
-import { retrieve, types } from '@mondrian-framework/model'
+import { retrieve, model } from '@mondrian-framework/model'
 import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
@@ -84,7 +84,7 @@ function assertUniqueNames(functions: functions.FunctionsInterfaces) {
 
   const allTypes = allUniqueTypes(functionTypes)
   const allNames = [...allTypes.values()].flatMap((t) => {
-    const name = types.concretise(t).options?.name
+    const name = model.concretise(t).options?.name
     return name != null ? [name] : []
   })
   allNames.forEach((name, index) => {
@@ -99,7 +99,6 @@ function assertUniqueNames(functions: functions.FunctionsInterfaces) {
  *
  * Example:
  * ```typescript
- * import { types } from '@mondrian-framework/model'
  * import { module } from '@mondrian-framework/module'
  *
  * const myModule = module
@@ -142,8 +141,8 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
         const counter = myMeter.createCounter('task.invocation')
         const wrappedFunction: functions.FunctionImplementation<
-          types.Type,
-          types.Type,
+          model.Type,
+          model.Type,
           ErrorType,
           OutputRetrieveCapabilities,
           {}

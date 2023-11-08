@@ -1,13 +1,13 @@
-import { types } from '..'
+import { model } from '..'
 import { fromRegexes } from './regex'
 import gen from 'fast-check'
 
 const RGB_REGEX =
   /^rgb\(\s*(-?\d+|-?\d*\.\d+(?=%))(%?)\s*,\s*(-?\d+|-?\d*\.\d+(?=%))(\2)\s*,\s*(-?\d+|-?\d*\.\d+(?=%))(\2)\s*\)$/
 
-export type RGBType = types.CustomType<'RGB', {}, string>
+export type RGBType = model.CustomType<'RGB', {}, string>
 
-export function rgb(options?: types.BaseOptions): RGBType {
+export function rgb(options?: model.BaseOptions): RGBType {
   return fromRegexes(
     'RGB',
     'Invalid CSS RGB color',

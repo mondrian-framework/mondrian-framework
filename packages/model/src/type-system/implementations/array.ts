@@ -1,16 +1,16 @@
-import { decoding, result, types, validation } from '../../'
+import { decoding, result, model, validation } from '../../'
 import { prependIndexToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
- * @param wrappedType the {@link types.Type} describing the items held by the new `ArrayType`
- * @param options the {@link types.ArrayTypeOptions} used to define the new `ArrayType`
- * @returns a {@link types.ArrayType} holding items of the given type
+ * @param wrappedType the {@link model.Type} describing the items held by the new `ArrayType`
+ * @param options the {@link model.ArrayTypeOptions} used to define the new `ArrayType`
+ * @returns a {@link model.ArrayType} holding items of the given type
  * @example ```ts
- *          type StringArray = types.Infer<typeof stringArray>
- *          const stringArray = types.array(string(), {
+ *          type StringArray = model.Infer<typeof stringArray>
+ *          const stringArray = model.array(string(), {
  *            name: "a list of at most 3 strings",
  *            maxItems: 3,
  *          })
@@ -18,52 +18,52 @@ import gen from 'fast-check'
  *          const strings: StringArray = ["hello", " ", "world!"]
  *          ```
  */
-export function array<T extends types.Type>(
+export function array<T extends model.Type>(
   wrappedType: T,
-  options?: types.ArrayTypeOptions,
-): types.ArrayType<types.Mutability.Immutable, T> {
-  return new ArrayTypeImpl(types.Mutability.Immutable, wrappedType, options)
+  options?: model.ArrayTypeOptions,
+): model.ArrayType<model.Mutability.Immutable, T> {
+  return new ArrayTypeImpl(model.Mutability.Immutable, wrappedType, options)
 }
 
 /**
  * The same as the {@link array `array`} function, but the inferred array is `readonly`.
  *
- * @param wrappedType the {@link types.Type} describing the items held by the new `ArrayType`
- * @param options the {@link types.ArrayTypeOptions} used to define the new `ArrayType`
- * @returns a {@link types.ArrayType} holding items of the given type
+ * @param wrappedType the {@link model.Type} describing the items held by the new `ArrayType`
+ * @param options the {@link model.ArrayTypeOptions} used to define the new `ArrayType`
+ * @returns a {@link model.ArrayType} holding items of the given type
  */
-export function mutableArray<T extends types.Type>(
+export function mutableArray<T extends model.Type>(
   wrappedType: T,
-  options?: types.ArrayTypeOptions,
-): types.ArrayType<types.Mutability.Mutable, T> {
-  return new ArrayTypeImpl(types.Mutability.Mutable, wrappedType, options)
+  options?: model.ArrayTypeOptions,
+): model.ArrayType<model.Mutability.Mutable, T> {
+  return new ArrayTypeImpl(model.Mutability.Mutable, wrappedType, options)
 }
 
-class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
-  extends DefaultMethods<types.ArrayType<M, T>>
-  implements types.ArrayType<M, T>
+class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
+  extends DefaultMethods<model.ArrayType<M, T>>
+  implements model.ArrayType<M, T>
 {
-  readonly kind = types.Kind.Array
+  readonly kind = model.Kind.Array
   readonly wrappedType: T
   readonly mutability: M
 
   getThis = () => this
   immutable = () => array(this.wrappedType, this.options)
   mutable = () => mutableArray(this.wrappedType, this.options)
-  fromOptions = (options: types.ArrayTypeOptions) => new ArrayTypeImpl(this.mutability, this.wrappedType, options)
+  fromOptions = (options: model.ArrayTypeOptions) => new ArrayTypeImpl(this.mutability, this.wrappedType, options)
 
-  constructor(mutability: M, wrappedType: T, options?: types.ArrayTypeOptions) {
+  constructor(mutability: M, wrappedType: T, options?: model.ArrayTypeOptions) {
     super(options)
     this.wrappedType = wrappedType
     this.mutability = mutability
   }
 
-  encodeWithNoChecks(value: types.Infer<types.ArrayType<M, T>>): JSONType {
-    const concreteItemType = types.concretise(this.wrappedType)
+  encodeWithNoChecks(value: model.Infer<model.ArrayType<M, T>>): JSONType {
+    const concreteItemType = model.concretise(this.wrappedType)
     return value.map((item) => concreteItemType.encodeWithoutValidation(item as never))
   }
 
-  validate(value: types.Infer<types.ArrayType<M, T>>, validationOptions?: validation.Options): validation.Result {
+  validate(value: model.Infer<model.ArrayType<M, T>>, validationOptions?: validation.Options): validation.Result {
     const { maxItems, minItems } = this.options ?? {}
     const maxLengthMessage = `array must have at most ${maxItems} items`
     const minLengthMessage = `array must have at least ${minItems} items`
@@ -82,10 +82,10 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
   }
 
   private validateArrayElements(
-    array: types.Infer<types.ArrayType<any, T>>,
+    array: model.Infer<model.ArrayType<any, T>>,
     validationOptions: validation.Options,
   ): validation.Result {
-    const concreteType = types.concretise(this.wrappedType)
+    const concreteType = model.concretise(this.wrappedType)
     const errors: validation.Error[] = []
     for (let i = 0; i < array.length; i++) {
       if (errors.length > 0 && validationOptions.errorReportingStrategy === 'stopAtFirstError') {
@@ -106,7 +106,7 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
   decodeWithoutValidation(
     value: unknown,
     decodingOptions?: decoding.Options,
-  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
+  ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {
     if (value instanceof Array) {
       return this.decodeArrayValues(value, { ...decoding.defaultOptions, ...decodingOptions })
     } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
@@ -116,11 +116,11 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
     }
   }
 
-  private decodeArrayValues<T extends types.Type>(
+  private decodeArrayValues<T extends model.Type>(
     array: unknown[],
     decodingOptions: decoding.Options,
-  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
-    const concreteType = types.concretise(this.wrappedType)
+  ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {
+    const concreteType = model.concretise(this.wrappedType)
     const results: any[] = []
     const errors: decoding.Error[] = []
     for (let i = 0; i < array.length; i++) {
@@ -144,15 +144,15 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
   private decodeObjectAsArray(
     object: Object,
     decodingOptions: decoding.Options,
-  ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
+  ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {
     return objectToArray(object).chain((object) => this.decodeArrayValues(Object.values(object), decodingOptions))
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<types.ArrayType<M, T>>> {
+  arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.ArrayType<M, T>>> {
     if (maxDepth <= 0 && (this.options?.minItems ?? 0) <= 0) {
       return gen.constant([])
     } else {
-      const concreteType = types.concretise(this.wrappedType)
+      const concreteType = model.concretise(this.wrappedType)
       return gen.array(concreteType.arbitrary(maxDepth), {
         minLength: this.options?.minItems,
         maxLength: this.options?.maxItems,

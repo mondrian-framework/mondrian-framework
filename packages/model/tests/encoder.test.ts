@@ -1,4 +1,4 @@
-import { arbitrary, types, validation } from '../src'
+import { arbitrary, model, validation } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import gen from 'fast-check'
@@ -49,13 +49,13 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
   })
 
   test.prop([gen.anything()])('encodes a unknown value as JSON', (anything) => {
-    expect(types.unknown().encodeWithoutValidation(anything)).toEqual(
+    expect(model.unknown().encodeWithoutValidation(anything)).toEqual(
       anything === undefined ? null : JSON.parse(JSON.stringify(anything)),
     )
   })
 
   test.prop([gen.anything()])('encodes a never value as JSON', (anything) => {
-    expect(() => types.never().encodeWithoutValidation(anything as never)).toThrowError()
+    expect(() => model.never().encodeWithoutValidation(anything as never)).toThrowError()
   })
 
   test.prop([arbitrary.nullable(arbitrary.number()), number])('encodes a nullable value as itself', (model, number) => {
@@ -79,16 +79,16 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
 
   const objectModel = arbitrary.object({ age: arbitrary.number(), name: arbitrary.optional(arbitrary.string()) })
   const objectGenerator = gen.record({ age: number, name: gen.string() })
-  test.prop([objectModel, objectGenerator])('encodes the fields of an object', (model, object) => {
-    expect(types.concretise(model).immutable().encodeWithoutValidation(object)).toEqual(object)
-    expect(types.concretise(model).mutable().encodeWithoutValidation(object)).toEqual(object)
+  test.prop([objectModel, objectGenerator])('encodes the fields of an object', (Model, object) => {
+    expect(model.concretise(Model).immutable().encodeWithoutValidation(object)).toEqual(object)
+    expect(model.concretise(Model).mutable().encodeWithoutValidation(object)).toEqual(object)
   })
 
-  test.prop([objectModel])('drops undefined fields when encoding object', (model) => {
-    expect(types.concretise(model).mutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
-    expect(types.concretise(model).immutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
-    expect(types.concretise(model).mutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
-    expect(types.concretise(model).immutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
+  test.prop([objectModel])('drops undefined fields when encoding object', (Model) => {
+    expect(model.concretise(Model).mutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
+    expect(model.concretise(Model).immutable().encodeWithoutValidation({ age: 1 })).toEqual({ age: 1 })
+    expect(model.concretise(Model).mutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
+    expect(model.concretise(Model).immutable().encodeWithoutValidation({ age: 1, name: undefined })).toEqual({ age: 1 })
   })
 
   test.prop([arbitrary.array(arbitrary.number()), gen.array(number)])(
@@ -142,14 +142,14 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
     }
 
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, customOptions)
-    expect(model.encodeWithoutValidation(value)).toEqual(value)
+    const Model = model.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, customOptions)
+    expect(Model.encodeWithoutValidation(value)).toEqual(value)
     expect(encodeSpy).toHaveBeenCalledTimes(1)
   })
 
-  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([model, value]) => {
-    const result = types
-      .concretise(model)
+  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([Model, value]) => {
+    const result = model
+      .concretise(Model)
       .sensitive()
       .encodeWithoutValidation(value, { sensitiveInformationStrategy: 'hide' })
     expect(result).toEqual(null)
@@ -157,8 +157,8 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
 })
 
 describe.concurrent('encoder.encode', () => {
-  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([model, value]) => {
-    const result = types.concretise(model).sensitive().encode(value, { sensitiveInformationStrategy: 'hide' })
+  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([Model, value]) => {
+    const result = model.concretise(Model).sensitive().encode(value, { sensitiveInformationStrategy: 'hide' })
     expect(assertOk(result)).toEqual(null)
   })
 
@@ -185,8 +185,8 @@ describe.concurrent('encoder.encode', () => {
     }
     const validateSpy = vi.spyOn(mocks, 'validate')
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const model = types.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, options)
-    assertOk(model.encode(value, undefined, validationOptions))
+    const Model = model.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, options)
+    assertOk(Model.encode(value, undefined, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
     expect(encodeSpy).toBeCalledTimes(1)
   })

@@ -1,5 +1,5 @@
 import { functions, module, sdk } from '../src'
-import { result, types } from '@mondrian-framework/model'
+import { result, model } from '@mondrian-framework/model'
 import logsAPI from '@opentelemetry/api-logs'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { Resource } from '@opentelemetry/resources'
@@ -29,11 +29,11 @@ describe('Opentelemetry', () => {
     provider.addSpanProcessor(new SimpleSpanProcessor(exporter))
     provider.register()
 
-    const type = () => types.object({ type, value: types.string() }).optional()
+    const type = () => model.object({ type, value: model.string() }).optional()
     const dummy = functions.build({
-      input: types.string(),
-      output: types.string(),
-      errors: { unknownInput: types.string() },
+      input: model.string(),
+      output: model.string(),
+      errors: { unknownInput: model.string() },
       retrieve: undefined,
       body: async ({ input, logger }) => {
         if (input !== 'ping') {

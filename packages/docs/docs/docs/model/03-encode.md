@@ -5,8 +5,8 @@ values of any given type. Every Mondrian type has a method `encode` to do
 that, let's look into it:
 
 ```ts showLineNumbers
-const model = types.string()
-const encodingResult = model.encode("foo")
+const Model = model.string()
+const encodingResult = Model.encode('foo')
 // -> ok("foo")
 ```
 
@@ -20,11 +20,11 @@ if you try to encode a value that is not valid.
 Let's look at an example:
 
 ```ts showLineNumbers
-type NonNegativeNumber = types.Infer<typeof nonNegativeNumber> // -> inferred as number
-const nonNegativeNumber = types.number({ minimum: 0 })
+type NonNegativeNumber = model.Infer<typeof NonNegativeNumber> // -> inferred as number
+const NonNegativeNumber = model.number({ minimum: 0 })
 
-nonNegativeNumber.encode(10) // -> ok(10)
-nonNegativeNumber.encode(-1) // -> error([ assertion: "expected a number >= 0", got: -1, path: "$" ])
+NonNegativeNumber.encode(10) // -> ok(10)
+NonNegativeNumber.encode(-1) // -> error([ assertion: "expected a number >= 0", got: -1, path: "$" ])
 ```
 
 Additional assertions described in the type options do not change the
@@ -45,7 +45,7 @@ All the useful definitions can be imported from the `result` namespace of
 `@mondrian-framework/model`:
 
 ```ts showLineNumbers
-import { result } from "@mondrian-framework/model"
+import { result } from '@mondrian-framework/model'
 ```
 
 A `Result<A, E>` is the return type of a function that may either fail with an
@@ -58,7 +58,7 @@ and `result.fail`:
 
 ```ts showLineNumbers
 const success: Result<number, string> = result.ok(10)
-const failure: Result<number, string> = result.fail("error!")
+const failure: Result<number, string> = result.fail('error!')
 ```
 
 Consider for example a function that performs safe division, returning
@@ -67,9 +67,7 @@ implemented using `Result`:
 
 ```ts showLineNumbers
 function safeDivide(dividend: number, divisor: number): Result<number, string> {
-    return divisor === 0
-        ? result.fail("Division by 0")
-        : result.ok(dividend / divisor)
+  return divisor === 0 ? result.fail('Division by 0') : result.ok(dividend / divisor)
 }
 ```
 
@@ -84,17 +82,17 @@ not:
 
 ```ts showLineNumbers
 function printResult(res: Result<number, string>) {
-    // highlight-start
-    if (res.isOk) {
+  // highlight-start
+  if (res.isOk) {
     // highlight-end
-        // If `isOk` is true, you can access the `.value` property with type
-        // of the successful result
-        console.log(`success: ${res.value}`)
-    } else {
-        // If `isOk` is false, you can access the `.error` property with type
-        // of the failing result
-        console.log(`error: ${res.error}`)
-    }
+    // If `isOk` is true, you can access the `.value` property with type
+    // of the successful result
+    console.log(`success: ${res.value}`)
+  } else {
+    // If `isOk` is false, you can access the `.error` property with type
+    // of the failing result
+    console.log(`error: ${res.error}`)
+  }
 }
 
 printResult(safeDivide(10, 2)) // -> success: 5.0
@@ -115,14 +113,14 @@ Imagine you're working with some sensitive data that you need to hide _before_
 sharing the encoded JSON:
 
 ```ts showLineNumbers
-const User = types.Infer<typeof user>
-const user = types.object({
-    name: types.string(),
-    secret: types.string(),
+const User = model.Infer<typeof User>
+const User = model.object({
+    name: model.string(),
+    secret: model.string(),
 })
 
 const value = { name: "Giacomo", secret: "..." }
-const json = user.encode(value) // -> { name: "Giacomo", secret: "..." }
+const json = User.encode(value) // -> { name: "Giacomo", secret: "..." }
 shareJsonValue(json) // Uh oh, we ended up sharing the secret value!
 ```
 
@@ -137,17 +135,17 @@ hide sensitive data.
 This way, the encoder will always turn al sensitive data into `null` values:
 
 ```ts showLineNumbers
-const User = types.Infer<typeof user>
-const user = types.object({
-    name: types.string(),
+const User = model.Infer<typeof User>
+const User = model.object({
+    name: model.string(),
     // highlight-start
-    secret: types.string().sensitive(),
+    secret: model.string().sensitive(),
     // highlight-end
 })
 
 const value = { name: "Giacomo", secret: "..." }
 // highlight-start
-const json = user.encode(value, { sensitiveInformationStrategy: "hide" })
+const json = User.encode(value, { sensitiveInformationStrategy: "hide" })
 // highlight-end
 // -> { name: "Giacomo", secret: null }
 shareJsonValue(json) // Phew! We're safe and didn't share the secret

@@ -1,6 +1,6 @@
 import { ApiSpecification, FunctionSpecifications } from './api'
 import { generateOpenapiInput } from './openapi'
-import { retrieve, result, types } from '@mondrian-framework/model'
+import { retrieve, result, model } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 
 export type Sdk<Fs extends functions.FunctionsInterfaces> = {
@@ -13,22 +13,22 @@ type SdkFunctions<Fs extends functions.FunctionsInterfaces> = {
 }
 
 type SdkFunction<
-  InputType extends types.Type,
-  OutputType extends types.Type,
+  InputType extends model.Type,
+  OutputType extends model.Type,
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
 > = <const P extends retrieve.FromType<OutputType, C>>(
-  input: types.Infer<InputType>,
+  input: model.Infer<InputType>,
   options?: { retrieve?: P; operationId?: string; headers?: Record<string, string | string[] | undefined> },
 ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
-  O extends types.Type,
+  O extends model.Type,
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
   P extends retrieve.FromType<O, C>,
-> = [E] extends [types.Types]
-  ? result.Result<sdk.Project<O, P>, { [K in keyof E]: types.Infer<E[K]> }>
+> = [E] extends [model.Types]
+  ? result.Result<sdk.Project<O, P>, { [K in keyof E]: model.Infer<E[K]> }>
   : sdk.Project<O, P>
 
 function getRequestBuilder(args: { specification: FunctionSpecifications; functionBody: functions.FunctionInterface }) {
@@ -53,7 +53,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
       if (!specification) {
         return []
       }
-      const outputType = types.concretise(types.partialDeep(functionBody.output))
+      const outputType = model.concretise(model.partialDeep(functionBody.output))
       const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
       const requestBuilder = getRequestBuilder({ specification, functionBody })
       const resolver = async (input: never, options?: { headers?: any; retrieve: any }) => {
@@ -69,7 +69,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
           ? options?.retrieve != null
             ? {
                 retrieve: JSON.stringify(
-                  types.concretise(retrieveType.value).encodeWithoutValidation(options.retrieve as never),
+                  model.concretise(retrieveType.value).encodeWithoutValidation(options.retrieve as never),
                 ),
               }
             : {}
@@ -101,7 +101,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
             throw new Error(`Unexpected error: ${JSON.stringify(json)}`)
           }
           const [errorName, errorType, errorValue] = error
-          const decodedError = types.concretise(errorType).decode(errorValue, { typeCastingStrategy: 'tryCasting' })
+          const decodedError = model.concretise(errorType).decode(errorValue, { typeCastingStrategy: 'tryCasting' })
           if (!decodedError.isOk) {
             throw new Error(JSON.stringify(decodedError.error))
           }

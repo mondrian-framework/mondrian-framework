@@ -1,11 +1,11 @@
-import { types } from '../index'
+import { model } from '../index'
 import gen from 'fast-check'
 
 /**
  * @return A generator for types' base options.
  *         All of its keys are optional and may be omitted in the generated options.
  */
-export function baseOptions(): gen.Arbitrary<types.BaseOptions> {
+export function baseOptions(): gen.Arbitrary<model.BaseOptions> {
   return gen.record(baseOptionsGeneratorsRecord(), {
     withDeletedKeys: true,
   })
@@ -15,7 +15,7 @@ export function baseOptions(): gen.Arbitrary<types.BaseOptions> {
  * @returns A generator for string types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function stringTypeOptions(): gen.Arbitrary<types.StringTypeOptions> {
+export function stringTypeOptions(): gen.Arbitrary<model.StringTypeOptions> {
   return gen.integer({ min: 0, max: 500 }).chain((min) => {
     return gen.integer({ min, max: 500 }).chain((max) => {
       return gen.oneof(
@@ -45,15 +45,15 @@ export function stringTypeOptions(): gen.Arbitrary<types.StringTypeOptions> {
 /**
  * @returns A generator for string types.
  */
-export function string(): gen.Arbitrary<types.StringType> {
-  return orUndefined(stringTypeOptions()).map(types.string)
+export function string(): gen.Arbitrary<model.StringType> {
+  return orUndefined(stringTypeOptions()).map(model.string)
 }
 
 /**
  * @returns A generator for number types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function numberTypeOptions(): gen.Arbitrary<types.NumberTypeOptions> {
+export function numberTypeOptions(): gen.Arbitrary<model.NumberTypeOptions> {
   return gen.boolean().chain((isInteger) => {
     const bounds = isInteger ? integerBounds() : doubleBounds()
     return bounds.chain((bounds) => {
@@ -76,30 +76,30 @@ function doubleBounds() {
 /**
  * @returns A generator for number types.
  */
-export function number(): gen.Arbitrary<types.NumberType> {
-  return orUndefined(numberTypeOptions()).map(types.number)
+export function number(): gen.Arbitrary<model.NumberType> {
+  return orUndefined(numberTypeOptions()).map(model.number)
 }
 
 /**
  * @returns A generator for boolean types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function booleanTypeOptions(): gen.Arbitrary<types.BooleanTypeOptions> {
+export function booleanTypeOptions(): gen.Arbitrary<model.BooleanTypeOptions> {
   return baseOptions()
 }
 
 /**
  * @returns A generator for boolean types.
  */
-export function boolean(): gen.Arbitrary<types.BooleanType> {
-  return orUndefined(booleanTypeOptions()).map(types.boolean)
+export function boolean(): gen.Arbitrary<model.BooleanType> {
+  return orUndefined(booleanTypeOptions()).map(model.boolean)
 }
 
 /**
  * @returns A generator for literal types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function literalTypeOptions(): gen.Arbitrary<types.LiteralTypeOptions> {
+export function literalTypeOptions(): gen.Arbitrary<model.LiteralTypeOptions> {
   return baseOptions()
 }
 
@@ -109,10 +109,10 @@ export function literalTypeOptions(): gen.Arbitrary<types.LiteralTypeOptions> {
  */
 export function literal<L extends number | string | boolean | null>(
   literalGenerator: gen.Arbitrary<L>,
-): gen.Arbitrary<types.LiteralType<L>> {
+): gen.Arbitrary<model.LiteralType<L>> {
   return orUndefined(literalTypeOptions()).chain((options) => {
     return literalGenerator.map((literalValue) => {
-      return types.literal(literalValue, options)
+      return model.literal(literalValue, options)
     })
   })
 }
@@ -121,7 +121,7 @@ export function literal<L extends number | string | boolean | null>(
  * @return A generator for enum types' options.
  *         All of its keys are optional and may be omitted in the generated options.
  */
-export function enumTypeOptions(): gen.Arbitrary<types.EnumTypeOptions> {
+export function enumTypeOptions(): gen.Arbitrary<model.EnumTypeOptions> {
   return baseOptions()
 }
 
@@ -131,10 +131,10 @@ export function enumTypeOptions(): gen.Arbitrary<types.EnumTypeOptions> {
  */
 export function enumeration<Vs extends readonly [string, ...string[]]>(
   variantsGenerator: gen.Arbitrary<Vs>,
-): gen.Arbitrary<types.EnumType<Vs>> {
+): gen.Arbitrary<model.EnumType<Vs>> {
   return orUndefined(enumTypeOptions()).chain((options) => {
     return variantsGenerator.map((variants) => {
-      return types.enumeration(variants, options)
+      return model.enumeration(variants, options)
     })
   })
 }
@@ -143,7 +143,7 @@ export function enumeration<Vs extends readonly [string, ...string[]]>(
  * @returns A generator for datetime types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function datetimeTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<types.DateTimeOptions>> {
+export function datetimeTypeOptions(): gen.Arbitrary<model.CustomTypeOptions<model.DateTimeOptions>> {
   return gen
     .record(
       {
@@ -164,22 +164,22 @@ export function datetimeTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<typ
 /**
  * @returns A generator for datetime types.
  */
-export function datetime(): gen.Arbitrary<types.DateTimeType> {
-  return orUndefined(datetimeTypeOptions()).map(types.datetime)
+export function datetime(): gen.Arbitrary<model.DateTimeType> {
+  return orUndefined(datetimeTypeOptions()).map(model.datetime)
 }
 
 /**
  * @returns A generator for datetime types.
  */
-export function unknown(): gen.Arbitrary<types.UnknownType> {
-  return gen.constant(types.unknown())
+export function unknown(): gen.Arbitrary<model.UnknownType> {
+  return gen.constant(model.unknown())
 }
 
 /**
  * @returns A generator for timestamp types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function timestampTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<types.TimestampOptions>> {
+export function timestampTypeOptions(): gen.Arbitrary<model.CustomTypeOptions<model.TimestampOptions>> {
   return gen
     .record(
       {
@@ -200,15 +200,15 @@ export function timestampTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<ty
 /**
  * @returns A generator for timestamp types.
  */
-export function timestamp(): gen.Arbitrary<types.TimestampType> {
-  return orUndefined(timestampTypeOptions()).map(types.timestamp)
+export function timestamp(): gen.Arbitrary<model.TimestampType> {
+  return orUndefined(timestampTypeOptions()).map(model.timestamp)
 }
 
 /**
  * @returns A generator for record types.
  */
-export function record<T extends types.Type>(fieldTypeGen: gen.Arbitrary<T>): gen.Arbitrary<types.RecordType<T>> {
-  return fieldTypeGen.map(types.record)
+export function record<T extends model.Type>(fieldTypeGen: gen.Arbitrary<T>): gen.Arbitrary<model.RecordType<T>> {
+  return fieldTypeGen.map(model.record)
 }
 
 /**
@@ -224,12 +224,12 @@ export type GeneratorsRecord<R extends Record<string, any>> = { [Key in keyof R]
  * @return A generator for union types' options.
  *         All of its keys are optional and may be omitted in the generated options.
  */
-export function unionTypeOptions(): gen.Arbitrary<types.UnionTypeOptions> {
+export function unionTypeOptions(): gen.Arbitrary<model.UnionTypeOptions> {
   return gen.record({
     ...baseOptions,
     // This can cause problem on tests like 'encoding is the inverse of decoding' because with union
     // this is not always true. Take for example this type:
-    // types.union({ v1: types.object({}), v2: types.object({ a: types.number() }) })
+    // model.union({ v1: model.object({}), v2: model.object({ a: model.number() }) })
     // the encoding of { a: 1 } is { a: 1 }, the decoding of { a: 1 } could be {} if we enable 'allowAdditionalFields' option
   })
 }
@@ -238,12 +238,12 @@ export function unionTypeOptions(): gen.Arbitrary<types.UnionTypeOptions> {
  * @param variantsGenerators a generator for the variants of the randomly generated union type
  * @returns a generator for a union type
  */
-export function union<Vs extends types.Types>(
+export function union<Vs extends model.Types>(
   variantsGenerators: GeneratorsRecord<Vs>,
-): gen.Arbitrary<types.UnionType<Vs>> {
+): gen.Arbitrary<model.UnionType<Vs>> {
   return orUndefined(unionTypeOptions()).chain((options) => {
     return gen.record(variantsGenerators).map((variants) => {
-      return types.union(variants, options)
+      return model.union(variants, options)
     })
   })
 }
@@ -252,7 +252,7 @@ export function union<Vs extends types.Types>(
  * @returns A generator for object types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function objectTypeOptions(): gen.Arbitrary<types.ObjectTypeOptions> {
+export function objectTypeOptions(): gen.Arbitrary<model.ObjectTypeOptions> {
   return baseOptions()
 }
 
@@ -260,9 +260,9 @@ export function objectTypeOptions(): gen.Arbitrary<types.ObjectTypeOptions> {
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
  * @returns a generator for an object type that can either be mutable or immutable
  */
-export function object<Ts extends types.Types>(
+export function object<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.ObjectType<types.Mutability, Ts> | (() => types.ObjectType<types.Mutability, Ts>)> {
+): gen.Arbitrary<model.ObjectType<model.Mutability, Ts> | (() => model.ObjectType<model.Mutability, Ts>)> {
   const objectGenerator = gen.oneof(immutableObject(fieldsGenerators), mutableObject(fieldsGenerators))
   const makeLazy = <A>(value: A) => {
     return () => value
@@ -274,9 +274,9 @@ export function object<Ts extends types.Types>(
  * @param fieldsGenerators a generator for the fields of the randomly generated entity type
  * @returns a generator for an object type that can either be mutable or immutable
  */
-export function entity<Ts extends types.Types>(
+export function entity<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.EntityType<types.Mutability, Ts> | (() => types.EntityType<types.Mutability, Ts>)> {
+): gen.Arbitrary<model.EntityType<model.Mutability, Ts> | (() => model.EntityType<model.Mutability, Ts>)> {
   const objectGenerator = gen.oneof(immutableEntity(fieldsGenerators), mutableEntity(fieldsGenerators))
   const makeLazy = <A>(value: A) => {
     return () => value
@@ -288,12 +288,12 @@ export function entity<Ts extends types.Types>(
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
  * @returns a generator for an immutable object type
  */
-export function immutableObject<Ts extends types.Types>(
+export function immutableObject<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.ObjectType<types.Mutability.Immutable, Ts>> {
+): gen.Arbitrary<model.ObjectType<model.Mutability.Immutable, Ts>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
-      return types.object(fields, options)
+      return model.object(fields, options)
     })
   })
 }
@@ -302,12 +302,12 @@ export function immutableObject<Ts extends types.Types>(
  * @param fieldsGenerators a generator for the fields of the randomly generated object type
  * @returns a generator for a mutable object type
  */
-export function mutableObject<Ts extends types.Types>(
+export function mutableObject<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.ObjectType<types.Mutability.Mutable, Ts>> {
+): gen.Arbitrary<model.ObjectType<model.Mutability.Mutable, Ts>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
-      return types.mutableObject(fields, options)
+      return model.mutableObject(fields, options)
     })
   })
 }
@@ -316,7 +316,7 @@ export function mutableObject<Ts extends types.Types>(
  * @returns A generator for entity types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function entityTypeOptions(): gen.Arbitrary<types.EntityTypeOptions> {
+export function entityTypeOptions(): gen.Arbitrary<model.EntityTypeOptions> {
   return baseOptions()
 }
 
@@ -324,12 +324,12 @@ export function entityTypeOptions(): gen.Arbitrary<types.EntityTypeOptions> {
  * @param fieldsGenerators a generator for the fields of the randomly generated entity type
  * @returns a generator for an immutable entity type
  */
-export function immutableEntity<Ts extends types.Types>(
+export function immutableEntity<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.EntityType<types.Mutability.Immutable, Ts>> {
+): gen.Arbitrary<model.EntityType<model.Mutability.Immutable, Ts>> {
   return orUndefined(entityTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
-      return types.entity(fields, options)
+      return model.entity(fields, options)
     })
   })
 }
@@ -338,12 +338,12 @@ export function immutableEntity<Ts extends types.Types>(
  * @param fieldsGenerators a generator for the fields of the randomly generated entity type
  * @returns a generator for a mutable entity type
  */
-export function mutableEntity<Ts extends types.Types>(
+export function mutableEntity<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<types.EntityType<types.Mutability.Mutable, Ts>> {
+): gen.Arbitrary<model.EntityType<model.Mutability.Mutable, Ts>> {
   return orUndefined(entityTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
-      return types.mutableEntity(fields, options)
+      return model.mutableEntity(fields, options)
     })
   })
 }
@@ -352,7 +352,7 @@ export function mutableEntity<Ts extends types.Types>(
  * @returns A generator for array types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function arrayTypeOptions(): gen.Arbitrary<types.ArrayTypeOptions> {
+export function arrayTypeOptions(): gen.Arbitrary<model.ArrayTypeOptions> {
   return gen.integer({ min: 0, max: 500 }).chain((min) => {
     return gen.integer({ min, max: 500 }).chain((max) => {
       return gen.record(
@@ -373,9 +373,9 @@ export function arrayTypeOptions(): gen.Arbitrary<types.ArrayTypeOptions> {
  * @param wrappedTypeGenerator a generator for the type wrapped by the randomly generated array type
  * @returns a generator for an array type that could either be mutable or immutable
  */
-export function array<T extends types.Type>(
+export function array<T extends model.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.ArrayType<types.Mutability, T>> {
+): gen.Arbitrary<model.ArrayType<model.Mutability, T>> {
   return gen.oneof(immutableArray(wrappedTypeGenerator), mutableArray(wrappedTypeGenerator))
 }
 
@@ -383,12 +383,12 @@ export function array<T extends types.Type>(
  * @param wrappedTypeGenerator a generator for the type wrapped by the randomly generated array type
  * @returns a generator for an immutable array type
  */
-export function immutableArray<T extends types.Type>(
+export function immutableArray<T extends model.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.ArrayType<types.Mutability.Immutable, T>> {
+): gen.Arbitrary<model.ArrayType<model.Mutability.Immutable, T>> {
   return orUndefined(arrayTypeOptions()).chain((options) => {
     return wrappedTypeGenerator.map((wrappedType) => {
-      return types.array(wrappedType, options)
+      return model.array(wrappedType, options)
     })
   })
 }
@@ -397,12 +397,12 @@ export function immutableArray<T extends types.Type>(
  * @param wrappedTypeGenerator a generator for the type wrapped by the randomly generated array type
  * @returns a generator for a mutable array type
  */
-export function mutableArray<T extends types.Type>(
+export function mutableArray<T extends model.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.ArrayType<types.Mutability.Mutable, T>> {
+): gen.Arbitrary<model.ArrayType<model.Mutability.Mutable, T>> {
   return orUndefined(arrayTypeOptions()).chain((options) => {
     return wrappedTypeGenerator.map((wrappedType) => {
-      return types.mutableArray(wrappedType, options)
+      return model.mutableArray(wrappedType, options)
     })
   })
 }
@@ -411,7 +411,7 @@ export function mutableArray<T extends types.Type>(
  * @returns A generator for optional types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function optionalTypeOptions(): gen.Arbitrary<types.OptionalTypeOptions> {
+export function optionalTypeOptions(): gen.Arbitrary<model.OptionalTypeOptions> {
   return baseOptions()
 }
 
@@ -421,12 +421,12 @@ export function optionalTypeOptions(): gen.Arbitrary<types.OptionalTypeOptions> 
  *        value
  * @returns a generator for optional types
  */
-export function optional<T extends types.Type>(
+export function optional<T extends model.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.OptionalType<T>> {
+): gen.Arbitrary<model.OptionalType<T>> {
   return orUndefined(optionalTypeOptions()).chain((options) => {
     return wrappedTypeGenerator.map((wrappedType) => {
-      return types.optional(wrappedType, options)
+      return model.optional(wrappedType, options)
     })
   })
 }
@@ -435,7 +435,7 @@ export function optional<T extends types.Type>(
  * @returns A generator for nullable types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function nullableTypeOptions(): gen.Arbitrary<types.NullableTypeOptions> {
+export function nullableTypeOptions(): gen.Arbitrary<model.NullableTypeOptions> {
   return baseOptions()
 }
 
@@ -443,12 +443,12 @@ export function nullableTypeOptions(): gen.Arbitrary<types.NullableTypeOptions> 
  * @param wrappedTypeGenerator a generator for the type wrapped by the randomly generated nullable type
  * @returns a generator for nullable types
  */
-export function nullable<T extends types.Type>(
+export function nullable<T extends model.Type>(
   wrappedTypeGenerator: gen.Arbitrary<T>,
-): gen.Arbitrary<types.NullableType<T>> {
+): gen.Arbitrary<model.NullableType<T>> {
   return orUndefined(nullableTypeOptions()).chain((options) => {
     return wrappedTypeGenerator.map((wrappedType) => {
-      return types.nullable(wrappedType, options)
+      return model.nullable(wrappedType, options)
     })
   })
 }
@@ -459,7 +459,7 @@ export function nullable<T extends types.Type>(
  * @param maxDepth the maximum depth of the generated type
  * @returns a generator for random types
  */
-export function type(maxDepth: number = 5): gen.Arbitrary<types.Type> {
+export function type(maxDepth: number = 5): gen.Arbitrary<model.Type> {
   return maxDepth <= 1
     ? baseType()
     : gen.oneof(wrapperType(maxDepth), objectType(maxDepth), entityType(maxDepth), unionType(), baseType())
@@ -486,12 +486,12 @@ function literalValue(): gen.Arbitrary<boolean | string | number | null> {
  * Generator for base types: numbers, strings, booleans, enumerations and literals.
  */
 export function baseType(): gen.Arbitrary<
-  | types.NumberType
-  | types.StringType
-  | types.BooleanType
-  | types.EnumType<[string, ...string[]]>
-  | types.LiteralType<boolean | string | number | null>
-  | types.CustomType<string, any, any>
+  | model.NumberType
+  | model.StringType
+  | model.BooleanType
+  | model.EnumType<[string, ...string[]]>
+  | model.LiteralType<boolean | string | number | null>
+  | model.CustomType<string, any, any>
 > {
   return gen.oneof(
     number(),
@@ -510,12 +510,12 @@ export function baseType(): gen.Arbitrary<
  */
 export function wrapperType(
   maxDepth: number = 3,
-  wrappedType: gen.Arbitrary<types.Type> = type(maxDepth - 1),
+  wrappedType: gen.Arbitrary<model.Type> = type(maxDepth - 1),
 ): gen.Arbitrary<
-  | types.OptionalType<types.Type>
-  | types.NullableType<types.Type>
-  | types.RecordType<types.Type>
-  | types.ArrayType<types.Mutability, types.Type>
+  | model.OptionalType<model.Type>
+  | model.NullableType<model.Type>
+  | model.RecordType<model.Type>
+  | model.ArrayType<model.Mutability, model.Type>
 > {
   return gen.oneof(optional(wrappedType), nullable(wrappedType), array(wrappedType), record(wrappedType))
 }
@@ -523,7 +523,7 @@ export function wrapperType(
 /**
  * Generator for a generic object type.
  */
-function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
+function objectType(maxDepth: number): gen.Arbitrary<model.Type> {
   const fieldName = gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf')
   return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain(object)
 }
@@ -531,7 +531,7 @@ function objectType(maxDepth: number): gen.Arbitrary<types.Type> {
 /**
  * Generator for a generic object type.
  */
-function entityType(maxDepth: number): gen.Arbitrary<types.Type> {
+function entityType(maxDepth: number): gen.Arbitrary<model.Type> {
   const fieldName = gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf')
   return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain(entity)
 }
@@ -539,7 +539,7 @@ function entityType(maxDepth: number): gen.Arbitrary<types.Type> {
 /**
  * Generator for a generic enum type.
  */
-function unionType(): gen.Arbitrary<types.Type> {
+function unionType(): gen.Arbitrary<model.Type> {
   return gen
     .dictionary(gen.string(), gen.oneof(gen.constant(number()), gen.constant(boolean())), { minKeys: 1 })
     .chain((variantsGenerators) => {
@@ -581,11 +581,11 @@ function orUndefined<A>(generator: gen.Arbitrary<A>): gen.Arbitrary<A | undefine
   return gen.oneof(gen.constant(undefined), generator)
 }
 
-export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[types.Type, never]> {
+export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[model.Type, never]> {
   return type(typeDepth)
     .filter(canGenerateValueFrom)
     .chain((type) => {
-      return types
+      return model
         .concretise(type)
         .arbitrary(valueDepth)
         .map((value) => {
@@ -594,11 +594,11 @@ export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen
     })
 }
 
-export function canGenerateValueFrom(type: types.Type): boolean {
+export function canGenerateValueFrom(type: model.Type): boolean {
   // This is just an ugly hack for now but really effective! If the constructor does not throw then I can
   // generate a type for it
   try {
-    types.concretise(type).arbitrary(1)
+    model.concretise(type).arbitrary(1)
     return true
   } catch {
     return false

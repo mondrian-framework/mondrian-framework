@@ -1,4 +1,4 @@
-import { decoding, types, validation } from '../../'
+import { decoding, model, validation } from '../../'
 import { failWithInternalError } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
@@ -6,8 +6,8 @@ import gen from 'fast-check'
 
 /**
  * @param variants a record with the different variants of the union
- * @param options the {@link types.UnionTypeOptions} used to define the new `UnionType`
- * @returns a new {@link types.UnionType} with the provided variants
+ * @param options the {@link model.UnionTypeOptions} used to define the new `UnionType`
+ * @returns a new {@link model.UnionType} with the provided variants
  * @example Imagine you are modelling the response a server might send a client following a request.
  *          The response may be successfull and hold a value (let's say it's just an integer value
  *          for simplicity) or be an error and hold an error code and an additional string to
@@ -15,12 +15,12 @@ import gen from 'fast-check'
  *
  *          This type could be modelled as follows:
  *          ```ts
- *          type Respose = types.Infer<typeof response>
- *          const response = types.union({
- *            success: types.number(),
- *            failure: types.object({
- *              errorCode: types.number(),
- *              errorMessage: types.string(),
+ *          type Respose = model.Infer<typeof response>
+ *          const response = model.union({
+ *            success: model.number(),
+ *            failure: model.object({
+ *              errorCode: model.number(),
+ *              errorMessage: model.string(),
  *            })
  *          })
  *
@@ -28,23 +28,23 @@ import gen from 'fast-check'
  *          const failureResponse: Response = { errorCode: 418, errorMessage: "I'm a teapot" }
  *          ```
  */
-export function union<Ts extends types.Types>(variants: Ts, options?: types.UnionTypeOptions): types.UnionType<Ts> {
+export function union<Ts extends model.Types>(variants: Ts, options?: model.UnionTypeOptions): model.UnionType<Ts> {
   return new UnionTypeImpl(variants, options)
 }
 
-class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionType<Ts>> implements types.UnionType<Ts> {
-  readonly kind = types.Kind.Union
+class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionType<Ts>> implements model.UnionType<Ts> {
+  readonly kind = model.Kind.Union
   readonly variants: Ts
 
-  fromOptions = (options: types.UnionTypeOptions) => union(this.variants, options)
+  fromOptions = (options: model.UnionTypeOptions) => union(this.variants, options)
   getThis = () => this
 
-  constructor(variants: Ts, options?: types.UnionTypeOptions) {
+  constructor(variants: Ts, options?: model.UnionTypeOptions) {
     super(options)
     this.variants = variants
   }
 
-  encodeWithNoChecks(value: types.Infer<types.UnionType<Ts>>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.UnionType<Ts>>): JSONType {
     const variantName = this.variantOwnership(value)
     const variantType = this.variants[variantName]
     if (variantType === undefined) {
@@ -52,13 +52,13 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
         'I tried to encode an object that is not a variant as a union. This should have been prevented by the type system',
       )
     } else {
-      const concreteVariantType = types.concretise(variantType)
+      const concreteVariantType = model.concretise(variantType)
       const encoded = concreteVariantType.encodeWithoutValidation(value as never)
       return encoded
     }
   }
 
-  validate(value: types.Infer<types.UnionType<Ts>>, validationOptions?: validation.Options): validation.Result {
+  validate(value: model.Infer<model.UnionType<Ts>>, validationOptions?: validation.Options): validation.Result {
     const decoded = this.decodeAndTryToValidate(value, undefined, validationOptions)
     if (!decoded.isOk) {
       failWithInternalError(
@@ -76,18 +76,18 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
   decodeWithoutValidation(
     value: unknown,
     decodingOptions?: decoding.Options,
-  ): decoding.Result<types.Infer<types.UnionType<Ts>>> {
+  ): decoding.Result<model.Infer<model.UnionType<Ts>>> {
     return this.decodeAndTryToValidate(value, decodingOptions).map(({ value }) => value)
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<types.Infer<types.UnionType<Ts>>> {
+  arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.UnionType<Ts>>> {
     const variantsGenerators = Object.values(this.variants).map((variantType) =>
-      types.concretise(variantType).arbitrary(maxDepth - 1),
+      model.concretise(variantType).arbitrary(maxDepth - 1),
     )
-    return gen.oneof(...variantsGenerators) as gen.Arbitrary<types.Infer<types.UnionType<Ts>>>
+    return gen.oneof(...variantsGenerators) as gen.Arbitrary<model.Infer<model.UnionType<Ts>>>
   }
 
-  variantOwnership(value: types.Infer<types.UnionType<Ts>>): keyof Ts & string {
+  variantOwnership(value: model.Infer<model.UnionType<Ts>>): keyof Ts & string {
     const decoded = this.decodeAndTryToValidate(value)
     if (!decoded.isOk) {
       failWithInternalError(
@@ -103,7 +103,7 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
     validationOptions?: validation.Options,
   ): decoding.Result<{
     variantName: keyof Ts
-    value: types.Infer<types.UnionType<Ts>>
+    value: model.Infer<model.UnionType<Ts>>
     validated: boolean
     validationErrors: validation.Error[]
   }> {
@@ -124,9 +124,9 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
 
     const decodingErrors: decoding.Error[] = []
     const validationErrors: validation.Error[] = []
-    let potentialDecoded: { variantName: keyof Ts; value: types.Infer<types.UnionType<Ts>> } | null = null
+    let potentialDecoded: { variantName: keyof Ts; value: model.Infer<model.UnionType<Ts>> } | null = null
     for (const [variantName, variantType] of Object.entries(this.variants)) {
-      const concrete = types.concretise(variantType)
+      const concrete = model.concretise(variantType)
       const result = concrete.decodeWithoutValidation(value, decodingOptions)
       if (result.isOk) {
         //look ahead with `validate` in order to get a correct variant if possible

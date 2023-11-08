@@ -1,15 +1,15 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
 export function fromRegexes<Name extends string, Options extends Record<string, any>>(
   typeName: Name,
   errorMessage: string,
-  options: types.OptionsOf<types.CustomType<Name, Options, string>> | undefined,
+  options: model.OptionsOf<model.CustomType<Name, Options, string>> | undefined,
   arbitrary: gen.Arbitrary<string> | undefined,
   regex: RegExp,
   ...regexes: RegExp[]
-): types.CustomType<Name, Options, string> {
-  return types.custom(
+): model.CustomType<Name, Options, string> {
+  return model.custom(
     typeName,
     encode,
     decode,
@@ -26,7 +26,7 @@ function encode(string: string): string {
 function decode<Name extends string, Options extends Record<string, any>>(
   value: unknown,
   _decodingOptions?: decoding.Options,
-  _options?: types.OptionsOf<types.CustomType<Name, Options, string>>,
+  _options?: model.OptionsOf<model.CustomType<Name, Options, string>>,
 ): decoding.Result<string> {
   return typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a string value', value)
 }

@@ -1,11 +1,11 @@
-import { types, decoding, validation } from '../index'
+import { model, decoding, validation } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
  * The type of unknown, defined as a custom type.
  */
-export type UnknownType = types.CustomType<'unknown', UnknownOptions, unknown>
+export type UnknownType = model.CustomType<'unknown', UnknownOptions, unknown>
 
 /**
  * Additional options for the Unknown CustomType
@@ -20,8 +20,8 @@ export type UnknownOptions = {}
  * @param options the options used to create the new unknown custom type
  * @returns a {@link CustomType `CustomType`} representing a unknown
  */
-export function unknown(options?: types.OptionsOf<UnknownType>): UnknownType {
-  return types.custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, unknownArbitrary, options)
+export function unknown(options?: model.OptionsOf<UnknownType>): UnknownType {
+  return model.custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, unknownArbitrary, options)
 }
 
 function encodeUnknown(value: unknown): JSONType {
@@ -34,7 +34,7 @@ function encodeUnknown(value: unknown): JSONType {
 function decodeUnknown(
   value: unknown,
   _decodingOptions?: decoding.Options,
-  _options?: types.OptionsOf<UnknownType>,
+  _options?: model.OptionsOf<UnknownType>,
 ): decoding.Result<unknown> {
   return decoding.succeed(value)
 }
@@ -42,7 +42,7 @@ function decodeUnknown(
 function validateUnknown(
   _value: unknown,
   _validationOptions?: validation.Options,
-  _options?: types.OptionsOf<UnknownType>,
+  _options?: model.OptionsOf<UnknownType>,
 ): validation.Result {
   return validation.succeed()
 }

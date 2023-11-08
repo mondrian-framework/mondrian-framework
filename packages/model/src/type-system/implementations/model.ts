@@ -1,20 +1,20 @@
-import { decoding, path, model, validation } from '../../'
+import { decoding, path, model, validation } from '../..'
 import { prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
- * @param types an object where each field is itself a {@link model.Type}, used to determine the structure of the
- *              new `ObjectType`
- * @param options the {@link model.ObjectTypeOptions} used to define the new `ObjectType`
- * @returns an {@link model.ObjectType} with the provided values
+ * @param types an entity where each field is itself a {@link model.Type}, used to determine the structure of the
+ *              new `EntityType`
+ * @param options the {@link model.EntityTypeOptions} used to define the new `EntityType`
+ * @returns an {@link model.EntityType} with the provided values
  * @example Imagine you are modelling a `User` that has a username, an age and a boolean flag to tell if it is an admin
  *          or not. Its definition could look like this:
  *
  *          ```ts
  *          type User = Infer<typeof user>
- *          const user = object(
+ *          const user = entity(
  *            {
  *              username: string(),
  *              age: number(),
@@ -33,52 +33,52 @@ import gen from 'fast-check'
  *          }
  *          ```
  */
-export function object<Ts extends model.Types>(
+export function entity<Ts extends model.Types>(
   fields: Ts,
-  options?: model.ObjectTypeOptions,
-): model.ObjectType<model.Mutability.Immutable, Ts> {
-  return new ObjectTypeImpl(model.Mutability.Immutable, fields, options)
+  options?: model.EntityTypeOptions,
+): model.EntityType<model.Mutability.Immutable, Ts> {
+  return new EntityTypeImpl(model.Mutability.Immutable, fields, options)
 }
 
-export function mutableObject<Ts extends model.Types>(
+export function mutableEntity<Ts extends model.Types>(
   fields: Ts,
-  options?: model.ObjectTypeOptions,
-): model.ObjectType<model.Mutability.Mutable, Ts> {
-  return new ObjectTypeImpl(model.Mutability.Mutable, fields, options)
+  options?: model.EntityTypeOptions,
+): model.EntityType<model.Mutability.Mutable, Ts> {
+  return new EntityTypeImpl(model.Mutability.Mutable, fields, options)
 }
 
-class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
-  extends DefaultMethods<model.ObjectType<M, Ts>>
-  implements model.ObjectType<M, Ts>
+class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
+  extends DefaultMethods<model.EntityType<M, Ts>>
+  implements model.EntityType<M, Ts>
 {
-  readonly kind = model.Kind.Object
+  readonly kind = model.Kind.Entity
   readonly mutability: M
   readonly fields: Ts
 
   getThis = () => this
-  fromOptions = (options: model.ObjectTypeOptions) => new ObjectTypeImpl(this.mutability, this.fields, options)
+  fromOptions = (options: model.EntityTypeOptions) => new EntityTypeImpl(this.mutability, this.fields, options)
 
-  immutable = () => object(this.fields, this.options)
-  mutable = () => mutableObject(this.fields, this.options)
+  immutable = () => entity(this.fields, this.options)
+  mutable = () => mutableEntity(this.fields, this.options)
 
-  constructor(mutability: M, fields: Ts, options?: model.ObjectTypeOptions) {
+  constructor(mutability: M, fields: Ts, options?: model.EntityTypeOptions) {
     super(options)
     this.mutability = mutability
     this.fields = fields
   }
 
-  encodeWithNoChecks(value: model.Infer<model.ObjectType<M, Ts>>): JSONType {
-    const object = value as Record<string, model.Type>
+  encodeWithNoChecks(value: model.Infer<model.EntityType<M, Ts>>): JSONType {
+    const entity = value as Record<string, model.Type>
     return filterMapObject(this.fields, (fieldName, fieldType) => {
       const concreteFieldType = model.concretise(fieldType)
       const fieldIsOptional = model.isOptional(concreteFieldType)
-      const rawField = object[fieldName]
+      const rawField = entity[fieldName]
       const encodedField = concreteFieldType.encodeWithoutValidation(rawField as never)
       return fieldIsOptional && encodedField === null ? undefined : encodedField
     })
   }
 
-  validate(value: model.Infer<model.ObjectType<M, Ts>>, validationOptions?: validation.Options): validation.Result {
+  validate(value: model.Infer<model.EntityType<M, Ts>>, validationOptions?: validation.Options): validation.Result {
     const options = { ...validation.defaultOptions, ...validationOptions }
     const entries = Object.entries(value)
     const errors: validation.Error[] = []
@@ -102,9 +102,9 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
   decodeWithoutValidation(
     value: unknown,
     decodingOptions?: decoding.Options,
-  ): decoding.Result<model.Infer<model.ObjectType<M, Ts>>> {
-    return castToObject(value, decodingOptions).chain((object) =>
-      decodeObjectProperties(this.fields, object, decodingOptions),
+  ): decoding.Result<model.Infer<model.EntityType<M, Ts>>> {
+    return castToEntity(value, decodingOptions).chain((entity) =>
+      decodeEntityProperties(this.fields, entity, decodingOptions),
     )
   }
 
@@ -119,23 +119,23 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
   }
 }
 
-function castToObject(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Record<string, unknown>> {
+function castToEntity(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Record<string, unknown>> {
   if (typeof value === 'object') {
     if (value === null && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
-      return decoding.fail('object', null)
+      return decoding.fail('entity', null)
     }
     return decoding.succeed((value ?? {}) as Record<string, unknown>)
   } else {
-    return decoding.fail('object', value)
+    return decoding.fail('entity', value)
   }
 }
 
-function decodeObjectProperties(
+function decodeEntityProperties(
   fields: model.Types,
-  object: Record<string, unknown>,
+  entity: Record<string, unknown>,
   decodingOptions?: decoding.Options,
 ): decoding.Result<any> {
-  const keySet = new Set([...Object.keys(fields), ...Object.keys(object)])
+  const keySet = new Set([...Object.keys(fields), ...Object.keys(entity)])
   const errors: decoding.Error[] = []
   const result: Record<string, unknown> = {}
   for (const key of keySet) {
@@ -143,10 +143,10 @@ function decodeObjectProperties(
       break
     }
     const type = fields[key]
-    const value = object[key]
+    const value = entity[key]
     if (type === undefined && value === undefined) {
       continue
-    } else if (!type && decodingOptions?.fieldStrictness !== 'allowAdditionalFields') {
+    } else if (!type && decodingOptions?.fieldStrictness === 'expectExactFields') {
       errors.push({ expected: 'undefined', got: value, path: path.empty().prependField(key) })
       continue
     } else if (!type) {

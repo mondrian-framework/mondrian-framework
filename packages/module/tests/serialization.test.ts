@@ -1,12 +1,12 @@
 import { functions, module, serialization } from '../src'
-import { result, types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
 describe('Module interface to schema', () => {
   test('Simple module', () => {
     const f = functions.define({
-      input: types.string().setName('Input'),
-      output: types.number().setName('Output'),
+      input: model.string().setName('Input'),
+      output: model.number().setName('Output'),
       errors: undefined,
       retrieve: undefined,
     })
@@ -29,8 +29,8 @@ describe('Module interface to schema', () => {
 
   test('Simple module with custom types', () => {
     const f = functions.define({
-      input: types.record(types.datetime({ maximum: new Date(234), minimum: new Date(123) })).setName('Input'),
-      output: types.timestamp({ maximum: new Date(2340), minimum: new Date(1230) }).setName('Output'),
+      input: model.record(model.datetime({ maximum: new Date(234), minimum: new Date(123) })).setName('Input'),
+      output: model.timestamp({ maximum: new Date(2340), minimum: new Date(1230) }).setName('Output'),
       errors: undefined,
       retrieve: undefined,
     })
@@ -78,19 +78,19 @@ describe('Module interface to schema', () => {
   })
 
   test('Module with all types', () => {
-    const str = types.string({ regex: /asd/ }).setName('String')
-    const num = types.number().setName('Number')
-    const bool = types.boolean().setName('Bool')
-    const lit1 = types.literal(123).setName('Literal1')
-    const lit2 = types.literal('123').setName('Literal2')
-    const lit3 = types.literal(true).setName('Literal3')
-    const lit4 = types.literal(null).setName('Literal4')
-    const enumerator = types.enumeration(['A', 'B']).setName('Enum')
-    const datetime = types.datetime().setName('DateTime')
-    const timestamp = types.datetime().setName('Timestamp')
-    const record = types.record(types.string()).setName('Record')
+    const str = model.string({ regex: /asd/ }).setName('String')
+    const num = model.number().setName('Number')
+    const bool = model.boolean().setName('Bool')
+    const lit1 = model.literal(123).setName('Literal1')
+    const lit2 = model.literal('123').setName('Literal2')
+    const lit3 = model.literal(true).setName('Literal3')
+    const lit4 = model.literal(null).setName('Literal4')
+    const enumerator = model.enumeration(['A', 'B']).setName('Enum')
+    const datetime = model.datetime().setName('DateTime')
+    const timestamp = model.datetime().setName('Timestamp')
+    const record = model.record(model.string()).setName('Record')
     const f = functions.define({
-      input: types
+      input: model
         .object({ str, num, bool, lit1, lit2, lit3, lit4, enumerator, datetime, timestamp, record })
         .setName('Input'),
       output: str.optional().setName('Output'),
@@ -160,24 +160,24 @@ describe('Module interface to schema', () => {
   })
 
   test('No duplicate types', () => {
-    const union = () => types.union({ u1: types.string(), u2: types.number() })
+    const union = () => model.union({ u1: model.string(), u2: model.number() })
     const f = functions.define({
       input: () =>
-        types
+        model
           .object({
-            t1: types.string(),
-            t2: types.string().optional(),
-            t3: types.string().nullable(),
-            t4: types.string().array(),
+            t1: model.string(),
+            t2: model.string().optional(),
+            t3: model.string().nullable(),
+            t4: model.string().array(),
             t6: union,
           })
           .setName('Input'),
-      output: types
+      output: model
         .object({
-          t1: types.string(),
-          t2: types.string().optional(),
-          t3: types.string().nullable(),
-          t4: types.string().array(),
+          t1: model.string(),
+          t2: model.string().optional(),
+          t3: model.string().nullable(),
+          t4: model.string().array(),
           t6: union,
         })
         .setName('Output'),
@@ -233,28 +233,28 @@ describe('Module interface to schema', () => {
 
   test('Recursive type', () => {
     const input = () =>
-      types
+      model
         .object({
-          s: types.string(),
+          s: model.string(),
           other,
           other2,
         })
         .setName('Input')
     const other = () =>
-      types.object({
-        s: types.string(),
+      model.object({
+        s: model.string(),
         input,
       })
 
     const other2 = () =>
-      types.object({
-        s: types.string(),
+      model.object({
+        s: model.string(),
         input,
       })
 
     const f = functions.define({
       input: input,
-      output: types.number().setName('Output'),
+      output: model.number().setName('Output'),
       errors: undefined,
       retrieve: undefined,
     })

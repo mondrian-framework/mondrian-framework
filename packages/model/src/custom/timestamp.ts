@@ -1,11 +1,11 @@
-import { types, decoding, validation } from '../index'
+import { model, decoding, validation } from '../index'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
  * The type of a timestamp, defined as a custom type.
  */
-export type TimestampType = types.CustomType<'timestamp', TimestampOptions, Date>
+export type TimestampType = model.CustomType<'timestamp', TimestampOptions, Date>
 
 /**
  * Additional options for the Timestamp `CustomType`
@@ -16,8 +16,8 @@ export type TimestampOptions = { minimum?: Date; maximum?: Date }
  * @param options the options used to create the new timestamp custom type
  * @returns a {@link CustomType `CustomType`} representing a timestamp
  */
-export function timestamp(options?: types.OptionsOf<TimestampType>): TimestampType {
-  return types.custom('timestamp', encodeTimestamp, decodeTimestamp, validateTimestamp, timestampArbitrary, options)
+export function timestamp(options?: model.OptionsOf<TimestampType>): TimestampType {
+  return model.custom('timestamp', encodeTimestamp, decodeTimestamp, validateTimestamp, timestampArbitrary, options)
 }
 
 function encodeTimestamp(timestamp: Date): JSONType {
@@ -27,7 +27,7 @@ function encodeTimestamp(timestamp: Date): JSONType {
 function decodeTimestamp(
   value: unknown,
   decodingOptions?: decoding.Options,
-  options?: types.OptionsOf<TimestampType>,
+  options?: model.OptionsOf<TimestampType>,
 ): decoding.Result<Date> {
   if (value instanceof Date) {
     return decoding.succeed(value)
@@ -45,7 +45,7 @@ function decodeTimestamp(
 function validateTimestamp(
   input: Date,
   _validationOptions?: validation.Options,
-  options?: types.OptionsOf<TimestampType>,
+  options?: model.OptionsOf<TimestampType>,
 ): validation.Result {
   if (options === undefined) {
     return validation.succeed()
@@ -60,6 +60,6 @@ function validateTimestamp(
   return validation.succeed()
 }
 
-function timestampArbitrary(_maxDepth: number, options?: types.TimestampOptions): gen.Arbitrary<Date> {
+function timestampArbitrary(_maxDepth: number, options?: model.TimestampOptions): gen.Arbitrary<Date> {
   return gen.date({ min: options?.minimum, max: options?.maximum })
 }

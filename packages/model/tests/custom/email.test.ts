@@ -1,4 +1,4 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
@@ -19,10 +19,10 @@ const knownInvalidValues = [
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(types.email(), {
+  testTypeEncodingAndDecoding(model.email(), {
     validValues: gen.emailAddress(),
     knownInvalidValues,
   }),
 )
 
-describe('arbitrary based test', testWithArbitrary(types.email()))
+describe('arbitrary based test', testWithArbitrary(model.email()))

@@ -1,9 +1,9 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { test, expect, describe } from 'vitest'
 
 test('Time - encode', async () => {
-  expect(types.time().encodeWithoutValidation(new Date('2023-01-01T00:00:00.223Z'))).toBe('00:00:00.223Z')
+  expect(model.time().encodeWithoutValidation(new Date('2023-01-01T00:00:00.223Z'))).toBe('00:00:00.223Z')
 })
 
 const today = new Date()
@@ -35,7 +35,7 @@ const knownInvalidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(
-    types.time(),
+    model.time(),
     {
       knownValidValues,
       knownInvalidValues,
@@ -46,4 +46,4 @@ describe(
   ),
 )
 
-describe('arbitrary based test', testWithArbitrary(types.time()))
+describe('arbitrary based test', testWithArbitrary(model.time()))

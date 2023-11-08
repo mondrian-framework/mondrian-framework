@@ -1,6 +1,6 @@
 import { functions } from '.'
 import { ErrorType, OutputRetrieveCapabilities } from './function'
-import { decoding, result, retrieve, types, validation } from '@mondrian-framework/model'
+import { decoding, result, retrieve, model, validation } from '@mondrian-framework/model'
 import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -10,7 +10,7 @@ import { SeverityNumber } from '@opentelemetry/api-logs'
  */
 export function checkMaxProjectionDepth(
   maxDepth: number,
-): functions.Middleware<types.Type, types.Type, ErrorType, OutputRetrieveCapabilities, {}> {
+): functions.Middleware<model.Type, model.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check max projection depth',
     apply: (args, next, thisFunction) => {
@@ -41,7 +41,7 @@ export function checkMaxProjectionDepth(
 export function checkOutputType(
   functionName: string,
   onFailure: 'log' | 'throw',
-): functions.Middleware<types.Type, types.Type, ErrorType, OutputRetrieveCapabilities, {}> {
+): functions.Middleware<model.Type, model.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
@@ -59,7 +59,7 @@ export function checkOutputType(
       const defaultRetrieve = retrieveType.isOk ? { select: {} } : {}
 
       const typeToRespect = retrieve.selectedType(thisFunction.output, args.retrieve ?? defaultRetrieve)
-      const respectResult = types.concretise(typeToRespect).decode(outputValue as never, {
+      const respectResult = model.concretise(typeToRespect).decode(outputValue as never, {
         errorReportingStrategy: 'allErrors',
         fieldStrictness: 'allowAdditionalFields',
       })

@@ -1,11 +1,11 @@
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { functions, utils, module, logger } from '@mondrian-framework/module'
 import { ScheduledTask } from 'node-cron'
 import { schedule, validate } from 'node-cron'
 
 export type Api<F extends functions.Functions> = {
   functions: {
-    [K in keyof F]?: FunctionSPecifications<types.Infer<F[K]['input']>>
+    [K in keyof F]?: FunctionSPecifications<model.Infer<F[K]['input']>>
   }
 }
 

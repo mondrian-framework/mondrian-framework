@@ -1,4 +1,4 @@
-import { decoding, result, types, validation } from '..'
+import { decoding, result, model, validation } from '..'
 import BigNumber from 'bignumber.js'
 import gen from 'fast-check'
 
@@ -12,19 +12,19 @@ export type DecimalTypeAdditionalOptions = {
   decimals?: number
 }
 
-export type DecimalType = types.CustomType<'decimal', DecimalTypeAdditionalOptions, BigNumber>
+export type DecimalType = model.CustomType<'decimal', DecimalTypeAdditionalOptions, BigNumber>
 
-export function decimal(options?: types.OptionsOf<DecimalType>): DecimalType {
+export function decimal(options?: model.OptionsOf<DecimalType>): DecimalType {
   if (
     options?.decimals != null &&
     (options.decimals < 0 || options.decimals > 100 || !Number.isInteger(options.decimals))
   ) {
     throw new Error('Invalid decimals, must be and integer between 0 and 100')
   }
-  return types.custom('decimal', encodeDecimal, decodeDecimal, validateDecimal, decimalArbitrary, options)
+  return model.custom('decimal', encodeDecimal, decodeDecimal, validateDecimal, decimalArbitrary, options)
 }
 
-function encodeDecimal(value: BigNumber, options?: types.OptionsOf<DecimalType>): string {
+function encodeDecimal(value: BigNumber, options?: model.OptionsOf<DecimalType>): string {
   const encoded = options?.decimals != null ? value.decimalPlaces(options.decimals) : value
   return encoded.toString(options?.base ?? 10)
 }
@@ -32,7 +32,7 @@ function encodeDecimal(value: BigNumber, options?: types.OptionsOf<DecimalType>)
 function decodeDecimal(
   value: unknown,
   decodingOptions?: decoding.Options,
-  options?: types.OptionsOf<DecimalType>,
+  options?: model.OptionsOf<DecimalType>,
 ): decoding.Result<BigNumber> {
   if (typeof value === 'string' || typeof value === 'number') {
     const decoded = new BigNumber(value, options?.base ?? 10)
@@ -54,7 +54,7 @@ function decodeDecimal(
 function validateDecimal(
   value: BigNumber,
   _validationOptions?: validation.Options,
-  options?: types.OptionsOf<DecimalType>,
+  options?: model.OptionsOf<DecimalType>,
 ): validation.Result {
   if (options?.maximum != null && value.gt(options.maximum)) {
     return validation.fail(`decimal must be less than or equal to ${options.maximum}`, value)
@@ -74,7 +74,7 @@ function validateDecimal(
   return validation.succeed()
 }
 
-function decimalArbitrary(_maxDepth: number, options?: types.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {
+function decimalArbitrary(_maxDepth: number, options?: model.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {
   //TODO [Good first issue] Implementation of decimal arbitrary needed 🙏
   throw new Error('Arbitrary of `decimal` type not implemented yet!')
 }

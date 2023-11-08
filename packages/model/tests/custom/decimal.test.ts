@@ -1,4 +1,4 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeDecodingAndEncoding, testWithArbitrary } from './property-helper'
 import BigNumber from 'bignumber.js'
 import { describe } from 'vitest'
@@ -6,7 +6,7 @@ import { describe } from 'vitest'
 describe(
   'standard property based tests 1',
   testTypeDecodingAndEncoding(
-    types.decimal({ decimals: 2, base: 10, minimum: 0, maximum: new BigNumber('12342314231423142134124.24') }),
+    model.decimal({ decimals: 2, base: 10, minimum: 0, maximum: new BigNumber('12342314231423142134124.24') }),
     {
       validValues: [
         {
@@ -41,7 +41,7 @@ describe(
 describe(
   'standard property based tests 2',
   testTypeDecodingAndEncoding(
-    types.decimal({ decimals: 2, base: 16, exclusiveMinimum: 0, exclusiveMaximum: 200 }),
+    model.decimal({ decimals: 2, base: 16, exclusiveMinimum: 0, exclusiveMaximum: 200 }),
     {
       validValues: [
         {
@@ -61,7 +61,7 @@ describe(
 describe(
   'standard property based tests 3',
   testTypeDecodingAndEncoding(
-    types.decimal({ base: 10, multipleOf: 5 }),
+    model.decimal({ base: 10, multipleOf: 5 }),
     {
       validValues: [
         {
@@ -78,4 +78,4 @@ describe(
   ),
 )
 
-describe('arbitrary based test', testWithArbitrary(types.decimal(), false))
+describe('arbitrary based test', testWithArbitrary(model.decimal(), false))

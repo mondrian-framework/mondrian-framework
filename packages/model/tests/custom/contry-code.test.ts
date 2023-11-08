@@ -1,9 +1,9 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
-const countryCode = types.countryCode()
+const countryCode = model.countryCode()
 const knownValidValues: readonly string[] = countryCode.variants
 
 describe(

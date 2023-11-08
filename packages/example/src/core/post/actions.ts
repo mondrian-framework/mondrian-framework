@@ -1,13 +1,13 @@
 import { LoggedUserContext } from '..'
 import { idType, notLoggedInType, unauthorizedType } from '../common/model'
 import { postType, postVisibilityType } from './model'
-import { result, retrieve, types } from '@mondrian-framework/model'
+import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { Prisma } from '@prisma/client'
 
 const writePostInput = () =>
-  types
-    .object({ content: types.string(), title: types.string(), visibility: postVisibilityType })
+  model
+    .object({ content: model.string(), title: model.string(), visibility: postVisibilityType })
     .setName('WritePostInput')
 export const writePost = functions.withContext<LoggedUserContext>().build({
   input: writePostInput,
@@ -35,8 +35,8 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
 })
 
 export const readPosts = functions.withContext<LoggedUserContext>().build({
-  input: types.object({ userId: idType }),
-  output: types.array(postType),
+  input: model.object({ userId: idType }),
+  output: model.array(postType),
   errors: undefined,
   retrieve: retrieve.allCapabilities,
   body: async ({ context, input, retrieve: thisRetrieve }) => {
@@ -62,14 +62,14 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
   },
   options: { namespace: 'post' },
 })
-const likePostInput = types.object({ postId: idType }, { name: 'LikePostInput' })
+const likePostInput = model.object({ postId: idType }, { name: 'LikePostInput' })
 export const likePost = functions.withContext<LoggedUserContext>().build({
   input: likePostInput,
   output: postType,
   errors: {
     unauthorizedType,
     notLoggedInType,
-    postNotFound: types.string(),
+    postNotFound: model.string(),
   },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {

@@ -4,14 +4,14 @@ In the [previous chapter](./01-definition.md) you learned about the Mondrian
 types and how they can be defined. Consider this example type we've shown before:
 
 ```ts showLineNumbers
-const user = types.object({
-  id: types.integer(),
-  username: types.string(),
+const User = model.object({
+  id: model.integer(),
+  username: model.string(),
 })
 ```
 
 It acts as a _description_ of the structure of users: every value with a type
-that conforms to `user` should have an integer `id` field and a string `username`
+that conforms to `User` should have an integer `id` field and a string `username`
 field.
 
 However, this description wouldn't be too useful if there wasn't a way to actually
@@ -23,15 +23,15 @@ bridge the gap between Typescript's and Mondrian's type systems.
 
 You may have noticed that all the Mondrian types are closely related to Typescript
 ones: Mondrian primitives can easily be mapped to Typescript's
-(`types.number()` is `number`, `types.string()` is `string`, and so on); the
+(`model.number()` is `number`, `model.string()` is `string`, and so on); the
 same applies for complex types like objects, arrays and optional values.
 
 Thanks to this resemblance, every Mondrian type can be turned into a corresponding
-Typescript type thanks to the `types.Infer` type:
+Typescript type thanks to the `model.Infer` type:
 
 ```ts showLineNumbers
-const model = types.number()
-type Model = types.Infer<typeof model> // -> number
+const Model = model.number()
+type Model = model.Infer<typeof Model> // -> number
 
 const value: Model = 10
 ```
@@ -43,12 +43,12 @@ primitive type:
 
 | Mondrian type                | Inferred Typescript type        |
 | ---------------------------- | ------------------------------- |
-| `types.number()`             | `number`                        |
-| `types.string()`             | `string`                        |
-| `types.boolean()`            | `boolean`                       |
-| `types.enum(["foo", "bar"])` | <code>"foo" &#124; "bar"</code> |
-| `types.literal(1)`           | `1`                             |
-| `types.literal("foo")`       | `"foo"`                         |
+| `model.number()`             | `number`                        |
+| `model.string()`             | `string`                        |
+| `model.boolean()`            | `boolean`                       |
+| `model.enum(["foo", "bar"])` | <code>"foo" &#124; "bar"</code> |
+| `model.literal(1)`           | `1`                             |
+| `model.literal("foo")`       | `"foo"`                         |
 
 ### Inference of wrapper types
 
@@ -58,23 +58,23 @@ Arrays are inferred as Typescript's arrays.
 
 | Mondrian Type        | Inferred Typescript type                                  |
 | -------------------- | --------------------------------------------------------- |
-| `types.optional(t)`  | <code>undefined &#124; types.Infer&lt;typeof t&gt;</code> |
-| `types.nullable(t)`  | <code>null &#124; types.Infer&lt;typeof t&gt;</code>      |
-| `types.array(t)`     | `types.Infer<typeof t>[]`                                 |
-| `types.reference(t)` | `types.Infer<typeof t>`                                   |
+| `model.optional(t)`  | <code>undefined &#124; model.Infer&lt;typeof t&gt;</code> |
+| `model.nullable(t)`  | <code>null &#124; model.Infer&lt;typeof t&gt;</code>      |
+| `model.array(t)`     | `model.Infer<typeof t>[]`                                 |
+| `model.reference(t)` | `model.Infer<typeof t>`                                   |
 
 Here are some examples of inference for wrapper types:
 
 ```ts showLineNumbers
-type StringArray = types.Infer<typeof stringArray> // string[]
-const stringArray = types.string().array()
+type StringArray = model.Infer<typeof StringArray> // string[]
+const StringArray = model.string().array()
 
 const value: StringArray = ["Hello", " ", "Mondrian", "!"]
 ```
 
 ```ts showLineNumbers
-type OptionalNumber = types.Infer<typeof optionalNumber> // number | undefined
-const optionalNumber = types.number().optional()
+type OptionalNumber = model.Infer<typeof OptionalNumber> // number | undefined
+const OptionalNumber = model.number().optional()
 
 const missing: OptionalNumber = undefined
 const value: OptionalNumber = 10
@@ -82,20 +82,20 @@ const value: OptionalNumber = 10
 
 ### Inference of objects
 
-Mondrian objects can be turned into Typescript's object types. Let's work through an
+Mondrian objects can be turned into Typescript's object model. Let's work through an
 example and see how it works:
 
 ```ts showLineNumbers
-const book = types.object({
-  title: types.string(),
-  publicationYear: types.number(),
-  author: types.object({
-    firstName: types.string(),
-    lastName: types.string(),
+const Book = model.object({
+  title: model.string(),
+  publicationYear: model.number(),
+  author: model.object({
+    firstName: model.string(),
+    lastName: model.string(),
   }).optional(),
 })
 
-type Book = types.Infer<typeof book>
+type Book = model.Infer<typeof Book>
 // -> {
 //   readonly title: string,
 //   readonly publicationYear: number,
@@ -107,9 +107,9 @@ type Book = types.Infer<typeof book>
 ```
 
 As you can see the inferred type is obtained by inferring the type of each of
-the fields of the object's model: `title` is _described_ by a `types.string()`
+the fields of the object's model: `title` is _described_ by a `model.string()`
 so the resulting inferred type for that field is `string`, `author` is itself a
-`types.object({...})` so its type is the inferred type for that object: a record
+`model.object({...})` so its type is the inferred type for that object: a record
 with two `string`-typed fields `firstName` and `lastName`.
 
 Fields with an optional type are correctly inferred to be optional, so `author`
@@ -128,8 +128,8 @@ In the rare case one would need a mutable data structure they can turn the
 object type definition into a mutable one like this:
 
 ```ts showLineNumbers
-const mutableBook = book.mutable()
-type MutableBook = types.Infer<typeof mutableBook>
+const MutableBook = book.mutable()
+type MutableBook = model.Infer<typeof MutableBook>
 // -> {
 //   title: string,
 //   publicationYear: number,
@@ -173,15 +173,15 @@ After this introduction Mondrian's type inference for unions shouldn't be too
 surprising:
 
 ```ts showLineNumbers
-const response = types.union({
-  success: types.string(),
-  error: types.object({
-    code: types.number(),
-    message: types.string(),
+const Response = model.union({
+  success: model.string(),
+  error: model.object({
+    code: model.number(),
+    message: model.string(),
   })
 })
 
-type Response = types.Infer<typeof response>
+type Response = model.Infer<typeof Response>
 // ->
 //   { readonly success : string }
 // | {
@@ -212,22 +212,22 @@ generate a lot of boilerplate code for you: for example
 When working with unknown data you may not be sure that it actually conforms
 to a type, hand writing validation code may be tedious and error prone. That's
 why Mondrian already provides two utility functions that allow you to
-verify this: `types.isType` and `types.assertType`.
+verify this: `model.isType` and `model.assertType`.
 
-### `types.isType`
+### `model.isType`
 
 This function exposed by the `types` module takes two inputs: a mondrian type
 definition and an unknown value. It returns true if the value actually
 conforms to the mondrian definition:
 
 ```ts
-const error = types.object({ code: types.number(), message: types.string() })
+const Error = model.object({ code: model.number(), message: model.string() })
 
-types.isType(error, { code: "not-a-code" })
+model.isType(Error, { code: "not-a-code" })
 // -> false
 // It is missing the `message` field and `code` is not a number
 
-types.isType(error, { code: 418, message: "I'm a teapot" })
+model.isType(Error, { code: 418, message: "I'm a teapot" })
 // -> true
 ```
 
@@ -235,7 +235,7 @@ If you check `isType`'s return type you may notice that it is doing something a
 bit smarter:
 
 ```ts
-export function isType<T extends types.Type>(type: T, value: unknown, ...): value is types.Infer<T>
+export function isType<T extends model.Type>(type: T, value: unknown, ...): value is model.Infer<T>
 ```
 
 It is actually using a
@@ -245,12 +245,12 @@ in case it returns true. This plays nicely used with `if` statements and type
 narrowing:
 
 ```ts
-const error = types.object({ code: types.number(), message: types.string() })
+const Error = model.object({ code: model.number(), message: model.string() })
 
 const value: unknown  = { code: 418, message: "I'm a teapot" }
 
-if (types.isType(error, value)) {
-  // Here value is of type `types.Infer<typeof error>` so we can access its fields
+if (model.isType(Error, value)) {
+  // Here value is of type `model.Infer<typeof Error>` so we can access its fields
   console.log("Error code:", value.code)
   console.log("Error message:", value.message)
 } else {
@@ -258,17 +258,17 @@ if (types.isType(error, value)) {
 }
 ```
 
-### `types.assertType`
+### `model.assertType`
 
 This function works exactly like `isType` but instead of returning a boolean
 value, it throws an exception if the given value does not conform to the given
 type:
 
 ```ts
-types.assertType(error, { code: "not-a-number" })
+model.assertType(Error, { code: "not-a-number" })
 // -> throws an exception
 
-types.assertType(error, { code: 418, message: "I'm a teapot" })
+model.assertType(Error, { code: 418, message: "I'm a teapot" })
 // does not throw
 ```
 
@@ -278,8 +278,8 @@ expected type:
 
 ```ts
 const value: unknown = { code: 418, message: "I'm a teapot" }
-types.assertType(error, value)
-// Here value is of type `types.Infer<typeof error>` so we can access its fields
+model.assertType(Error, value)
+// Here value is of type `model.Infer<typeof Error>` so we can access its fields
 console.log("Error code:", value.code)
 console.log("Error message:", value.message)
 ```

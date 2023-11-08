@@ -1,6 +1,6 @@
 import { uniqueTypes } from '../src/utils'
 import { test } from '@fast-check/vitest'
-import { arbitrary, types } from '@mondrian-framework/model'
+import { arbitrary, model } from '@mondrian-framework/model'
 import { describe, expect } from 'vitest'
 
 function expectSameSets<A>(expected: Set<A>, actual: Set<A>) {
@@ -12,86 +12,86 @@ function expectSameSets<A>(expected: Set<A>, actual: Set<A>) {
 
 describe('uniqueTypes', () => {
   test.prop([arbitrary.baseType()])('works on base types', (type) => {
-    const expected: Set<types.Type> = new Set([type])
+    const expected: Set<model.Type> = new Set([type])
     expectSameSets(expected, uniqueTypes(type))
   })
 
   test.prop([arbitrary.baseType()])('works on simple arrays', (type) => {
     const array = type.array()
-    const expected: Set<types.Type> = new Set([type, array])
+    const expected: Set<model.Type> = new Set([type, array])
     expectSameSets(expected, uniqueTypes(array))
   })
 
   test.prop([arbitrary.baseType()])('works on simple optionals', (type) => {
     const optional = type.optional()
-    const expected: Set<types.Type> = new Set([type, optional])
+    const expected: Set<model.Type> = new Set([type, optional])
     expectSameSets(expected, uniqueTypes(optional))
   })
 
   test.prop([arbitrary.baseType()])('works on simple nullables', (type) => {
     const nullable = type.nullable()
-    const expected: Set<types.Type> = new Set([type, nullable])
+    const expected: Set<model.Type> = new Set([type, nullable])
     expectSameSets(expected, uniqueTypes(nullable))
   })
 
   test('works on unions', () => {
-    const model = types.union({
-      variant1: types.string(),
-      variant2: types.number(),
+    const Model = model.union({
+      variant1: model.string(),
+      variant2: model.number(),
     })
-    const expected = new Set<types.Type>([model, ...Object.values(model.variants)])
-    expectSameSets(expected, uniqueTypes(model))
+    const expected = new Set<model.Type>([Model, ...Object.values(Model.variants)])
+    expectSameSets(expected, uniqueTypes(Model))
   })
 
   test('works on objects', () => {
-    const model = types.object({
-      field1: types.string(),
-      field2: types.number(),
+    const Model = model.object({
+      field1: model.string(),
+      field2: model.number(),
     })
-    const expected = new Set<types.Type>([model, model.fields.field1, model.fields.field2])
-    expectSameSets(expected, uniqueTypes(model))
+    const expected = new Set<model.Type>([Model, Model.fields.field1, Model.fields.field2])
+    expectSameSets(expected, uniqueTypes(Model))
   })
 
   test('works on recursive objects', () => {
-    const model = () =>
-      types.object({
-        field1: types.optional(model),
+    const Model = () =>
+      model.object({
+        field1: model.optional(Model),
       })
-    const got = uniqueTypes(model)
+    const got = uniqueTypes(Model)
     expect(got.size).toBe(2)
-    expect(got.has(model)).toBe(true)
-    got.delete(model)
+    expect(got.has(Model)).toBe(true)
+    got.delete(Model)
     const field = got.values().next().value
-    types.areEqual(field, types.optional(model))
+    model.areEqual(field, model.optional(Model))
   })
 
   test('work on recursive unions', () => {
-    const model = () =>
-      types.union({
-        variant1: types.number(),
-        variant2: model,
+    const Model = () =>
+      model.union({
+        variant1: model.number(),
+        variant2: Model,
       })
-    const got = uniqueTypes(model)
+    const got = uniqueTypes(Model)
     expect(got.size).toBe(2)
-    expect(got.has(model)).toBe(true)
-    got.delete(model)
+    expect(got.has(Model)).toBe(true)
+    got.delete(Model)
     const variants = got.values().next().value
-    types.areEqual(variants, types.optional(model))
+    model.areEqual(variants, model.optional(Model))
   })
 
   test('works on mutually recursive objects', () => {
-    const model1 = () => types.object({ field: model2 })
-    const model2 = () => types.object({ field: model1 })
-    const expected = new Set<types.Type>([model1, model2])
-    expectSameSets(expected, uniqueTypes(model1))
-    expectSameSets(expected, uniqueTypes(model2))
+    const Model1 = () => model.object({ field: Model2 })
+    const Model2 = () => model.object({ field: Model1 })
+    const expected = new Set<model.Type>([Model1, Model2])
+    expectSameSets(expected, uniqueTypes(Model1))
+    expectSameSets(expected, uniqueTypes(Model2))
   })
 
   test('works on mutualle recursive unions', () => {
-    const model1 = () => types.union({ variant: model2 })
-    const model2 = () => types.union({ variant: model1 })
-    const expected = new Set<types.Type>([model1, model2])
-    expectSameSets(expected, uniqueTypes(model1))
-    expectSameSets(expected, uniqueTypes(model2))
+    const Model1 = () => model.union({ variant: Model2 })
+    const Model2 = () => model.union({ variant: Model1 })
+    const expected = new Set<model.Type>([Model1, Model2])
+    expectSameSets(expected, uniqueTypes(Model1))
+    expectSameSets(expected, uniqueTypes(Model2))
   })
 })

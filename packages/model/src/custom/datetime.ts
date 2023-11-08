@@ -1,10 +1,10 @@
-import { types, decoding, validation } from '../index'
+import { model, decoding, validation } from '../index'
 import gen from 'fast-check'
 
 /**
  * The type of a datetime, defined as a custom type.
  */
-export type DateTimeType = types.CustomType<'datetime', DateTimeOptions, Date>
+export type DateTimeType = model.CustomType<'datetime', DateTimeOptions, Date>
 
 /**
  * Additional options for the DateTime CustomType
@@ -15,8 +15,8 @@ export type DateTimeOptions = { minimum?: Date; maximum?: Date }
  * @param options the options used to create the new datetime custom type
  * @returns a {@link CustomType `CustomType`} representing a datetime
  */
-export function datetime(options?: types.OptionsOf<DateTimeType>): DateTimeType {
-  return types.custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, datetimeArbitrary, options)
+export function datetime(options?: model.OptionsOf<DateTimeType>): DateTimeType {
+  return model.custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, datetimeArbitrary, options)
 }
 
 function encodeDateTime(date: Date): string {
@@ -26,7 +26,7 @@ function encodeDateTime(date: Date): string {
 function decodeDateTime(
   value: unknown,
   decodingOptions?: decoding.Options,
-  _options?: types.OptionsOf<DateTimeType>,
+  _options?: model.OptionsOf<DateTimeType>,
 ): decoding.Result<Date> {
   if (value instanceof Date) {
     return decoding.succeed(value)
@@ -56,7 +56,7 @@ function tryMakeDate(value: number | string): decoding.Result<Date> {
 function validateDateTime(
   date: Date,
   _validationOptions?: validation.Options,
-  options?: types.OptionsOf<DateTimeType>,
+  options?: model.OptionsOf<DateTimeType>,
 ): validation.Result {
   if (options === undefined) {
     return validation.succeed()
@@ -71,6 +71,6 @@ function validateDateTime(
   return validation.succeed()
 }
 
-function datetimeArbitrary(_maxDepth: number, options?: types.DateTimeOptions): gen.Arbitrary<Date> {
+function datetimeArbitrary(_maxDepth: number, options?: model.DateTimeOptions): gen.Arbitrary<Date> {
   return gen.date({ min: options?.minimum, max: options?.maximum })
 }

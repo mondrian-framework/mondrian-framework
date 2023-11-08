@@ -1,19 +1,19 @@
 import { rateLimiter } from '../src'
 import { Rate } from '../src/rate'
-import { result, types } from '@mondrian-framework/model'
+import { result, model } from '@mondrian-framework/model'
 import { module, functions, sdk } from '@mondrian-framework/module'
 import { expect, test } from 'vitest'
 
 test('Rate limiter middleware', async () => {
-  const LoginInput = types
+  const LoginInput = model
     .object({
-      email: types.string(),
-      password: types.string(),
+      email: model.string(),
+      password: model.string(),
     })
     .setName('LoginInput')
-  const LoginOutput = types.object({ jwt: types.string() }).nullable().setName('LoginOuput')
+  const LoginOutput = model.object({ jwt: model.string() }).nullable().setName('LoginOuput')
   type SharedContext = { ip: string }
-  const LoginError = { invalidUsernameOrPassword: types.string(), tooManyRequests: types.string() }
+  const LoginError = { invalidUsernameOrPassword: model.string(), tooManyRequests: model.string() }
   const rateLimitByIpEmail = rateLimiter.build<
     typeof LoginInput,
     typeof LoginOutput,

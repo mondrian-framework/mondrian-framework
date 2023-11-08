@@ -1,4 +1,4 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
@@ -13,11 +13,11 @@ const knownInvalidValues = [-200, 200, 10.00000000001, null, undefined, { field:
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(types.longitude(), {
+  testTypeEncodingAndDecoding(model.longitude(), {
     validValues,
     invalidValues,
     knownInvalidValues,
   }),
 )
 
-describe('arbitrary based test', testWithArbitrary(types.longitude()))
+describe('arbitrary based test', testWithArbitrary(model.longitude()))

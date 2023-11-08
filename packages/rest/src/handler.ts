@@ -1,7 +1,7 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
-import { result, retrieve, types } from '@mondrian-framework/model'
+import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -30,7 +30,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     : generateGetInputFromRequest({ functionBody, specification })
   const inputType = functionBody.input
   const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-  const partialOutputType = types.concretise(types.partialDeep(functionBody.output))
+  const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
 
   const thisLogger = logger.build({
     moduleName: module.name,
@@ -51,7 +51,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
     //Decode input
     let input: unknown = null
-    if (!types.isNever(inputType)) {
+    if (!model.isNever(inputType)) {
       const rawInput = getInputFromRequest(request)
       const decoded = decodeRawInput({ input: rawInput, type: inputType })
       if (!decoded.isOk) {
@@ -109,7 +109,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         if (functionBody.errors) {
           const key = Object.keys(res.error as Record<string, unknown>)[0]
           const status = key ? codes[key] ?? 400 : 400
-          const encoded = types.concretise(functionBody.errors[key]).encodeWithoutValidation(res.error as never)
+          const encoded = model.concretise(functionBody.errors[key]).encodeWithoutValidation(res.error as never)
           const response: Response = { status, body: encoded, headers: responseHeaders }
           operationLogger.logInfo('Completed with error.')
           endSpanWithResponse({ span, response })
@@ -182,13 +182,13 @@ function generateGetInputFromRequest(args: {
   return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
 }
 
-function decodeRawInput({ input, type }: { input: unknown; type: types.Type }): result.Result<unknown, Response> {
-  const decoded = types.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
+function decodeRawInput({ input, type }: { input: unknown; type: model.Type }): result.Result<unknown, Response> {
+  const decoded = model.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
   return decoded.mapError((error) => ({ status: 400, body: { errors: error, message: 'Invalid input' }, headers: {} }))
 }
 
-function decodeRawRetrieve({ input, type }: { input: unknown; type: types.Type }): result.Result<unknown, Response> {
-  const decoded = types.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
+function decodeRawRetrieve({ input, type }: { input: unknown; type: model.Type }): result.Result<unknown, Response> {
+  const decoded = model.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
   return decoded.mapError((error) => ({
     status: 400,
     body: { errors: error, message: 'Invalid retrieve' },

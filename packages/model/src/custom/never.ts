@@ -1,8 +1,8 @@
-import { types } from '..'
+import { model } from '..'
 
-export type NeverType = types.CustomType<'never', {}, never>
+export type NeverType = model.CustomType<'never', {}, never>
 export function never(): NeverType {
-  return types.custom<'never', {}, never>(
+  return model.custom<'never', {}, never>(
     'never',
     () => {
       throw new Error('Tried encoding a never value')

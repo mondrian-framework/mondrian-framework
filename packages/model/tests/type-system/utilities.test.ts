@@ -1,4 +1,4 @@
-import { arbitrary, types } from '../../src'
+import { arbitrary, model } from '../../src'
 import { object } from '../../src/types-exports'
 import { assertOk } from '../testing-utils'
 import { test } from '@fast-check/vitest'
@@ -6,74 +6,74 @@ import { describe, expect } from 'vitest'
 
 describe('Utilities', () => {
   test('isArray', () => {
-    expect(types.isArray(types.string().array())).toBe(true)
-    expect(types.isArray(types.string().array().optional())).toBe(true)
-    expect(types.isArray(types.string().array().nullable())).toBe(true)
-    expect(types.isArray(types.string().array())).toBe(true)
-    expect(types.isArray(types.string().optional().array().array())).toBe(true)
-    expect(types.isArray(types.string().optional())).toBe(false)
+    expect(model.isArray(model.string().array())).toBe(true)
+    expect(model.isArray(model.string().array().optional())).toBe(true)
+    expect(model.isArray(model.string().array().nullable())).toBe(true)
+    expect(model.isArray(model.string().array())).toBe(true)
+    expect(model.isArray(model.string().optional().array().array())).toBe(true)
+    expect(model.isArray(model.string().optional())).toBe(false)
   })
   test('isOptional', () => {
-    expect(types.isOptional(types.string().array().optional())).toBe(true)
-    expect(types.isOptional(types.string().optional())).toBe(true)
-    expect(types.isOptional(types.string().optional().nullable())).toBe(true)
-    expect(types.isOptional(types.string().optional().array())).toBe(false)
-    expect(types.isOptional(types.string().optional().array().optional())).toBe(true)
+    expect(model.isOptional(model.string().array().optional())).toBe(true)
+    expect(model.isOptional(model.string().optional())).toBe(true)
+    expect(model.isOptional(model.string().optional().nullable())).toBe(true)
+    expect(model.isOptional(model.string().optional().array())).toBe(false)
+    expect(model.isOptional(model.string().optional().array().optional())).toBe(true)
   })
   test('isNullable', () => {
-    expect(types.isNullable(types.string().array().nullable())).toBe(true)
-    expect(types.isNullable(types.string().nullable())).toBe(true)
-    expect(types.isNullable(types.string().nullable().optional())).toBe(true)
-    expect(types.isNullable(types.string().nullable().array())).toBe(false)
-    expect(types.isNullable(types.string().nullable().array().nullable())).toBe(true)
+    expect(model.isNullable(model.string().array().nullable())).toBe(true)
+    expect(model.isNullable(model.string().nullable())).toBe(true)
+    expect(model.isNullable(model.string().nullable().optional())).toBe(true)
+    expect(model.isNullable(model.string().nullable().array())).toBe(false)
+    expect(model.isNullable(model.string().nullable().array().nullable())).toBe(true)
   })
 
   test('isNullable', () => {
-    expect(types.unwrap(types.string().array().nullable()).kind).toBe(types.Kind.String)
-    expect(types.unwrap(types.string().nullable()).kind).toBe(types.Kind.String)
+    expect(model.unwrap(model.string().array().nullable()).kind).toBe(model.Kind.String)
+    expect(model.unwrap(model.string().nullable()).kind).toBe(model.Kind.String)
   })
 
   test('isScalar', () => {
-    expect(types.isScalar(types.string().array().nullable())).toBe(false)
-    expect(types.isScalar(types.object({}))).toBe(false)
-    expect(types.isScalar(types.union({}))).toBe(false)
-    expect(types.isScalar(types.string().nullable())).toBe(true)
+    expect(model.isScalar(model.string().array().nullable())).toBe(false)
+    expect(model.isScalar(model.object({}))).toBe(false)
+    expect(model.isScalar(model.union({}))).toBe(false)
+    expect(model.isScalar(model.string().nullable())).toBe(true)
   })
 })
 
 describe('partialDeep', () => {
-  test.prop([arbitrary.typeAndValue()])('with random types', ([model, value]) => {
-    const partialModel = types.concretise(types.partialDeep(model))
-    assertOk(partialModel.validate(value))
+  test.prop([arbitrary.typeAndValue()])('with random types', ([Model, value]) => {
+    const PartialModel = model.concretise(model.partialDeep(Model))
+    assertOk(PartialModel.validate(value))
   })
 
   test('validate with scalar', () => {
-    const model = types.string().nullable().optional()
-    const partialModel = types.partialDeep(model)
-    assertOk(partialModel.validate(''))
-    assertOk(partialModel.validate(null))
-    assertOk(partialModel.validate(undefined))
+    const Model = model.string().nullable().optional()
+    const PartialModel = model.partialDeep(Model)
+    assertOk(PartialModel.validate(''))
+    assertOk(PartialModel.validate(null))
+    assertOk(PartialModel.validate(undefined))
   })
   test('validate with array', () => {
-    const model = types.string().nullable().array().nullable()
-    const partialModel = types.partialDeep(model)
-    assertOk(partialModel.validate([null, '']))
-    assertOk(partialModel.validate(null))
+    const Model = model.string().nullable().array().nullable()
+    const PartialModel = model.partialDeep(Model)
+    assertOk(PartialModel.validate([null, '']))
+    assertOk(PartialModel.validate(null))
   })
   test('validate with recursive object', () => {
-    const model = () => object({ field1: types.string(), model })
-    const partialModel = types.partialDeep(model)
-    assertOk(partialModel().validate({}))
-    assertOk(partialModel().validate({ field1: '' }))
-    assertOk(partialModel().validate({ model: {} }))
-    assertOk(partialModel().validate({ model: { field1: '' } }))
+    const Model = () => object({ field1: model.string(), model: Model })
+    const PartialModel = model.partialDeep(Model)
+    assertOk(PartialModel().validate({}))
+    assertOk(PartialModel().validate({ field1: '' }))
+    assertOk(PartialModel().validate({ model: {} }))
+    assertOk(PartialModel().validate({ model: { field1: '' } }))
   })
   test('validate with recursive union', () => {
-    const model = () => types.union({ field1: types.string(), field2: types.object({ inner: model }) })
-    const partialModel = types.partialDeep(model)
-    assertOk(partialModel().validate(''))
-    assertOk(partialModel().validate({ inner: '' }))
-    assertOk(partialModel().validate({ inner: { inner: undefined } }))
-    assertOk(partialModel().validate({ inner: { inner: '' } }))
+    const Model = () => model.union({ field1: model.string(), field2: model.object({ inner: Model }) })
+    const PartialModel = model.partialDeep(Model)
+    assertOk(PartialModel().validate(''))
+    assertOk(PartialModel().validate({ inner: '' }))
+    assertOk(PartialModel().validate({ inner: { inner: undefined } }))
+    assertOk(PartialModel().validate({ inner: { inner: '' } }))
   })
 })

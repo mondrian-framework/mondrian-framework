@@ -1,15 +1,15 @@
 import { completeRetrieve } from '../src/utils'
-import { types } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
 describe('completeRetrieve', () => {
   const user = () =>
-    types.entity({
-      name: types.string(),
-      tags: types.string().array(),
-      friend: types.optional(user),
+    model.entity({
+      name: model.string(),
+      tags: model.string().array(),
+      friend: model.optional(user),
     })
-  const userOrError = types.union({ user, error: types.string() })
+  const userOrError = model.union({ user, error: model.string() })
   test('works with empty retrieve', async () => {
     const p = completeRetrieve({}, user)
     expect(p).toEqual({ select: { name: true, tags: true } })

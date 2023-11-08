@@ -1,4 +1,4 @@
-import { result, types } from '.'
+import { result, model } from '.'
 import { memoizeTypeTransformation } from './utils'
 import { flatMapObject, mapObject } from '@mondrian-framework/utils'
 import { randomUUID } from 'crypto'
@@ -38,14 +38,14 @@ export type GenericOrderBy = {} | {}[]
  * Builds a retrieve type of a known mondrian type.
  */
 // prettier-ignore
-export type FromType<T extends types.Type, C extends Capabilities | undefined>
-  = [types.Type] extends [T] ? GenericRetrieve 
+export type FromType<T extends model.Type, C extends Capabilities | undefined>
+  = [model.Type] extends [T] ? GenericRetrieve 
   : [C] extends [Capabilities]
-  ? [T] extends [types.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
-  : [T] extends [types.ArrayType<any, infer T1>] ? FromType<T1, C>
-  : [T] extends [types.OptionalType<infer T1>] ? FromType<T1, C>
-  : [T] extends [types.NullableType<infer T1>] ? FromType<T1, C>
-  : [T] extends [(() => infer T1 extends types.Type)] ? FromType<T1, C>
+  ? [T] extends [model.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
+  : [T] extends [model.ArrayType<any, infer T1>] ? FromType<T1, C>
+  : [T] extends [model.OptionalType<infer T1>] ? FromType<T1, C>
+  : [T] extends [model.NullableType<infer T1>] ? FromType<T1, C>
+  : [T] extends [(() => infer T1 extends model.Type)] ? FromType<T1, C>
   : never : never
 
 type TakeType<C extends Capabilities> = [C] extends [{ readonly take: true }] ? { readonly take?: number } : {}
@@ -55,82 +55,82 @@ export type AllCapabilities = typeof allCapabilities
 export const allCapabilities = { orderBy: true, select: true, skip: true, take: true, where: true } as const
 
 // prettier-ignore
-type SelectType<T extends types.Type, C extends Capabilities>
+type SelectType<T extends model.Type, C extends Capabilities>
   = [C] extends [{ readonly select: true }]
-  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C>
-  : [T] extends [types.ObjectType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } }
-  : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
-  : [T] extends [types.OptionalType<infer T1>] ? SelectType<T1, C>
-  : [T] extends [types.NullableType<infer T1>] ? SelectType<T1, C>
-  : [T] extends [(() => infer T1 extends types.Type)] ? SelectType<T1, C>
+  ? [T] extends [model.EntityType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C>
+  : [T] extends [model.ObjectType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } }
+  : [T] extends [model.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
+  : [T] extends [model.OptionalType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [model.NullableType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [(() => infer T1 extends model.Type)] ? SelectType<T1, C>
   : never : {}
 
 // prettier-ignore
-type OrderByType<T extends types.Type, C extends Capabilities>
+type OrderByType<T extends model.Type, C extends Capabilities>
   = [C] extends [{ readonly orderBy: true }]
-  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly orderBy?: OrderByFields<Ts>[] } 
-  : [T] extends [types.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
-  : [T] extends [types.OptionalType<infer T1>] ? SelectType<T1, C>
-  : [T] extends [types.NullableType<infer T1>] ? SelectType<T1, C>
-  : [T] extends [(() => infer T1 extends types.Type)] ? SelectType<T1, C>
+  ? [T] extends [model.EntityType<any, infer Ts>] ? { readonly orderBy?: OrderByFields<Ts>[] } 
+  : [T] extends [model.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
+  : [T] extends [model.OptionalType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [model.NullableType<infer T1>] ? SelectType<T1, C>
+  : [T] extends [(() => infer T1 extends model.Type)] ? SelectType<T1, C>
   : never : {}
 
-type OrderByFields<Ts extends types.Types> = { readonly [K in keyof Ts]?: OrderByField<Ts[K]> }
+type OrderByFields<Ts extends model.Types> = { readonly [K in keyof Ts]?: OrderByField<Ts[K]> }
 // prettier-ignore
-type OrderByField<T extends types.Type> 
-  = [T] extends [types.EntityType<any, infer Ts>] ? OrderByFields<Ts>
-  : [T] extends [types.ObjectType<any, infer Ts>] ? OrderByFields<Ts>
-  : [T] extends [types.ArrayType<any, any>] ? { readonly _count?: SortDirection }
-  : [T] extends [types.OptionalType<infer T1>] ? OrderByField<T1>
-  : [T] extends [types.NullableType<infer T1>] ? OrderByField<T1>
-  : [T] extends [(() => infer T1 extends types.Type)] ? OrderByField<T1>
+type OrderByField<T extends model.Type> 
+  = [T] extends [model.EntityType<any, infer Ts>] ? OrderByFields<Ts>
+  : [T] extends [model.ObjectType<any, infer Ts>] ? OrderByFields<Ts>
+  : [T] extends [model.ArrayType<any, any>] ? { readonly _count?: SortDirection }
+  : [T] extends [model.OptionalType<infer T1>] ? OrderByField<T1>
+  : [T] extends [model.NullableType<infer T1>] ? OrderByField<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? OrderByField<T1>
   : SortDirection
 
 // prettier-ignore
-type WhereType<T extends types.Type, C extends Capabilities> 
+type WhereType<T extends model.Type, C extends Capabilities> 
   = [C] extends [{ readonly where: true }]
-  ? [T] extends [types.EntityType<any, infer Ts>] ? { readonly where?: WhereFields<Ts> }
-  : [T] extends [types.ArrayType<any, infer T1>] ? WhereType<T1, AllCapabilities>
-  : [T] extends [types.OptionalType<infer T1>] ? WhereType<T1, C>
-  : [T] extends [types.NullableType<infer T1>] ? WhereType<T1, C>
-  : [T] extends [(() => infer T1 extends types.Type)] ? WhereType<T1, C>
+  ? [T] extends [model.EntityType<any, infer Ts>] ? { readonly where?: WhereFields<Ts> }
+  : [T] extends [model.ArrayType<any, infer T1>] ? WhereType<T1, AllCapabilities>
+  : [T] extends [model.OptionalType<infer T1>] ? WhereType<T1, C>
+  : [T] extends [model.NullableType<infer T1>] ? WhereType<T1, C>
+  : [T] extends [(() => infer T1 extends model.Type)] ? WhereType<T1, C>
   : never : {}
 
-type WhereFields<Ts extends types.Types> = { readonly [K in keyof Ts]?: WhereField<Ts[K]> } & {
+type WhereFields<Ts extends model.Types> = { readonly [K in keyof Ts]?: WhereField<Ts[K]> } & {
   readonly AND?: WhereFields<Ts>[]
   readonly OR?: WhereFields<Ts>[]
   readonly NOT?: WhereFields<Ts>
 }
 // prettier-ignore
-type WhereField<T extends types.Type> 
-  = [T] extends [types.EntityType<any, infer Ts>] ? WhereFields<Ts>
-  : [T] extends [types.ArrayType<any, infer T1>] ? WhereFieldArray<T1>
-  : [T] extends [types.StringType] ? { readonly equals?: string }
-  : [T] extends [types.ObjectType<any, any>] ? { readonly equals?: types.Infer<T> }
-  : [T] extends [types.EntityType<any, infer Ts>] ? WhereFields<Ts>
-  : [T] extends [types.OptionalType<infer T1>] ? WhereField<T1>
-  : [T] extends [types.NullableType<infer T1>] ? WhereField<T1>
-  : [T] extends [(() => infer T1 extends types.Type)] ? WhereField<T1>
+type WhereField<T extends model.Type> 
+  = [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
+  : [T] extends [model.ArrayType<any, infer T1>] ? WhereFieldArray<T1>
+  : [T] extends [model.StringType] ? { readonly equals?: string }
+  : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: model.Infer<T> }
+  : [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
+  : [T] extends [model.OptionalType<infer T1>] ? WhereField<T1>
+  : [T] extends [model.NullableType<infer T1>] ? WhereField<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? WhereField<T1>
   : undefined
 
 // prettier-ignore
-type WhereFieldArray<T extends types.Type> 
-  = [T] extends [types.EntityType<any, infer Ts>] ? { readonly some?: WhereFields<Ts>; readonly every?: WhereFields<Ts>, readonly none?: WhereFields<Ts> }
-  : [T] extends [types.OptionalType<infer T1>] ? WhereFieldArray<T1>
-  : [T] extends [types.NullableType<infer T1>] ? WhereFieldArray<T1>
-  : [T] extends [types.StringType] ? { readonly equals?: readonly string[], readonly isEmpty?: boolean }
-  : [T] extends [types.ObjectType<any, any>] ? { readonly equals?: readonly types.Infer<T>[], readonly isEmpty?: boolean }
-  : [T] extends [(() => infer T1 extends types.Type)] ? WhereFieldArray<T1>
+type WhereFieldArray<T extends model.Type> 
+  = [T] extends [model.EntityType<any, infer Ts>] ? { readonly some?: WhereFields<Ts>; readonly every?: WhereFields<Ts>, readonly none?: WhereFields<Ts> }
+  : [T] extends [model.OptionalType<infer T1>] ? WhereFieldArray<T1>
+  : [T] extends [model.NullableType<infer T1>] ? WhereFieldArray<T1>
+  : [T] extends [model.StringType] ? { readonly equals?: readonly string[], readonly isEmpty?: boolean }
+  : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
+  : [T] extends [(() => infer T1 extends model.Type)] ? WhereFieldArray<T1>
   : undefined
 
 /**
  * Gets the depth of the selection.
- * @param type {@link types.Type Type} to follow in order to cimpute the depth.
+ * @param type {@link model.Type Type} to follow in order to cimpute the depth.
  * @param retrieve retrieve instance with the selection
  * @returns the selection depth
  */
-export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType<T, { select: true }>): number {
-  return types.match(type, {
+export function selectionDepth<T extends model.Type>(type: T, retrieve: FromType<T, { select: true }>): number {
+  return model.match(type, {
     wrapper: ({ wrappedType }) => selectionDepth(wrappedType, retrieve),
     entity: ({ fields }) =>
       Object.entries(fields)
@@ -138,10 +138,10 @@ export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType
           if (!retrieve.select) {
             return 1
           }
-          const unwrappedFieldType = types.unwrap(fieldType)
-          if (unwrappedFieldType.kind === types.Kind.Entity && typeof retrieve.select[fieldName] === 'object') {
+          const unwrappedFieldType = model.unwrap(fieldType)
+          if (unwrappedFieldType.kind === model.Kind.Entity && typeof retrieve.select[fieldName] === 'object') {
             return selectionDepth(fieldType, retrieve.select[fieldName] as GenericRetrieve) + 1
-          } else if (unwrappedFieldType.kind === types.Kind.Entity && retrieve.select[fieldName] === true) {
+          } else if (unwrappedFieldType.kind === model.Kind.Entity && retrieve.select[fieldName] === true) {
             return 2
           } else {
             return 1
@@ -155,44 +155,44 @@ export function selectionDepth<T extends types.Type>(type: T, retrieve: FromType
 /**
  * Makes optionals all fields that are entity type.
  */
-function optionalizeEmbeddedEntities(type: types.Type): types.Type {
-  function optionalizeEntityFields(fields: types.Types): types.Types {
+function optionalizeEmbeddedEntities(type: model.Type): model.Type {
+  function optionalizeEntityFields(fields: model.Types): model.Types {
     return flatMapObject(fields, (fieldName, fieldType) =>
-      types.unwrap(fieldType).kind === types.Kind.Entity
-        ? [[fieldName, types.optional(fieldType)]]
+      model.unwrap(fieldType).kind === model.Kind.Entity
+        ? [[fieldName, model.optional(fieldType)]]
         : [[fieldName, fieldType]],
     )
   }
-  return types.match(type, {
-    optional: ({ wrappedType }) => types.optional(optionalizeEmbeddedEntities(wrappedType)),
-    nullable: ({ wrappedType }) => types.nullable(optionalizeEmbeddedEntities(wrappedType)),
-    array: ({ wrappedType }) => types.array(optionalizeEmbeddedEntities(wrappedType)),
-    entity: ({ fields }) => types.entity(optionalizeEntityFields(fields)),
-    object: ({ fields }) => types.object(optionalizeEntityFields(fields)),
+  return model.match(type, {
+    optional: ({ wrappedType }) => model.optional(optionalizeEmbeddedEntities(wrappedType)),
+    nullable: ({ wrappedType }) => model.nullable(optionalizeEmbeddedEntities(wrappedType)),
+    array: ({ wrappedType }) => model.array(optionalizeEmbeddedEntities(wrappedType)),
+    entity: ({ fields }) => model.entity(optionalizeEntityFields(fields)),
+    object: ({ fields }) => model.object(optionalizeEntityFields(fields)),
     union: ({ variants }) =>
-      types.union(mapObject(variants, (_, variantType) => optionalizeEmbeddedEntities(variantType))),
+      model.union(mapObject(variants, (_, variantType) => optionalizeEmbeddedEntities(variantType))),
     otherwise: (_, t) => t,
   })
 }
 
 /**
- * Gets a projected {@link types.Type Type} in function of the given type and the retrieve selection.
+ * Gets a projected {@link model.Type Type} in function of the given type and the retrieve selection.
  * @param type the root type.
  * @param retrieve the retrieve with a selection.
  * @returns the specific sub-type of the root type.
  */
-export function selectedType<T extends types.Type>(
+export function selectedType<T extends model.Type>(
   type: T,
   retrieve: FromType<T, { select: true }> | undefined,
-): types.Type {
+): model.Type {
   const select = retrieve?.select
   if (!select) {
     return optionalizeEmbeddedEntities(type)
   }
-  return types.match(type, {
-    optional: ({ wrappedType }) => types.optional(selectedType(wrappedType, retrieve)),
-    nullable: ({ wrappedType }) => types.nullable(selectedType(wrappedType, retrieve)),
-    array: ({ wrappedType }) => types.array(selectedType(wrappedType, retrieve)),
+  return model.match(type, {
+    optional: ({ wrappedType }) => model.optional(selectedType(wrappedType, retrieve)),
+    nullable: ({ wrappedType }) => model.nullable(selectedType(wrappedType, retrieve)),
+    array: ({ wrappedType }) => model.array(selectedType(wrappedType, retrieve)),
     record: ({ fields }) => {
       const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {
         const selection = select[fieldName]
@@ -204,7 +204,7 @@ export function selectedType<T extends types.Type>(
           return []
         }
       })
-      return types.object(selectedFields)
+      return model.object(selectedFields)
     },
     otherwise: (t) => t,
   })
@@ -214,117 +214,117 @@ export function selectedType<T extends types.Type>(
  * Gets the mondrian retrieve type of the given mondrian type.
  */
 export function fromType(
-  type: types.Type,
+  type: model.Type,
   capabilities: Capabilities | undefined,
-): result.Result<types.ObjectType<types.Mutability.Immutable, types.Types>, null> {
+): result.Result<model.ObjectType<model.Mutability.Immutable, model.Types>, null> {
   if (!capabilities || Object.keys(capabilities).length === 0) {
     return result.fail(null)
   }
-  const res = types.match(type, {
+  const res = model.match(type, {
     wrapper: ({ wrappedType }) => fromType(wrappedType, capabilities),
     entity: (_, type) => result.ok(retrieve(type, capabilities)),
     otherwise: () => result.fail(null),
-  }) as result.Result<types.Type, null>
-  return res as result.Result<types.ObjectType<types.Mutability.Immutable, types.Types>, null>
+  }) as result.Result<model.Type, null>
+  return res as result.Result<model.ObjectType<model.Mutability.Immutable, model.Types>, null>
 }
 
 function retrieve(
-  entity: types.Lazy<types.EntityType<any, any>>,
+  entity: model.Lazy<model.EntityType<any, any>>,
   capabilities: Capabilities,
-): types.ObjectType<types.Mutability.Immutable, types.Types> {
-  return types.object({
-    ...(capabilities.select ? { select: types.optional(entitySelect(entity)) } : {}),
-    ...(capabilities.where ? { where: types.optional(entityWhere(entity)) } : {}),
-    ...(capabilities.orderBy ? { orderBy: types.array(entityOrderBy(entity)).optional() } : {}),
-    ...(capabilities.skip ? { skip: types.integer({ minimum: 0 }).optional() } : {}),
-    ...(capabilities.take ? { take: types.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
-    //distinct: types.unknown(),
+): model.ObjectType<model.Mutability.Immutable, model.Types> {
+  return model.object({
+    ...(capabilities.select ? { select: model.optional(entitySelect(entity)) } : {}),
+    ...(capabilities.where ? { where: model.optional(entityWhere(entity)) } : {}),
+    ...(capabilities.orderBy ? { orderBy: model.array(entityOrderBy(entity)).optional() } : {}),
+    ...(capabilities.skip ? { skip: model.integer({ minimum: 0 }).optional() } : {}),
+    ...(capabilities.take ? { take: model.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
+    //distinct: model.unknown(),
   })
 }
 
-const entitySelect = memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((type) => {
-  const entity = types.concretise(type)
+const entitySelect = memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((type) => {
+  const entity = model.concretise(type)
   return () =>
-    types.object(
-      mapObject(entity.fields, (_, fieldType) => types.optional(select(fieldType))),
+    model.object(
+      mapObject(entity.fields, (_, fieldType) => model.optional(select(fieldType))),
       { name: `${entity.options?.name ?? randomUUID()}Select` },
     )
 })
 
-function select(type: types.Type): types.Type {
-  return types.match(type, {
+function select(type: model.Type): model.Type {
+  return model.match(type, {
     wrapper: ({ wrappedType }) => select(wrappedType),
     array: ({ wrappedType }) => {
-      const matcher: (type: types.Type) => types.Type = types.matcher({
+      const matcher: (type: model.Type) => model.Type = model.matcher({
         wrapper: ({ wrappedType }) => matcher(wrappedType),
         array: () => {
           throw new Error('Array of array not supported in selection')
         },
         entity: (_, entity) =>
-          types.union({
+          model.union({
             retrieve: retrieve(entity, { orderBy: true, select: true, skip: true, take: true, where: true }),
-            all: types.boolean(),
+            all: model.boolean(),
           }),
         otherwise: (_, type) => select(type),
       })
       return matcher(wrappedType)
     },
     entity: (_, entity) =>
-      types.union({
+      model.union({
         retrieve: retrieve(entity, { select: true }),
-        all: types.boolean(),
+        all: model.boolean(),
       }),
     object: ({ fields }) =>
-      types.union({
-        fields: types.object({
-          select: types.object(mapObject(fields, (_, fieldType) => types.optional(select(fieldType)))).optional(),
+      model.union({
+        fields: model.object({
+          select: model.object(mapObject(fields, (_, fieldType) => model.optional(select(fieldType)))).optional(),
         }),
-        all: types.boolean(),
+        all: model.boolean(),
       }),
-    otherwise: () => types.boolean(),
+    otherwise: () => model.boolean(),
   })
 }
 
-const entityWhere: (type: types.Lazy<types.EntityType<types.Mutability, types.Types>>) => types.Type =
-  memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((_, type) => {
-    const entity = types.concretise(type)
+const entityWhere: (type: model.Lazy<model.EntityType<model.Mutability, model.Types>>) => model.Type =
+  memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((_, type) => {
+    const entity = model.concretise(type)
     return () =>
-      types.object(
+      model.object(
         {
           ...flatMapObject(entity.fields, (fieldName, fieldType) => {
-            const result = types.optional(where(fieldType))
+            const result = model.optional(where(fieldType))
             return result ? [[fieldName, result]] : []
           }),
-          AND: types.array(entityWhere(type)).optional(),
-          OR: types.array(entityWhere(type)).optional(),
-          NOT: types.optional(entityWhere(type)),
+          AND: model.array(entityWhere(type)).optional(),
+          OR: model.array(entityWhere(type)).optional(),
+          NOT: model.optional(entityWhere(type)),
         },
         { name: `${entity.options?.name ?? randomUUID()}Where` },
       )
   })
 
-function where(type: types.Type): types.Type {
-  return types.match(type, {
+function where(type: model.Type): model.Type {
+  return model.match(type, {
     wrapper: ({ wrappedType }) => where(wrappedType),
     array: ({ wrappedType }) => {
-      const matcher: (type: types.Type) => types.Type = types.matcher({
+      const matcher: (type: model.Type) => model.Type = model.matcher({
         wrapper: ({ wrappedType }) => matcher(wrappedType), //isSet
-        scalar: (t) => types.object({ equals: types.optional(types.array(t)) }),
+        scalar: (t) => model.object({ equals: model.optional(model.array(t)) }),
         array: () => {
           throw new Error('Array of array not supported in where')
         },
         entity: (_, t) => {
           const fieldWhereType = entityWhere(t)
-          return types.object({
-            some: types.optional(fieldWhereType),
-            every: types.optional(fieldWhereType),
-            none: types.optional(fieldWhereType),
+          return model.object({
+            some: model.optional(fieldWhereType),
+            every: model.optional(fieldWhereType),
+            none: model.optional(fieldWhereType),
           })
         },
         object: ({ fields }, t) => {
-          return types.object({
-            equals: types.optional(types.object(fields).array()),
-            isEmpty: types.boolean().optional(),
+          return model.object({
+            equals: model.optional(model.object(fields).array()),
+            isEmpty: model.boolean().optional(),
           })
         },
         otherwise: () => {
@@ -333,32 +333,32 @@ function where(type: types.Type): types.Type {
       })
       return matcher(wrappedType)
     },
-    object: ({ fields }) => types.object({ equals: types.object(fields).optional() }),
+    object: ({ fields }) => model.object({ equals: model.object(fields).optional() }),
     union: () => {
       throw new Error('Unsupported union in where')
     },
     entity: (_, entity) => entityWhere(entity),
-    scalar: (t) => types.object({ equals: types.optional(t) }),
+    scalar: (t) => model.object({ equals: model.optional(t) }),
   })
 }
 
-const entityOrderBy = memoizeTypeTransformation<types.Lazy<types.EntityType<types.Mutability, types.Types>>>((type) => {
-  const entity = types.concretise(type)
-  return types.object(
-    mapObject(entity.fields, (_, fieldType) => types.optional(orderBy(fieldType))),
+const entityOrderBy = memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((type) => {
+  const entity = model.concretise(type)
+  return model.object(
+    mapObject(entity.fields, (_, fieldType) => model.optional(orderBy(fieldType))),
     { name: `${entity.options?.name ?? randomUUID()}OrderBy` },
   )
 })
 
-export const sortDirection = () => types.enumeration(['asc', 'desc'], { name: 'SortDirection' })
-export type SortDirection = types.Infer<typeof sortDirection>
+export const sortDirection = () => model.enumeration(['asc', 'desc'], { name: 'SortDirection' })
+export type SortDirection = model.Infer<typeof sortDirection>
 
-function orderBy(type: types.Type): types.Type {
-  return types.match(type, {
+function orderBy(type: model.Type): model.Type {
+  return model.match(type, {
     wrapper: ({ wrappedType }) => orderBy(wrappedType),
-    array: () => types.object({ _count: types.optional(sortDirection) }),
+    array: () => model.object({ _count: model.optional(sortDirection) }),
     entity: (_, entity) => entityOrderBy(entity),
-    object: ({ fields }) => types.object(mapObject(fields, (_, fieldType) => types.optional(orderBy(fieldType)))),
+    object: ({ fields }) => model.object(mapObject(fields, (_, fieldType) => model.optional(orderBy(fieldType)))),
     otherwise: () => sortDirection,
   })
 }
@@ -373,7 +373,7 @@ export type MergeOptions = {
  * Merges two retrieves. The logic can be modified by the options.
  */
 export function merge<const T extends GenericRetrieve>(
-  type: types.Type,
+  type: model.Type,
   left?: T,
   right?: T,
   options?: MergeOptions,
@@ -395,7 +395,7 @@ export function merge<const T extends GenericRetrieve>(
 }
 
 function mergeSelect(
-  type: types.Type,
+  type: model.Type,
   left?: GenericSelect,
   right?: GenericSelect,
   options?: MergeOptions,
@@ -406,7 +406,7 @@ function mergeSelect(
   if (!right) {
     return left
   }
-  return types.match(type, {
+  return model.match(type, {
     record: ({ fields }) => {
       return mapObject(fields, (fieldName, fieldType) => {
         const leftSelect = left[fieldName]
@@ -417,8 +417,8 @@ function mergeSelect(
         if (!rightSelect) {
           return leftSelect
         }
-        const unwrappedFieldType = types.unwrap(fieldType)
-        if (unwrappedFieldType.kind === types.Kind.Entity) {
+        const unwrappedFieldType = model.unwrap(fieldType)
+        if (unwrappedFieldType.kind === model.Kind.Entity) {
           if (leftSelect === true && rightSelect === true) {
             return true
           }
@@ -427,7 +427,7 @@ function mergeSelect(
               unwrappedFieldType,
               {
                 select: mapObject(unwrappedFieldType.fields, (_, t) =>
-                  types.unwrap(t).kind !== types.Kind.Entity ? true : undefined,
+                  model.unwrap(t).kind !== model.Kind.Entity ? true : undefined,
                 ),
               },
               rightSelect,
@@ -440,7 +440,7 @@ function mergeSelect(
               leftSelect,
               {
                 select: mapObject(unwrappedFieldType.fields, (_, t) =>
-                  types.unwrap(t).kind !== types.Kind.Entity ? true : undefined,
+                  model.unwrap(t).kind !== model.Kind.Entity ? true : undefined,
                 ),
               },
               options,

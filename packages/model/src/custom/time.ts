@@ -1,13 +1,13 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
 const TIME_REGEX =
   /^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.\d{1,})?(([Z])|([+|-]([01][0-9]|2[0-3]):[0-5][0-9]))$/
 
-export type TimeType = types.CustomType<'time', {}, Date>
+export type TimeType = model.CustomType<'time', {}, Date>
 
-export function time(options?: types.BaseOptions): TimeType {
-  return types.custom('time', encodeTime, decodeTime, validateTime, timeArbitrary, options)
+export function time(options?: model.BaseOptions): TimeType {
+  return model.custom('time', encodeTime, decodeTime, validateTime, timeArbitrary, options)
 }
 
 function encodeTime(value: Date) {
@@ -27,12 +27,12 @@ function decodeTime(value: unknown): decoding.Result<Date> {
 function validateTime(
   value: Date,
   validationOptions?: validation.Options,
-  options?: types.BaseOptions,
+  options?: model.BaseOptions,
 ): validation.Result {
-  return types.datetime(options).validate(value, validationOptions)
+  return model.datetime(options).validate(value, validationOptions)
 }
 
-function timeArbitrary(_maxDepth: number, options?: types.OptionsOf<TimeType>): gen.Arbitrary<Date> {
+function timeArbitrary(_maxDepth: number, options?: model.OptionsOf<TimeType>): gen.Arbitrary<Date> {
   return gen.date().map((t) => {
     const datetimeString = t.toISOString()
     const timeStr = datetimeString.substring(datetimeString.indexOf('T') + 1)

@@ -20,14 +20,14 @@ TCP ports.
 ### Custom types are named
 
 Every custom type has a name that can be useful when referring to it, this is
-the first argument of the `types.custom` builder function:
+the first argument of the `model.custom` builder function:
 
 ```ts showLineNumbers
-const port = types.custom<"port", ...>("port", ...)
+const port = model.custom<"port", ...>("port", ...)
 ```
 
 As you may have noticed, the literal string for the name must also be the first
-_type argument_ of the `types.custom` function.
+_type argument_ of the `model.custom` function.
 
 You can choose whatever name you feel is appropriate for your needs, the
 Mondrian framework defines some custom types like `"datetime"`, `"timezone"`,
@@ -36,14 +36,14 @@ Mondrian framework defines some custom types like `"datetime"`, `"timezone"`,
 ### Custom types can have additional options
 
 Every custom type can also accept additional options, besides the default ones
-shared by all Mondrian types. This is kept track of on the type level thanks to
+shared by all Mondrian model. This is kept track of on the type level thanks to
 an additional argument:
 
 ```ts showLineNumbers
 type PortOptions = { allowWellKnownPorts: boolean }
 
-const port = types.custom<"port", PortOptions, ...>("port", ...)
-const nonWellKnownPort = myType.setOptions({ allowWellKnownPorts: false })
+const Port = model.custom<"port", PortOptions, ...>("port", ...)
+const nonWellKnownPort = Port.setOptions({ allowWellKnownPorts: false })
 ```
 
 As we'll see later, custom options can be useful for tweaking the behavior of
@@ -57,11 +57,11 @@ The inferred type is what a decoder should return, and the starting point for an
 encoder:
 
 ```ts showLineNumbers
-const port = types.custom<"port", PortOptions, number>("port", ...)
-const InferredType = types.Infer<typeof myType> // -> number
+const Port = model.custom<"port", PortOptions, number>("port", ...)
+const InferredType = model.Infer<typeof Port> // -> number
 
-port.encode(...) // encode will only accept a `number` input
-port.decode(...) // decode will return a `number` when successful
+Port.encode(...) // encode will only accept a `number` input
+Port.decode(...) // decode will return a `number` when successful
 ```
 
 Here it makes sense for ports to correspond to simple `number`s, but you may
@@ -82,7 +82,7 @@ function encodePort(port: number): JSONType {
     return port
 }
 
-const port = types.custom<"port", PortOptions, number>("port", encodePort, ...)
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, ...)
 ```
 
 Once again, the encoder function has to take as input a value of the inferred
@@ -113,7 +113,7 @@ decoding behavior.
 function decodePort(
     value: unknown,
     _decodingOptions?: decoding.Options,
-    _customOptions?: PortOptions & types.BaseOptions,
+    _customOptions?: PortOptions & model.BaseOptions,
 ): decoding.Result<number> {
     // Here we can ignore both the decodingOptions and the customOptions
     // since we don't need those
@@ -124,7 +124,7 @@ function decodePort(
     }
 }
 
-const port = types.custom<"port", PortOptions, number>("port", encodePort, decodePort, ...)
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, ...)
 ```
 
 As you may have noticed, the decoding function has to return a
@@ -147,7 +147,7 @@ For example, here we didn't check that the number is actually in the range
 ### Custom types have arbitrary validation logic
 
 It's now time to finally get to the validation part. A validation function is
-the last bit of code we need to provide the `types.custom` builder to get a new
+the last bit of code we need to provide the `model.custom` builder to get a new
 Mondrian type.
 
 The validator should take as input a decoded value (of the specified inferred
@@ -158,7 +158,7 @@ what went wrong.
 function validatePort(
     port: number,
     _validationOptions?: validation.Options,
-    customOptions?: PortOptions & types.BaseOptions,
+    customOptions?: PortOptions & model.BaseOptions,
 ): validation.Result {
     const wellKnownPortsAllowed = customOptions?.allowWellKnownPorts ?? true
     if (port < 0 || port > 65535) {
@@ -171,7 +171,7 @@ function validatePort(
     }
 }
 
-const port = types.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort)
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort)
 ```
 
 Similarly to the decoding function, a validation function needs to return a
@@ -189,13 +189,13 @@ encoder/decoder to implement the `encode` and `decode` methods of the new type:
 
 
 ```ts showLineNumbers
-type Port = types.Infer<typeof port>
-const port = types.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort)
+type Port = model.Infer<typeof Port>
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort)
 
-port.decode(1024) // -> ok(1024)
-port.decode("foo") // -> error([{ expected: "a number (for a port)", got: "foo", path: "$" }]) 
-port.decode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }]) 
+Port.decode(1024) // -> ok(1024)
+Port.decode("foo") // -> error([{ expected: "a number (for a port)", got: "foo", path: "$" }]) 
+Port.decode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }]) 
 
-port.encode(1024) // -> ok(1024)
-port.encode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }]) 
+Port.encode(1024) // -> ok(1024)
+Port.encode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }]) 
 ```

@@ -37,13 +37,13 @@ export const fromFragments: (fragments: readonly Fragment[]) => Path = (fragment
  * A path that can be used to locate an element of a mondrian type.
  * @example consider the following definition:
  *          ```ts
- *          const model = types.object({
- *            values: types.number().array()
+ *          const Model = model.object({
+ *            values: model.number().array()
  *          })
  *          ```
  *          A possible value of that type could be:
  *          ```ts
- *          const value = { values: [1, 2, 3] }
+ *          const value: Model = { values: [1, 2, 3] }
  *          ```
  *          And the path corresponding to the value `1` of the field `values` would be:
  *          ```ts

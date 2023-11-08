@@ -1,14 +1,14 @@
-import { retrieve, types } from '../src/index'
+import { retrieve, model } from '../src/index'
 import { test } from '@fast-check/vitest'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
 import { describe, expect, expectTypeOf } from 'vitest'
 
 const user = () =>
-  types.entity(
+  model.entity(
     {
-      name: types.string(),
-      bestFriend: types.optional(user),
-      posts: types.array(types.optional(post)),
+      name: model.string(),
+      bestFriend: model.optional(user),
+      posts: model.array(model.optional(post)),
       metadata,
     },
     {
@@ -16,17 +16,17 @@ const user = () =>
     },
   )
 const metadata = () =>
-  types.object({
-    registeredAt: types.datetime(),
-    loggedInAt: types.datetime(),
+  model.object({
+    registeredAt: model.datetime(),
+    loggedInAt: model.datetime(),
   })
 const post = () =>
-  types.entity(
+  model.entity(
     {
-      title: types.string(),
-      content: types.string(),
+      title: model.string(),
+      content: model.string(),
       author: user,
-      tags: types.array(types.object({ type: types.string(), value: types.string().nullable() })),
+      tags: model.array(model.object({ type: model.string(), value: model.string().nullable() })),
     },
     { name: 'Post' },
   )
@@ -34,34 +34,34 @@ const post = () =>
 describe('selectedType', () => {
   test('empty trim', () => {
     const type = retrieve.selectedType(user, { select: {} })
-    const res = types.concretise(type).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
+    const res = model.concretise(type).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res.isOk && res.value).toEqual({})
   })
   test('select one scalar', () => {
     const type1 = retrieve.selectedType(user, { select: { name: true } })
-    const res1 = types.concretise(type1).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
+    const res1 = model.concretise(type1).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res1.isOk && res1.value).toEqual({ name: 'Jonh' })
     const type2 = retrieve.selectedType(user, { select: { name: true } })
-    const res2 = types.concretise(type2).decode({}, { fieldStrictness: 'allowAdditionalFields' })
+    const res2 = model.concretise(type2).decode({}, { fieldStrictness: 'allowAdditionalFields' })
     expect(res2.isOk).toBe(false)
     const type3 = retrieve.selectedType(user, { select: { name: true } })
-    const res3 = types.concretise(type2).decode({ name: 1 }, { fieldStrictness: 'allowAdditionalFields' })
+    const res3 = model.concretise(type2).decode({ name: 1 }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res3.isOk).toBe(false)
   })
   test('select one scalar and one entity', () => {
     const type1 = retrieve.selectedType(user, { select: { name: true, posts: {} } })
-    const res1 = types.concretise(type1).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
+    const res1 = model.concretise(type1).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res1.isOk && res1.value).toEqual({ name: 'Jonh' })
     const type2 = retrieve.selectedType(user, { select: { name: true, posts: { select: {} } } })
-    const res2 = types.concretise(type2).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
+    const res2 = model.concretise(type2).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res2.isOk).toBe(false)
     const type3 = retrieve.selectedType(user, { select: { name: true, posts: { select: {} } } })
-    const res3 = types
+    const res3 = model
       .concretise(type3)
       .decode({ name: 'Jonh', posts: [{ title: 'Title' }] }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res3.isOk && res3.value).toEqual({ name: 'Jonh', posts: [{}] })
     const type4 = retrieve.selectedType(user, { select: { name: true, posts: { select: { title: true } } } })
-    const res4 = types
+    const res4 = model
       .concretise(type4)
       .decode({ name: 'Jonh', posts: [{ title: 'Title' }] }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res4.isOk && res4.value).toEqual({ name: 'Jonh', posts: [{ title: 'Title' }] })
@@ -69,12 +69,12 @@ describe('selectedType', () => {
   test('select one whole embedded', () => {
     const now = new Date()
     const type1 = retrieve.selectedType(user, { select: { metadata: true } })
-    const res1 = types
+    const res1 = model
       .concretise(type1)
       .decode({ metadata: { loggedInAt: now, registeredAt: now } }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res1.isOk && res1.value).toEqual({ metadata: { loggedInAt: now, registeredAt: now } })
     const type2 = retrieve.selectedType(user, { select: { metadata: true } })
-    const res2 = types
+    const res2 = model
       .concretise(type2)
       .decode({ metadata: { registeredAt: now } }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res2.isOk).toBe(false)
@@ -240,7 +240,7 @@ test('selectionDepth', () => {
   expect(retrieve.selectionDepth(user, { select: { bestFriend: { select: {} } } })).toBe(2)
   expect(retrieve.selectionDepth(user, { select: { bestFriend: { select: { name: true } } } })).toBe(2)
   expect(retrieve.selectionDepth(user, { select: { bestFriend: { select: { posts: true } } } })).toBe(3)
-  expect(retrieve.selectionDepth(types.string(), null as never)).toBe(1)
+  expect(retrieve.selectionDepth(model.string(), null as never)).toBe(1)
 })
 
 describe('fromType', () => {
@@ -253,19 +253,19 @@ describe('fromType', () => {
     expect(computedUserRetrieve.isOk).toBe(false)
   })
   test('invalid type for retrieve', () => {
-    const computedUserRetrieve = retrieve.fromType(types.array(types.object({})), { select: true })
+    const computedUserRetrieve = retrieve.fromType(model.array(model.object({})), { select: true })
     expect(computedUserRetrieve.isOk).toBe(false)
   })
   test('invalid type for retrieve', () => {
     //TODO: need deep concretization
     /*
     expect(() =>
-      retrieve.fromType(types.entity({ users: types.array(types.array(user)) }), {
+      retrieve.fromType(model.entity({ users: model.array(model.array(user)) }), {
         select: true,
       }),
     ).toThrow('Array of array not supported in selection')
     expect(() =>
-      retrieve.fromType(types.entity({ users: types.array(types.array(user)) }), {
+      retrieve.fromType(model.entity({ users: model.array(model.array(user)) }), {
         where: true,
       }),
     ).toThrow('Array of array not supported in where')
@@ -280,14 +280,14 @@ describe('fromType', () => {
       skip: true,
     })
     const expectedUserRetrieve = () =>
-      types.object({
-        select: types.optional(userSelect),
-        where: types.optional(userWhere),
-        orderBy: types.mutableArray(userOrderBy).optional(),
-        skip: types.integer({ minimum: 0 }).optional(),
-        take: types.integer({ minimum: 0, maximum: 20 }).optional(),
+      model.object({
+        select: model.optional(userSelect),
+        where: model.optional(userWhere),
+        orderBy: model.mutableArray(userOrderBy).optional(),
+        skip: model.integer({ minimum: 0 }).optional(),
+        take: model.integer({ minimum: 0, maximum: 20 }).optional(),
       })
-    type ExpectedUserRetrieveType = types.Infer<typeof expectedUserRetrieve>
+    type ExpectedUserRetrieveType = model.Infer<typeof expectedUserRetrieve>
     type GeneratedUserRetrieve = retrieve.FromType<
       typeof user,
       { where: true; select: true; orderBy: true; take: true; skip: true }
@@ -296,33 +296,33 @@ describe('fromType', () => {
     expectTypeOf<ExpectedUserRetrieveType>().toMatchTypeOf<GeneratedUserRetrieve>()
 
     const expectedPostRetrieve = () =>
-      types.object({
-        select: types.optional(postSelect),
-        where: types.optional(postWhere),
-        orderBy: types.mutableArray(postOrderBy).optional(),
-        skip: types.integer({ minimum: 0 }).optional(),
-        take: types.integer({ minimum: 0, maximum: 20 }).optional(),
+      model.object({
+        select: model.optional(postSelect),
+        where: model.optional(postWhere),
+        orderBy: model.mutableArray(postOrderBy).optional(),
+        skip: model.integer({ minimum: 0 }).optional(),
+        take: model.integer({ minimum: 0, maximum: 20 }).optional(),
       })
 
     const userSelect = () =>
-      types.object(
+      model.object(
         {
-          name: types.boolean().optional(),
-          bestFriend: types
-            .union({ retrieve: types.object({ select: types.optional(userSelect) }), all: types.boolean() })
+          name: model.boolean().optional(),
+          bestFriend: model
+            .union({ retrieve: model.object({ select: model.optional(userSelect) }), all: model.boolean() })
             .optional(),
-          posts: types.union({ retrieve: expectedPostRetrieve, all: types.boolean() }).optional(),
-          metadata: types
+          posts: model.union({ retrieve: expectedPostRetrieve, all: model.boolean() }).optional(),
+          metadata: model
             .union({
-              fields: types.object({
-                select: types
+              fields: model.object({
+                select: model
                   .object({
-                    registeredAt: types.boolean().optional(),
-                    loggedInAt: types.boolean().optional(),
+                    registeredAt: model.boolean().optional(),
+                    loggedInAt: model.boolean().optional(),
                   })
                   .optional(),
               }),
-              all: types.boolean(),
+              all: model.boolean(),
             })
             .optional(),
         },
@@ -330,21 +330,21 @@ describe('fromType', () => {
       )
 
     const postSelect = () =>
-      types.object(
+      model.object(
         {
-          title: types.boolean().optional(),
-          content: types.boolean().optional(),
-          author: types
-            .union({ retrieve: types.object({ select: types.optional(userSelect) }), all: types.boolean() })
+          title: model.boolean().optional(),
+          content: model.boolean().optional(),
+          author: model
+            .union({ retrieve: model.object({ select: model.optional(userSelect) }), all: model.boolean() })
             .optional(),
-          tags: types
+          tags: model
             .union({
-              fields: types.object({
-                select: types.optional(
-                  types.object({ type: types.boolean().optional(), value: types.boolean().optional() }),
+              fields: model.object({
+                select: model.optional(
+                  model.object({ type: model.boolean().optional(), value: model.boolean().optional() }),
                 ),
               }),
-              all: types.boolean(),
+              all: model.boolean(),
             })
             .optional(),
         },
@@ -352,69 +352,69 @@ describe('fromType', () => {
       )
 
     const userWhere = () =>
-      types.object(
+      model.object(
         {
-          name: types.object({ equals: types.string().optional() }).optional(),
-          bestFriend: types.optional(userWhere),
-          posts: types
+          name: model.object({ equals: model.string().optional() }).optional(),
+          bestFriend: model.optional(userWhere),
+          posts: model
             .object({
-              some: types.optional(postWhere),
-              every: types.optional(postWhere),
-              none: types.optional(postWhere),
+              some: model.optional(postWhere),
+              every: model.optional(postWhere),
+              none: model.optional(postWhere),
             })
             .optional(),
-          metadata: types
+          metadata: model
             .object({
-              equals: types
+              equals: model
                 .object({
-                  registeredAt: types.datetime(),
-                  loggedInAt: types.datetime(),
+                  registeredAt: model.datetime(),
+                  loggedInAt: model.datetime(),
                 })
                 .optional(),
             })
             .optional(),
-          AND: types.mutableArray(userWhere).optional(),
-          OR: types.mutableArray(userWhere).optional(),
-          NOT: types.optional(userWhere),
+          AND: model.mutableArray(userWhere).optional(),
+          OR: model.mutableArray(userWhere).optional(),
+          NOT: model.optional(userWhere),
         },
         { name: 'UserWhere' },
       )
 
     const postWhere = () =>
-      types.object(
+      model.object(
         {
-          title: types.object({ equals: types.string().optional() }).optional(),
-          content: types.object({ equals: types.string().optional() }).optional(),
-          author: types.optional(userWhere),
-          tags: types
+          title: model.object({ equals: model.string().optional() }).optional(),
+          content: model.object({ equals: model.string().optional() }).optional(),
+          author: model.optional(userWhere),
+          tags: model
             .object({
-              equals: types
+              equals: model
                 .object({
-                  type: types.string(),
-                  value: types.string().nullable(),
+                  type: model.string(),
+                  value: model.string().nullable(),
                 })
                 .array()
                 .optional(),
-              isEmpty: types.boolean().optional(),
+              isEmpty: model.boolean().optional(),
             })
             .optional(),
-          AND: types.mutableArray(postWhere).optional(),
-          OR: types.mutableArray(postWhere).optional(),
-          NOT: types.optional(postWhere),
+          AND: model.mutableArray(postWhere).optional(),
+          OR: model.mutableArray(postWhere).optional(),
+          NOT: model.optional(postWhere),
         },
         { name: 'PostWhere' },
       )
 
     const userOrderBy = () =>
-      types.object(
+      model.object(
         {
-          name: types.optional(retrieve.sortDirection),
-          bestFriend: types.optional(userOrderBy),
-          posts: types.object({ _count: types.optional(retrieve.sortDirection) }).optional(),
-          metadata: types
+          name: model.optional(retrieve.sortDirection),
+          bestFriend: model.optional(userOrderBy),
+          posts: model.object({ _count: model.optional(retrieve.sortDirection) }).optional(),
+          metadata: model
             .object({
-              registeredAt: types.optional(retrieve.sortDirection),
-              loggedInAt: types.optional(retrieve.sortDirection),
+              registeredAt: model.optional(retrieve.sortDirection),
+              loggedInAt: model.optional(retrieve.sortDirection),
             })
             .optional(),
         },
@@ -422,12 +422,12 @@ describe('fromType', () => {
       )
 
     const postOrderBy = () =>
-      types.object(
+      model.object(
         {
-          title: types.optional(retrieve.sortDirection),
-          content: types.optional(retrieve.sortDirection),
-          author: types.optional(userOrderBy),
-          tags: types.object({ _count: types.optional(retrieve.sortDirection) }).optional(),
+          title: model.optional(retrieve.sortDirection),
+          content: model.optional(retrieve.sortDirection),
+          author: model.optional(userOrderBy),
+          tags: model.object({ _count: model.optional(retrieve.sortDirection) }).optional(),
         },
         { name: 'PostOrderBy' },
       )
@@ -441,8 +441,8 @@ describe('fromType', () => {
   })
 })
 
-function serializeType(type: types.Type, examined: Set<string> = new Set()): JSONType {
-  const concreteType = types.concretise(type)
+function serializeType(type: model.Type, examined: Set<string> = new Set()): JSONType {
+  const concreteType = model.concretise(type)
   const name = concreteType.options?.name
   if (name && examined.has(name)) {
     return { $ref: name }
@@ -450,7 +450,7 @@ function serializeType(type: types.Type, examined: Set<string> = new Set()): JSO
   if (name) {
     examined.add(name)
   }
-  return types.match(type, {
+  return model.match(type, {
     array: ({ wrappedType, options }) => ({
       kind: 'array',
       wrappedType: serializeType(wrappedType, examined),

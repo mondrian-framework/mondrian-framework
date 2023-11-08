@@ -1,4 +1,4 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { describe } from 'vitest'
 
@@ -21,9 +21,9 @@ const knownInvalidValues: readonly unknown[] = [
   { sub: '1234567890', name: 'John Doe', iat: 1516239022 },
 ]
 
-const model = types.jwt(
+const Model = model.jwt(
   'login',
-  types.object({ sub: types.string(), name: types.string(), iat: types.integer() }),
+  model.object({ sub: model.string(), name: model.string(), iat: model.integer() }),
   'your-256-bit-secret',
   {
     algorithm: 'HS256',
@@ -31,10 +31,10 @@ const model = types.jwt(
 )
 describe(
   'hs standard property based tests',
-  testTypeEncodingAndDecoding(model, {
+  testTypeEncodingAndDecoding(Model, {
     knownValidValues,
     knownInvalidValues,
   }),
 )
 
-describe('arbitrary based test', testWithArbitrary(model))
+describe('arbitrary based test', testWithArbitrary(Model))

@@ -1,4 +1,4 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
 const DATE_REGEX = /^[+-]?(\d\d*-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01]))$/
@@ -8,10 +8,10 @@ export type DateTypeAdditionalOptions = {
   maximum?: Date
 }
 
-export type DateType = types.CustomType<'date', DateTypeAdditionalOptions, Date>
+export type DateType = model.CustomType<'date', DateTypeAdditionalOptions, Date>
 
-export function date(options?: types.OptionsOf<DateType>): DateType {
-  return types.custom(
+export function date(options?: model.OptionsOf<DateType>): DateType {
+  return model.custom(
     'date',
     (value) => value.toISOString().split('T')[0],
     decodeDate,
@@ -32,12 +32,12 @@ function decodeDate(value: unknown): decoding.Result<Date> {
 function validateDate(
   value: Date,
   validationOptions?: validation.Options,
-  options?: types.OptionsOf<DateType>,
+  options?: model.OptionsOf<DateType>,
 ): validation.Result {
-  return types.datetime(options).validate(value, validationOptions)
+  return model.datetime(options).validate(value, validationOptions)
 }
 
-function dateArbitrary(_maxDepth: number, options?: types.OptionsOf<DateType>): gen.Arbitrary<Date> {
+function dateArbitrary(_maxDepth: number, options?: model.OptionsOf<DateType>): gen.Arbitrary<Date> {
   return gen
     .date({ min: options?.minimum, max: options?.maximum })
     .map((d) => new Date(Date.parse(d.toISOString().split('T')[0])))

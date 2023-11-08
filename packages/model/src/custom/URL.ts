@@ -1,10 +1,10 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
-export type URLType = types.CustomType<'URL', {}, URL>
+export type URLType = model.CustomType<'URL', {}, URL>
 
-export function url(options?: types.BaseOptions): URLType {
-  return types.custom(
+export function url(options?: model.BaseOptions): URLType {
+  return model.custom(
     'URL',
     (value) => value.toString(),
     decodeUrl,

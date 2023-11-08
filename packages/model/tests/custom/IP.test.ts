@@ -1,4 +1,4 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
@@ -20,10 +20,10 @@ const knownInvalidValues = [
 
 describe(
   'standard property based tests',
-  testTypeEncodingAndDecoding(types.ip(), {
+  testTypeEncodingAndDecoding(model.ip(), {
     validValues: gen.oneof(gen.ipV4(), gen.ipV6()),
     knownInvalidValues,
   }),
 )
 
-describe('arbitrary based test', testWithArbitrary(types.ip()))
+describe('arbitrary based test', testWithArbitrary(model.ip()))

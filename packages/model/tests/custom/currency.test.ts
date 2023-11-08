@@ -1,9 +1,9 @@
-import { types } from '../../src'
+import { model } from '../../src'
 import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helper'
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
-const currency = types.currency()
+const currency = model.currency()
 const knownValidValues: readonly string[] = currency.variants
 
 describe(

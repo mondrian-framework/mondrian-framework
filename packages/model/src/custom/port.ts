@@ -1,13 +1,13 @@
-import { decoding, types, validation } from '..'
+import { decoding, model, validation } from '..'
 import gen from 'fast-check'
 
 const MIN_PORT_NUMBER = 1
 const MAX_PORT_NUMBER = 65535
 
-export type PortType = types.CustomType<'port', {}, number>
+export type PortType = model.CustomType<'port', {}, number>
 
-export function port(options?: types.BaseOptions): PortType {
-  return types.custom(
+export function port(options?: model.BaseOptions): PortType {
+  return model.custom(
     'port',
     (number) => number,
     (value) =>

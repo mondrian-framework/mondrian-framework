@@ -1,7 +1,7 @@
-import { decoding, path, result, types, validation } from '../../'
+import { decoding, path, types, validation } from '../../'
 import { prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
-import { JSONType, always, filterMapObject, mergeArrays } from '@mondrian-framework/utils'
+import { JSONType, filterMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
@@ -81,19 +81,22 @@ class EntityTypeImpl<M extends types.Mutability, Ts extends types.Types>
   validate(value: types.Infer<types.EntityType<M, Ts>>, validationOptions?: validation.Options): validation.Result {
     const options = { ...validation.defaultOptions, ...validationOptions }
     const entries = Object.entries(value)
-    const validateEntry = ([fieldName, fieldValue]: [string, unknown]) => {
-      const fieldExistsInModel = fieldName in this.fields
-      return !fieldExistsInModel
-        ? validation.succeed()
-        : types
-            .concretise(this.fields[fieldName])
-            .validate(fieldValue as never, options)
-            .mapError((errors) => prependFieldToAll(errors, fieldName))
+    const errors: validation.Error[] = []
+    for (const [fieldName, fieldValue] of entries) {
+      if (errors.length > 0 && options.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
+      const concreteFieldType = types.concretise(this.fields[fieldName])
+      const result = concreteFieldType.validate(fieldValue as never, options)
+      if (!result.isOk) {
+        errors.push(...prependFieldToAll(result.error, fieldName))
+      }
     }
-
-    return options.errorReportingStrategy === 'stopAtFirstError'
-      ? result.tryEachFailFast(entries, true, always(true), validateEntry)
-      : result.tryEach(entries, true, always(true), [] as validation.Error[], mergeArrays, validateEntry)
+    if (errors.length > 0) {
+      return validation.failWithErrors(errors)
+    } else {
+      return validation.succeed()
+    }
   }
 
   decodeWithoutValidation(

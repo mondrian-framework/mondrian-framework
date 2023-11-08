@@ -156,18 +156,6 @@ export function flatMapObject<A, B>(
 }
 
 /**
- * @param one the array to merge with `other`
- * @param other the array to merge with the first one
- * @returns a new array obtained by concatenating `other` to `one`
- * @example ```ts
- *          mergeArrays([1, 2], [3, 4, 5]) // -> [1, 2, 3, 4, 5]
- *          ```
- */
-export function mergeArrays<A>(one: readonly A[], other: readonly A[]): A[] {
-  return [...one, ...other]
-}
-
-/**
  * @param one the first array to compare
  * @param other the second array to compare
  * @param compare the function used to compare the arrays' objects
@@ -179,17 +167,6 @@ export function areSameArray<A>(
   compare: (one: A, other: A) => boolean,
 ): boolean {
   return one === other || (one.length === other.length && one.every((value, i) => compare(value, other[i])))
-}
-/**
- * @param value
- * @returns a function that always returns the given value, no matter the input
- * @example ```ts
- *          always(1)(true) // -> 1
- *          always("foo")(10) // -> "foo"
- *          ```
- */
-export function always<A>(value: A): (_: any) => A {
-  return (_) => value
 }
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never

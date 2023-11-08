@@ -1,7 +1,7 @@
 import { decoding, result, types, validation } from '../../'
 import { prependIndexToAll } from '../../utils'
 import { DefaultMethods } from './base'
-import { JSONType, always, mergeArrays } from '@mondrian-framework/utils'
+import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
@@ -83,17 +83,24 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
 
   private validateArrayElements(
     array: types.Infer<types.ArrayType<any, T>>,
-    options: validation.Options,
+    validationOptions: validation.Options,
   ): validation.Result {
-    const validateItem = (item: types.Infer<T>, index: number) =>
-      types
-        .concretise(this.wrappedType)
-        .validate(item as never, options)
-        .mapError((errors) => prependIndexToAll(errors, index))
-
-    return options.errorReportingStrategy === 'stopAtFirstError'
-      ? result.tryEachFailFast(array, true, always(true), validateItem)
-      : result.tryEach(array, true, always(true), [] as validation.Error[], mergeArrays, validateItem)
+    const concreteType = types.concretise(this.wrappedType)
+    const errors: validation.Error[] = []
+    for (let i = 0; i < array.length; i++) {
+      if (errors.length > 0 && validationOptions.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
+      const result = concreteType.validate(array[i] as never, validationOptions)
+      if (!result.isOk) {
+        errors.push(...prependIndexToAll(result.error, i))
+      }
+    }
+    if (errors.length > 0) {
+      return validation.failWithErrors(errors)
+    } else {
+      return validation.succeed()
+    }
   }
 
   decodeWithoutValidation(
@@ -101,7 +108,7 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
     decodingOptions?: decoding.Options,
   ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
     if (value instanceof Array) {
-      return this.decodeArrayValues(value, decodingOptions)
+      return this.decodeArrayValues(value, { ...decoding.defaultOptions, ...decodingOptions })
     } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
       return this.decodeObjectAsArray(value, decodingOptions)
     } else {
@@ -111,23 +118,27 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
 
   private decodeArrayValues<T extends types.Type>(
     array: unknown[],
-    decodingOptions?: decoding.Options,
+    decodingOptions: decoding.Options,
   ): decoding.Result<types.Infer<types.ArrayType<M, T>>> {
-    const addDecodedItem = (accumulator: any[], item: any) => {
-      // Here to be more efficient we update the accumulator in place and return a reference to it,
-      // otherwise, we would need to create a new accumulator for each new decoded item
-      accumulator.push(item)
-      return accumulator
+    const concreteType = types.concretise(this.wrappedType)
+    const results: any[] = []
+    const errors: decoding.Error[] = []
+    for (let i = 0; i < array.length; i++) {
+      if (errors.length > 0 && decodingOptions.errorReportingStrategy === 'stopAtFirstError') {
+        break
+      }
+      const result = concreteType.decodeWithoutValidation(array[i] as never, decodingOptions)
+      if (result.isOk) {
+        results.push(result.value)
+      } else {
+        errors.push(...prependIndexToAll(result.error, i))
+      }
     }
-    const decodeItem = (item: unknown, index: number) =>
-      types
-        .concretise(this.wrappedType)
-        .decodeWithoutValidation(item, decodingOptions)
-        .mapError((errors) => prependIndexToAll(errors, index))
-
-    return decodingOptions?.errorReportingStrategy === 'allErrors'
-      ? result.tryEach(array, [] as unknown[], addDecodedItem, [] as decoding.Error[], mergeArrays, decodeItem)
-      : result.tryEachFailFast(array, [] as unknown[], addDecodedItem, decodeItem)
+    if (errors.length > 0) {
+      return decoding.failWithErrors(errors)
+    } else {
+      return decoding.succeed(results)
+    }
   }
 
   private decodeObjectAsArray(

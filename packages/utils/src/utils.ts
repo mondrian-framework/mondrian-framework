@@ -169,8 +169,20 @@ export function areSameArray<A>(
   return one === other || (one.length === other.length && one.every((value, i) => compare(value, other[i])))
 }
 
+/**
+ * Transforms a union to intersection. Example:
+ * ```
+ * type A = { a: string }
+ * type B = { b: string }
+ * type C = UnionToIntersection<A | B> // A & B -> { a: string, b: string }
+ * ```
+ */
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 
+/**
+ * Checks if two json are the same by value
+ * @returns if the two json have the same value
+ */
 export function areJsonsEquals(left: JSONType, right: JSONType): boolean {
   if (left === right) {
     return true

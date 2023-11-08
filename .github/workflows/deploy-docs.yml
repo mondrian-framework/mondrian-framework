@@ -7,8 +7,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      GIT_USER: twinlogix
-      GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+      GIT_USER: mondrina-framework
+      GIT_PASS: ${{ secrets.DOCS_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3

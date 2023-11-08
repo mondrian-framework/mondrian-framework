@@ -34,7 +34,7 @@ function validateDate(
   validationOptions?: validation.Options,
   options?: types.OptionsOf<DateType>,
 ): validation.Result {
-  return types.dateTime(options).validate(value, validationOptions)
+  return types.datetime(options).validate(value, validationOptions)
 }
 
 function dateArbitrary(_maxDepth: number, options?: types.OptionsOf<DateType>): gen.Arbitrary<Date> {

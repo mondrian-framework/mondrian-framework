@@ -29,7 +29,7 @@ describe('Module interface to schema', () => {
 
   test('Simple module with custom types', () => {
     const f = functions.define({
-      input: types.record(types.dateTime({ maximum: new Date(234), minimum: new Date(123) })).setName('Input'),
+      input: types.record(types.datetime({ maximum: new Date(234), minimum: new Date(123) })).setName('Input'),
       output: types.timestamp({ maximum: new Date(2340), minimum: new Date(1230) }).setName('Output'),
       errors: undefined,
       retrieve: undefined,
@@ -86,8 +86,8 @@ describe('Module interface to schema', () => {
     const lit3 = types.literal(true).setName('Literal3')
     const lit4 = types.literal(null).setName('Literal4')
     const enumerator = types.enumeration(['A', 'B']).setName('Enum')
-    const datetime = types.dateTime().setName('DateTime')
-    const timestamp = types.dateTime().setName('Timestamp')
+    const datetime = types.datetime().setName('DateTime')
+    const timestamp = types.datetime().setName('Timestamp')
     const record = types.record(types.string()).setName('Record')
     const f = functions.define({
       input: types

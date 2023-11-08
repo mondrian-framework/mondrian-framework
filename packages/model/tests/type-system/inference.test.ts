@@ -22,7 +22,7 @@ describe('Infer', () => {
   })
 
   test('DateTimeType inferred as Date', () => {
-    const model = types.dateTime()
+    const model = types.datetime()
     type Inferred = types.Infer<typeof model>
     expectTypeOf<Inferred>().toEqualTypeOf<Date>()
   })

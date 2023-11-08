@@ -15,7 +15,7 @@ export type DateTimeOptions = { minimum?: Date; maximum?: Date }
  * @param options the options used to create the new datetime custom type
  * @returns a {@link CustomType `CustomType`} representing a datetime
  */
-export function dateTime(options?: types.OptionsOf<DateTimeType>): DateTimeType {
+export function datetime(options?: types.OptionsOf<DateTimeType>): DateTimeType {
   return types.custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, datetimeArbitrary, options)
 }
 

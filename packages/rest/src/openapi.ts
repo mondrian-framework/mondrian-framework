@@ -469,7 +469,7 @@ function typeToSchemaObjectInternal(
     if (type.typeName === types.record(types.unknown()).typeName) {
       const fieldsType = typeToSchemaObject((type.options as types.RecordOptions).fieldsType, typeMap, typeRef)
       return { name, schema: { type: 'object', additionalProperties: fieldsType.schema, description } }
-    } else if (type.typeName === types.dateTime().typeName) {
+    } else if (type.typeName === types.datetime().typeName) {
       return { name, schema: { type: 'string', format: 'date-time', description } }
     } else if (type.typeName === types.timestamp().typeName) {
       return { name, schema: { type: 'integer', description: description ?? 'unix timestamp' } }

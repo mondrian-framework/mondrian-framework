@@ -12,7 +12,7 @@ export const postType = () =>
       id: idType,
       title: types.string(),
       content: types.string(),
-      publishedAt: types.dateTime(),
+      publishedAt: types.datetime(),
       author: userType,
       likes: types.array(likeType),
       visibility: postVisibilityType,
@@ -27,7 +27,7 @@ export const likeType = () =>
       id: idType,
       post: postType,
       user: userType,
-      createdAt: types.dateTime(),
+      createdAt: types.datetime(),
     },
     { name: 'Like' },
   )

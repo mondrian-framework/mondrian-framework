@@ -30,7 +30,7 @@ As you may have noticed, the literal string for the name must also be the first
 _type argument_ of the `types.custom` function.
 
 You can choose whatever name you feel is appropriate for your needs, the
-Mondrian framework defines some custom types like `"dateTime"`, `"timezone"`,
+Mondrian framework defines some custom types like `"datetime"`, `"timezone"`,
 `"RGB"`, and so on.
 
 ### Custom types can have additional options

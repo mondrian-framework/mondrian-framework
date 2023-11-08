@@ -17,8 +17,8 @@ const user = () =>
   )
 const metadata = () =>
   types.object({
-    registeredAt: types.dateTime(),
-    loggedInAt: types.dateTime(),
+    registeredAt: types.datetime(),
+    loggedInAt: types.datetime(),
   })
 const post = () =>
   types.entity(
@@ -367,8 +367,8 @@ describe('fromType', () => {
             .object({
               equals: types
                 .object({
-                  registeredAt: types.dateTime(),
-                  loggedInAt: types.dateTime(),
+                  registeredAt: types.datetime(),
+                  loggedInAt: types.datetime(),
                 })
                 .optional(),
             })

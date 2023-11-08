@@ -16,8 +16,8 @@ export const userType = () =>
       followeds: types.array(followerType),
       metadata: types
         .object({
-          createdAt: types.dateTime(),
-          lastLogin: types.dateTime(),
+          createdAt: types.datetime(),
+          lastLogin: types.datetime(),
         })
         .setName('UserMetadata'),
     },

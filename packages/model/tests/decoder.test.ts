@@ -289,7 +289,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
   })
 
   describe.concurrent('datetime value', () => {
-    const model = types.dateTime()
+    const model = types.datetime()
 
     describe.concurrent('without casting', () => {
       const options = { typeCastingStrategy: 'expectExactTypes' } as const
@@ -758,7 +758,7 @@ describe.concurrent('decoding.decode', () => {
 })
 
 describe.concurrent('datetime value', () => {
-  const model = types.dateTime()
+  const model = types.datetime()
   test.prop([gen.date()])('can decode date', (date) => {
     checkValue(model.decodeWithoutValidation(date), date)
   })

@@ -40,7 +40,7 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
     expect(model.encodeWithoutValidation(model.literalValue)).toEqual(model.literalValue)
   })
 
-  test.prop([arbitrary.dateTime(), gen.date()])('encodes a datetime value as iso string', (model, date) => {
+  test.prop([arbitrary.datetime(), gen.date()])('encodes a datetime value as iso string', (model, date) => {
     expect(model.encodeWithoutValidation(date)).toEqual(date.toISOString())
   })
 

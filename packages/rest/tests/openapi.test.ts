@@ -55,7 +55,7 @@ describe('module to openapi', () => {
       types.entity({
         username: types.string(),
         posts: types.array(post),
-        registeredAt: types.dateTime(),
+        registeredAt: types.datetime(),
       })
     const post = () =>
       types.entity({

@@ -227,12 +227,12 @@ describe.concurrent('validation.validate', () => {
 
   describe.concurrent('on datetime types', () => {
     test.prop([gen.date()])('always succeeds if given no options', (date) => {
-      assertOk(types.dateTime().validate(date))
+      assertOk(types.datetime().validate(date))
     })
 
     describe.concurrent('checks the datetime is >= than its minimum', () => {
       const minimum = new Date()
-      const model = types.dateTime({ minimum })
+      const model = types.datetime({ minimum })
 
       const validValue = gen.date({ min: minimum })
       test.prop([validValue])('ok cases', (number) => {
@@ -249,7 +249,7 @@ describe.concurrent('validation.validate', () => {
 
     describe.concurrent('checks the datetime is <= than its maximum', () => {
       const maximum = new Date()
-      const model = types.dateTime({ maximum })
+      const model = types.datetime({ maximum })
 
       const validValue = gen.date({ max: maximum })
       test.prop([validValue])('ok cases', (number) => {

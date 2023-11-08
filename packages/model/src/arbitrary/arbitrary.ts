@@ -143,7 +143,7 @@ export function enumeration<Vs extends readonly [string, ...string[]]>(
  * @returns A generator for datetime types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function dateTimeTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<types.DateTimeOptions>> {
+export function datetimeTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<types.DateTimeOptions>> {
   return gen
     .record(
       {
@@ -164,8 +164,8 @@ export function dateTimeTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<typ
 /**
  * @returns A generator for datetime types.
  */
-export function dateTime(): gen.Arbitrary<types.DateTimeType> {
-  return orUndefined(dateTimeTypeOptions()).map(types.dateTime)
+export function datetime(): gen.Arbitrary<types.DateTimeType> {
+  return orUndefined(datetimeTypeOptions()).map(types.datetime)
 }
 
 /**
@@ -499,7 +499,7 @@ export function baseType(): gen.Arbitrary<
     boolean(),
     enumeration(nonEmptyStringArray()),
     literal(literalValue()),
-    dateTime(),
+    datetime(),
     timestamp(),
     unknown(),
   )

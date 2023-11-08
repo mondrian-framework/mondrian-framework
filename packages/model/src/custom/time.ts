@@ -11,8 +11,8 @@ export function time(options?: types.BaseOptions): TimeType {
 }
 
 function encodeTime(value: Date) {
-  const dateTimeString = value.toISOString()
-  return dateTimeString.substring(dateTimeString.indexOf('T') + 1)
+  const datetimeString = value.toISOString()
+  return datetimeString.substring(datetimeString.indexOf('T') + 1)
 }
 
 function decodeTime(value: unknown): decoding.Result<Date> {
@@ -29,13 +29,13 @@ function validateTime(
   validationOptions?: validation.Options,
   options?: types.BaseOptions,
 ): validation.Result {
-  return types.dateTime(options).validate(value, validationOptions)
+  return types.datetime(options).validate(value, validationOptions)
 }
 
 function timeArbitrary(_maxDepth: number, options?: types.OptionsOf<TimeType>): gen.Arbitrary<Date> {
   return gen.date().map((t) => {
-    const dateTimeString = t.toISOString()
-    const timeStr = dateTimeString.substring(dateTimeString.indexOf('T') + 1)
+    const datetimeString = t.toISOString()
+    const timeStr = datetimeString.substring(datetimeString.indexOf('T') + 1)
     const currentDateString = new Date(Date.UTC(0, 0, 0)).toISOString()
     const currentDateAtGivenTime = new Date(
       currentDateString.substring(0, currentDateString.indexOf('T') + 1) + timeStr,

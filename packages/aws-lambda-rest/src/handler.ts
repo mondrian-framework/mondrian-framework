@@ -38,7 +38,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         res.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${api.version}` }
       }
-      return rest.openapi.fromModule({ api, version })
+      return rest.openapi.fromModule({ api, version, module: api.module })
     })
     // file deepcode ignore NoRateLimitingForExpensiveWebOperation: could disable this by disabling introspection in production environment
     server.get(`${introspectionPath}/*`, (req: Request, res: Response) => {

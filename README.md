@@ -166,4 +166,4 @@ fastifyInstance.listen({ port: 4000 }).then((address) => {
 })
 ```
 
-With Graphql introspection enabled, you can visit http://localhost:4000/grahql to open the Yoga schema navigator. Enjoy exploring your newly created API! Nothing stops you from exposing the module with both graphql and rest endpoint.
+With Graphql introspection enabled, you can visit http://localhost:4000/graphql to open the Yoga schema navigator. Enjoy exploring your newly created API! Nothing stops you from exposing the module with both graphql and rest endpoint.

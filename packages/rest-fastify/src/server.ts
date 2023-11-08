@@ -45,7 +45,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
         reply.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${api.version}` }
       }
-      return rest.openapi.fromModule({ api, version })
+      return rest.openapi.fromModule({ api, version, module: api.module })
     })
   }
   attachRestMethods({ api, server, context, pathPrefix, error })

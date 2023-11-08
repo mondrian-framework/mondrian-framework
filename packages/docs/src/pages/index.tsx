@@ -21,7 +21,7 @@ function HomepageHeader() {
               <p>
                 Mondrian enables developers to focus on their applications with a <b>clean architecture</b> made by
                 small, cohesive and decoupled modules. It provides tools and abstractions to build efficient, scalable
-                and reliable software that is designed to lasm.
+                and reliable software that is designed to last.
               </p>
               <p>
                 Start making <b>better software faster</b> with Mondrian!
@@ -64,7 +64,7 @@ export default function Home(): JSX.Element {
                   Expressive <em>data model</em> and schema validation
                 </div>
                 <div className={styles.featureDescription}>
-                  Mondrian allows you to define a data model in an intuitive human-readable way. In addition to schema
+                  Mondrian allows you to define a data model in an intuitive human-readable way. In addition to model
                   fields, types, possibly new scalars and relationships, you can utilize a wide range of validity rules
                   or create new and reusable ones. Once the model is defined, the framework provides a set of fully
                   automatic translation features to major standards: JSONSchema (OpenAPI), GraphQL and Protobuf.
@@ -77,23 +77,23 @@ export default function Home(): JSX.Element {
               </div>
               <div className={styles.featureColumn}>
                 <CodeBlock language="ts" title="model.ts" showLineNumbers>
-                  {`import m from '@mondrian-framework/model'
+                  {`import { model } from '@mondrian-framework/model'
 
-export const Post = m.object({
-  id: m.string(),
-  createdAt: m.timestamp(),
-  title: m.string(),
+export const Post = model.object({
+  id: model.string(),
+  createdAt: model.timestamp(),
+  title: model.string(),
 })
-export type Post = m.Infer<typeof Post>
+export type Post = model.Infer<typeof Post>
 
 export const User = m.object({
-  id: m.string(),
-  createdAt: m.timestamp(),
-  email: m.string({ format: 'email' }),
-  password: m.string({ format: 'password', minLength: 5 }),
-  posts: m.array(Post),
+  id: model.string(),
+  createdAt: model.timestamp(),
+  email: model.string({ format: 'email' }),
+  password: model.string({ format: 'password', minLength: 5 }),
+  posts: model.array(Post),
 })
-export type User = m.Infer<typeof User>
+export type User = model.Infer<typeof User>
 `}
                 </CodeBlock>
               </div>

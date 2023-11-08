@@ -94,6 +94,7 @@ export const User = m.object({
   posts: model.array(Post),
 })
 export type User = model.Infer<typeof User>
+
 `}
                 </CodeBlock>
               </div>

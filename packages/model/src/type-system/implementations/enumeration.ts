@@ -22,7 +22,7 @@ import gen from 'fast-check'
  */
 export function enumeration<const Vs extends readonly [string, ...string[]]>(
   variants: Vs,
-  options?: types.OptionsOf<types.EnumType<Vs>>,
+  options?: types.EnumTypeOptions,
 ): types.EnumType<Vs> {
   return new EnumTypeImpl(variants, options)
 }
@@ -34,10 +34,10 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
   readonly kind = types.Kind.Enum
   readonly variants: Vs
 
-  fromOptions = (options: types.OptionsOf<types.EnumType<Vs>>) => enumeration(this.variants, options)
+  fromOptions = (options: types.EnumTypeOptions) => enumeration(this.variants, options)
   getThis = () => this
 
-  constructor(variants: Vs, options?: types.OptionsOf<types.EnumType<Vs>>) {
+  constructor(variants: Vs, options?: types.EnumTypeOptions) {
     super(options)
     this.variants = variants
   }

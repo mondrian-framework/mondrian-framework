@@ -19,7 +19,7 @@ import gen from 'fast-check'
  *          const exampleAdminFlag: AdminFlag = true
  *          ```
  */
-export function boolean(options?: types.OptionsOf<types.BooleanType>): types.BooleanType {
+export function boolean(options?: types.BooleanTypeOptions): types.BooleanType {
   return new BooleanTypeImpl(options)
 }
 
@@ -29,7 +29,7 @@ class BooleanTypeImpl extends DefaultMethods<types.BooleanType> implements types
   getThis = () => this
   fromOptions = boolean
 
-  constructor(options?: types.OptionsOf<types.NumberType>) {
+  constructor(options?: types.BooleanTypeOptions) {
     super(options)
   }
 

@@ -20,7 +20,7 @@ import gen from 'fast-check'
  */
 export function array<T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.ArrayType<types.Mutability.Immutable, T>>,
+  options?: types.ArrayTypeOptions,
 ): types.ArrayType<types.Mutability.Immutable, T> {
   return new ArrayTypeImpl(types.Mutability.Immutable, wrappedType, options)
 }
@@ -34,7 +34,7 @@ export function array<T extends types.Type>(
  */
 export function mutableArray<T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.ArrayType<types.Mutability.Mutable, T>>,
+  options?: types.ArrayTypeOptions,
 ): types.ArrayType<types.Mutability.Mutable, T> {
   return new ArrayTypeImpl(types.Mutability.Mutable, wrappedType, options)
 }
@@ -50,10 +50,9 @@ class ArrayTypeImpl<M extends types.Mutability, T extends types.Type>
   getThis = () => this
   immutable = () => array(this.wrappedType, this.options)
   mutable = () => mutableArray(this.wrappedType, this.options)
-  fromOptions = (options: types.OptionsOf<types.ArrayType<M, T>>) =>
-    new ArrayTypeImpl(this.mutability, this.wrappedType, options)
+  fromOptions = (options: types.ArrayTypeOptions) => new ArrayTypeImpl(this.mutability, this.wrappedType, options)
 
-  constructor(mutability: M, wrappedType: T, options?: types.OptionsOf<types.ArrayType<M, T>>) {
+  constructor(mutability: M, wrappedType: T, options?: types.ArrayTypeOptions) {
     super(options)
     this.wrappedType = wrappedType
     this.mutability = mutability

@@ -3,26 +3,26 @@ import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
-type CustomEncoder<Name extends string, Options extends Record<string, any>, InferredAs> = (
+type CustomEncoder<Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
-  options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
+  options?: types.CustomTypeOptions<Options>,
 ) => JSONType
 
-type CustomDecoder<Name extends string, Options extends Record<string, any>, InferredAs> = (
+type CustomDecoder<Options extends Record<string, any>, InferredAs> = (
   value: unknown,
   decodingOptions?: decoding.Options,
-  options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
+  options?: types.CustomTypeOptions<Options>,
 ) => decoding.Result<InferredAs>
 
-type CustomValidator<Name extends string, Options extends Record<string, any>, InferredAs> = (
+type CustomValidator<Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
   validationOptions?: validation.Options,
-  options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
+  options?: types.CustomTypeOptions<Options>,
 ) => validation.Result
 
-type CustomArbitrary<Name extends string, Options extends Record<string, any>, InferredAs> = (
+type CustomArbitrary<Options extends Record<string, any>, InferredAs> = (
   maxDepth: number,
-  options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
+  options?: types.CustomTypeOptions<Options>,
 ) => gen.Arbitrary<InferredAs>
 
 /**
@@ -51,11 +51,11 @@ type CustomArbitrary<Name extends string, Options extends Record<string, any>, I
  */
 export function custom<Name extends string, Options extends Record<string, unknown>, InferredAs>(
   typeName: Name,
-  encodeWithoutValidation: CustomEncoder<Name, Options, InferredAs>,
-  decoder: CustomDecoder<Name, Options, InferredAs>,
-  validator: CustomValidator<Name, Options, InferredAs>,
-  arbitrary: CustomArbitrary<Name, Options, InferredAs>,
-  options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
+  encodeWithoutValidation: CustomEncoder<Options, InferredAs>,
+  decoder: CustomDecoder<Options, InferredAs>,
+  validator: CustomValidator<Options, InferredAs>,
+  arbitrary: CustomArbitrary<Options, InferredAs>,
+  options?: types.CustomTypeOptions<Options>,
 ): types.CustomType<Name, Options, InferredAs> {
   return new CustomTypeImpl(typeName, encodeWithoutValidation, decoder, validator, arbitrary, options)
 }
@@ -66,22 +66,22 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
 {
   readonly kind = types.Kind.Custom
   readonly typeName: Name
-  readonly encoder: CustomEncoder<Name, Options, InferredAs>
-  readonly decoder: CustomDecoder<Name, Options, InferredAs>
-  readonly validator: CustomValidator<Name, Options, InferredAs>
-  readonly arbitraryFromOptions: CustomArbitrary<Name, Options, InferredAs>
+  readonly encoder: CustomEncoder<Options, InferredAs>
+  readonly decoder: CustomDecoder<Options, InferredAs>
+  readonly validator: CustomValidator<Options, InferredAs>
+  readonly arbitraryFromOptions: CustomArbitrary<Options, InferredAs>
 
   getThis = () => this
-  fromOptions = (options: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>) =>
+  fromOptions = (options: types.CustomTypeOptions<Options>) =>
     custom(this.typeName, this.encodeWithNoChecks, this.decoder, this.validator, this.arbitrary, options)
 
   constructor(
     typeName: Name,
-    encoder: CustomEncoder<Name, Options, InferredAs>,
-    decoder: CustomDecoder<Name, Options, InferredAs>,
-    validator: CustomValidator<Name, Options, InferredAs>,
-    arbitrary: CustomArbitrary<Name, Options, InferredAs>,
-    options?: types.OptionsOf<types.CustomType<Name, Options, InferredAs>>,
+    encoder: CustomEncoder<Options, InferredAs>,
+    decoder: CustomDecoder<Options, InferredAs>,
+    validator: CustomValidator<Options, InferredAs>,
+    arbitrary: CustomArbitrary<Options, InferredAs>,
+    options?: types.CustomTypeOptions<Options>,
   ) {
     super(options)
     this.typeName = typeName

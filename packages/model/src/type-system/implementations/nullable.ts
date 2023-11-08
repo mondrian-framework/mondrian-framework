@@ -17,7 +17,7 @@ import gen from 'fast-check'
  */
 export function nullable<T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.NullableType<T>>,
+  options?: types.NullableTypeOptions,
 ): types.NullableType<T> {
   return new NullableTypeImpl(wrappedType, options)
 }
@@ -29,10 +29,10 @@ class NullableTypeImpl<T extends types.Type>
   readonly kind = types.Kind.Nullable
   readonly wrappedType: T
 
-  fromOptions = (options: types.OptionsOf<types.NullableType<T>>) => nullable(this.wrappedType, options)
+  fromOptions = (options: types.NullableTypeOptions) => nullable(this.wrappedType, options)
   getThis = () => this
 
-  constructor(wrappedType: T, options?: types.OptionsOf<types.NullableType<T>>) {
+  constructor(wrappedType: T, options?: types.NullableTypeOptions) {
     super(options)
     this.wrappedType = wrappedType
   }

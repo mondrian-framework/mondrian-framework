@@ -17,7 +17,7 @@ import gen from 'fast-check'
  */
 export function optional<const T extends types.Type>(
   wrappedType: T,
-  options?: types.OptionsOf<types.OptionalType<T>>,
+  options?: types.OptionalTypeOptions,
 ): types.OptionalType<T> {
   return new OptionalTypeImpl(wrappedType, options)
 }
@@ -29,10 +29,10 @@ class OptionalTypeImpl<T extends types.Type>
   readonly kind = types.Kind.Optional
   readonly wrappedType: T
 
-  fromOptions = (options: types.OptionsOf<types.OptionalType<T>>) => optional(this.wrappedType, options)
+  fromOptions = (options: types.OptionalTypeOptions) => optional(this.wrappedType, options)
   getThis = () => this
 
-  constructor(wrappedType: T, options?: types.OptionsOf<types.OptionalType<T>>) {
+  constructor(wrappedType: T, options?: types.OptionalTypeOptions) {
     super(options)
     this.wrappedType = wrappedType
   }

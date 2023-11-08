@@ -35,14 +35,14 @@ import gen from 'fast-check'
  */
 export function entity<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.EntityType<types.Mutability.Immutable, Ts>>,
+  options?: types.EntityTypeOptions,
 ): types.EntityType<types.Mutability.Immutable, Ts> {
   return new EntityTypeImpl(types.Mutability.Immutable, fields, options)
 }
 
 export function mutableEntity<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.EntityType<types.Mutability.Mutable, Ts>>,
+  options?: types.EntityTypeOptions,
 ): types.EntityType<types.Mutability.Mutable, Ts> {
   return new EntityTypeImpl(types.Mutability.Mutable, fields, options)
 }
@@ -56,13 +56,12 @@ class EntityTypeImpl<M extends types.Mutability, Ts extends types.Types>
   readonly fields: Ts
 
   getThis = () => this
-  fromOptions = (options: types.OptionsOf<types.EntityType<M, Ts>>) =>
-    new EntityTypeImpl(this.mutability, this.fields, options)
+  fromOptions = (options: types.EntityTypeOptions) => new EntityTypeImpl(this.mutability, this.fields, options)
 
   immutable = () => entity(this.fields, this.options)
   mutable = () => mutableEntity(this.fields, this.options)
 
-  constructor(mutability: M, fields: Ts, options?: types.OptionsOf<types.EntityType<M, Ts>>) {
+  constructor(mutability: M, fields: Ts, options?: types.EntityTypeOptions) {
     super(options)
     this.mutability = mutability
     this.fields = fields

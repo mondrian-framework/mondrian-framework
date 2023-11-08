@@ -23,7 +23,7 @@ import gen from 'fast-check'
  */
 export function literal<const L extends number | string | boolean | null>(
   literalValue: L,
-  options?: types.OptionsOf<types.LiteralType<L>>,
+  options?: types.LiteralTypeOptions,
 ): types.LiteralType<L> {
   return new LiteralTypeImpl(literalValue, options)
 }
@@ -35,10 +35,10 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
   readonly kind = types.Kind.Literal
   readonly literalValue: L
 
-  fromOptions = (options: types.OptionsOf<types.LiteralType<L>>) => literal(this.literalValue, options)
+  fromOptions = (options: types.LiteralTypeOptions) => literal(this.literalValue, options)
   getThis = () => this
 
-  constructor(literalValue: L, options?: types.OptionsOf<types.LiteralType<L>>) {
+  constructor(literalValue: L, options?: types.LiteralTypeOptions) {
     super(options)
     this.literalValue = literalValue
   }

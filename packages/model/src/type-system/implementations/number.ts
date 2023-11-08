@@ -20,7 +20,7 @@ import gen from 'fast-check'
  *          const exampleMeasurement: Measurement = 28.2
  *          ```
  */
-export function number(options?: types.OptionsOf<types.NumberType>): types.NumberType {
+export function number(options?: types.NumberTypeOptions): types.NumberType {
   return new NumberTypeImpl(options)
 }
 
@@ -41,7 +41,7 @@ export function number(options?: types.OptionsOf<types.NumberType>): types.Numbe
  *          const exampleAge: Age = 24
  *           ```
  */
-export function integer(options?: types.OptionsOf<types.NumberType>): types.NumberType {
+export function integer(options?: types.NumberTypeOptions): types.NumberType {
   return number({ ...options, isInteger: true })
 }
 
@@ -51,7 +51,7 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
   getThis = () => this
   fromOptions = number
 
-  constructor(options?: types.OptionsOf<types.NumberType>) {
+  constructor(options?: types.NumberTypeOptions) {
     super(options)
     const minimum = options?.minimum
     const exclusiveMinimum = options?.exclusiveMinimum
@@ -110,14 +110,14 @@ class NumberTypeImpl extends DefaultMethods<types.NumberType> implements types.N
   }
 
   arbitrary(): gen.Arbitrary<number> {
-    function doubleMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.Arbitrary<number> {
+    function doubleMatchingOptions(options: types.NumberTypeOptions): gen.Arbitrary<number> {
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
       const min = selectMinimum(minimum, exclusiveMinimum)
       const max = selectMaximum(maximum, exclusiveMaximum)
       return gen.double({ ...min, ...max, noNaN: true })
     }
 
-    function integerMatchingOptions(options: types.OptionsOf<types.NumberType>): gen.Arbitrary<number> {
+    function integerMatchingOptions(options: types.NumberTypeOptions): gen.Arbitrary<number> {
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
       if (
         (minimum && !Number.isInteger(minimum)) ||

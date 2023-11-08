@@ -20,7 +20,7 @@ import gen from 'fast-check'
  *          const exampleUsername: Username = "my_cool_username"
  *          ```
  */
-export function string(options?: types.OptionsOf<types.StringType>): types.StringType {
+export function string(options?: types.StringTypeOptions): types.StringType {
   return new StringTypeImpl(options)
 }
 
@@ -30,7 +30,7 @@ class StringTypeImpl extends DefaultMethods<types.StringType> implements types.S
   fromOptions = string
   getThis = () => this
 
-  constructor(options?: types.OptionsOf<types.StringType>) {
+  constructor(options?: types.StringTypeOptions) {
     super(options)
     const minLength = options?.minLength
     const maxLength = options?.maxLength

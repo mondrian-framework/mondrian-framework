@@ -35,14 +35,14 @@ import gen from 'fast-check'
  */
 export function object<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.ObjectType<types.Mutability.Immutable, Ts>>,
+  options?: types.ObjectTypeOptions,
 ): types.ObjectType<types.Mutability.Immutable, Ts> {
   return new ObjectTypeImpl(types.Mutability.Immutable, fields, options)
 }
 
 export function mutableObject<Ts extends types.Types>(
   fields: Ts,
-  options?: types.OptionsOf<types.ObjectType<types.Mutability.Mutable, Ts>>,
+  options?: types.ObjectTypeOptions,
 ): types.ObjectType<types.Mutability.Mutable, Ts> {
   return new ObjectTypeImpl(types.Mutability.Mutable, fields, options)
 }
@@ -56,13 +56,12 @@ class ObjectTypeImpl<M extends types.Mutability, Ts extends types.Types>
   readonly fields: Ts
 
   getThis = () => this
-  fromOptions = (options: types.OptionsOf<types.ObjectType<M, Ts>>) =>
-    new ObjectTypeImpl(this.mutability, this.fields, options)
+  fromOptions = (options: types.ObjectTypeOptions) => new ObjectTypeImpl(this.mutability, this.fields, options)
 
   immutable = () => object(this.fields, this.options)
   mutable = () => mutableObject(this.fields, this.options)
 
-  constructor(mutability: M, fields: Ts, options?: types.OptionsOf<types.ObjectType<M, Ts>>) {
+  constructor(mutability: M, fields: Ts, options?: types.ObjectTypeOptions) {
     super(options)
     this.mutability = mutability
     this.fields = fields

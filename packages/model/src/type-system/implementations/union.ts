@@ -28,10 +28,7 @@ import gen from 'fast-check'
  *          const failureResponse: Response = { errorCode: 418, errorMessage: "I'm a teapot" }
  *          ```
  */
-export function union<Ts extends types.Types>(
-  variants: Ts,
-  options?: types.OptionsOf<types.UnionType<Ts>>,
-): types.UnionType<Ts> {
+export function union<Ts extends types.Types>(variants: Ts, options?: types.UnionTypeOptions): types.UnionType<Ts> {
   return new UnionTypeImpl(variants, options)
 }
 
@@ -39,10 +36,10 @@ class UnionTypeImpl<Ts extends types.Types> extends DefaultMethods<types.UnionTy
   readonly kind = types.Kind.Union
   readonly variants: Ts
 
-  fromOptions = (options: types.OptionsOf<types.UnionType<Ts>>) => union(this.variants, options)
+  fromOptions = (options: types.UnionTypeOptions) => union(this.variants, options)
   getThis = () => this
 
-  constructor(variants: Ts, options?: types.OptionsOf<types.UnionType<Ts>>) {
+  constructor(variants: Ts, options?: types.UnionTypeOptions) {
     super(options)
     this.variants = variants
   }

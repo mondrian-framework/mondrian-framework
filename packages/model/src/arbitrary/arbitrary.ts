@@ -15,7 +15,7 @@ export function baseOptions(): gen.Arbitrary<types.BaseOptions> {
  * @returns A generator for string types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function stringTypeOptions(): gen.Arbitrary<types.OptionsOf<types.StringType>> {
+export function stringTypeOptions(): gen.Arbitrary<types.StringTypeOptions> {
   return gen.integer({ min: 0, max: 500 }).chain((min) => {
     return gen.integer({ min, max: 500 }).chain((max) => {
       return gen.oneof(
@@ -53,7 +53,7 @@ export function string(): gen.Arbitrary<types.StringType> {
  * @returns A generator for number types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function numberTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NumberType>> {
+export function numberTypeOptions(): gen.Arbitrary<types.NumberTypeOptions> {
   return gen.boolean().chain((isInteger) => {
     const bounds = isInteger ? integerBounds() : doubleBounds()
     return bounds.chain((bounds) => {
@@ -84,7 +84,7 @@ export function number(): gen.Arbitrary<types.NumberType> {
  * @returns A generator for boolean types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function booleanTypeOptions(): gen.Arbitrary<types.OptionsOf<types.BooleanType>> {
+export function booleanTypeOptions(): gen.Arbitrary<types.BooleanTypeOptions> {
   return baseOptions()
 }
 
@@ -99,7 +99,7 @@ export function boolean(): gen.Arbitrary<types.BooleanType> {
  * @returns A generator for literal types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function literalTypeOptions(): gen.Arbitrary<types.OptionsOf<types.LiteralType<any>>> {
+export function literalTypeOptions(): gen.Arbitrary<types.LiteralTypeOptions> {
   return baseOptions()
 }
 
@@ -121,7 +121,7 @@ export function literal<L extends number | string | boolean | null>(
  * @return A generator for enum types' options.
  *         All of its keys are optional and may be omitted in the generated options.
  */
-export function enumTypeOptions(): gen.Arbitrary<types.OptionsOf<types.EnumType<any>>> {
+export function enumTypeOptions(): gen.Arbitrary<types.EnumTypeOptions> {
   return baseOptions()
 }
 
@@ -143,7 +143,7 @@ export function enumeration<Vs extends readonly [string, ...string[]]>(
  * @returns A generator for datetime types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function dateTimeTypeOptions(): gen.Arbitrary<types.OptionsOf<types.DateTimeType>> {
+export function dateTimeTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<types.DateTimeOptions>> {
   return gen
     .record(
       {
@@ -179,7 +179,7 @@ export function unknown(): gen.Arbitrary<types.UnknownType> {
  * @returns A generator for timestamp types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function timestampTypeOptions(): gen.Arbitrary<types.OptionsOf<types.TimestampType>> {
+export function timestampTypeOptions(): gen.Arbitrary<types.CustomTypeOptions<types.TimestampOptions>> {
   return gen
     .record(
       {
@@ -224,7 +224,7 @@ export type GeneratorsRecord<R extends Record<string, any>> = { [Key in keyof R]
  * @return A generator for union types' options.
  *         All of its keys are optional and may be omitted in the generated options.
  */
-export function unionTypeOptions(): gen.Arbitrary<types.OptionsOf<types.UnionType<any>>> {
+export function unionTypeOptions(): gen.Arbitrary<types.UnionTypeOptions> {
   return gen.record({
     ...baseOptions,
     // This can cause problem on tests like 'encoding is the inverse of decoding' because with union
@@ -252,7 +252,7 @@ export function union<Vs extends types.Types>(
  * @returns A generator for object types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function objectTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ObjectType<any, any>>> {
+export function objectTypeOptions(): gen.Arbitrary<types.ObjectTypeOptions> {
   return baseOptions()
 }
 
@@ -316,7 +316,7 @@ export function mutableObject<Ts extends types.Types>(
  * @returns A generator for entity types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function entityTypeOptions(): gen.Arbitrary<types.OptionsOf<types.EntityType<any, any>>> {
+export function entityTypeOptions(): gen.Arbitrary<types.EntityTypeOptions> {
   return baseOptions()
 }
 
@@ -352,7 +352,7 @@ export function mutableEntity<Ts extends types.Types>(
  * @returns A generator for array types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function arrayTypeOptions(): gen.Arbitrary<types.OptionsOf<types.ArrayType<any, any>>> {
+export function arrayTypeOptions(): gen.Arbitrary<types.ArrayTypeOptions> {
   return gen.integer({ min: 0, max: 500 }).chain((min) => {
     return gen.integer({ min, max: 500 }).chain((max) => {
       return gen.record(
@@ -411,7 +411,7 @@ export function mutableArray<T extends types.Type>(
  * @returns A generator for optional types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function optionalTypeOptions(): gen.Arbitrary<types.OptionsOf<types.OptionalType<any>>> {
+export function optionalTypeOptions(): gen.Arbitrary<types.OptionalTypeOptions> {
   return baseOptions()
 }
 
@@ -435,7 +435,7 @@ export function optional<T extends types.Type>(
  * @returns A generator for nullable types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
-export function nullableTypeOptions(): gen.Arbitrary<types.OptionsOf<types.NullableType<any>>> {
+export function nullableTypeOptions(): gen.Arbitrary<types.NullableTypeOptions> {
   return baseOptions()
 }
 

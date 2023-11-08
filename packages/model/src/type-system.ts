@@ -236,18 +236,18 @@ type IsEntity<T extends Type>
  */
 // prettier-ignore
 export type OptionsOf<T extends Type>
-  = [T] extends [NumberType] ? NonNullable<NumberType['options']>
-  : [T] extends [StringType] ? NonNullable<StringType['options']>
-  : [T] extends [BooleanType] ? NonNullable<BooleanType['options']>
-  : [T] extends [EnumType<infer T1>] ? NonNullable<EnumType<T1>['options']>
-  : [T] extends [LiteralType<infer L>] ? NonNullable<LiteralType<L>['options']>
-  : [T] extends [UnionType<infer Ts>] ? NonNullable<UnionType<Ts>['options']>
-  : [T] extends [ObjectType<infer Ts, infer Mutable>] ? NonNullable<ObjectType<Ts, Mutable>['options']>
-  : [T] extends [EntityType<infer Ts, infer Mutable>] ? NonNullable<EntityType<Ts, Mutable>['options']>
-  : [T] extends [ArrayType<infer M, infer T1>] ? NonNullable<ArrayType<M, T1>['options']>
-  : [T] extends [OptionalType<infer T1>] ? NonNullable<OptionalType<T1>['options']>
-  : [T] extends [NullableType<infer T1>] ? NonNullable<NullableType<T1>['options']>
-  : [T] extends [CustomType<infer N, infer Os, infer T>] ? NonNullable<CustomType<N, Os, T>['options']>
+  = [T] extends [NumberType] ? NumberTypeOptions
+  : [T] extends [StringType] ? StringTypeOptions
+  : [T] extends [BooleanType] ? BooleanTypeOptions
+  : [T] extends [EnumType<any>] ? EnumTypeOptions
+  : [T] extends [LiteralType<any>] ? LiteralTypeOptions
+  : [T] extends [UnionType<any>] ? UnionTypeOptions
+  : [T] extends [ObjectType<any, any>] ? ObjectTypeOptions
+  : [T] extends [EntityType<any, any>] ? EntityTypeOptions
+  : [T] extends [ArrayType<any, any>] ? ArrayTypeOptions
+  : [T] extends [OptionalType<any>] ? OptionalTypeOptions
+  : [T] extends [NullableType<any>] ? NullableTypeOptions
+  : [T] extends [CustomType<any, infer AdditionalOptions, any>] ? CustomTypeOptions<AdditionalOptions>
   : [T] extends [(() => infer T1 extends Type)] ? OptionsOf<T1>
   : never
 

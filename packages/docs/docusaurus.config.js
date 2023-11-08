@@ -8,7 +8,7 @@ const config = {
   favicon: 'img/favicon.ico',
   url: 'https://mondrianframework.io',
   baseUrl: '/mondrian-framework/',
-  organizationName: 'twinlogix',
+  organizationName: 'mondrian-framework',
   projectName: 'mondrian-framework',
   deploymentBranch: 'docs',
   trailingSlash: false,
@@ -68,7 +68,7 @@ const config = {
             label: 'Community',
           },
           {
-            href: 'https://github.com/twinlogix/mondrian-framework',
+            href: 'https://github.com/mondrian-framework/mondrian-framework',
             label: 'GitHub',
             position: 'right',
           },

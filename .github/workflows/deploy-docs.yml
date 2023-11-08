@@ -7,7 +7,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      GIT_USER: mondrian-framework
+      GIT_USER: minox86
       GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4

@@ -73,8 +73,9 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
       const concreteFieldType = model.concretise(fieldType)
       const fieldIsOptional = model.isOptional(concreteFieldType)
       const rawField = entity[fieldName]
-      const encodedField = concreteFieldType.encodeWithoutValidation(rawField as never)
-      return fieldIsOptional && encodedField === null ? undefined : encodedField
+      return fieldIsOptional && rawField === undefined
+        ? undefined
+        : concreteFieldType.encodeWithoutValidation(rawField as never)
     })
   }
 

@@ -115,9 +115,7 @@ describe('module to openapi', () => {
               '200': {
                 description: 'Success',
                 content: {
-                  'application/json': {
-                    schema: { type: 'array', items: { $ref: '#/components/schemas/ANONYMOUS_TYPE_0' } },
-                  },
+                  'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/post' } } },
                 },
               },
             },
@@ -142,9 +140,7 @@ describe('module to openapi', () => {
               '200': {
                 description: 'Success',
                 content: {
-                  'application/json': {
-                    schema: { type: 'array', items: { $ref: '#/components/schemas/ANONYMOUS_TYPE_1' } },
-                  },
+                  'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/user' } } },
                 },
               },
             },
@@ -159,9 +155,7 @@ describe('module to openapi', () => {
               '200': {
                 description: 'Success',
                 content: {
-                  'application/json': {
-                    schema: { type: 'array', items: { $ref: '#/components/schemas/ANONYMOUS_TYPE_1' } },
-                  },
+                  'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/user' } } },
                 },
               },
             },
@@ -171,24 +165,24 @@ describe('module to openapi', () => {
       },
       components: {
         schemas: {
-          ANONYMOUS_TYPE_1: {
+          user: {
             type: 'object',
             required: ['username', 'registeredAt'],
             properties: {
               username: { type: 'string' },
-              posts: { type: 'array', items: { $ref: '#/components/schemas/ANONYMOUS_TYPE_0' } },
+              posts: { type: 'array', items: { $ref: '#/components/schemas/post' } },
               registeredAt: { type: 'string', format: 'date-time' },
             },
           },
           PostCategory: { type: 'string', enum: ['FUNNY', 'QUESTION'] },
-          ANONYMOUS_TYPE_0: {
+          post: {
             type: 'object',
             required: ['title', 'content', 'visualizations'],
             properties: {
               title: { type: 'string', minLength: 1, maxLength: 2000 },
               content: { type: 'string' },
-              author: { anyOf: [{ $ref: '#/components/schemas/ANONYMOUS_TYPE_1' }, { const: null }] },
-              likes: { type: 'array', items: { $ref: '#/components/schemas/ANONYMOUS_TYPE_1' } },
+              author: { anyOf: [{ $ref: '#/components/schemas/user' }, { const: null }] },
+              likes: { type: 'array', items: { $ref: '#/components/schemas/user' } },
               visualizations: { type: 'integer', minimum: 0 },
               categories: { type: 'array', items: { $ref: '#/components/schemas/PostCategory' } },
             },

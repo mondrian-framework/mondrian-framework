@@ -1,19 +1,19 @@
 import { idType } from '../common/model'
-import { likeType, postType } from '../post/model'
+import { Like, Post } from '../post/model'
 import { model } from '@mondrian-framework/model'
 
-export type UserType = model.Infer<typeof userType>
-export const userType = () =>
+export type User = model.Infer<typeof User>
+export const User = () =>
   model.entity(
     {
       id: idType,
       firstName: model.string(),
       lastName: model.string({ description: 'Lastname of user' }),
       email: model.email(),
-      posts: model.array(postType),
-      givenLikes: model.array(likeType),
-      followers: model.array(followerType),
-      followeds: model.array(followerType),
+      posts: model.array(Post),
+      givenLikes: model.array(Like),
+      followers: model.array(Follower),
+      followeds: model.array(Follower),
       metadata: model
         .object({
           createdAt: model.datetime(),
@@ -24,13 +24,13 @@ export const userType = () =>
     { name: 'User' },
   )
 
-export type FollowerType = model.Infer<typeof userType>
-export const followerType = () =>
+export type Follower = model.Infer<typeof User>
+export const Follower = () =>
   model.entity(
     {
       id: idType,
-      followed: userType,
-      follower: userType,
+      followed: User,
+      follower: User,
     },
     { name: 'Follower' },
   )

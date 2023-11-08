@@ -1,30 +1,30 @@
 import { slotProvider } from '../../rate-limiter'
 import { idType, unauthorizedType, notLoggedInType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
-import { userType } from './model'
+import { User } from './model'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
-const loginInputType = model.object(
+const LoginInput = model.object(
   {
     email: model.email(),
     password: model.string().sensitive(),
   },
   { name: 'LoginInput' },
 )
-const loginOutputType = model.string({ name: 'LoginOutput' })
-const loginErrorType = {
+const LoginOutput = model.string({ name: 'LoginOutput' })
+const loginErrorMap = {
   invalidLogin: model.string(),
   tooManyRequests: model.string(),
 } as const
 
 const loginRateLimiter = rateLimiter.build<
-  typeof loginInputType,
-  typeof loginOutputType,
-  typeof loginErrorType,
+  typeof LoginInput,
+  typeof LoginOutput,
+  typeof loginErrorMap,
   undefined,
   Context
 >({
@@ -38,9 +38,9 @@ const loginRateLimiter = rateLimiter.build<
 })
 
 export const login = functions.withContext<Context>().build({
-  input: loginInputType,
-  output: loginOutputType,
-  errors: loginErrorType,
+  input: LoginInput,
+  output: LoginOutput,
+  errors: loginErrorMap,
   retrieve: undefined,
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     const { email, password } = input
@@ -60,7 +60,7 @@ export const login = functions.withContext<Context>().build({
   options: {},
 })
 
-const registerInputType = model.object(
+const RegisterInput = model.object(
   {
     password: model.string().sensitive(),
     email: model.email(),
@@ -73,8 +73,8 @@ const registerInputType = model.object(
 )
 
 export const register = functions.withContext<Context>().build({
-  input: registerInputType,
-  output: userType,
+  input: RegisterInput,
+  output: User,
   errors: {
     emailAlreadyTaken: model.literal('Email already taken'),
   },
@@ -103,7 +103,7 @@ export const register = functions.withContext<Context>().build({
 
 export const follow = functions.withContext<LoggedUserContext>().build({
   input: model.object({ userId: idType }),
-  output: userType,
+  output: User,
   errors: {
     unauthorizedType,
     notLoggedInType,
@@ -131,7 +131,7 @@ export const follow = functions.withContext<LoggedUserContext>().build({
       update: {},
     })
     const args = retrieve.merge<Prisma.UserFindFirstOrThrowArgs>(
-      userType,
+      User,
       { where: { id: context.userId }, select: { id: true } },
       thisRetrieve,
     )

@@ -179,7 +179,7 @@ function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
-  return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).input
+  return generateOpenapiInput({ ...args, internalData: { typeMap: {}, typeRef: new Map() } }).input
 }
 
 function decodeRawInput({ input, type }: { input: unknown; type: model.Type }): result.Result<unknown, Response> {

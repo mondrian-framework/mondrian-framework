@@ -273,7 +273,19 @@ export enum Mutability {
  */
 export const concretise = memoizeTransformation(concretiseInternal)
 function concretiseInternal<T extends Type>(type: T): Concrete<T> {
-  return typeof type === 'function' ? concretise(type() as T) : (type as Concrete<T>)
+  if (typeof type === 'function') {
+    let concreteType: Type = type
+    while (typeof concreteType === 'function') {
+      concreteType = concreteType()
+    }
+    if (concreteType.options?.name === undefined) {
+      return concreteType.setName(type.name) as Concrete<T>
+    } else {
+      return concreteType as Concrete<T>
+    }
+  } else {
+    return type as Concrete<T>
+  }
 }
 
 /**

@@ -60,7 +60,11 @@ export interface Function<
 export interface Tracer {
   withPrefix(name: string): Tracer
   startActiveSpan<F extends (span?: Span) => unknown>(name: string, fn: F): ReturnType<F>
-  startActiveSpanWithOptions<F extends (span?: Span) => unknown>(name: string, options: SpanOptions, fn: F): ReturnType<F>;
+  startActiveSpanWithOptions<F extends (span?: Span) => unknown>(
+    name: string,
+    options: SpanOptions,
+    fn: F,
+  ): ReturnType<F>
 }
 
 /**

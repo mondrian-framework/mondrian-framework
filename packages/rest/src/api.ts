@@ -53,7 +53,11 @@ export type Request = {
   route: string
 }
 
-export type Response = { status: number; body: unknown; headers?: Record<string, string> }
+export type Response = {
+  readonly status: number
+  readonly body: unknown
+  readonly headers?: Readonly<Record<string, string>>
+}
 
 export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
   args: {

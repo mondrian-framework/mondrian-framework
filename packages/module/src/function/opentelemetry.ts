@@ -67,7 +67,7 @@ export class OpentelemetryFunction<
           }
           span.setStatus({ code: SpanStatusCode.ERROR })
           span.end()
-          return result.fail<model.Infer<model.PartialDeep<O>>, unknown>(error)
+          return result.fail(error)
         }
       },
     )

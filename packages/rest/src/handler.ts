@@ -103,7 +103,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
             span?.end()
             return retrieveResult.error
           }
-          retrieveValue = inputResult.value as retrieve.GenericRetrieve
+          retrieveValue = retrieveResult.value
         }
 
         let moduleContext
@@ -123,7 +123,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
             logger: operationLogger,
           })) as any
 
-          if (result.isResult(res) && !res.isOk) {
+          if (functionBody.errors && !res.isOk) {
             const codes = (specification.errorCodes ?? {}) as Record<string, number>
             if (functionBody.errors) {
               const key = Object.keys(res.error as Record<string, unknown>)[0]
@@ -141,7 +141,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
               return addHeadersToResponse(failure.error, responseHeaders)
             }
           } else {
-            let value = result.isResult(res) && res.isOk ? res.value : res
+            let value = functionBody.errors && res.isOk ? res.value : res
             const encoded = partialOutputType.encodeWithoutValidation(value as never)
             const response: Response = { status: 200, body: encoded, headers: responseHeaders }
             operationLogger.logInfo('Completed.')
@@ -203,7 +203,7 @@ function addHeadersToResponse(response: Response, headers: Response['headers']):
   return { ...response, headers: { ...response.headers, ...headers } }
 }
 
-function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<any, Response> }): void {
+function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<Response> }): void {
   span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, failure.error.status)
   span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(failure.error.body) })
   span?.end()

@@ -480,12 +480,14 @@ export function fromModule<const ServerContext, const Fs extends functions.Funct
     }
   })
   const mutations = splitIntoNamespaces(mutationsArray, 'Mutation')
-  const query =
-    queries.length === 0 ? undefined : new GraphQLObjectType({ name: 'Query', fields: Object.fromEntries(queries) })
-  const mutation =
-    queries.length === 0
-      ? undefined
-      : new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutations) })
+  if (queries.length === 0) {
+    queries.push(['void', { type: GraphQLString, resolve: () => 'void' }])
+  }
+  if (mutations.length === 0) {
+    mutations.push(['void', { type: GraphQLString, resolve: () => 'void' }])
+  }
+  const query = new GraphQLObjectType({ name: 'Query', fields: Object.fromEntries(queries) })
+  const mutation = new GraphQLObjectType({ name: 'Mutation', fields: Object.fromEntries(mutations) })
 
   const schema = new GraphQLSchema({ query, mutation })
   clearInternalData(internalData) //clear because this is kept is some closure

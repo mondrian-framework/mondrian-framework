@@ -70,7 +70,7 @@
 }
 
 section:nth-child(2n) {
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 [data-theme='dark'] section:nth-child(2n) {

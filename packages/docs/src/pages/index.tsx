@@ -110,7 +110,9 @@ export type User = model.Infer<typeof User>
                   <em>Modularity</em> and well defined boundaries
                 </div>
                 <div className={styles.featureDescription}>
-                  Define your system as a set of functions grouped into modules. Each function has a single responsibility, with well-defined boundaries based on a formal interface, with no direct dependencies on the execution environment. This maximizes reuse and allows the system as a whole to evolve technologically without requiring rewriting application logic.
+                  Define your system as a set of functions grouped into modules. Each function has a single responsibility, with well-defined boundaries based on a formal interface, with no direct dependencies on the execution environment.
+                  <br/><br/>
+                  The design-first approach allows you to have a specification always aligned with the code and automatically generate tools and artifacts for the clients of your software.
                 </div>
                 <div className={styles.featureButton}>
                   <Link className={`button button--primary button--lg`} to="/docs/docs/module">
@@ -155,7 +157,9 @@ const userModule = module.build({
                   Multiple <em>runtimes</em> with zero effort
                 </div>
                 <div className={styles.featureDescription}>
-                  Provide your own functions in any way you like (as a REST API, GraphQL, gRPC, reactive to an SQS queue or a Kafka topic, etc.).  You can also develop your own fully customized runtime based on your needs. Every framework runtime also support all best practices, from observability via Open Telemetry to automated documentation.
+                  Provide your own functions in any way you like, as an API (REST, GraphQL or gRPC), as a queue consumer (SQS, Kafka, etc.) or a scheduler job. Every runtime provided by the framework also support all best practices, from observability via Open Telemetry to automated documentation.
+                  <br/><br/>
+                  You can also develop your own runtime based on your needs to execute a module using a server of your choice and a dedicated infrastructure. This will allow you to embrace technological evolution without rewriting your code.
                 </div>
                 <div className={styles.featureButton}>
                   <Link className={`button button--primary button--lg`} to="/docs/docs/runtime">

@@ -76,7 +76,7 @@ export default function Home(): JSX.Element {
                 </div>
               </div>
               <div className={styles.featureColumn}>
-                <CodeBlock language="ts" title="model.ts" showLineNumbers>
+                <CodeBlock language="ts" title="app.ts" showLineNumbers>
                   {`import { model } from '@mondrian-framework/model'
 
 export const Post = model.object({

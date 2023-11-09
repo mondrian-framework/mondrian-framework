@@ -16,8 +16,8 @@ export class BaseFunction<
 {
   readonly input: I
   readonly output: O
-  readonly errors: E
-  readonly retrieve: C
+  readonly errors?: E
+  readonly retrieve?: C
   readonly body: (args: functions.FunctionArguments<I, O, C, Context>) => FunctionResult<O, E, C>
   readonly middlewares: readonly functions.Middleware<I, O, E, C, Context>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined

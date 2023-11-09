@@ -3,7 +3,7 @@ import { generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
-import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
+import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
 export function fromFunction<Fs extends functions.Functions, ServerContext, ContextInput>({

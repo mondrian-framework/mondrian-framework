@@ -41,8 +41,7 @@ export const login = functions.withContext<Context>().build({
   input: LoginInput,
   output: LoginOutput,
   errors: loginErrorMap,
-  retrieve: undefined,
-  body: async ({ input, context, retrieve: thisRetrieve }) => {
+  body: async ({ input, context }) => {
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {

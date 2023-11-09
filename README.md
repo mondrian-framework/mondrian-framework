@@ -14,7 +14,8 @@ In this section, we’ll walk through an example of how to use the Mondrian fram
 - [Serve module as REST endpoint](#serve-module-rest)
 - [Serve module as GRAPHQL endpoint](#serve-module-graphql)
 
-For this example we'll need to install this packages: 
+For this example we'll need to install this packages:
+
 ```
 npm i @mondrian-framework/model \
       @mondrian-framework/module \
@@ -27,7 +28,7 @@ npm i @mondrian-framework/model \
 
 ### Build functions
 
-In this first example, we’re creating a simple registration function using the Mondrian framework. The function takes an email and password as input and returns a JSON web token as output:
+In our first example, we'll guide you through creating a registration function using the Mondrian framework. This function, written in TypeScript, accepts an email and password as input and outputs a JSON web token:
 
 ```typescript
 import { model } from '@mondrian-framework/model'
@@ -36,8 +37,6 @@ import { functions } from '@mondrian-framework/module'
 const register = functions.build({
   input: model.object({ email: model.email(), password: model.string() }),
   output: model.object({ jwt: model.string() }),
-  errors: undefined,
-  retrieve: undefined,
   async body({ input: { email, password } }) {
     // weak password check
     if (password.length < 3) {
@@ -49,7 +48,7 @@ const register = functions.build({
 })
 ```
 
-This is your first Mondrian function! Notice the `errors` and `retrieve` parameters? Let’s dive deeper into these with another example:
+Congratulations! You've just implemented your initial Mondrian function. To enhance error handling, let's explore a more advanced example where we introduce typed errors:
 
 ```typescript
 import { model, result } from '@mondrian-framework/model'
@@ -62,7 +61,6 @@ const register = functions.build({
     weakPassword: model.string(),
     emailAlreadyUsed: model.string(),
   },
-  retrieve: undefined,
   async body({ input: { email, password } }) {
     // weak password check
     if (password.length < 3) {
@@ -77,11 +75,9 @@ const register = functions.build({
 })
 ```
 
-Now, we’ve added typed errors to the same function. Isn’t that neat? But what about `retrieve` parameter? That’s a more advanced topic which we’ll cover later. For now, let’s focus on exposing our function through a REST API.
-
 ### Build module
 
-This is how to build the Mondrian module:
+Here's how you can build the Mondrian module using TypeScript:
 
 ```typescript
 import { module } from '@mondrian-framework/module'
@@ -97,9 +93,11 @@ const moduleInstance = module.build({
 })
 ```
 
+This snippet showcases how to instantiate the Mondrian module, incorporating the functions you've defined.
+
 ### Serve module REST
 
-This is how we can serve the module as a REST API endpoint:
+Now, let's move on to serving the module as a REST API endpoint. The following TypeScript code demonstrates the mapping of functions to methods and how to start the server:
 
 ```typescript
 import { rest } from '@mondrian-framework/rest'
@@ -137,11 +135,11 @@ server.listen({ port: 4000 }).then((address) => {
 })
 ```
 
-With REST introspection enabled, you can visit http://localhost:4000/openapi to view the Swagger documentation with the OpenAPI v3 specification of our served functions. Enjoy exploring your newly created API!
+By enabling REST introspection, you can explore your API using the Swagger documentation at http://localhost:4000/openapi.
 
 ### Serve module GRAPHQL
 
-We also could serve the module as a GraphQL endpoint:
+You can serve the module also as a GraphQL endpoint with the following code:
 
 ```typescript
 import { graphql } from '@mondrian-framework/graphql'
@@ -155,7 +153,7 @@ const api = graphql.build({
     register: { type: 'mutation' },
   },
   options: { introspection: true },
-}
+})
 
 //Start the server
 const server = fastify()
@@ -165,4 +163,4 @@ fastifyInstance.listen({ port: 4000 }).then((address) => {
 })
 ```
 
-With Graphql introspection enabled, you can visit http://localhost:4000/graphql to open the Yoga schema navigator. Enjoy exploring your newly created API! Nothing stops you from exposing the module with both graphql and rest endpoint.
+Enabling GraphQL introspection allows you to explore your API using the Yoga schema navigator at http://localhost:4000/graphql Nothing stops you from exposing the module with both a GraphQL and a REST endpoint.

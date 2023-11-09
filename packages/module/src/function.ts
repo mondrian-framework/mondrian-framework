@@ -23,11 +23,11 @@ export interface FunctionInterface<
   /**
    * The type describing the possible errors returned by the function.
    */
-  readonly errors: E
+  readonly errors?: E
   /**
    * The type describing the possible errors returned by the function.
    */
-  readonly retrieve: R
+  readonly retrieve?: R
   /**
    * Function {@link FunctionOptions}
    */
@@ -58,6 +58,9 @@ export interface Function<
  * Opentelemetry Tracer extension where the span can also be undefined.
  */
 export interface Tracer {
+  /**
+   * Sets a prefix value for the name parameter for all the `startActiveSpan` calls.
+   */
   withPrefix(name: string): Tracer
   startActiveSpan<F extends (span?: Span) => unknown>(name: string, fn: F): ReturnType<F>
   startActiveSpanWithOptions<F extends (span?: Span) => unknown>(
@@ -244,8 +247,8 @@ export type FunctionsInterfaces = {
 export function build<
   const I extends model.Type,
   const O extends model.Type,
-  const E extends ErrorType,
-  const C extends OutputRetrieveCapabilities,
+  const E extends ErrorType = undefined,
+  const C extends OutputRetrieveCapabilities = undefined,
 >(func: Function<I, O, E, C, {}>): FunctionImplementation<I, O, E, C, {}> {
   return withContext().build(func)
 }

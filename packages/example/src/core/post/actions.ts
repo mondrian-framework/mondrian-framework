@@ -36,7 +36,6 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
 export const readPosts = functions.withContext<LoggedUserContext>().build({
   input: model.object({ userId: idType }),
   output: model.array(Post),
-  errors: undefined,
   retrieve: retrieve.allCapabilities,
   body: async ({ context, input, retrieve: thisRetrieve }) => {
     const baseFilter: Prisma.PostWhereInput = {

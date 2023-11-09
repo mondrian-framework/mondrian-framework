@@ -3,7 +3,6 @@ import { ErrorType, FunctionResult, OutputRetrieveCapabilities } from '../functi
 import { BaseFunction } from './base'
 import { result, model } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span, SpanOptions } from '@opentelemetry/api'
-import { isPromise } from 'util/types'
 
 /**
  * Opentelemetry instrumented function.

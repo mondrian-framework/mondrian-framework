@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "prisma generate && tsc",
-    "example": "node -r dotenv/config build/app.js",
+    "example": "node -r dotenv/config --require ./build/opentelemetry.js build/app.js ",
     "example-serverless": "serverless offline"
   },
   "keywords": [],
@@ -32,8 +32,8 @@
     "serverless-plugin-typescript": "2.1.5",
     "serverless-plugin-monorepo": "0.11.0",
     "rest": "2.0.0",
-    "@opentelemetry/sdk-node": "0.44.0",
-    "@opentelemetry/api-logs": "0.44.0",
+    "@opentelemetry/sdk-node": "0.43.0",
+    "@opentelemetry/api-logs": "0.43.0",
     "@redis/client": "1.5.11"
   },
   "devDependencies": {

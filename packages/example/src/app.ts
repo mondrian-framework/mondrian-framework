@@ -1,10 +1,7 @@
 import { rest, graphql } from './api'
-import { module } from './core'
-import { opentelemetry } from './opentelemetry'
 import { fastify } from 'fastify'
 
 async function main() {
-  opentelemetry.setup(module.instance.name, module.instance.version)
   const server = fastify()
   const startTime = new Date().getTime()
   rest.startServer(server)

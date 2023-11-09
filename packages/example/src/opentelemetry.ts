@@ -8,30 +8,26 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { PrismaInstrumentation } from '@prisma/instrumentation'
 
-export const opentelemetry = { setup }
+const provider = new NodeTracerProvider({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: process.env.MODULE_NAME,
+    [SemanticResourceAttributes.SERVICE_VERSION]: process.env.MODULE_VERSION,
+  }),
+})
 
-function setup(serviceName: string, serviceVersion: string) {
-  const provider = new NodeTracerProvider({
-    resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
-      [SemanticResourceAttributes.SERVICE_VERSION]: serviceVersion,
-    }),
-  })
+registerInstrumentations({
+  tracerProvider: provider,
+  instrumentations: [new PrismaInstrumentation()],
+})
 
-  registerInstrumentations({
-    tracerProvider: provider,
-    instrumentations: [new PrismaInstrumentation()],
-  })
-
-  if (process.env.OTLP_EXPORTER_URL) {
-    provider.addSpanProcessor(new SimpleSpanProcessor(new OTLPTraceExporter({ url: process.env.OTLP_EXPORTER_URL })))
-  } else {
-    provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
-  }
-
-  provider.register()
-
-  const loggerProvider = new LoggerProvider()
-  loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(new ConsoleLogRecordExporter()))
-  logs.setGlobalLoggerProvider(loggerProvider)
+if (process.env.OTLP_EXPORTER_URL) {
+  provider.addSpanProcessor(new SimpleSpanProcessor(new OTLPTraceExporter({ url: process.env.OTLP_EXPORTER_URL })))
+} else {
+  provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
 }
+
+provider.register()
+
+const loggerProvider = new LoggerProvider()
+loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(new ConsoleLogRecordExporter()))
+logs.setGlobalLoggerProvider(loggerProvider)

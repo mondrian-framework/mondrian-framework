@@ -6,6 +6,8 @@ import { functions, logger as logging, module, utils } from '@mondrian-framework
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { groupBy } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
+import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
+import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 import {
   GraphQLScalarType,
   GraphQLObjectType,
@@ -31,6 +33,7 @@ import {
   SelectionNode,
   Kind,
   valueFromASTUntyped,
+  GraphQLError,
 } from 'graphql'
 
 /**
@@ -623,27 +626,34 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
   const retrieveType = retrieve.fromType(functionBody.output, capabilities)
   const completeRetrieveType = retrieve.fromType(functionBody.output, { ...capabilities, select: true })
 
-  //TODO: opentelemetry span
-  const resolve = async (
+  const thisLogger = logging.build({
+    moduleName: module.name,
+    operationType: specification.type,
+    operationName,
+    server: 'GQL',
+  })
+
+  const tracer = module.options?.opentelemetryInstrumentation
+    ? opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
+    : undefined
+
+  const resolver = async (
     _: unknown,
     resolverInput: Record<string, unknown>,
     serverContext: ServerContext,
     info: GraphQLResolveInfo,
+    span?: Span,
   ) => {
     // Setup logging
     const operationId = utils.randomOperationId()
-    const logger = logging.build({
-      moduleName: module.name,
-      operationId,
-      operationType: specification.type,
-      operationName,
-      server: 'GQL',
-    })
+    const logger = thisLogger.updateContext({ operationId })
     fromModuleInput.setHeader(serverContext, 'operation-id', operationId)
 
     // Decode all the needed bits to call the function
     const input = decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger) as never
+    span?.addEvent('Input decoded')
     const retrieveValue = completeRetrieveType.isOk ? decodeRetrieve(info, completeRetrieveType.value) : {}
+    span?.addEvent('Retrieve decoded')
 
     // Build the contexts
     const contextInput = await fromModuleInput.context(serverContext, info)
@@ -668,33 +678,70 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
         } else {
           outputValue = partialOutputType.encodeWithoutValidation(applyResult.error as never)
         }
+        endSpanWithResult(applyResult, span)
       } else {
         outputValue = partialOutputType.encodeWithoutValidation(applyOutput as never)
+        span?.setStatus({ code: SpanStatusCode.OK })
+        span?.end()
       }
       logger.logInfo('Completed.')
       return outputValue
     } catch (error) {
       logger.logError('Failed.')
       if (fromModuleInput.errorHandler) {
-        const result = await fromModuleInput.errorHandler({
-          context,
-          error,
-          functionArgs: { retrieve: retrieveValue, input },
-          functionName: operationName,
-          log: logger,
-          operationId,
-          ...contextInput,
-        })
-        if (result) {
-          throw createGraphQLError(result.message, result.options)
+        try {
+          const result = await fromModuleInput.errorHandler({
+            context,
+            error,
+            functionArgs: { retrieve: retrieveValue, input },
+            functionName: operationName,
+            log: logger,
+            operationId,
+            ...contextInput,
+          })
+          if (result) {
+            throw endSpanWithGraphQLError(createGraphQLError(result.message, result.options), span)
+          }
+        } catch {
+          throw endSpanWithGraphQLError(
+            createGraphQLError(`Internal server error: failing on graphql error handler`),
+            span,
+          )
         }
       }
       if (error instanceof Error) {
-        throw createGraphQLError(`Internal server error: ${error.message}`, { originalError: error })
+        throw endSpanWithGraphQLError(
+          createGraphQLError(`Internal server error: ${error.message}`, { originalError: error }),
+          span,
+        )
       } else {
-        throw createGraphQLError(`Internal server error.`)
+        throw endSpanWithGraphQLError(createGraphQLError(`Internal server error.`), span)
       }
     }
+  }
+
+  let resolve
+  if (tracer) {
+    resolve = async (
+      parent: unknown,
+      resolverInput: Record<string, unknown>,
+      serverContext: ServerContext,
+      info: GraphQLResolveInfo,
+    ) => {
+      return tracer.startActiveSpan(
+        `mondrian:graphql-handler:${functionName}`,
+        {
+          attributes: {
+            'graphql.operation.kind': info.operation.operation,
+            'graphql.operation.name': operationName,
+          },
+          kind: SpanKind.SERVER,
+        },
+        (span) => resolver(parent, resolverInput, serverContext, info, span),
+      )
+    }
+  } else {
+    resolve = resolver
   }
 
   if (retrieveType.isOk) {
@@ -703,6 +750,18 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
   } else {
     return [operationName, { type: output, args: { [graphQLInputTypeName]: input }, resolve }]
   }
+}
+
+function endSpanWithGraphQLError(error: GraphQLError, span?: Span): GraphQLError {
+  span?.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
+  span?.end()
+  return error
+}
+
+function endSpanWithResult(res: result.Result<any, any>, span?: Span) {
+  const spanStatusCode = res.isOk ? SpanStatusCode.OK : SpanStatusCode.ERROR
+  span?.setStatus({ code: spanStatusCode })
+  span?.end()
 }
 
 /**

@@ -12,7 +12,6 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   specification,
   functionBody,
   context,
-  globalMaxVersion,
   error,
 }: {
   functionName: string
@@ -20,11 +19,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   functionBody: functions.FunctionImplementation
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
-  globalMaxVersion: number
   error?: ErrorHandler<functions.Functions, ServerContext>
 }): (args: { request: Request; serverContext: ServerContext }) => Promise<Response> {
-  const minVersion = specification.version?.min ?? 1
-  const maxVersion = specification.version?.max ?? globalMaxVersion
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
     : generateGetInputFromRequest({ functionBody, specification })
@@ -163,7 +159,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           attributes: {
             [SemanticAttributes.HTTP_METHOD]: request.method,
             [SemanticAttributes.HTTP_ROUTE]: request.route,
-            'http.request.header.projection': request.headers.projection,
+            'http.request.header.retrieve': request.headers.retrieve,
           },
           kind: SpanKind.SERVER,
         },

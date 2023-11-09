@@ -12,8 +12,8 @@ export const functions = {
 
 const prisma = new PrismaClient()
 export const instance = module.build({
-  name: 'reddit',
-  version: '2.0.0',
+  name: process.env.MODULE_NAME ?? '???',
+  version: process.env.MODULE_NAME ?? '0.0.0',
   functions,
   options: {
     maxSelectionDepth: 3,

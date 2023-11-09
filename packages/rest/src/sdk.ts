@@ -32,7 +32,7 @@ type SdkFunctionResult<
   : sdk.Project<O, P>
 
 function getRequestBuilder(args: { specification: FunctionSpecifications; functionBody: functions.FunctionInterface }) {
-  return generateOpenapiInput({ ...args, typeMap: {}, typeRef: new Map() }).request
+  return generateOpenapiInput({ ...args, internalData: { typeMap: {}, typeRef: new Map() } }).request
 }
 
 export function build<const Fs extends functions.FunctionsInterfaces, const API extends ApiSpecification<Fs>>({

@@ -21,7 +21,7 @@ describe.concurrent('encoding', () => {
   // `null`; however, both `null` and `undefined` are both encoded to the JSON value `null`!
   // This means that, in the decoding process, when faced with null and the above type
   // the decoded result would be undefined (and not the original null)
-  test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded, originalValue]) => {
+  test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded]) => {
     //encoding(decoding(x)) = x
     const decodedResult = model.concretise(type).decode(encoded)
     const decoded = assertOk(decodedResult, prettyErrors)

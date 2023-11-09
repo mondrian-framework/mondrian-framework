@@ -33,7 +33,6 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
         specification,
         functionName,
         functionBody,
-        globalMaxVersion: api.version,
         error,
       })
       const lambdaApiHandler: HandlerFunction = async (request, response) => {

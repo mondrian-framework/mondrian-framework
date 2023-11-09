@@ -151,7 +151,6 @@ import { fastify } from 'fastify'
 //Define the mapping of Functions<->Methods
 const api = graphql.build({
   module: moduleInstance,
-  version: 2,
   functions: {
     register: { type: 'mutation' },
   },

@@ -279,30 +279,6 @@ describe('fromType', () => {
       take: true,
       skip: true,
     })
-    const expectedUserRetrieve = () =>
-      model.object({
-        select: model.optional(userSelect),
-        where: model.optional(userWhere),
-        orderBy: model.mutableArray(userOrderBy).optional(),
-        skip: model.integer({ minimum: 0 }).optional(),
-        take: model.integer({ minimum: 0, maximum: 20 }).optional(),
-      })
-    type ExpectedUserRetrieveType = model.Infer<typeof expectedUserRetrieve>
-    type GeneratedUserRetrieve = retrieve.FromType<
-      typeof user,
-      { where: true; select: true; orderBy: true; take: true; skip: true }
-    >
-    expectTypeOf<GeneratedUserRetrieve>().toMatchTypeOf<ExpectedUserRetrieveType>()
-    expectTypeOf<ExpectedUserRetrieveType>().toMatchTypeOf<GeneratedUserRetrieve>()
-
-    const expectedPostRetrieve = () =>
-      model.object({
-        select: model.optional(postSelect),
-        where: model.optional(postWhere),
-        orderBy: model.mutableArray(postOrderBy).optional(),
-        skip: model.integer({ minimum: 0 }).optional(),
-        take: model.integer({ minimum: 0, maximum: 20 }).optional(),
-      })
 
     const userSelect = () =>
       model.object(
@@ -431,6 +407,29 @@ describe('fromType', () => {
         },
         { name: 'PostOrderBy' },
       )
+
+    const expectedUserRetrieve = model.object({
+      select: model.optional(userSelect),
+      where: model.optional(userWhere),
+      orderBy: model.mutableArray(userOrderBy).optional(),
+      skip: model.integer({ minimum: 0 }).optional(),
+      take: model.integer({ minimum: 0, maximum: 20 }).optional(),
+    })
+    type ExpectedUserRetrieveType = model.Infer<typeof expectedUserRetrieve>
+    type GeneratedUserRetrieve = retrieve.FromType<
+      typeof user,
+      { where: true; select: true; orderBy: true; take: true; skip: true }
+    >
+    expectTypeOf<GeneratedUserRetrieve>().toMatchTypeOf<ExpectedUserRetrieveType>()
+    expectTypeOf<ExpectedUserRetrieveType>().toMatchTypeOf<GeneratedUserRetrieve>()
+
+    const expectedPostRetrieve = model.object({
+      select: model.optional(postSelect),
+      where: model.optional(postWhere),
+      orderBy: model.mutableArray(postOrderBy).optional(),
+      skip: model.integer({ minimum: 0 }).optional(),
+      take: model.integer({ minimum: 0, maximum: 20 }).optional(),
+    })
 
     expect(computedUserRetrieve.isOk).toBe(true)
     if (computedUserRetrieve.isOk) {

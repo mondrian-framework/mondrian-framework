@@ -13,8 +13,8 @@
   },
   "keywords": [],
   "dependencies": {
-    "@opentelemetry/sdk-node": "0.44.0",
-    "@opentelemetry/api-logs": "0.44.0"
+    "@opentelemetry/sdk-node": "0.43.0",
+    "@opentelemetry/api-logs": "0.43.0"
   },
   "peerDependencies": {
     "@mondrian-framework/model": "^0.0.0"

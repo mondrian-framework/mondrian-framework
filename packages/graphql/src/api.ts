@@ -30,7 +30,7 @@ export function build<Fs extends functions.Functions, ContextInput>(api: Api<Fs,
   return api
 }
 
-export type ErrorHandler<F extends functions.Functions, ContextInput> = (
+export type ErrorHandler<F extends functions.Functions, ServerContext> = (
   args: {
     error: unknown
     log: logger.MondrianLogger
@@ -41,5 +41,5 @@ export type ErrorHandler<F extends functions.Functions, ContextInput> = (
       retrieve: unknown
       input: unknown
     }
-  } & ContextInput,
+  } & ServerContext,
 ) => Promise<{ message: string; options?: GraphQLErrorOptions } | void>

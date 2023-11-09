@@ -15,8 +15,8 @@ export function serve<const Fs extends functions.Functions, const ContextInput>(
 }: {
   api: graphql.Api<Fs, ContextInput>
   server: FastifyInstance
-  context: (serve: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
-  errorHandler?: graphql.ErrorHandler<Fs, ContextInput>
+  context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
+  errorHandler?: graphql.ErrorHandler<Fs, ServerContext>
 }): void {
   const schema = graphql.fromModule({
     api,

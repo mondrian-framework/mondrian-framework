@@ -446,7 +446,7 @@ export type FromModuleInput<ServerContext, Fs extends functions.Functions, Conte
   api: Api<Fs, ContextInput>
   context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   setHeader: (context: ServerContext, name: string, value: string) => void
-  errorHandler?: ErrorHandler<Fs, ContextInput>
+  errorHandler?: ErrorHandler<Fs, ServerContext>
 }
 
 /**
@@ -627,32 +627,27 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
         fromModuleInput.setHeader(serverContext, 'operation-id', operationId)
 
         // Decode all the needed bits to call the function
-        const input = !model.isNever(functionBody.input)
+        const input = model.isNever(functionBody.input)
           ? undefined
           : decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger, tracer)
         const retrieveValue = completeRetrieveType.isOk ? decodeRetrieve(info, completeRetrieveType.value, tracer) : {}
 
-        // Build the contexts
-        const { context, contextInput } = await tracer.startActiveSpan('build-context', async (span) => {
-          try {
-            const contextInput = await fromModuleInput.context(serverContext, info)
-            const context = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
-            span?.end()
-            return { context, contextInput }
-          } catch (error) {
-            handleUnknownError(error, span)
-          }
-        })
-
-        // Call the function and handle a possible failure
+        let moduleContext
         try {
+          //Context building
+          const contextInput = await fromModuleInput.context(serverContext, info)
+          moduleContext = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
+
+          // Function call
           const applyOutput = await functionBody.apply({
-            context: context as Record<string, unknown>,
+            context: moduleContext as Record<string, unknown>,
             retrieve: retrieveValue,
             input: input as never,
             operationId,
             logger,
           })
+
+          //Output processing
           let outputValue
           if (functionBody.errors) {
             const applyResult = applyOutput as result.Result<unknown, Record<string, unknown>>
@@ -675,22 +670,25 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
           logger.logError('Failed.')
           if (fromModuleInput.errorHandler) {
             const result = await fromModuleInput.errorHandler({
-              context,
+              context: moduleContext,
               error,
               functionArgs: { retrieve: retrieveValue, input },
               functionName: operationName,
               log: logger,
               operationId,
-              ...contextInput,
+              ...serverContext,
             })
             if (result) {
+              span?.setStatus({ code: SpanStatusCode.ERROR, message: result.message })
+              span?.end()
               throw createGraphQLError(result.message, result.options)
             }
           }
-          throw error
+          handleUnknownError(error, span)
         }
       } catch (error) {
-        handleUnknownError(error, span)
+        span?.end()
+        throw error
       }
     })
 
@@ -710,7 +708,8 @@ function endSpanWithGraphQLError(error: GraphQLError, span: Span | undefined): G
 
 function endSpanWithResult<R extends result.Result<any, any>>(res: R, span: Span | undefined): R {
   const spanStatusCode = res.isOk ? SpanStatusCode.OK : SpanStatusCode.ERROR
-  span?.setStatus({ code: spanStatusCode })
+  const message = res.isOk ? undefined : JSON.stringify(res.error)
+  span?.setStatus({ code: spanStatusCode, message })
   span?.end()
   return res
 }

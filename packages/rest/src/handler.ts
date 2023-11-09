@@ -24,7 +24,6 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
     : generateGetInputFromRequest({ functionBody, specification })
-  const inputType = functionBody.input
   const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
 
@@ -46,30 +45,17 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         kind: SpanKind.SERVER,
       },
       async (span) => {
+        //TODO: add operationId to header only once
         const tracer = functionBody.tracer.withPrefix(`mondrian:rest-handler:${functionName}:`)
 
         //Setup logging
         const operationId = utils.randomOperationId()
         span?.setAttribute('operationId', operationId)
-        const operationLogger = thisLogger.updateContext({ operationId })
+        const logger = thisLogger.updateContext({ operationId })
         const responseHeaders = { 'operation-id': operationId }
 
         //Decode input
-        const inputResult = tracer.startActiveSpan('decode-input', (span) => {
-          if (model.isNever(inputType)) {
-            return result.ok(undefined)
-          }
-          const rawInput = getInputFromRequest(request)
-          const decoded = decodeRawInput({ input: rawInput, type: inputType })
-          if (!decoded.isOk) {
-            operationLogger.logError('Bad request. (input)')
-            endSpanWithError({ span, failure: decoded })
-            return result.fail(addHeadersToResponse(decoded.error, responseHeaders))
-          } else {
-            span?.end()
-            return result.ok(decoded.value)
-          }
-        })
+        const inputResult = decodeInput(functionBody.input, request, getInputFromRequest, logger, tracer)
         if (!inputResult.isOk) {
           span?.end()
           return inputResult.error
@@ -77,74 +63,45 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         const input = inputResult.value
 
         //Decode retrieve
-        let retrieveValue: retrieve.GenericRetrieve | undefined = undefined
-        if (retrieveType.isOk) {
-          const retrieveResult = tracer.startActiveSpan('decode-retrieve', (span) => {
-            const rawRetrieve = request.headers['retrieve']
-            if (rawRetrieve && typeof rawRetrieve === 'string') {
-              let jsonRawRetrieve
-              try {
-                jsonRawRetrieve = JSON.parse(rawRetrieve)
-              } catch {
-                jsonRawRetrieve = 'Invalid JSON'
-              }
-              const decodedRetrieve = decodeRawRetrieve({ input: jsonRawRetrieve, type: retrieveType.value })
-              if (!decodedRetrieve.isOk) {
-                operationLogger.logError('Bad request. (retrieve)')
-                endSpanWithError({ span, failure: decodedRetrieve })
-                return result.fail(addHeadersToResponse(decodedRetrieve.error, responseHeaders))
-              }
-              return result.ok(completeRetrieve(decodedRetrieve.value as retrieve.GenericRetrieve, functionBody.output))
-            } else {
-              return result.ok(completeRetrieve({}, functionBody.output))
-            }
-          })
-          if (!retrieveResult.isOk) {
-            span?.end()
-            return retrieveResult.error
-          }
-          retrieveValue = retrieveResult.value
+        const retrieveResult = decodeRetrieve(retrieveType, functionBody.output, request, logger, tracer)
+        if (!retrieveResult.isOk) {
+          span?.end()
+          return retrieveResult.error
         }
+        const retrieveValue: retrieve.GenericRetrieve | undefined = retrieveResult.value
 
         let moduleContext
         try {
+          //context building
           const contextInput = await context(serverContext)
-          moduleContext = await module.context(contextInput, {
-            retrieve: retrieveValue,
-            input,
-            operationId,
-            logger: operationLogger,
-          })
-          const res = (await functionBody.apply({
+          moduleContext = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
+
+          // Function call
+          const applyOutput = await functionBody.apply({
             retrieve: retrieveValue ?? {},
             input: input as never,
             context: moduleContext as Record<string, unknown>,
             operationId,
-            logger: operationLogger,
-          })) as any
+            logger,
+          })
 
-          if (functionBody.errors && !res.isOk) {
+          //Output processing
+          if (functionBody.errors && !applyOutput.isOk) {
             const codes = (specification.errorCodes ?? {}) as Record<string, number>
-            if (functionBody.errors) {
-              const key = Object.keys(res.error as Record<string, unknown>)[0]
-              const status = key ? codes[key] ?? 400 : 400
-              const encoded = model.concretise(functionBody.errors[key]).encodeWithoutValidation(res.error as never)
-              const response: Response = { status, body: encoded, headers: responseHeaders }
-              operationLogger.logInfo('Completed with error.')
-              endSpanWithResponse({ span, response })
-              return response
-            } else {
-              const reason =
-                "Function failed with an error but it explicitly stated it couldn't fail since its error field is undefined"
-              const failure = result.fail({ status: 500, body: { reason } })
-              endSpanWithError({ span, failure })
-              return addHeadersToResponse(failure.error, responseHeaders)
-            }
+            const key = Object.keys(applyOutput.error as Record<string, unknown>)[0]
+            const status = key ? codes[key] ?? 400 : 400
+            const encoded = model
+              .concretise(functionBody.errors[key])
+              .encodeWithoutValidation(applyOutput.error as never)
+            const response: Response = { status, body: encoded, headers: responseHeaders }
+            logger.logInfo('Completed with error.')
+            endSpanWithResponse({ span, response })
+            return response
           } else {
-            let value = functionBody.errors && res.isOk ? res.value : res
+            const value = functionBody.errors ? applyOutput.value : applyOutput //unwrap output
             const encoded = partialOutputType.encodeWithoutValidation(value as never)
             const response: Response = { status: 200, body: encoded, headers: responseHeaders }
-            operationLogger.logInfo('Completed.')
+            logger.logInfo('Completed.')
             endSpanWithResponse({ span, response })
             return response
           }
@@ -153,11 +110,11 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           if (e instanceof Error) {
             span?.recordException(e)
           }
-          operationLogger.logError('Failed with exception.')
+          logger.logError('Failed with exception.')
           if (error) {
             const result = await error({
               error: e,
-              logger: operationLogger,
+              logger,
               functionName,
               operationId,
               context: moduleContext,
@@ -178,25 +135,86 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   return handler
 }
 
+function decodeInput(
+  inputType: model.Type,
+  request: Request,
+  getInputFromRequest: (request: Request) => unknown,
+  logger: logger.MondrianLogger,
+  tracer: functions.Tracer,
+): result.Result<unknown, Response> {
+  return tracer.startActiveSpan('decode-input', (span) => {
+    if (model.isNever(inputType)) {
+      return result.ok(undefined)
+    }
+    let rawInput
+    try {
+      rawInput = getInputFromRequest(request)
+    } catch {
+      const failure = result.fail<Response>({ body: 'Error while extracting input from request', status: 500 })
+      endSpanWithError({ span, failure })
+      return failure
+    }
+    const decoded = model
+      .concretise(inputType)
+      .decode(rawInput, { typeCastingStrategy: 'tryCasting' })
+      .mapError((error) => ({ status: 400, body: { errors: error, message: 'Invalid input' }, headers: {} }))
+    if (!decoded.isOk) {
+      logger.logError('Bad request. (input)')
+      endSpanWithError({ span, failure: decoded })
+      return result.fail(decoded.error)
+    } else {
+      span?.end()
+      return result.ok(decoded.value)
+    }
+  })
+}
+
+function decodeRetrieve(
+  retrieveType: result.Result<model.Type, unknown>,
+  outputType: model.Type,
+  request: Request,
+  logger: logger.MondrianLogger,
+  tracer: functions.Tracer,
+): result.Result<retrieve.GenericRetrieve | undefined, Response> {
+  if (!retrieveType.isOk) {
+    return result.ok(undefined)
+  }
+  return tracer.startActiveSpan('decode-retrieve', (span) => {
+    const rawRetrieve = request.headers['retrieve']
+    if (rawRetrieve && typeof rawRetrieve === 'string') {
+      let jsonRawRetrieve
+      try {
+        jsonRawRetrieve = JSON.parse(rawRetrieve)
+      } catch {
+        const failure = result.fail<Response>({ body: 'Invalid JSON on "retrieve" header', status: 500 })
+        endSpanWithError({ span, failure })
+        return failure
+      }
+      const decodedRetrieve = model
+        .concretise(retrieveType.value)
+        .decode(jsonRawRetrieve, { typeCastingStrategy: 'tryCasting' })
+        .mapError((error) => ({
+          status: 400,
+          body: { errors: error, message: 'Invalid retrieve' },
+          headers: {},
+        }))
+      if (!decodedRetrieve.isOk) {
+        logger.logError('Bad request. (retrieve)')
+        endSpanWithError({ span, failure: decodedRetrieve })
+        return result.fail(decodedRetrieve.error)
+      }
+      return result.ok(completeRetrieve(decodedRetrieve.value as retrieve.GenericRetrieve, outputType))
+    } else {
+      return result.ok(completeRetrieve({}, outputType))
+    }
+  })
+}
+
 function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, internalData: { typeMap: {}, typeRef: new Map() } }).input
-}
-
-function decodeRawInput({ input, type }: { input: unknown; type: model.Type }): result.Result<unknown, Response> {
-  const decoded = model.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
-  return decoded.mapError((error) => ({ status: 400, body: { errors: error, message: 'Invalid input' }, headers: {} }))
-}
-
-function decodeRawRetrieve({ input, type }: { input: unknown; type: model.Type }): result.Result<unknown, Response> {
-  const decoded = model.concretise(type).decode(input, { typeCastingStrategy: 'tryCasting' })
-  return decoded.mapError((error) => ({
-    status: 400,
-    body: { errors: error, message: 'Invalid retrieve' },
-    headers: {},
-  }))
 }
 
 function addHeadersToResponse(response: Response, headers: Response['headers']): Response {

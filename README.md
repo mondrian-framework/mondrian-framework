@@ -22,7 +22,7 @@ npm i @mondrian-framework/model \
       @mondrian-framework/rest \
       @mondrian-framework/rest-fastify \
       @mondrian-framework/graphql \
-      @mondrian-framework/graphql-fastify \
+      @mondrian-framework/graphql-yoga \
       fastify
 ```
 
@@ -136,6 +136,8 @@ server.listen({ port: 4000 }).then((address) => {
 ```
 
 By enabling REST introspection, you can explore your API using the Swagger documentation at http://localhost:4000/openapi.
+<img width="777" alt="swagger-example" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/12a5433d-5138-4e75-99de-4385b77b9062">
+
 
 ### Serve module GRAPHQL
 
@@ -143,7 +145,7 @@ You can serve the module also as a GraphQL endpoint with the following code:
 
 ```typescript
 import { graphql } from '@mondrian-framework/graphql'
-import { serve } from '@mondrian-framework/graphql-fastify'
+import { serve } from '@mondrian-framework/graphql-yoga'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods
@@ -158,9 +160,11 @@ const api = graphql.build({
 //Start the server
 const server = fastify()
 serve({ server, api, context: async ({}) => ({}) })
-fastifyInstance.listen({ port: 4000 }).then((address) => {
+server.listen({ port: 4000 }).then((address) => {
   console.log(`Server started at address ${address}/graphql`)
 })
 ```
 
 Enabling GraphQL introspection allows you to explore your API using the Yoga schema navigator at http://localhost:4000/graphql Nothing stops you from exposing the module with both a GraphQL and a REST endpoint.
+
+<img width="777" alt="graphql-example" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/c8283eca-9aaf-48b4-91a3-80b164397a19">

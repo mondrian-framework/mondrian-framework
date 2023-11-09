@@ -1,6 +1,7 @@
 import { logger } from '.'
 import { BaseFunction } from './function/base'
 import { result, retrieve, model } from '@mondrian-framework/model'
+import { Span, SpanOptions } from '@opentelemetry/api'
 
 /**
  * Mondrian function interface.
@@ -54,6 +55,15 @@ export interface Function<
 }
 
 /**
+ * Opentelemetry Tracer extension where the span can also be undefined.
+ */
+export interface Tracer {
+  withPrefix(name: string): Tracer
+  startActiveSpan<F extends (span?: Span) => unknown>(name: string, fn: F): ReturnType<F>
+  startActiveSpanWithOptions<F extends (span?: Span) => unknown>(name: string, options: SpanOptions, fn: F): ReturnType<F>;
+}
+
+/**
  * Mondrian function implemetation.
  */
 export interface FunctionImplementation<
@@ -67,6 +77,10 @@ export interface FunctionImplementation<
    * Function apply. This executes function's {@link Middleware} and function's body.
    */
   readonly apply: (args: FunctionArguments<I, O, C, Context>) => FunctionResult<O, E, C>
+  /**
+   * Openteletry {@link Tracer} of this function.
+   */
+  readonly tracer: Tracer
 }
 
 /**

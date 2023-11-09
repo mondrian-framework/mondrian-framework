@@ -2,7 +2,8 @@ import { functions } from '..'
 import { ErrorType, FunctionResult, OutputRetrieveCapabilities } from '../function'
 import { BaseFunction } from './base'
 import { result, model } from '@mondrian-framework/model'
-import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
+import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span, SpanOptions } from '@opentelemetry/api'
+import { isPromise } from 'util/types'
 
 /**
  * Opentelemetry instrumented function.
@@ -15,7 +16,7 @@ export class OpentelemetryFunction<
   Context extends Record<string, unknown>,
 > extends BaseFunction<I, O, E, C, Context> {
   private readonly name: string
-  private readonly tracer: Tracer
+  public readonly tracer: TracerWrapper
   private readonly counter: Counter
   private readonly histogram: Histogram
 
@@ -30,7 +31,7 @@ export class OpentelemetryFunction<
   ) {
     super(func)
     this.name = name
-    this.tracer = opentelemetry.tracer
+    this.tracer = new TracerWrapper(opentelemetry.tracer, '')
     this.counter = opentelemetry.counter
     this.histogram = opentelemetry.histogram
   }
@@ -38,7 +39,7 @@ export class OpentelemetryFunction<
   public async apply(args: functions.FunctionArguments<I, O, C, Context>): FunctionResult<O, E, C> {
     this.counter.add(1)
     const startTime = new Date().getTime()
-    const spanResult = await this.tracer.startActiveSpan(
+    const spanResult = await this.tracer.startActiveSpanWithOptions(
       `mondrian:function-apply:${this.name}`,
       {
         kind: SpanKind.INTERNAL,
@@ -90,5 +91,27 @@ export class OpentelemetryFunction<
     const middleware = this.middlewares[middlewareIndex]
     span.addEvent('execution', { type: 'middleware', name: middleware.name })
     return middleware.apply(args, (mappedArgs) => this.executeWithinSpan(middlewareIndex + 1, mappedArgs, span), this)
+  }
+}
+
+class TracerWrapper implements functions.Tracer {
+  readonly prefix: string
+  readonly tracer: Tracer
+  constructor(tracer: Tracer, prefix: string) {
+    this.tracer = tracer
+    this.prefix = prefix
+  }
+  public withPrefix(prefix: string): TracerWrapper {
+    return new TracerWrapper(this.tracer, prefix)
+  }
+  public startActiveSpan<F extends (span: Span) => unknown>(name: string, fn: F): ReturnType<F> {
+    return this.startActiveSpanWithOptions(name, {}, fn)
+  }
+  public startActiveSpanWithOptions<F extends (span: Span) => unknown>(
+    name: string,
+    options: SpanOptions,
+    fn: F,
+  ): ReturnType<F> {
+    return this.tracer.startActiveSpan(`${this.prefix}${name}`, options, fn)
   }
 }

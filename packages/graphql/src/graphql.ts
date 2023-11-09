@@ -6,8 +6,7 @@ import { functions, logger as logging, module, utils } from '@mondrian-framework
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { groupBy } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
-import opentelemetry, { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
-import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
+import { SpanStatusCode, Span } from '@opentelemetry/api'
 import {
   GraphQLScalarType,
   GraphQLObjectType,
@@ -542,27 +541,6 @@ function splitIntoNamespaces(
 }
 
 /**
- * Extracts the retrieve value by traversing the {@link GraphQLResolveInfo} and then decode it with the
- * respective retrieveType.
- */
-function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: model.Type): GenericRetrieve {
-  if (info.fieldNodes.length !== 1) {
-    throw createGraphQLError(
-      'Invalid field nodes count. Probably you are requesting the same query or mutation multiple times.',
-    )
-  }
-  const node = info.fieldNodes[0]
-  const retrieve = selectionNodeToRetrieve(node)
-  const rawRetrieve = retrieve[node.name.value] as GenericRetrieve
-  const result = model.concretise(retrieveType).decode(rawRetrieve)
-  if (result.isOk) {
-    return result.value
-  } else {
-    throw createGraphQLError('Failed to decode retrieve')
-  }
-}
-
-/**
  * Gathers retrieve infomartion by traversing the graphql nodes of the request.
  */
 function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericSelect, null> {
@@ -633,116 +611,88 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
     server: 'GQL',
   })
 
-  const tracer = module.options?.opentelemetryInstrumentation
-    ? opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
-    : undefined
-
-  const resolver = async (
+  const resolve = (
     _: unknown,
     resolverInput: Record<string, unknown>,
     serverContext: ServerContext,
     info: GraphQLResolveInfo,
-    span?: Span,
-  ) => {
-    // Setup logging
-    const operationId = utils.randomOperationId()
-    const logger = thisLogger.updateContext({ operationId })
-    fromModuleInput.setHeader(serverContext, 'operation-id', operationId)
+  ) =>
+    functionBody.tracer.startActiveSpan(`mondrian:graphql-resolver:${functionName}`, async (span) => {
+      const tracer = functionBody.tracer.withPrefix(`mondrian:graphql-resolver:${functionName}:`)
+      try {
+        // Setup logging
+        const operationId = utils.randomOperationId()
+        span?.setAttribute('operationId', operationId)
+        const logger = thisLogger.updateContext({ operationId })
+        fromModuleInput.setHeader(serverContext, 'operation-id', operationId)
 
-    // Decode all the needed bits to call the function
-    const input = decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger) as never
-    span?.addEvent('Input decoded')
-    const retrieveValue = completeRetrieveType.isOk ? decodeRetrieve(info, completeRetrieveType.value) : {}
-    span?.addEvent('Retrieve decoded')
+        // Decode all the needed bits to call the function
+        const input = !model.isNever(functionBody.input)
+          ? undefined
+          : decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger, tracer)
+        const retrieveValue = completeRetrieveType.isOk ? decodeRetrieve(info, completeRetrieveType.value, tracer) : {}
 
-    // Build the contexts
-    const contextInput = await fromModuleInput.context(serverContext, info)
-    const context = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
-
-    // Call the function and handle a possible failure
-    try {
-      const applyOutput = await functionBody.apply({
-        context: context as Record<string, unknown>,
-        retrieve: retrieveValue,
-        input,
-        operationId,
-        logger,
-      })
-      let outputValue
-      if (functionBody.errors) {
-        const applyResult = applyOutput as result.Result<unknown, Record<string, unknown>>
-        if (applyResult.isOk) {
-          //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
-          const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
-          outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
-        } else {
-          outputValue = partialOutputType.encodeWithoutValidation(applyResult.error as never)
-        }
-        endSpanWithResult(applyResult, span)
-      } else {
-        outputValue = partialOutputType.encodeWithoutValidation(applyOutput as never)
-        span?.setStatus({ code: SpanStatusCode.OK })
-        span?.end()
-      }
-      logger.logInfo('Completed.')
-      return outputValue
-    } catch (error) {
-      logger.logError('Failed.')
-      if (fromModuleInput.errorHandler) {
-        try {
-          const result = await fromModuleInput.errorHandler({
-            context,
-            error,
-            functionArgs: { retrieve: retrieveValue, input },
-            functionName: operationName,
-            log: logger,
-            operationId,
-            ...contextInput,
-          })
-          if (result) {
-            throw endSpanWithGraphQLError(createGraphQLError(result.message, result.options), span)
+        // Build the contexts
+        const { context, contextInput } = await tracer.startActiveSpan('build-context', async (span) => {
+          try {
+            const contextInput = await fromModuleInput.context(serverContext, info)
+            const context = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
+            span?.end()
+            return { context, contextInput }
+          } catch (error) {
+            handleUnknownError(error, span)
           }
-        } catch {
-          throw endSpanWithGraphQLError(
-            createGraphQLError(`Internal server error: failing on graphql error handler`),
-            span,
-          )
-        }
-      }
-      if (error instanceof Error) {
-        throw endSpanWithGraphQLError(
-          createGraphQLError(`Internal server error: ${error.message}`, { originalError: error }),
-          span,
-        )
-      } else {
-        throw endSpanWithGraphQLError(createGraphQLError(`Internal server error.`), span)
-      }
-    }
-  }
+        })
 
-  let resolve
-  if (tracer) {
-    resolve = async (
-      parent: unknown,
-      resolverInput: Record<string, unknown>,
-      serverContext: ServerContext,
-      info: GraphQLResolveInfo,
-    ) => {
-      return tracer.startActiveSpan(
-        `mondrian:graphql-handler:${functionName}`,
-        {
-          attributes: {
-            'graphql.operation.kind': info.operation.operation,
-            'graphql.operation.name': operationName,
-          },
-          kind: SpanKind.SERVER,
-        },
-        (span) => resolver(parent, resolverInput, serverContext, info, span),
-      )
-    }
-  } else {
-    resolve = resolver
-  }
+        // Call the function and handle a possible failure
+        try {
+          const applyOutput = await functionBody.apply({
+            context: context as Record<string, unknown>,
+            retrieve: retrieveValue,
+            input: input as never,
+            operationId,
+            logger,
+          })
+          let outputValue
+          if (functionBody.errors) {
+            const applyResult = applyOutput as result.Result<unknown, Record<string, unknown>>
+            if (applyResult.isOk) {
+              //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
+              const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
+              outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
+            } else {
+              outputValue = partialOutputType.encodeWithoutValidation(applyResult.error as never)
+            }
+            endSpanWithResult(applyResult, span)
+          } else {
+            outputValue = partialOutputType.encodeWithoutValidation(applyOutput as never)
+            span?.setStatus({ code: SpanStatusCode.OK })
+            span?.end()
+          }
+          logger.logInfo('Completed.')
+          return outputValue
+        } catch (error) {
+          logger.logError('Failed.')
+          if (fromModuleInput.errorHandler) {
+            const result = await fromModuleInput.errorHandler({
+              context,
+              error,
+              functionArgs: { retrieve: retrieveValue, input },
+              functionName: operationName,
+              log: logger,
+              operationId,
+              ...contextInput,
+            })
+            if (result) {
+              throw createGraphQLError(result.message, result.options)
+            }
+          }
+          throw error
+        }
+      } catch (error) {
+        handleUnknownError(error, span)
+      }
+    })
 
   if (retrieveType.isOk) {
     const graphqlRetrieveArgs = retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
@@ -752,16 +702,25 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
   }
 }
 
-function endSpanWithGraphQLError(error: GraphQLError, span?: Span): GraphQLError {
+function endSpanWithGraphQLError(error: GraphQLError, span: Span | undefined): GraphQLError {
   span?.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
   span?.end()
   return error
 }
 
-function endSpanWithResult(res: result.Result<any, any>, span?: Span) {
+function endSpanWithResult<R extends result.Result<any, any>>(res: R, span: Span | undefined): R {
   const spanStatusCode = res.isOk ? SpanStatusCode.OK : SpanStatusCode.ERROR
   span?.setStatus({ code: spanStatusCode })
   span?.end()
+  return res
+}
+
+function handleUnknownError(error: unknown, span: Span | undefined): never {
+  if (error instanceof Error) {
+    throw endSpanWithGraphQLError(createGraphQLError(error.message, { originalError: error }), span)
+  } else {
+    throw endSpanWithGraphQLError(createGraphQLError(`Internal server error.`), span)
+  }
 }
 
 /**
@@ -795,13 +754,38 @@ function getFunctionOutputTypeWithErrors(
  * Tries to decode the given raw input, throwing a graphql error if the process fails.
  * A logger is needed to perform additional logging and keep track of the decoding result.
  */
-function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogger) {
-  const decoded = model.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' })
+function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogger, tracer: functions.Tracer): unknown {
+  const decoded = tracer.startActiveSpan(`decode-input`, (span) =>
+    endSpanWithResult(model.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' }), span),
+  )
   if (decoded.isOk) {
-    log.logInfo('Input decoded')
     return decoded.value
   } else {
     log.logError('Bad request. (input)')
     throw createGraphQLError(`Invalid input.`, { extensions: decoded.error })
+  }
+}
+
+/**
+ * Extracts the retrieve value by traversing the {@link GraphQLResolveInfo} and then decode it with the
+ * respective retrieveType.
+ */
+function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: model.Type, tracer: functions.Tracer): GenericRetrieve {
+  if (info.fieldNodes.length !== 1) {
+    throw createGraphQLError(
+      'Invalid field nodes count. Probably you are requesting the same query or mutation multiple times.',
+    )
+  }
+  const result = tracer.startActiveSpan('decode-retrieve', (span) => {
+    const node = info.fieldNodes[0]
+    const retrieve = selectionNodeToRetrieve(node)
+    const rawRetrieve = retrieve[node.name.value] as GenericRetrieve
+    const result = model.concretise(retrieveType).decode(rawRetrieve)
+    return endSpanWithResult(result, span)
+  })
+  if (result.isOk) {
+    return result.value
+  } else {
+    throw createGraphQLError('Failed to decode retrieve')
   }
 }

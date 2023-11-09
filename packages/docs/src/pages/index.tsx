@@ -89,8 +89,8 @@ export type Post = model.Infer<typeof Post>
 export const User = m.object({
   id: model.string(),
   createdAt: model.timestamp(),
-  email: model.string({ format: 'email' }),
-  password: model.string({ format: 'password', minLength: 5 }),
+  email: model.email(),
+  password: model.string({ minLength: 8 }),
   posts: model.array(Post),
 })
 export type User = model.Infer<typeof User>
@@ -128,7 +128,7 @@ import { model } from '@mondrian-framework/model'
 const register = functions.build({
   input: model.object({ 
     email: model.email(), 
-    password: model.string() 
+    password: model.string({ minLength: 8 }) 
   }),
   output: model.object({ jwt: model.string() }),
   errors: { weakPassword: model.string() },

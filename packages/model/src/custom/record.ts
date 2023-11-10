@@ -1,5 +1,4 @@
-import { model, decoding, validation } from '../index'
-import { prependFieldToAll } from '../utils'
+import { model, decoding, validation, path } from '../index'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -50,9 +49,9 @@ function decodeRecord<T extends model.Type>(
       entries.push([key, result.value])
     } else {
       if (decodingOptions?.errorReportingStrategy === 'allErrors') {
-        errors.push(...prependFieldToAll(result.error, key))
+        errors.push(...path.prependFieldToAll(result.error, key))
       } else {
-        return result.mapError((error) => prependFieldToAll(error, key))
+        return result.mapError((error) => path.prependFieldToAll(error, key))
       }
     }
   }
@@ -74,9 +73,9 @@ function validateRecord<T extends model.Type>(
     const result = concreteFieldsType.validate(v as never, validationOptions)
     if (!result.isOk) {
       if (validationOptions?.errorReportingStrategy === 'allErrors') {
-        errors.push(...prependFieldToAll(result.error, key))
+        errors.push(...path.prependFieldToAll(result.error, key))
       } else {
-        return result.mapError((error) => prependFieldToAll(error, key))
+        return result.mapError((error) => path.prependFieldToAll(error, key))
       }
     }
   }

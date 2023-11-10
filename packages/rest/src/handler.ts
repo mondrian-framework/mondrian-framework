@@ -1,7 +1,7 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
-import { result, retrieve, model } from '@mondrian-framework/model'
+import { result, retrieve, model, path } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -157,7 +157,7 @@ function decodeInput(
     const decoded = model
       .concretise(inputType)
       .decode(rawInput, { typeCastingStrategy: 'tryCasting' })
-      .mapError((error) => ({ status: 400, body: { errors: error, message: 'Invalid input' }, headers: {} }))
+      .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid input' }, headers: {} }))
     if (!decoded.isOk) {
       logger.logError('Bad request. (input)')
       endSpanWithError({ span, failure: decoded })
@@ -193,11 +193,7 @@ function decodeRetrieve(
       const decodedRetrieve = model
         .concretise(retrieveType.value)
         .decode(jsonRawRetrieve, { typeCastingStrategy: 'tryCasting' })
-        .mapError((error) => ({
-          status: 400,
-          body: { errors: error, message: 'Invalid retrieve' },
-          headers: {},
-        }))
+        .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid retrieve' }, headers: {} }))
       if (!decodedRetrieve.isOk) {
         logger.logError('Bad request. (retrieve)')
         endSpanWithError({ span, failure: decodedRetrieve })

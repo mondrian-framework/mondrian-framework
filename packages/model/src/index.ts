@@ -1,5 +1,3 @@
-import * as m from './types-exports'
-
 export * as model from './types-exports'
 export * as encoding from './encoding'
 export * as decoding from './decoding'
@@ -8,6 +6,3 @@ export * as retrieve from './retrieve'
 export * as result from './result'
 export * as path from './path'
 export * as arbitrary from './arbitrary/arbitrary'
-
-export { m }
-export default m

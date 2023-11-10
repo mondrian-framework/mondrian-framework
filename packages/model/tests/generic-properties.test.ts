@@ -24,18 +24,12 @@ describe.concurrent('encoding', () => {
   test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded]) => {
     //encoding(decoding(x)) = x
     const decodedResult = model.concretise(type).decode(encoded)
-    const decoded = assertOk(decodedResult, prettyErrors)
+    const decoded = assertOk(decodedResult)
     const encodedResult = model.concretise(type).encode(decoded as never)
-    const encodedAgain = assertOk(encodedResult, prettyErrors)
+    const encodedAgain = assertOk(encodedResult)
     expect(encodedAgain).toEqual(encoded)
   })
 })
-
-function prettyErrors(errors: decoding.Error[] | validation.Error[]): string {
-  return errors
-    .map((error) => ('assertion' in error ? validation.errorToString(error) : decoding.errorToString(error)))
-    .join('\n')
-}
 
 describe.concurrent('validation', () => {
   test.prop([arbitrary.typeAndValue()])('always succeeds on generated valid values', ([type, value]) => {

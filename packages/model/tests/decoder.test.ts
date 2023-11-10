@@ -8,7 +8,7 @@ function compareDecoderErrors(one: decoding.Error[], other: decoding.Error[]): b
   const compareSingleErrors = (one: decoding.Error, other: decoding.Error) => {
     const expectedAreEqual = one.expected === other.expected
     const gotAreEqual = one.got === other.got || (Number.isNaN(one.got) && Number.isNaN(other.got))
-    const pathsAreEqual = one.path.equals(other.path)
+    const pathsAreEqual = one.path === other.path
     return expectedAreEqual && gotAreEqual && pathsAreEqual
   }
   return areSameArray(one, other, compareSingleErrors)
@@ -53,7 +53,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonBoolean])('fails on non booleans', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'boolean', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'boolean', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
 
@@ -89,7 +89,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonNumber])('fails on non numbers', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'number', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'number', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
 
@@ -120,7 +120,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       test('still fails with non number strings', () => {
         for (const value of ['foo', 'bar', '1.1 not a number']) {
           const result = Model.decodeWithoutValidation(value, options)
-          const expectedError = [{ expected: 'number', got: value, path: path.empty() }]
+          const expectedError = [{ expected: 'number', got: value, path: path.root() }]
           checkError(result, expectedError)
         }
       })
@@ -135,7 +135,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonString])('fails on non strings', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'string', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'string', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
 
@@ -171,13 +171,13 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([number.filter((n) => n !== literalValue)])('fails on numbers that are not the literal', (n) => {
         const result = Model.decodeWithoutValidation(n, options)
-        const expectedError = [{ expected: 'literal (1)', got: n, path: path.empty() }]
+        const expectedError = [{ expected: 'literal (1)', got: n, path: path.root() }]
         checkError(result, expectedError)
       })
 
       test.prop([nonNumber])('fails on non number values', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'literal (1)', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'literal (1)', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
     })
@@ -195,14 +195,14 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
         'fails on strings that are not the literal',
         (string) => {
           const result = Model.decodeWithoutValidation(string, options)
-          const expectedError = [{ expected: 'literal (mondrian)', got: string, path: path.empty() }]
+          const expectedError = [{ expected: 'literal (mondrian)', got: string, path: path.root() }]
           checkError(result, expectedError)
         },
       )
 
       test.prop([nonString])('fail on non string values', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'literal (mondrian)', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'literal (mondrian)', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
     })
@@ -220,14 +220,14 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
         'fails on booleans that are not the literal',
         (boolean) => {
           const result = Model.decodeWithoutValidation(boolean, options)
-          const expectedError = [{ expected: 'literal (true)', got: boolean, path: path.empty() }]
+          const expectedError = [{ expected: 'literal (true)', got: boolean, path: path.root() }]
           checkError(result, expectedError)
         },
       )
 
       test.prop([nonBoolean])('fails on non boolean values', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'literal (true)', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'literal (true)', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
     })
@@ -245,7 +245,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
         test.prop([nonNull])('fails on non null values', (value) => {
           const result = Model.decodeWithoutValidation(value, options)
-          const expectedError = [{ expected: 'literal (null)', got: value, path: path.empty() }]
+          const expectedError = [{ expected: 'literal (null)', got: value, path: path.root() }]
           checkError(result, expectedError)
         })
       })
@@ -259,7 +259,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
         test.prop([gen.string().filter((s) => s !== 'null')])('fails on other strings', (string) => {
           const result = Model.decodeWithoutValidation(string, options)
-          const expectedError = [{ expected: 'literal (null)', got: string, path: path.empty() }]
+          const expectedError = [{ expected: 'literal (null)', got: string, path: path.root() }]
           checkError(result, expectedError)
         })
       })
@@ -277,13 +277,13 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
     const nonVariant = gen.string().filter((s) => !(variants as readonly string[]).includes(s))
     test.prop([nonVariant])('fails on non variant strings', (string) => {
       const result = Model.decodeWithoutValidation(string)
-      const expectedError = [{ expected: 'enum ("one" | "two" | "three")', got: string, path: path.empty() }]
+      const expectedError = [{ expected: 'enum ("one" | "two" | "three")', got: string, path: path.root() }]
       checkError(result, expectedError)
     })
 
     test.prop([nonString])('fails on non strings', (value) => {
       const result = Model.decodeWithoutValidation(value)
-      const expectedError = [{ expected: 'enum ("one" | "two" | "three")', got: value, path: path.empty() }]
+      const expectedError = [{ expected: 'enum ("one" | "two" | "three")', got: value, path: path.root() }]
       checkError(result, expectedError)
     })
   })
@@ -296,7 +296,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonDate])('fails on non dates', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'ISO date', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'ISO date', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
       test.prop([
@@ -343,7 +343,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonTimestamp])('fails on non timestamp', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'timestamp', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'timestamp', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
 
@@ -406,7 +406,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonObject])('fails on non object', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'object', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'object', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
 
@@ -454,7 +454,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
     test.prop([nonNumber.filter((n) => n !== null && n !== undefined)])('fails on other values', (value) => {
       const result = Model.decodeWithoutValidation(value)
-      const expectedError = [{ expected: 'number or undefined', got: value, path: path.empty() }]
+      const expectedError = [{ expected: 'number or undefined', got: value, path: path.root() }]
       checkError(result, expectedError)
     })
   })
@@ -475,7 +475,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonNumber.filter((n) => n !== null)])('fails on other values', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'number or null', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'number or null', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
     })
@@ -500,14 +500,14 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([nonArray])('fails with non arrays', (value) => {
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'array', got: value, path: path.empty() }]
+        const expectedError = [{ expected: 'array', got: value, path: path.root() }]
         checkError(result, expectedError)
       })
 
       test('stops at first error by default', () => {
         const value = [0, 1, 'error1', 'error2']
         const result = Model.decodeWithoutValidation(value, options)
-        const expectedError = [{ expected: 'number', got: 'error1', path: path.empty().prependIndex(2) }]
+        const expectedError = [{ expected: 'number', got: 'error1', path: path.ofIndex(2) }]
         checkError(result, expectedError)
       })
 
@@ -517,8 +517,8 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
           const value = [0, 1, 'error1', 'error2']
           const result = Model.decodeWithoutValidation(value, options)
           const expectedError = [
-            { expected: 'number', got: 'error1', path: path.empty().prependIndex(2) },
-            { expected: 'number', got: 'error2', path: path.empty().prependIndex(3) },
+            { expected: 'number', got: 'error1', path: path.ofIndex(2) },
+            { expected: 'number', got: 'error2', path: path.ofIndex(3) },
           ]
           checkError(result, expectedError)
         })
@@ -550,7 +550,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
         const failingObjects = [{ 0: 10, 2: 12 }, { 1: 11, 2: 12 }, { notNumber: 10 }]
         for (const object of failingObjects) {
           const result = Model.decodeWithoutValidation(object, options)
-          const expectedError = [{ expected: 'array', got: object, path: path.empty() }]
+          const expectedError = [{ expected: 'array', got: object, path: path.root() }]
           checkError(result, expectedError)
         }
       })
@@ -558,7 +558,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       test('reports errors with correct indices', () => {
         const object = { 1: 11, 0: 10, 2: 'error' }
         const result = Model.decodeWithoutValidation(object, options)
-        const expectedError = [{ expected: 'number', got: 'error', path: path.empty().prependIndex(2) }]
+        const expectedError = [{ expected: 'number', got: 'error', path: path.ofIndex(2) }]
         checkError(result, expectedError)
       })
     })
@@ -585,14 +585,14 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
     test('fail when a required field is missing', () => {
       const object = { field2: 10 }
       const result = Model.decodeWithoutValidation(object)
-      const expectedError = [{ expected: 'number', got: undefined, path: path.empty().prependField('field1') }]
+      const expectedError = [{ expected: 'number', got: undefined, path: path.ofField('field1') }]
       checkError(result, expectedError)
     })
 
     test('fail when null is given instead of an empty object', () => {
       const object = null
       const result = model.object({}).decodeWithoutValidation(object)
-      const expectedError = [{ expected: 'object', got: null, path: path.empty() }]
+      const expectedError = [{ expected: 'object', got: null, path: path.root() }]
       checkError(result, expectedError)
     })
 
@@ -610,26 +610,26 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       const object = { field1: 1, field3: 1 }
       checkValue(Model.decodeWithoutValidation(object, { fieldStrictness: 'allowAdditionalFields' }), { field1: 1 })
       checkError(Model.decodeWithoutValidation(object), [
-        { expected: 'undefined', got: 1, path: path.empty().prependField('field3') },
+        { expected: 'undefined', got: 1, path: path.ofField('field3') },
       ])
     })
 
     test('stops at first error by default', () => {
       const object = { field1: 'error1', field2: 'error2' }
       const result = Model.decodeWithoutValidation(object)
-      const expectedError = [{ expected: 'number', got: 'error1', path: path.empty().prependField('field1') }]
+      const expectedError = [{ expected: 'number', got: 'error1', path: path.ofField('field1') }]
       checkError(result, expectedError)
     })
 
     test('treats null as an empty object', () => {
       const result = Model.decodeWithoutValidation(null, { typeCastingStrategy: 'tryCasting' })
-      const expectedError = [{ expected: 'number', got: undefined, path: path.empty().prependField('field1') }]
+      const expectedError = [{ expected: 'number', got: undefined, path: path.ofField('field1') }]
       checkError(result, expectedError)
     })
 
     test.prop([nonObject])('fails on non objects', (value) => {
       const result = Model.decodeWithoutValidation(value)
-      const expected = [{ expected: 'object', got: value, path: path.empty() }]
+      const expected = [{ expected: 'object', got: value, path: path.root() }]
       checkError(result, expected)
     })
 
@@ -640,8 +640,8 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
         const object = { field1: 'error1', field2: 'error2' }
         const result = Model.decodeWithoutValidation(object, options)
         const expectedError = [
-          { expected: 'number', got: 'error1', path: path.empty().prependField('field1') },
-          { expected: 'number or undefined', got: 'error2', path: path.empty().prependField('field2') },
+          { expected: 'number', got: 'error1', path: path.ofField('field1') },
+          { expected: 'number or undefined', got: 'error2', path: path.ofField('field2') },
         ]
         checkError(result, expectedError)
       })
@@ -787,11 +787,4 @@ describe.concurrent('record value', () => {
       checkValue(Model.decodeWithoutValidation(record), record)
     },
   )
-})
-
-describe.concurrent('errorToString', () => {
-  test('prints the error and its path', () => {
-    const error = { expected: 'expected', got: '1', path: path.empty() }
-    expect(decoding.errorToString(error)).toEqual('expected: expected, got: 1, path: $')
-  })
 })

@@ -1,5 +1,4 @@
-import { decoding, result, model, validation } from '../../'
-import { prependIndexToAll } from '../../utils'
+import { decoding, path, model, validation } from '../../'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -93,7 +92,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
       }
       const result = concreteType.validate(array[i] as never, validationOptions)
       if (!result.isOk) {
-        errors.push(...prependIndexToAll(result.error, i))
+        errors.push(...path.prependIndexToAll(result.error, i))
       }
     }
     if (errors.length > 0) {
@@ -131,7 +130,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
       if (result.isOk) {
         results.push(result.value)
       } else {
-        errors.push(...prependIndexToAll(result.error, i))
+        errors.push(...path.prependIndexToAll(result.error, i))
       }
     }
     if (errors.length > 0) {

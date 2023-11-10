@@ -1,5 +1,4 @@
 import { decoding, path, model, validation } from '../../'
-import { prependFieldToAll } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -90,7 +89,7 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
       const concreteFieldType = model.concretise(this.fields[fieldName])
       const result = concreteFieldType.validate(fieldValue as never, options)
       if (!result.isOk) {
-        errors.push(...prependFieldToAll(result.error, fieldName))
+        errors.push(...path.prependFieldToAll(result.error, fieldName))
       }
     }
     if (errors.length > 0) {
@@ -148,7 +147,7 @@ function decodeEntityProperties(
     if (type === undefined && value === undefined) {
       continue
     } else if (!type && decodingOptions?.fieldStrictness === 'expectExactFields') {
-      errors.push({ expected: 'undefined', got: value, path: path.empty().prependField(key) })
+      errors.push({ expected: 'undefined', got: value, path: path.ofField(key) })
       continue
     } else if (!type) {
       continue
@@ -157,7 +156,7 @@ function decodeEntityProperties(
     if (decodedValue.isOk) {
       result[key] = decodedValue.value
     } else {
-      errors.push(...prependFieldToAll(decodedValue.error, key))
+      errors.push(...path.prependFieldToAll(decodedValue.error, key))
     }
   }
   if (errors.length > 0) {

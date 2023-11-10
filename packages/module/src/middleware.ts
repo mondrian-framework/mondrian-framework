@@ -65,13 +65,6 @@ export function checkOutputType(
       })
 
       if (!respectResult.isOk) {
-        const errorStrings = respectResult.error.map((error) => {
-          if ('expected' in error) {
-            return decoding.errorToString(error)
-          } else {
-            validation.errorToString(error)
-          }
-        })
         args.logger.emit({
           body: 'Invalid output',
           attributes: {
@@ -79,7 +72,7 @@ export function checkOutputType(
             errors: Object.fromEntries(
               respectResult.error.map((v, i) => [
                 i,
-                { ...v, gotJSON: JSON.stringify(v.got), got: `${v.got}`, path: v.path.format() },
+                { ...v, gotJSON: JSON.stringify(v.got), got: `${v.got}`, path: v.path },
               ]),
             ),
           },
@@ -91,8 +84,8 @@ export function checkOutputType(
             return outputValue
           case 'throw':
             throw new Error(
-              `Invalid output on function ${functionName}. Errors: ${errorStrings
-                .map((v, i) => `(${i + 1}) ${v}`)
+              `Invalid output on function ${functionName}. Errors: ${respectResult.error
+                .map((v, i) => `(${i + 1}) ${JSON.stringify(v)}`)
                 .join('; ')}`,
             )
           default:

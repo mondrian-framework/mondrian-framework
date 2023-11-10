@@ -1,5 +1,4 @@
 import { result, validation, path } from './index'
-import { WithPath } from './utils'
 
 /**
  * The options that can be used when validating a type:
@@ -42,10 +41,11 @@ export type Result = result.Result<true, validation.Error[]>
  *          - `path: "$[1].foo"` the error took place while validating a field called `foo`
  *            in an object at index 1 of an array
  */
-export type Error = WithPath<{
+export type Error = {
+  path: path.Path
   assertion: string
   got: unknown
-}>
+}
 
 /**
  * @returns a {@link Result validation result} that always succeeds with the literal `true`
@@ -62,8 +62,8 @@ export const succeed: () => validation.Result = () => result.ok(true)
  *          ```ts
  *          function alwaysFail(_value: unknown): validation.Result {
  *            const errors = [
- *              { assertion: "foo", got: null, path: path.empty() },
- *              { assertion: "bar", got: null, path: path.empty() },
+ *              { assertion: "foo", got: null, path: path.root() },
+ *              { assertion: "bar", got: null, path: path.root() },
  *            ]
  *            return validation.failWithErrors(errors)
  *          }
@@ -86,17 +86,9 @@ export const failWithErrors = (errors: validation.Error[]): validation.Result =>
  *              : validator.fail("the list should have at least one item", list)
  *          }
  *          validateNonEmpty([])
- *          // -> [{ assertion: "the list should have at least one item", got: [], path: path.empty() }]
+ *          // -> [{ assertion: "the list should have at least one item", got: [], path: path.root() }]
  *          ```
  */
-export const fail = (assertion: string, got: unknown): validation.Result =>
-  validation.failWithErrors([{ assertion, got, path: path.empty() }])
-
-/**
- * @param error the {@link Error error} to turn into a string
- * @returns a string representation of the given error
- */
-export function errorToString(error: Error): string {
-  const { assertion, got, path } = error
-  return `assertion: ${assertion}, got: ${got}, path: ${path.format()}`
+export function fail(assertion: string, got: unknown): validation.Result {
+  return validation.failWithErrors([{ assertion, got, path: path.root() }])
 }

@@ -1,4 +1,4 @@
-import { path, model } from '.'
+import { path, model, validation, decoding } from '.'
 
 /**
  * @param message the message to display in the error
@@ -19,35 +19,6 @@ export function failWithInternalError(message: string): never {
  */
 export function assertNever(_value: never, errorMessage: string): never {
   failWithInternalError(errorMessage)
-}
-
-/**
- * A type describing objects with a `path` field of type {@link path.Path `Path`}
- */
-export type WithPath<Data extends Record<string, any>> = Data & { path: path.Path }
-
-/**
- * @param values an array of item that all have a `path` field
- * @param fieldName the field to prepend to the path of each item of the given array
- * @returns an array of item with the path updated with the prepended field
- */
-export function prependFieldToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
-  values: T[],
-  fieldName: string,
-): T[] {
-  return values.map((value) => ({ ...value, path: value.path.prependField(fieldName) }))
-}
-
-/**
- * @param values an array of item that all have a `path` field
- * @param index the index to prepend to the path of each item of the given array
- * @returns an array of item with the path updated with the prepended index
- */
-export function prependIndexToAll<Data extends Record<string, any>, T extends WithPath<Data>>(
-  values: T[],
-  index: number,
-): T[] {
-  return values.map((value) => ({ ...value, path: value.path.prependIndex(index) }))
 }
 
 type TypeTransformer<T extends model.Type> = (type: T, lazyType: T) => model.Type

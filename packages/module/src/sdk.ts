@@ -18,9 +18,9 @@ type SdkFunction<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   Metadata,
-> = <const P extends retrieve.FromType<OutputType, C>>(
+> = <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
   input: model.Infer<InputType>,
-  options?: { retrieve?: any /*P*/; metadata?: Metadata; operationId?: string },
+  options?: { retrieve?: P; metadata?: Metadata; operationId?: string },
 ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
@@ -28,7 +28,9 @@ type SdkFunctionResult<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   P extends retrieve.FromType<O, C>,
-> = any // TODO [E] extends [model.Types] ? result.Result<Project<O, P>, { [K in keyof E]: model.Infer<E[K]> }> : Project<O, P>
+> = [Exclude<E, undefined>] extends [model.Types]
+  ? result.Result<Project<O, P>, { [K in keyof E]: model.Infer<Exclude<E, undefined>[K]> }>
+  : Project<O, P>
 
 /**
  * Infer a subset of a Mondrian type `T` based on a retrieve `P`

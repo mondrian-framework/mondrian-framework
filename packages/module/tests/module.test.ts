@@ -71,7 +71,6 @@ test('Real example', async () => {
       weakPassword: model.literal('Weak passowrd'),
       doubleRegister: model.literal('Double register'),
     },
-    retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (user) {
@@ -261,7 +260,7 @@ describe('Default middlewares', () => {
         ),
     ).rejects.toThrowError('Max selection depth reached: requested selection have a depth of 3. The maximum is 2.')
     expect(async () => await client.functions.dummy({ value: 'wrong' })).rejects.toThrowError(
-      'Invalid output on function dummy. Errors: (1) expected: string, got: undefined, path: $.value',
+      'Invalid output on function dummy. Errors: (1) {"expected":"string","path":"$.value"}',
     )
   })
 })

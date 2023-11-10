@@ -288,8 +288,8 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
   public build<
     const I extends model.Type,
     const O extends model.Type,
-    const E extends ErrorType,
-    const R extends OutputRetrieveCapabilities,
+    const E extends ErrorType = undefined,
+    const R extends OutputRetrieveCapabilities = undefined,
   >(func: Function<I, O, E, R, Context>): FunctionImplementation<I, O, E, R, Context> {
     return new BaseFunction(func)
   }
@@ -303,8 +303,8 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
 export function define<
   const I extends model.Type,
   const O extends model.Type,
-  const E extends ErrorType,
-  R extends OutputRetrieveCapabilities,
+  const E extends ErrorType = undefined,
+  R extends OutputRetrieveCapabilities = undefined,
 >(func: FunctionInterface<I, O, E, R>): FunctionInterface<I, O, E, R> {
   return func
 }

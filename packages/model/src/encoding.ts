@@ -7,3 +7,7 @@
 export type Options = {
   sensitiveInformationStrategy?: 'hide' | 'keep'
 }
+
+export const defaultOptions = {
+  sensitiveInformationStrategy: 'keep',
+} as const

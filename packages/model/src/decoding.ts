@@ -129,6 +129,5 @@ export const failWithErrors = <A>(errors: decoding.Error[]): decoding.Result<A> 
  *          informative error messages to signal the reason behind the failure of a decoder
  */
 export function fail<A>(expected: string, got: unknown): decoding.Result<A> {
-  const gotToJson = got === undefined ? null : JSON.parse(JSON.stringify(got))
-  return decoding.failWithErrors([{ expected, got: gotToJson, path: path.root() }])
+  return decoding.failWithErrors([{ expected, got, path: path.root() }])
 }

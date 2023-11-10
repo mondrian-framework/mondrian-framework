@@ -51,12 +51,18 @@ class OptionalTypeImpl<T extends model.Type>
     value: unknown,
     decodingOptions?: decoding.Options,
   ): decoding.Result<undefined | model.Infer<T>> {
-    return value === undefined || value === null
-      ? decoding.succeed(undefined)
-      : model
-          .concretise(this.wrappedType)
-          .decodeWithoutValidation(value, decodingOptions)
-          .mapError((errors) => errors.map(decoding.addExpected('undefined')))
+    const resWithoutCast =
+      value === undefined
+        ? decoding.succeed(undefined)
+        : model
+            .concretise(this.wrappedType)
+            .decodeWithoutValidation(value, decodingOptions)
+            .mapError((errors) => errors.map(decoding.addExpected('undefined')))
+    if (!resWithoutCast.isOk && value === null) {
+      return decoding.succeed(undefined)
+    } else {
+      return resWithoutCast
+    }
   }
 
   arbitrary(maxDepth: number): gen.Arbitrary<undefined | model.Infer<T>> {

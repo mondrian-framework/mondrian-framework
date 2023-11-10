@@ -48,15 +48,17 @@ class NullableTypeImpl<T extends model.Type>
   }
 
   decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<null | model.Infer<T>> {
-    if (value === null) {
-      return decoding.succeed(null)
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === undefined) {
+    const resWithoutCast =
+      value === null
+        ? decoding.succeed(null)
+        : model
+            .concretise(this.wrappedType)
+            .decodeWithoutValidation(value, decodingOptions)
+            .mapError((errors) => errors.map(decoding.addExpected('null')))
+    if (!resWithoutCast.isOk && value === undefined && decodingOptions?.typeCastingStrategy === 'tryCasting') {
       return decoding.succeed(null)
     } else {
-      return model
-        .concretise(this.wrappedType)
-        .decodeWithoutValidation(value, decodingOptions)
-        .mapError((errors) => errors.map(decoding.addExpected('null')))
+      return resWithoutCast
     }
   }
 

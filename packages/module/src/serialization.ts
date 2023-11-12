@@ -325,7 +325,7 @@ const customTypeSchema = model.object({
     )
     .optional(),
 })
-const typeSchema = model
+const TypeSchema = model
   .union({
     string: stringTypeSchema,
     number: numberTypeSchema,
@@ -341,9 +341,9 @@ const typeSchema = model
     custom: customTypeSchema,
   })
   .setName('TypeSchema')
-type TypeSchema = model.Infer<typeof typeSchema>
+type TypeSchema = model.Infer<typeof TypeSchema>
 
-const functionSchema = model
+const FunctionSchema = model
   .object({
     input: model.string({ minLength: 1 }),
     output: model.string({ minLength: 1 }),
@@ -365,23 +365,23 @@ const functionSchema = model
       .optional(),
   })
   .setName('FunctionSchema')
-type FunctionSchema = model.Infer<typeof functionSchema>
+type FunctionSchema = model.Infer<typeof FunctionSchema>
 
 /**
  * The mondrian type of a {@link module.ModuleInterface ModuleInterface} schema.
  * A schema containts all the information about the functions signatures and types.
  * Does not contains any implementation details (e.g. the CustomTypes implementation or functions bodies).
  */
-export const moduleSchema = model
+export const ModuleSchema = model
   .object({
     name: model.string({ minLength: 1 }),
     version: model.string(),
-    types: model.record(typeSchema),
-    functions: model.record(functionSchema),
+    types: model.record(TypeSchema),
+    functions: model.record(FunctionSchema),
   })
   .setName('ModuleSchema')
 
 /**
  * The type of a {@link module.ModuleInterface ModuleInterface} schema.
  */
-export type ModuleSchema = model.Infer<typeof moduleSchema>
+export type ModuleSchema = model.Infer<typeof ModuleSchema>

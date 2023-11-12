@@ -1,9 +1,8 @@
 import { decoding, validation, model, result, encoding } from './index'
 import { NeverType } from './types-exports'
 import { memoizeTypeTransformation, memoizeTransformation, failWithInternalError } from './utils'
-import { JSONType, mapObject } from '@mondrian-framework/utils'
+import { JSONType, areJsonsEquals, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
-import { isDeepStrictEqual } from 'util'
 
 /**
  * The possible kinds of types modelled by the Mondrian Framework
@@ -2040,61 +2039,66 @@ const partialDeepInternal = memoizeTypeTransformation(
 )
 
 /**
- * TODO [Good first issue]: add documentation and tests
- * TODO: not working with recursive types
- * @param one the first type to compare
- * @param other the second type to compare
+ * Compares two Mondrian {@link Type} by value.
+ * It's also checks all the options of a type, including it's name.
+ * @param left the first type to compare
+ * @param right the second type to compare
  * @returns true if the two types model the same type
  */
-export function areEqual(one: Type, other: Type): boolean {
-  if (one == other) {
-    return true //same pointer
-  }
-  const type1 = concretise(one)
-  const type2 = concretise(other)
+export function areEqual(left: Type, right: Type): boolean {
+  const s1 = serializeType(left)
+  const s2 = serializeType(right)
+  const equals = areJsonsEquals(s1, s2)
+  return equals
 
-  function haveSameOptions(one: ConcreteType, other: ConcreteType): boolean {
-    return isDeepStrictEqual(one.options, other.options)
+  //internal function that serialize type to a graph structure in order to effectively compare recursive types
+  function serializeType(type: Type, examined: Set<string> = new Set()): JSONType {
+    const concreteType = model.concretise(type)
+    const name = concreteType.options?.name
+    if (name && examined.has(name)) {
+      return { $ref: name }
+    }
+    if (name) {
+      examined.add(name)
+    }
+    return model.match(type, {
+      array: ({ wrappedType, options }) =>
+        ({ kind: 'array', wrappedType: serializeType(wrappedType, examined), options } as const),
+      optional: ({ wrappedType, options }) =>
+        ({ kind: 'optional', wrappedType: serializeType(wrappedType, examined), options } as const),
+      nullable: ({ wrappedType, options }) =>
+        ({ kind: 'optional', wrappedType: serializeType(wrappedType, examined), options } as const),
+      string: ({ options }) => ({ kind: 'string', options: { ...options, regex: options?.regex?.source } } as const),
+      number: ({ options }) => ({ kind: 'number', options } as const),
+      boolean: ({ options }) => ({ kind: 'boolean', options } as const),
+      literal: ({ literalValue, options }) => ({ kind: 'literal', literalValue, options } as const),
+      enum: ({ variants, options }) => ({ kind: 'enumeration', variants, options } as const),
+      custom: ({ typeName, options }) =>
+        ({
+          kind: 'custom',
+          typeName,
+          options: options ? JSON.stringify(options, Object.keys(options).sort()) : undefined,
+        } as const),
+      object: ({ fields, options }) =>
+        ({
+          kind: 'object',
+          fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
+          options,
+        } as const),
+      entity: ({ fields, options }) =>
+        ({
+          kind: 'entity',
+          fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
+          options,
+        } as const),
+      union: ({ variants, options }) =>
+        ({
+          kind: 'union',
+          variants: mapObject(variants, (_, variantType) => serializeType(variantType, examined)),
+          options,
+        } as const),
+    })
   }
-
-  function arraysHaveSameElements(array1: readonly any[], array2: readonly any[]): boolean {
-    return array1.length === array2.length && array1.every((element) => array2.includes(element))
-  }
-
-  function sameFieldsAreSameTypes(one: Types, other: Types): boolean {
-    const oneKeys = Object.keys(one)
-    const otherKeys = Object.keys(other)
-    const haveSameKeys = arraysHaveSameElements(oneKeys, otherKeys)
-    return haveSameKeys && Object.entries(one).every(([fieldName, fieldType]) => areEqual(other[fieldName], fieldType))
-  }
-
-  if (!haveSameOptions(type1, type2)) {
-    return false
-  }
-  const sameNumber = type1.kind === Kind.Number && type1.kind === type2.kind
-  const sameBoolean = type1.kind === Kind.Boolean && type1.kind === type2.kind
-  const sameString = type1.kind === Kind.String && type1.kind === type2.kind
-  // prettier-ignore
-  const sameLiteral = (type1.kind === Kind.Literal && type1.kind === type2.kind && type1.literalValue === type2.literalValue)
-  // prettier-ignore
-  const sameEnum = (type1.kind === Kind.Enum && type1.kind === type2.kind && arraysHaveSameElements(type1.variants , type2.variants ))
-  // prettier-ignore
-  const sameCustom = (type1.kind === Kind.Custom && type1.kind === type2.kind && type1.typeName === type2.typeName) //TODO: not enough
-  // prettier-ignore
-  const sameArray = (type1.kind === Kind.Array && type1.kind === type2.kind && areEqual(type1.wrappedType, type2.wrappedType))
-  // prettier-ignore
-  const sameNullable = (type1.kind === Kind.Nullable && type1.kind === type2.kind && areEqual(type1.wrappedType, type2.wrappedType))
-  // prettier-ignore
-  const sameOptional = (type1.kind === Kind.Optional && type1.kind === type2.kind && areEqual(type1.wrappedType, type2.wrappedType))
-  // prettier-ignore
-  const sameObject = (type1.kind === Kind.Object && type1.kind === type2.kind && sameFieldsAreSameTypes(type1.fields, type2.fields))
-  // prettier-ignore
-  const sameEntity = (type1.kind === Kind.Entity && type1.kind === type2.kind && sameFieldsAreSameTypes(type1.fields, type2.fields))
-  // prettier-ignore
-  const sameUnion = (type1.kind === Kind.Union && type1.kind === type2.kind && sameFieldsAreSameTypes(type1.variants, type2.variants))
-  // prettier-ignore
-  const result = sameNumber || sameBoolean || sameString|| sameLiteral|| sameEnum|| sameCustom|| sameArray|| sameNullable|| sameOptional|| sameObject|| sameEntity|| sameUnion
-  return result
 }
 
 /**
@@ -2187,6 +2191,8 @@ export function isArray(type: Type): type is ArrayType<Mutability, Type> {
 export function isNever(type: Type): type is NeverType {
   return match(type, {
     custom: ({ typeName }) => typeName === 'never',
+    wrapper: ({ wrappedType }) => isNever(wrappedType),
+    array: () => false,
     otherwise: () => false,
   })
 }

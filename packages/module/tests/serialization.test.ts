@@ -297,7 +297,7 @@ describe('Module interface to schema', () => {
 })
 
 test('Decode schema', () => {
-  const result1 = serialization.moduleSchema.decode({
+  const result1 = serialization.ModuleSchema.decode({
     name: 'test',
     version: '0.0.0',
     types: {

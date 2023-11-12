@@ -433,58 +433,7 @@ describe('fromType', () => {
 
     expect(computedUserRetrieve.isOk).toBe(true)
     if (computedUserRetrieve.isOk) {
-      const s1 = serializeType(expectedUserRetrieve)
-      const s2 = serializeType(computedUserRetrieve.value)
-      expect(s1).toStrictEqual(s2)
+      expect(model.areEqual(expectedUserRetrieve, computedUserRetrieve.value)).toBe(true)
     }
   })
 })
-
-function serializeType(type: model.Type, examined: Set<string> = new Set()): JSONType {
-  const concreteType = model.concretise(type)
-  const name = concreteType.options?.name
-  if (name && examined.has(name)) {
-    return { $ref: name }
-  }
-  if (name) {
-    examined.add(name)
-  }
-  return model.match(type, {
-    array: ({ wrappedType, options }) => ({
-      kind: 'array',
-      wrappedType: serializeType(wrappedType, examined),
-      options,
-    }),
-    optional: ({ wrappedType, options }) => ({
-      kind: 'optional',
-      wrappedType: serializeType(wrappedType, examined),
-      options,
-    }),
-    nullable: ({ wrappedType, options }) => ({
-      kind: 'optional',
-      wrappedType: serializeType(wrappedType, examined),
-      options,
-    }),
-    string: ({ options }) => ({ kind: 'string', options }),
-    number: ({ options }) => ({ kind: 'number', options }),
-    boolean: ({ options }) => ({ kind: 'boolean', options }),
-    literal: ({ literalValue, options }) => ({ kind: 'literal', literalValue, options }),
-    enum: ({ variants, options }) => ({ kind: 'enumeration', variants, options }),
-    custom: ({ typeName, options }) => ({ kind: 'custom', typeName, options }),
-    object: ({ fields, options }) => ({
-      kind: 'object',
-      fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
-      options,
-    }),
-    entity: ({ fields, options }) => ({
-      kind: 'entity',
-      fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
-      options,
-    }),
-    union: ({ variants, options }) => ({
-      kind: 'union',
-      variants: mapObject(variants, (_, variantType) => serializeType(variantType, examined)),
-      options,
-    }),
-  })
-}

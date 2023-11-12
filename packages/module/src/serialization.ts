@@ -199,7 +199,7 @@ function serializeType(
         custom: customSerialization,
       }
     default:
-      assertNever(concreteType)
+      assertNever(concreteType, `Unexpected model kind in serialization!`)
   }
 }
 

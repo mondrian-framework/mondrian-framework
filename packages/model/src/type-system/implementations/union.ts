@@ -1,7 +1,6 @@
 import { decoding, model, validation } from '../../'
-import { failWithInternalError } from '../../utils'
 import { DefaultMethods } from './base'
-import { JSONType } from '@mondrian-framework/utils'
+import { JSONType, failWithInternalError } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**

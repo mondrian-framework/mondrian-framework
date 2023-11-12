@@ -89,7 +89,7 @@ export function checkOutputType(
                 .join('; ')}`,
             )
           default:
-            assertNever(onFailure)
+            assertNever(onFailure, 'Unexpected onFailure action!')
         }
       }
       if (thisFunction.errors) {

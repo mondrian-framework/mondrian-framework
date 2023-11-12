@@ -1,7 +1,7 @@
 import { decoding, validation, model, result, encoding } from './index'
 import { NeverType } from './types-exports'
-import { memoizeTypeTransformation, memoizeTransformation, failWithInternalError } from './utils'
-import { JSONType, areJsonsEquals, mapObject } from '@mondrian-framework/utils'
+import { memoizeTypeTransformation, memoizeTransformation } from './utils'
+import { JSONType, areJsonsEquals, mapObject, failWithInternalError } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**

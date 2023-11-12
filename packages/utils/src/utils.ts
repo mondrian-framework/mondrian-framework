@@ -10,11 +10,34 @@ export type JSONType =
 
 export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
 
-export function assertNever(t: never): never {
-  throw new Error(`Unreachable`)
+/**
+ * @param message the message to display in the error
+ * @throws an Error with the `[internal error]` header and an additional message
+ *         redirecting to the project's issue page
+ */
+export function failWithInternalError(message: string): never {
+  const header = '[internal error]'
+  const mondrianIssueUrl = 'https://github.com/twinlogix/mondrian-framework/issues'
+  const reportMessage = `If you think this could be a bug in the framework, please report it at ${mondrianIssueUrl}`
+  throw new Error(`${header} ${message}\n${reportMessage}`)
 }
 
-export function setTraversingValue(value: unknown, path: string, object: Record<string, unknown>) {
+/**
+ * @param _ a value that must be inferred as of type never
+ * @param errorMessage the error message to throw in case this function is actually called
+ * @throws an {@link failWithInternalError internal error} with the given message
+ */
+export function assertNever(_: never, errorMessage: string): never {
+  failWithInternalError(errorMessage)
+}
+
+/**
+ * Sets a value on an object based on a path.
+ * @param value the value to set.
+ * @param path the dot notated path (example a.b.c)
+ * @param object the object where apply the side effetct.
+ */
+export function setTraversingValue(value: unknown, path: string, object: Record<string, unknown>): void {
   const [head, ...tail] = path.split('.')
   if (tail.length === 0) {
     object[head] = value
@@ -89,23 +112,6 @@ export function isPlainObject(o: unknown): boolean {
 }
 
 /**
- * @param values the array to map over
- * @param mapper a mapping function that may return `undefined`
- * @returns a new array where each element has been mapped with `mapper` and all values mapped to `undefined` are
- *          discarted
- */
-export function filterMap<A, B>(values: A[], mapper: (_: A) => B | undefined): B[] {
-  const mappedValues = []
-  for (const value of values) {
-    const mappedValue = mapper(value)
-    if (mappedValue !== undefined) {
-      mappedValues.push(mappedValue)
-    }
-  }
-  return mappedValues
-}
-
-/**
  * @param object the object to map over
  * @param mapper a mapping function that takes as input the name of a field and the corresponding value and maps it to
  *               a value of type `B` or `undefined`
@@ -150,7 +156,7 @@ export function mapObject<A, B>(
  */
 export function flatMapObject<A, B>(
   object: Record<string, A>,
-  mapper: (fieldName: string, fieldValue: A) => [string, B][],
+  mapper: (fieldName: string, fieldValue: A) => readonly (readonly [string, B])[],
 ): Record<string, B> {
   return Object.fromEntries(Object.entries(object).flatMap(([fieldName, fieldValue]) => mapper(fieldName, fieldValue)))
 }

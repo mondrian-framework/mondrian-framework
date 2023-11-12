@@ -547,7 +547,7 @@ function customToOpenAPIComponent(
     }
   }
 
-  //TODO: complete with other known type
+  //TODO [Good first issue]: complete with other known custom type
   //...
 
   //otherwise don't known how to convert this type to openapi

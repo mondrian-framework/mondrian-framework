@@ -55,22 +55,63 @@ export function string(): gen.Arbitrary<model.StringType> {
  */
 export function numberTypeOptions(): gen.Arbitrary<model.NumberTypeOptions> {
   return gen.boolean().chain((isInteger) => {
-    const bounds = isInteger ? integerBounds() : doubleBounds()
-    return bounds.chain((bounds) => {
-      return gen.record(
-        { ...baseOptionsGeneratorsRecord(), ...bounds, isInteger: gen.constant(isInteger) },
-        { withDeletedKeys: true },
-      )
+    return integerBounds().chain((bounds) => {
+      return gen
+        .record({ ...baseOptionsGeneratorsRecord(), isInteger: gen.constant(isInteger) }, { withDeletedKeys: true })
+        .map((opts) => ({ ...opts, ...bounds }))
     })
   })
 }
 
 function integerBounds() {
-  return gen.constant({})
-}
-
-function doubleBounds() {
-  return gen.constant({})
+  return gen.oneof(
+    gen
+      .record({
+        minimum: gen.integer({ min: -100, max: 100 }),
+        exclusiveMinimum: gen.integer({ min: -100, max: 100 }),
+      })
+      .chain(({ exclusiveMinimum, minimum }) => {
+        const min = Math.max(exclusiveMinimum, minimum)
+        return gen
+          .record({
+            maximum: gen.integer({ min: min + 1, max: 200 }),
+            exclusiveMaximum: gen.integer({ min: min + 1, max: 200 }),
+          })
+          .map(({ exclusiveMaximum, maximum }) => ({
+            exclusiveMinimum,
+            minimum,
+            exclusiveMaximum,
+            maximum,
+          }))
+      }),
+    gen
+      .record({
+        minimum: orUndefined(gen.integer()),
+        maximum: orUndefined(gen.integer()),
+      })
+      .map(({ minimum, maximum }) =>
+        minimum != null && maximum != null
+          ? {
+              minimum: Math.min(minimum, maximum),
+              maximum: Math.min(minimum, maximum),
+            }
+          : { minimum, maximum },
+      ),
+    gen
+      .record({
+        exclusiveMinimum: orUndefined(gen.integer()),
+        exclusiveMaximum: orUndefined(gen.integer()),
+      })
+      .map(({ exclusiveMinimum, exclusiveMaximum }) =>
+        exclusiveMinimum != null && exclusiveMaximum != null
+          ? {
+              exclusiveMinimum: Math.min(exclusiveMinimum, exclusiveMaximum),
+              exclusiveMaximum: Math.min(exclusiveMinimum, exclusiveMaximum),
+            }
+          : { exclusiveMinimum, exclusiveMaximum },
+      )
+      .filter(({ exclusiveMaximum, exclusiveMinimum }) => exclusiveMaximum !== exclusiveMinimum),
+  )
 }
 
 /**

@@ -112,8 +112,8 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
   arbitrary(): gen.Arbitrary<number> {
     function doubleMatchingOptions(options: model.NumberTypeOptions): gen.Arbitrary<number> {
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
-      const min = selectMinimum(minimum, exclusiveMinimum)
-      const max = selectMaximum(maximum, exclusiveMaximum)
+      const min = selectMinimumDouble(minimum, exclusiveMinimum)
+      const max = selectMaximumDouble(maximum, exclusiveMaximum)
       return gen.double({ ...min, ...max, noNaN: true })
     }
 
@@ -127,12 +127,44 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
       ) {
         throw new Error('I cannot generate values from integer number types whose max/min are not integer numbers')
       }
-      const min = selectMinimum(minimum, exclusiveMinimum)
-      const max = selectMaximum(maximum, exclusiveMaximum)
-      return gen.integer({ ...min, ...max })
+      const min = selectMinimumInteger(minimum, exclusiveMinimum)
+      const max = selectMaximumInteger(maximum, exclusiveMaximum)
+      return gen.integer({ min, max })
     }
 
-    function selectMinimum(
+    function selectMinimumInteger(inclusive: number | undefined, exclusive: number | undefined): number | undefined {
+      if (inclusive && exclusive) {
+        if (inclusive > exclusive) {
+          return inclusive
+        } else {
+          return exclusive + 1
+        }
+      } else if (inclusive) {
+        return inclusive
+      } else if (exclusive) {
+        return exclusive + 1
+      } else {
+        return undefined
+      }
+    }
+
+    function selectMaximumInteger(inclusive: number | undefined, exclusive: number | undefined): number | undefined {
+      if (inclusive && exclusive) {
+        if (inclusive < exclusive) {
+          return inclusive
+        } else {
+          return exclusive - 1
+        }
+      } else if (inclusive) {
+        return inclusive
+      } else if (exclusive) {
+        return exclusive - 1
+      } else {
+        return undefined
+      }
+    }
+
+    function selectMinimumDouble(
       inclusive: number | undefined,
       exclusive: number | undefined,
     ): { minExcluded: boolean; min: number } | undefined {
@@ -151,7 +183,7 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
       }
     }
 
-    function selectMaximum(
+    function selectMaximumDouble(
       inclusive: number | undefined,
       exclusive: number | undefined,
     ): { maxExcluded: boolean; max: number } | undefined {

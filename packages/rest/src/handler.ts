@@ -45,91 +45,93 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         kind: SpanKind.SERVER,
       },
       async (span) => {
-        //TODO: add operationId to header only once
-        const tracer = functionBody.tracer.withPrefix(`mondrian:rest-handler:${functionName}:`)
-
         //Setup logging
+        const tracer = functionBody.tracer.withPrefix(`mondrian:rest-handler:${functionName}:`)
         const operationId = utils.randomOperationId()
         span?.setAttribute('operationId', operationId)
         const logger = thisLogger.updateContext({ operationId })
-        const responseHeaders = { 'operation-id': operationId }
 
-        //Decode input
-        const inputResult = decodeInput(functionBody.input, request, getInputFromRequest, logger, tracer)
-        if (!inputResult.isOk) {
-          span?.end()
-          return inputResult.error
-        }
-        const input = inputResult.value
-
-        //Decode retrieve
-        const retrieveResult = decodeRetrieve(retrieveType, functionBody.output, request, logger, tracer)
-        if (!retrieveResult.isOk) {
-          span?.end()
-          return retrieveResult.error
-        }
-        const retrieveValue: retrieve.GenericRetrieve | undefined = retrieveResult.value
-
-        let moduleContext
-        try {
-          //context building
-          const contextInput = await context(serverContext)
-          moduleContext = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
-
-          // Function call
-          const applyOutput = await functionBody.apply({
-            retrieve: retrieveValue ?? {},
-            input: input as never,
-            context: moduleContext as Record<string, unknown>,
-            operationId,
-            logger,
-          })
-
-          //Output processing
-          if (functionBody.errors && !applyOutput.isOk) {
-            const codes = (specification.errorCodes ?? {}) as Record<string, number>
-            const key = Object.keys(applyOutput.error as Record<string, unknown>)[0]
-            const status = key ? codes[key] ?? 400 : 400
-            const encoded = model
-              .concretise(functionBody.errors[key])
-              .encodeWithoutValidation(applyOutput.error as never)
-            const response: Response = { status, body: encoded, headers: responseHeaders }
-            logger.logInfo('Completed with error.')
-            endSpanWithResponse({ span, response })
-            return response
-          } else {
-            const value = functionBody.errors ? applyOutput.value : applyOutput //unwrap output
-            const encoded = partialOutputType.encodeWithoutValidation(value as never)
-            const response: Response = { status: 200, body: encoded, headers: responseHeaders }
-            logger.logInfo('Completed.')
-            endSpanWithResponse({ span, response })
-            return response
+        const subHandler = async () => {
+          //Decode input
+          const inputResult = decodeInput(functionBody.input, request, getInputFromRequest, logger, tracer)
+          if (!inputResult.isOk) {
+            span?.end()
+            return inputResult.error
           }
-        } catch (e) {
-          span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, 500)
-          if (e instanceof Error) {
-            span?.recordException(e)
+          const input = inputResult.value
+
+          //Decode retrieve
+          const retrieveResult = decodeRetrieve(retrieveType, functionBody.output, request, logger, tracer)
+          if (!retrieveResult.isOk) {
+            span?.end()
+            return retrieveResult.error
           }
-          logger.logError('Failed with exception.')
-          if (error) {
-            const result = await error({
-              error: e,
-              logger,
-              functionName,
+          const retrieveValue: retrieve.GenericRetrieve | undefined = retrieveResult.value
+
+          let moduleContext
+          try {
+            //context building
+            const contextInput = await context(serverContext)
+            moduleContext = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
+
+            // Function call
+            const applyOutput = await functionBody.apply({
+              retrieve: retrieveValue ?? {},
+              input: input as never,
+              context: moduleContext as Record<string, unknown>,
               operationId,
-              context: moduleContext,
-              functionArgs: { input, retrieve: retrieveValue },
-              ...serverContext,
+              logger,
             })
-            if (result !== undefined) {
-              span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, result.status)
-              span?.end()
-              return addHeadersToResponse(result, responseHeaders)
+
+            //Output processing
+            if (functionBody.errors && !applyOutput.isOk) {
+              const codes = (specification.errorCodes ?? {}) as Record<string, number>
+              const key = Object.keys(applyOutput.error as Record<string, unknown>)[0]
+              const status = key ? codes[key] ?? 400 : 400
+              const encoded = model
+                .concretise(functionBody.errors[key])
+                .encodeWithoutValidation(applyOutput.error as never)
+              const response: Response = { status, body: encoded }
+              logger.logInfo('Completed with error.')
+              endSpanWithResponse({ span, response })
+              return response
+            } else {
+              const value = functionBody.errors ? applyOutput.value : applyOutput //unwrap output
+              const encoded = partialOutputType.encodeWithoutValidation(value as never)
+              const response: Response = { status: 200, body: encoded }
+              logger.logInfo('Completed.')
+              endSpanWithResponse({ span, response })
+              return response
             }
+          } catch (e) {
+            span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, 500)
+            if (e instanceof Error) {
+              span?.recordException(e)
+            }
+            logger.logError('Failed with exception.')
+            if (error) {
+              const result = await error({
+                error: e,
+                logger,
+                functionName,
+                operationId,
+                context: moduleContext,
+                functionArgs: { input, retrieve: retrieveValue },
+                ...serverContext,
+              })
+              if (result !== undefined) {
+                span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, result.status)
+                span?.end()
+                return result
+              }
+            }
+            span?.end()
+            throw e
           }
-          span?.end()
-          throw e
         }
+
+        const response = await subHandler()
+        return { ...response, headers: { ...response.headers, operationId } }
       },
     )
   return handler
@@ -211,10 +213,6 @@ function generateGetInputFromRequest(args: {
   functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
   return generateOpenapiInput({ ...args, internalData: { typeMap: {}, typeRef: new Map() } }).input
-}
-
-function addHeadersToResponse(response: Response, headers: Response['headers']): Response {
-  return { ...response, headers: { ...response.headers, ...headers } }
 }
 
 function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<Response> }): void {

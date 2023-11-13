@@ -67,15 +67,15 @@ function integerBounds() {
   return gen.oneof(
     gen
       .record({
-        minimum: gen.integer({ min: -100, max: 100 }),
-        exclusiveMinimum: gen.integer({ min: -100, max: 100 }),
+        minimum: gen.integer({ max: Number.MAX_SAFE_INTEGER - 2 }),
+        exclusiveMinimum: gen.integer({ max: Number.MAX_SAFE_INTEGER - 2 }),
       })
       .chain(({ exclusiveMinimum, minimum }) => {
         const min = Math.max(exclusiveMinimum, minimum)
         return gen
           .record({
-            maximum: gen.integer({ min: min + 1, max: 200 }),
-            exclusiveMaximum: gen.integer({ min: min + 1, max: 200 }),
+            maximum: gen.integer({ min: min + 2, max: Number.MAX_SAFE_INTEGER }),
+            exclusiveMaximum: gen.integer({ min: min + 2, max: Number.MAX_SAFE_INTEGER }),
           })
           .map(({ exclusiveMaximum, maximum }) => ({
             exclusiveMinimum,

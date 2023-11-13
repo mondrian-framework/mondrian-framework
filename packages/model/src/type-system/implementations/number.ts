@@ -60,7 +60,7 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     const lowerBound = minimum && exclusiveMinimum ? Math.max(minimum, exclusiveMinimum) : minimum ?? exclusiveMinimum
     const upperBound = maximum && exclusiveMaximum ? Math.min(maximum, exclusiveMaximum) : maximum ?? exclusiveMaximum
     const exclude = lowerBound === exclusiveMinimum || upperBound === exclusiveMaximum
-    if (lowerBound && upperBound) {
+    if (lowerBound != null && upperBound != null) {
       if (exclude && lowerBound === upperBound) {
         throw new Error(
           `Lower bound (${lowerBound}) cannot be equal to upper bound (${upperBound})\nmin ${minimum}\nemin ${exclusiveMinimum}\nmax ${maximum}\nemax ${exclusiveMaximum}`,
@@ -69,6 +69,19 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
       if (lowerBound > upperBound) {
         throw new Error(`Lower bound (${lowerBound}) must be lower or equal to the upper bound (${upperBound})`)
       }
+      if (options?.isInteger && (!Number.isInteger(lowerBound) || !Number.isInteger(upperBound))) {
+        throw new Error('On integer types lower bound and upper bound must be integer numbers')
+      }
+    }
+    if (
+      exclusiveMaximum != null &&
+      exclusiveMinimum != null &&
+      options?.isInteger &&
+      exclusiveMaximum - exclusiveMinimum <= 1
+    ) {
+      throw new Error(
+        `If both lower bound and upper bound are enabled on integer types the minimum difference between the two bounds must be grater than 1`,
+      )
     }
   }
 
@@ -119,14 +132,6 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
 
     function integerMatchingOptions(options: model.NumberTypeOptions): gen.Arbitrary<number> {
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
-      if (
-        (minimum && !Number.isInteger(minimum)) ||
-        (maximum && !Number.isInteger(maximum)) ||
-        (exclusiveMinimum && !Number.isInteger(exclusiveMinimum)) ||
-        (exclusiveMaximum && !Number.isInteger(exclusiveMaximum))
-      ) {
-        throw new Error('I cannot generate values from integer number types whose max/min are not integer numbers')
-      }
       const min = selectMinimumInteger(minimum, exclusiveMinimum)
       const max = selectMaximumInteger(maximum, exclusiveMaximum)
       return gen.integer({ min, max })

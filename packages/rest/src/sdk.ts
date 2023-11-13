@@ -1,5 +1,5 @@
 import { ApiSpecification, FunctionSpecifications } from './api'
-import { generateOpenapiInput } from './openapi'
+import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { retrieve, result, model } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 
@@ -32,7 +32,10 @@ type SdkFunctionResult<
   : sdk.Project<O, P>
 
 function getRequestBuilder(args: { specification: FunctionSpecifications; functionBody: functions.FunctionInterface }) {
-  return generateOpenapiInput({ ...args, internalData: { typeMap: {}, typeRef: new Map() } }).request
+  const internalData = emptyInternalData()
+  const result = generateOpenapiInput({ ...args, internalData }).request
+  clearInternalData(internalData)
+  return result
 }
 
 export function build<const Fs extends functions.FunctionsInterfaces, const API extends ApiSpecification<Fs>>({

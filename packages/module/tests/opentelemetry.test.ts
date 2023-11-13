@@ -36,6 +36,9 @@ describe('Opentelemetry', () => {
       errors: { unknownInput: model.string() },
       retrieve: undefined,
       body: async ({ input, logger }) => {
+        if (input === '') {
+          throw new Error('Invalid string')
+        }
         if (input !== 'ping') {
           logger.logError('Only "ping" is accepted', { received: input })
           return result.fail({ unknownInput: 'Only "ping" is accepted' })
@@ -64,12 +67,11 @@ describe('Opentelemetry', () => {
 
     const result1 = await client.functions.dummy('ping')
     expect(result1.isOk && result1.value).toBe('pong')
-    try {
-      await client.functions.dummy('pong')
-    } catch {}
+    expect((await client.functions.dummy('pong')).isOk).toBe(false)
+    await expect(client.functions.dummy('')).rejects.toThrow('Invalid string')
 
     const spans = spanExporter.getFinishedSpans()
-    expect(spans.length).toBe(2)
+    expect(spans.length).toBe(3)
 
     //await exporter.shutdown()
 

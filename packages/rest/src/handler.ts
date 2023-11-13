@@ -1,7 +1,7 @@
 import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
-import { generateOpenapiInput } from './openapi'
+import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
-import { result, retrieve, model, path } from '@mondrian-framework/model'
+import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -212,7 +212,10 @@ function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
 }): (request: Request) => unknown {
-  return generateOpenapiInput({ ...args, internalData: { typeMap: {}, typeRef: new Map() } }).input
+  const internalData = emptyInternalData()
+  const result = generateOpenapiInput({ ...args, internalData }).input
+  clearInternalData(internalData)
+  return result
 }
 
 function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<Response> }): void {

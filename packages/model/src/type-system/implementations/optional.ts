@@ -57,7 +57,11 @@ class OptionalTypeImpl<T extends model.Type>
         : model
             .concretise(this.wrappedType)
             .decodeWithoutValidation(value, decodingOptions)
-            .mapError((errors) => errors.map(decoding.addExpected('undefined')))
+            .mapError((errors) =>
+              errors.map((error) =>
+                error.expected !== 'undefined' ? decoding.addExpected('undefined')(error) : error,
+              ),
+            )
     if (!resWithoutCast.isOk && value === null) {
       return decoding.succeed(undefined)
     } else {

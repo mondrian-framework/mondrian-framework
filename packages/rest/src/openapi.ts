@@ -2,7 +2,7 @@ import { ApiSpecification, FunctionSpecifications, Request } from './api'
 import { decodeQueryObject, encodeQueryObject } from './utils'
 import { retrieve, model } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
-import { assertNever, isArray } from '@mondrian-framework/utils'
+import { isArray } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
 export function fromModule<Fs extends functions.FunctionsInterfaces>({
@@ -114,6 +114,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
       }
     }
   }
+  clearInternalData(internalData)
   return {
     openapi: '3.1.0',
     info: { version: module.version, title: module.name },
@@ -279,7 +280,9 @@ export function generateOpenapiInput({
             schema: schema as any,
           },
         ],
-        input: (request: Request) => decodeQueryObject(request.query, specification.inputName ?? 'input'),
+        input: (request: Request) => {
+          return decodeQueryObject(request.query, specification.inputName ?? 'input')
+        },
         request: (input) => {
           const encoded = concreteInputType.encodeWithoutValidation(input)
           const query = encodeQueryObject(encoded, specification.inputName ?? 'input')
@@ -394,22 +397,28 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
       usedTypes.push(functionBody.output)
     }
   }
-  const internalData: InternalData = {
-    typeMap: {},
-    typeRef: new Map(),
-  }
+  const internalData = emptyInternalData()
   for (const type of usedTypes) {
     modelToSchema(type, internalData)
   }
   const schemas: Record<string, OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject> = {}
-  for (const [name, type] of Object.entries(internalData.typeMap)) {
+  for (const [name, type] of internalData.typeMap.entries()) {
     schemas[name] = type
   }
   return { components: { schemas }, internalData }
 }
 
+export function emptyInternalData(): InternalData {
+  return { typeMap: new Map(), typeRef: new Map() }
+}
+
+export function clearInternalData(internalData: InternalData) {
+  internalData.typeMap.clear()
+  internalData.typeRef.clear()
+}
+
 type InternalData = {
-  typeMap: Record<string, OpenAPIV3_1.SchemaObject> //type name -> SchemaObject
+  typeMap: Map<string, OpenAPIV3_1.SchemaObject> //type name -> SchemaObject
   typeRef: Map<model.Type, string> // type -> type name
   ignoreFirstLevelOptionality?: boolean
 }
@@ -444,9 +453,9 @@ function modelToSchema(
     record: (type) => recordToOpenAPIComponent(type, internalData),
     union: (type) => unionToOpenAPIComponent(type, internalData),
   })
-  //if the schema is a SchemaObject and has a name set it to the type map and return the reference
+  //if the schema is a SchemaObject and has a name, set it to the type map and return the reference
   if (!('$ref' in schema) && typeName !== undefined) {
-    internalData.typeMap[typeName] = schema
+    internalData.typeMap.set(typeName, schema)
     return { $ref: `#/components/schemas/${typeName}` }
   }
   return schema

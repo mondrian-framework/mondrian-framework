@@ -9,7 +9,6 @@ describe('completeRetrieve', () => {
       tags: model.string().array(),
       friend: model.optional(user),
     })
-  const userOrError = model.union({ user, error: model.string() })
   test('works with empty retrieve', async () => {
     const p = completeRetrieve({}, user)
     expect(p).toEqual({ select: { name: true, tags: true } })

@@ -72,6 +72,9 @@ test('Real example', async () => {
       doubleRegister: model.literal('Double register'),
     },
     body: async ({ input, context: { db }, logger }) => {
+      if (!input.email.includes('@domain.com')) {
+        throw new Error('Invalid domain!')
+      }
       const user = db.findUser({ email: input.email })
       if (user) {
         logger.logWarn(`Double register`, { email: input.email })
@@ -144,6 +147,8 @@ test('Real example', async () => {
       return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
     },
   })
+
+  await expect(() => client.functions.register({ email: 'admin@google.com', password: '123456' })).rejects.toThrow()
 
   const res = await client.functions.register({ email: 'admin@domain.com', password: '123' })
   expect(res.isOk).toBe(false)

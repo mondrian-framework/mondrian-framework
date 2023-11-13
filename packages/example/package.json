@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "prisma generate && tsc",
-    "example": "node -r dotenv/config --require ./build/opentelemetry.js build/app.js ",
+    "example": "node -r dotenv/config --require ./build/opentelemetry.js build/app.js",
     "example-serverless": "serverless offline"
   },
   "keywords": [],

@@ -24,7 +24,7 @@ const api = rest.build({
   options: { introspection: true },
 })
 
-export function startServer(server: FastifyInstance) {
+export function serveRest(server: FastifyInstance) {
   serve({
     server,
     api,

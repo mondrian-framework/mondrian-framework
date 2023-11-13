@@ -1,10 +1,10 @@
 import { slotProvider } from '../../rate-limiter'
-import { idType, unauthorizedType, notLoggedInType } from '../common/model'
+import { idType, notLoggedInType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { User } from './model'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { rateLimiter } from '@mondrian-framework/rate-limiter'
+import { Rate, RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
@@ -21,6 +21,7 @@ const loginErrorMap = {
   tooManyRequests: model.string(),
 } as const
 
+const loginRateLimit: RateLiteral = '10 requests in 1 minute'
 const loginRateLimiter = rateLimiter.build<
   typeof LoginInput,
   typeof LoginOutput,
@@ -29,7 +30,7 @@ const loginRateLimiter = rateLimiter.build<
   Context
 >({
   key: ({ input }) => input.email,
-  rate: '10 requests in 1 minute',
+  rate: loginRateLimit,
   onLimit: async () => {
     //Improvement: warn the user, maybe block the account
     return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
@@ -56,27 +57,25 @@ export const login = functions.withContext<Context>().build({
     return result.ok(jwt)
   },
   middlewares: [loginRateLimiter],
-  options: {},
+  options: {
+    description: `Gets the jwt of a user. This operation is rate limited at "${loginRateLimit}" on the same email`,
+  },
 })
 
-const RegisterInput = model.object(
-  {
-    password: model.string().sensitive(),
-    email: model.email(),
-    firstName: model.string(),
-    lastName: model.string(),
-  },
-  {
-    name: 'RegisterInput',
-  },
-)
-
 export const register = functions.withContext<Context>().build({
-  input: RegisterInput,
+  input: model.object(
+    {
+      password: model.string().sensitive(),
+      email: model.email(),
+      firstName: model.string(),
+      lastName: model.string(),
+    },
+    {
+      name: 'RegisterInput',
+    },
+  ),
   output: User,
-  errors: {
-    emailAlreadyTaken: model.literal('Email already taken'),
-  },
+  errors: { emailAlreadyTaken: model.literal('Email already taken') },
   retrieve: { select: true },
   body: async ({ input, context, retrieve }) => {
     try {
@@ -97,17 +96,16 @@ export const register = functions.withContext<Context>().build({
       return result.fail({ emailAlreadyTaken: 'Email already taken' })
     }
   },
-  options: { namespace: 'user' },
+  options: {
+    namespace: 'user',
+    description: 'Creates a new user.',
+  },
 })
 
 export const follow = functions.withContext<LoggedUserContext>().build({
   input: model.object({ userId: idType }),
   output: User,
-  errors: {
-    unauthorizedType,
-    notLoggedInType,
-    userNotExists: model.string(),
-  },
+  errors: { notLoggedInType, userNotExists: model.string() },
   retrieve: { select: true },
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {
@@ -137,5 +135,8 @@ export const follow = functions.withContext<LoggedUserContext>().build({
     const user = await context.prisma.user.findFirstOrThrow(args)
     return result.ok(user)
   },
-  options: { namespace: 'user' },
+  options: {
+    namespace: 'user',
+    description: 'Adds a follower to your user. Available only for logged user.',
+  },
 })

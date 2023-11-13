@@ -534,6 +534,7 @@ function splitIntoNamespaces(
               fields: Object.fromEntries(fields),
             }),
             resolve: () => ({}),
+            description: `The fields of this type are the operation that belong to ${namespace} namespace`,
           },
         ],
       ]
@@ -676,7 +677,7 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
               error,
               functionArgs: { retrieve: retrieveValue, input },
               functionName: operationName,
-              log: logger,
+              logger,
               operationId,
               ...serverContext,
             })
@@ -694,12 +695,18 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
       }
     })
 
-  if (retrieveType.isOk) {
-    const graphqlRetrieveArgs = retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
-    return [operationName, { type: output, args: { [graphQLInputTypeName]: input, ...graphqlRetrieveArgs }, resolve }]
-  } else {
-    return [operationName, { type: output, args: { [graphQLInputTypeName]: input }, resolve }]
-  }
+  const retrieveArgs = retrieveType.isOk
+    ? retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
+    : {}
+  return [
+    operationName,
+    {
+      type: output,
+      args: { [graphQLInputTypeName]: input, ...retrieveArgs },
+      resolve,
+      description: functionBody.options?.description,
+    },
+  ]
 }
 
 function endSpanWithGraphQLError(error: GraphQLError, span: Span | undefined): GraphQLError {

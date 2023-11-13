@@ -8,7 +8,7 @@ export const User = () =>
     {
       id: idType,
       firstName: model.string(),
-      lastName: model.string({ description: 'Lastname of user' }),
+      lastName: model.string(),
       email: model.email(),
       posts: model.array(Post),
       givenLikes: model.array(Like),

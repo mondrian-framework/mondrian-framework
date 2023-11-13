@@ -8,4 +8,3 @@ export const idType = model.string({
 })
 
 export const notLoggedInType = model.string()
-export const unauthorizedType = model.string()

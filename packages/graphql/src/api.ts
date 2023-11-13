@@ -33,7 +33,7 @@ export function build<Fs extends functions.Functions, ContextInput>(api: Api<Fs,
 export type ErrorHandler<F extends functions.Functions, ServerContext> = (
   args: {
     error: unknown
-    log: logger.MondrianLogger
+    logger: logger.MondrianLogger
     functionName: keyof F
     context: unknown
     operationId: string

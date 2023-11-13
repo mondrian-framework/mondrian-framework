@@ -5,8 +5,6 @@ import { functions, module } from '@mondrian-framework/module'
 import { describe, expect, test } from 'vitest'
 
 describe('rest handler', () => {
-  //TODO [Good first issue]: add more tests
-
   const f0 = functions.build({
     input: model.never(),
     output: model.number(),
@@ -61,7 +59,14 @@ describe('rest handler', () => {
       return { live: true, username: 'name' }
     },
   })
-  const fs = { f0, f1, f2, f3, f4, f5 } as const
+  const f6 = functions.build({
+    input: model.object({ a: model.number(), b: model.object({ a: model.number(), b: model.integer() }) }),
+    output: model.number(),
+    async body({ input: { a, b } }) {
+      return a * b.a * b.b
+    },
+  })
+  const fs = { f0, f1, f2, f3, f4, f5, f6 } as const
   const m = module.build({
     context: async () => ({}),
     functions: fs,
@@ -278,5 +283,11 @@ describe('rest handler', () => {
       errors: [{ expected: 'undefined', got: true, path: '$.select.friends' }],
       message: 'Invalid retrieve',
     })
+  })
+  test('works on [complex object input on query]', async () => {
+    const handler = buildHandler('f6', { method: 'get', path: '/f6' })
+    const response = await handler({ query: { a: '1', 'b[a]': '2', 'b[b]': '3' } })
+    expect(response.status).toBe(200)
+    expect(response.body).toStrictEqual(6)
   })
 })

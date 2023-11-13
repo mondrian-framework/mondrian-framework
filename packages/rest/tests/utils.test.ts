@@ -1,4 +1,4 @@
-import { completeRetrieve } from '../src/utils'
+import { assertApiValidity, completeRetrieve } from '../src/utils'
 import { model } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
@@ -23,4 +23,29 @@ describe('completeRetrieve', () => {
       },
     })
   })
+})
+
+test('assertApiValidity', () => {
+  assertApiValidity({ module: null as any, version: 1, functions: { f1: { method: 'get' } } })
+  expect(() =>
+    assertApiValidity({ module: null as any, version: 1, functions: { f1: { method: 'get', version: { min: 2 } } } }),
+  ).toThrow()
+  expect(() =>
+    assertApiValidity({ module: null as any, version: 3, functions: { f1: { method: 'get', version: { min: 2.2 } } } }),
+  ).toThrow()
+  expect(() =>
+    assertApiValidity({ module: null as any, version: 3, functions: { f1: { method: 'get', version: { max: 2.2 } } } }),
+  ).toThrow()
+  expect(() =>
+    assertApiValidity({ module: null as any, version: 1, functions: { f1: { method: 'get', version: { max: 2 } } } }),
+  ).toThrow()
+  expect(() =>
+    assertApiValidity({
+      module: null as any,
+      version: 10,
+      functions: { f1: { method: 'get', version: { max: 2, min: 3 } } },
+    }),
+  ).toThrow()
+  expect(() => assertApiValidity({ module: null as any, version: 1.5, functions: { f1: { method: 'get' } } })).toThrow()
+  expect(() => assertApiValidity({ module: null as any, version: -1, functions: { f1: { method: 'get' } } })).toThrow()
 })

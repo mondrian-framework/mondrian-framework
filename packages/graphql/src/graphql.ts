@@ -46,7 +46,7 @@ function generateName(type: model.Type, internalData: InternalData): string {
   const name = concreteType.options?.name
     ? capitalise(concreteType.options.name)
     : internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`
-  return checkNameOccurencies(name, internalData)
+  return name
 }
 
 /**
@@ -59,9 +59,9 @@ function generateInputName(type: model.Type, internalData: InternalData): string
     : internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`
   if (name.toLocaleLowerCase().endsWith('input')) {
     const result = name.slice(0, name.length - 5)
-    return checkNameOccurencies(`${result}Input`, internalData)
+    return `${result}Input`
   } else {
-    return checkNameOccurencies(`${name}Input`, internalData)
+    return `${name}Input`
   }
 }
 
@@ -194,7 +194,10 @@ function scalarOrDefault(
 function scalarFromType(type: model.Type, internalData: InternalData): GraphQLScalarType<unknown, JSONType> {
   const concreteType = model.concretise(type)
   const name = generateName(type, internalData)
-  return new GraphQLScalarType({ name, description: concreteType.options?.description })
+  return new GraphQLScalarType({
+    name: checkNameOccurencies(name, internalData),
+    description: concreteType.options?.description,
+  })
 }
 
 function enumToGraphQLType(
@@ -204,7 +207,7 @@ function enumToGraphQLType(
   const name = generateName(enumeration, internalData)
   const variants = enumeration.variants.map((variant) => [variant, { value: variant }])
   const values = Object.fromEntries(variants)
-  return new GraphQLEnumType({ name, values })
+  return new GraphQLEnumType({ name: checkNameOccurencies(name, internalData), values })
 }
 
 // Turns a literal into a GraphQL scalar.
@@ -260,7 +263,11 @@ function objectToGraphQLType(
   const objectName = generateName(object, internalData)
   const fields = () =>
     mapObject(object.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, objectName))
-  return new GraphQLObjectType({ name: objectName, fields, description: object.options?.description })
+  return new GraphQLObjectType({
+    name: checkNameOccurencies(objectName, internalData),
+    fields,
+    description: object.options?.description,
+  })
 }
 
 function objectToInputGraphQLType(
@@ -270,27 +277,39 @@ function objectToInputGraphQLType(
   const objectName = generateInputName(object, internalData)
   const fields = () =>
     mapObject(object.fields, typeToGraphQLInputObjectField({ ...internalData, defaultName: undefined }, objectName))
-  return new GraphQLInputObjectType({ name: objectName, fields, description: object.options?.description })
+  return new GraphQLInputObjectType({
+    name: checkNameOccurencies(objectName, internalData),
+    fields,
+    description: object.options?.description,
+  })
 }
 
 function entityToGraphQLType(
   entity: model.EntityType<any, model.Types>,
   internalData: InternalData,
 ): GraphQLObjectType {
-  const objectName = generateName(entity, internalData)
+  const entityName = generateName(entity, internalData)
   const fields = () =>
-    mapObject(entity.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, objectName))
-  return new GraphQLObjectType({ name: objectName, fields, description: entity.options?.description })
+    mapObject(entity.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, entityName))
+  return new GraphQLObjectType({
+    name: checkNameOccurencies(entityName, internalData),
+    fields,
+    description: entity.options?.description,
+  })
 }
 
 function entityToInputGraphQLType(
   entity: model.EntityType<any, model.Types>,
   internalData: InternalData,
 ): GraphQLInputObjectType {
-  const objectName = generateInputName(entity, internalData)
+  const entityName = generateInputName(entity, internalData)
   const fields = () =>
-    mapObject(entity.fields, typeToGraphQLInputObjectField({ ...internalData, defaultName: undefined }, objectName))
-  return new GraphQLInputObjectType({ name: objectName, fields, description: entity.options?.description })
+    mapObject(entity.fields, typeToGraphQLInputObjectField({ ...internalData, defaultName: undefined }, entityName))
+  return new GraphQLInputObjectType({
+    name: checkNameOccurencies(entityName, internalData),
+    fields,
+    description: entity.options?.description,
+  })
 }
 
 function typeToGraphQLObjectField(
@@ -382,7 +401,7 @@ function unionToGraphQLType(union: model.UnionType<model.Types>, internalData: I
     }
   })
   return new GraphQLUnionType({
-    name: unionName,
+    name: checkNameOccurencies(unionName, internalData),
     types: unionTypes,
     resolveType: (value) => {
       const i = Object.keys(union.variants).findIndex((variantName) => {
@@ -400,7 +419,7 @@ function unionToInputGraphQLType(
   const unionName = generateInputName(union, internalData)
   const fields = () =>
     mapObject(union.variants, typeToGraphQLInputUnionVariant({ ...internalData, defaultName: undefined }, unionName))
-  return new GraphQLInputObjectType({ name: unionName, fields })
+  return new GraphQLInputObjectType({ name: checkNameOccurencies(unionName, internalData), fields })
 }
 
 function typeToGraphQLInputUnionVariant(

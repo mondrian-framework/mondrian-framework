@@ -71,7 +71,7 @@ function generateInputName(type: model.Type, internalData: InternalData): string
 function checkNameOccurencies(name: string, internalData: InternalData): string {
   const usedOccurencies = internalData.usedNames.get(name)
   if (usedOccurencies) {
-    console.warn(`[GRAPHQL-GENERATION] '${name}' symbol is used multiple times.`)
+    console.warn(`[GraphQL generation] '${name}' symbol is used multiple times.`)
     internalData.usedNames.set(name, usedOccurencies + 1)
     return `${name}${usedOccurencies}`
   } else {
@@ -377,7 +377,7 @@ function unionToGraphQLType(union: model.UnionType<model.Types>, internalData: I
       return value
     } else {
       throw new Error(
-        `[GRAPHQL-GENERATION] Cannot generate GraphQL union with non-object variants. Union ${unionName}, Variant ${variantName}`,
+        `[GraphQL generation] Cannot generate GraphQL union with non-object variants. Union ${unionName}, Variant ${variantName}`,
       )
     }
   })

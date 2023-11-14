@@ -73,7 +73,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.double({ max: minimum, maxExcluded: true })
       test.prop([invalidValue])('failing cases', (number) => {
-        const expectedError = [{ got: number, path: path.root() }]
+        const expectedError = [{ got: number, path: path.root }]
         checkError(Model.validate(number), expectedError)
       })
     })
@@ -89,7 +89,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.double({ max: exclusiveMinimum, maxExcluded: false })
       test.prop([invalidValue])('failing cases', (number) => {
-        const expectedError = [{ got: number, path: path.root() }]
+        const expectedError = [{ got: number, path: path.root }]
         checkError(Model.validate(number), expectedError)
       })
     })
@@ -105,7 +105,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.double({ min: maximum, minExcluded: true })
       test.prop([invalidValue])('failing cases', (number) => {
-        const expectedError = [{ got: number, path: path.root() }]
+        const expectedError = [{ got: number, path: path.root }]
         checkError(Model.validate(number), expectedError)
       })
     })
@@ -121,7 +121,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.double({ min: exclusiveMaximum, minExcluded: false })
       test.prop([invalidValue])('failing cases', (number) => {
-        const expectedError = [{ got: number, path: path.root() }]
+        const expectedError = [{ got: number, path: path.root }]
         checkError(Model.validate(number), expectedError)
       })
     })
@@ -136,7 +136,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.double().filter((n) => !Number.isInteger(n))
       test.prop([invalidValue])('failing cases', (number) => {
-        const expectedError = [{ got: number, path: path.root() }]
+        const expectedError = [{ got: number, path: path.root }]
         checkError(Model.validate(number), expectedError)
       })
     })
@@ -157,7 +157,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.string().filter((s) => !s.startsWith('mondrian'))
       test.prop([invalidValue])('failing cases', (string) => {
-        const expectedError = [{ got: string, path: path.root() }]
+        const expectedError = [{ got: string, path: path.root }]
         checkError(Model.validate(string), expectedError)
       })
     })
@@ -173,7 +173,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.string({ maxLength: minLength - 1 })
       test.prop([invalidValue])('failing cases', (string) => {
-        const expectedError = [{ got: string, path: path.root() }]
+        const expectedError = [{ got: string, path: path.root }]
         checkError(Model.validate(string), expectedError)
       })
     })
@@ -189,7 +189,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.string({ minLength: maxLength + 1 })
       test.prop([invalidValue])('failing cases', (string) => {
-        const expectedError = [{ got: string, path: path.root() }]
+        const expectedError = [{ got: string, path: path.root }]
         checkError(Model.validate(string), expectedError)
       })
     })
@@ -234,10 +234,10 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.date({ max: new Date(minimum.getTime() - 1) })
       test.prop([invalidValue])('failing cases', (date) => {
-        const expectedError = [{ got: date, path: path.root() }]
+        const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)
       })
-      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root() }])
+      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root }])
     })
 
     describe.concurrent('checks the datetime is <= than its maximum', () => {
@@ -251,10 +251,10 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.date({ min: new Date(maximum.getTime() + 1) })
       test.prop([invalidValue])('failing cases', (date) => {
-        const expectedError = [{ got: date, path: path.root() }]
+        const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)
       })
-      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root() }])
+      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root }])
     })
   })
 
@@ -274,10 +274,10 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.date({ max: new Date(minimum.getTime() - 1) })
       test.prop([invalidValue])('failing cases', (date) => {
-        const expectedError = [{ got: date, path: path.root() }]
+        const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)
       })
-      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root() }])
+      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root }])
     })
 
     describe.concurrent('checks the datetime is <= than its maximum', () => {
@@ -291,10 +291,10 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.date({ min: new Date(maximum.getTime() + 1) })
       test.prop([invalidValue])('failing cases', (date) => {
-        const expectedError = [{ got: date, path: path.root() }]
+        const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)
       })
-      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root() }])
+      checkError(Model.validate(new Date('')), [{ got: new Date(''), path: path.root }])
     })
   })
 
@@ -327,7 +327,7 @@ describe.concurrent('validation.validate', () => {
   describe.concurrent('on optional types', () => {
     test.prop([gen.anything().filter((value) => value !== undefined)])('validates the inner type', (value) => {
       assertOk(alwaysSuccess.optional().validate(value))
-      checkError(alwaysFail.optional().validate(value), [{ got: value, path: path.root() }])
+      checkError(alwaysFail.optional().validate(value), [{ got: value, path: path.root }])
     })
 
     test('always succeeds on undefined', () => {
@@ -339,7 +339,7 @@ describe.concurrent('validation.validate', () => {
   describe.concurrent('on nullable types', () => {
     test.prop([gen.anything().filter((value) => value !== null)])('validates the inner type', (value) => {
       assertOk(alwaysSuccess.nullable().validate(value))
-      checkError(alwaysFail.nullable().validate(value), [{ got: value, path: path.root() }])
+      checkError(alwaysFail.nullable().validate(value), [{ got: value, path: path.root }])
     })
 
     test('always succeeds on null', () => {
@@ -368,7 +368,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.array(gen.anything(), { maxLength: minItems - 1 })
       test.prop([invalidValue])('invalid values', (invalidValue) => {
-        checkError(Model.validate(invalidValue), [{ got: invalidValue, path: path.root() }])
+        checkError(Model.validate(invalidValue), [{ got: invalidValue.length, path: path.root }])
       })
     })
 
@@ -383,7 +383,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.array(gen.anything(), { minLength: maxItems + 1 })
       test.prop([invalidValue])('invalid values', (invalidValue) => {
-        checkError(Model.validate(invalidValue), [{ got: invalidValue, path: path.root() }])
+        checkError(Model.validate(invalidValue), [{ got: invalidValue.length, path: path.root }])
       })
     })
 
@@ -400,7 +400,7 @@ describe.concurrent('validation.validate', () => {
         (array) => {
           const Model = model.array(alwaysFail, { minItems: 5 })
           const errors = toErrors(array)
-          errors.unshift({ got: array, path: path.root() })
+          errors.unshift({ got: array.length, path: path.root })
           checkError(Model.validate(array, options), errors)
         },
       )
@@ -410,7 +410,7 @@ describe.concurrent('validation.validate', () => {
         (array) => {
           const Model = model.array(alwaysFail, { maxItems: 3 })
           const errors = toErrors(array)
-          errors.unshift({ got: array, path: path.root() })
+          errors.unshift({ got: array.length, path: path.root })
           checkError(Model.validate(array, options), errors)
         },
       )
@@ -453,7 +453,7 @@ describe.concurrent('validation.validate', () => {
 
     test.prop([gen.anything()])('fails is variant is invalid', (value) => {
       const Model = model.union({ variant1: alwaysFail, variant2: alwaysFail })
-      const expectedError = [{ got: value, path: path.root() }]
+      const expectedError = [{ got: value, path: path.root }]
       checkError(Model.validate(value), expectedError)
     })
   })

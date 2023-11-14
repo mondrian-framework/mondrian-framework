@@ -33,6 +33,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
 {
   readonly kind = model.Kind.Enum
   readonly variants: Vs
+  private variantSet: Set<string>
 
   fromOptions = (options: model.EnumTypeOptions) => enumeration(this.variants, options)
   getThis = () => this
@@ -40,6 +41,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
   constructor(variants: Vs, options?: model.EnumTypeOptions) {
     super(options)
     this.variants = variants
+    this.variantSet = new Set(variants)
   }
 
   encodeWithNoChecks(value: model.Infer<model.EnumType<Vs>>): JSONType {
@@ -51,7 +53,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
   }
 
   decodeWithoutValidation(value: unknown, _decodingOptions?: decoding.Options): decoding.Result<Vs[number]> {
-    return typeof value === 'string' && this.variants.includes(value)
+    return typeof value === 'string' && this.variantSet.has(value)
       ? decoding.succeed(value)
       : decoding.fail(`enum (${this.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
   }

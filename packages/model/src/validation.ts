@@ -62,8 +62,8 @@ export const succeed: () => validation.Result = () => result.ok(true)
  *          ```ts
  *          function alwaysFail(_value: unknown): validation.Result {
  *            const errors = [
- *              { assertion: "foo", got: null, path: path.root() },
- *              { assertion: "bar", got: null, path: path.root() },
+ *              { assertion: "foo", got: null, path: path.root },
+ *              { assertion: "bar", got: null, path: path.root },
  *            ]
  *            return validation.failWithErrors(errors)
  *          }
@@ -86,9 +86,9 @@ export const failWithErrors = (errors: validation.Error[]): validation.Result =>
  *              : validator.fail("the list should have at least one item", list)
  *          }
  *          validateNonEmpty([])
- *          // -> [{ assertion: "the list should have at least one item", got: [], path: path.root() }]
+ *          // -> [{ assertion: "the list should have at least one item", got: [], path: path.root }]
  *          ```
  */
 export function fail(assertion: string, got: unknown): validation.Result {
-  return validation.failWithErrors([{ assertion, got, path: path.root() }])
+  return validation.failWithErrors([{ assertion, got, path: path.root }])
 }

@@ -64,20 +64,42 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
 
   validate(value: model.Infer<model.ArrayType<M, T>>, validationOptions?: validation.Options): validation.Result {
     const { maxItems, minItems } = this.options ?? {}
-    const maxLengthMessage = `array must have at most ${maxItems} items`
-    const minLengthMessage = `array must have at least ${minItems} items`
-    const maxLengthValidation =
-      maxItems && value.length > maxItems ? validation.fail(maxLengthMessage, value) : validation.succeed()
-    const minLengthValidation =
-      minItems && value.length < minItems ? validation.fail(minLengthMessage, value) : validation.succeed()
-
-    const options = { ...validation.defaultOptions, ...validationOptions }
-    // prettier-ignore
-    return and(options, maxLengthValidation, // First check the array respects the maximum length
-      () => and(options, minLengthValidation, // Then check that is respects the minimum length
-        () => this.validateArrayElements(value, options), // Lastly validate its items
-      ),
-    )
+    const { errorReportingStrategy } = { ...validation.defaultOptions, ...validationOptions }
+    const errors: validation.Error[] = []
+    if (this.options?.maxItems != null && value.length > this.options.maxItems) {
+      const error: validation.Error = {
+        assertion: `array must have at most ${maxItems} items`,
+        got: value.length,
+        path: path.root,
+      }
+      if (errorReportingStrategy === 'stopAtFirstError') {
+        return validation.failWithErrors([error])
+      } else {
+        errors.push(error)
+      }
+    }
+    if (this.options?.minItems != null && value.length < this.options.minItems) {
+      const error: validation.Error = {
+        assertion: `array must have at least ${minItems} items`,
+        got: value.length,
+        path: path.root,
+      }
+      if (errorReportingStrategy === 'stopAtFirstError') {
+        return validation.failWithErrors([error])
+      } else {
+        errors.push(error)
+      }
+    }
+    const result = this.validateArrayElements(value, { errorReportingStrategy })
+    if (errors.length > 0) {
+      const additionalErrors = result.match(
+        () => [],
+        (e) => e,
+      )
+      return validation.failWithErrors([...errors, ...additionalErrors])
+    } else {
+      return result
+    }
   }
 
   private validateArrayElements(
@@ -202,36 +224,4 @@ function allConsecutive(numbers: number[]): boolean {
     }
   }
   return true
-}
-
-/**
- * @param options the validation options to be used when concatenating multiple steps
- * @param result the first result of the validation
- * @param other a function to lazily generate the next validation step
- * @returns a `Result` based on the options and the first `result`: if the validation
- *          strategy is to fail at the first error then as soon as an error is encountered
- *          the validation stops and fails with that error (so the second validation step
- *          may never be executed).
- *
- *          If the first step succeeds, the result will be the one obatined by the second
- *          step of the validation process
- */
-function and(
-  options: validation.Options,
-  result: validation.Result,
-  other: () => validation.Result,
-): validation.Result {
-  if (!result.isOk) {
-    if (options?.errorReportingStrategy === 'stopAtFirstError') {
-      return result
-    } else {
-      const otherErrors = other().match(
-        () => [],
-        (errors) => errors,
-      )
-      return validation.failWithErrors([...result.error, ...otherErrors])
-    }
-  } else {
-    return other()
-  }
 }

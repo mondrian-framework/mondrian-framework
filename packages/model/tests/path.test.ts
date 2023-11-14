@@ -3,7 +3,7 @@ import { test } from '@fast-check/vitest'
 import { expect } from 'vitest'
 
 test('path builders', () => {
-  expect(path.root()).toEqual('$')
+  expect(path.root).toEqual('$')
   expect(path.ofField('a')).toEqual('$.a')
   expect(path.ofIndex(2)).toEqual('$[2]')
   expect(path.appendIndex('$.a', 2)).toEqual('$.a[2]')

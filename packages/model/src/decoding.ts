@@ -61,9 +61,9 @@ export type Error = {
  *          value to its `expected` field. The value is not mutated in place but a new updated
  *          value is returned
  * @example ```ts
- *          const error = { expected: "foo", got: 1, path: path.root() }
+ *          const error = { expected: "foo", got: 1, path: path.root }
  *          const newError = addExpected("bar")(error)
- *          // newError -> { expected: "foo or bar", got: 1, path: path.root() }
+ *          // newError -> { expected: "foo or bar", got: 1, path: path.root }
  *          ```
  */
 export function addExpected(otherExpected: string): (error: decoding.Error) => decoding.Error {
@@ -96,8 +96,8 @@ export const succeed = <A>(value: A): decoding.Result<A> => result.ok(value)
  *          ```ts
  *          function alwaysFail(_value: unknown): decoding.Result<null> {
  *            const errors = [
- *              { expected: "foo", got: null, path: path.root() },
- *              { expected: "bar", got: null, path: path.root() },
+ *              { expected: "foo", got: null, path: path.root },
+ *              { expected: "bar", got: null, path: path.root },
  *            ]
  *            return decoding.failWithErrors(errors)
  *          }
@@ -121,13 +121,13 @@ export const failWithErrors = <A>(errors: decoding.Error[]): decoding.Result<A> 
  *              return decoding.fail("a number")
  *            }
  *          }
- *          decodeEven("foo") // -> [{ expected: "a number", got: "foo", path: path.root() }]
- *          decodeEven(1) // -> [{ expected: "an even number", got: 1, path: path.root() }]
+ *          decodeEven("foo") // -> [{ expected: "a number", got: "foo", path: path.root }]
+ *          decodeEven(1) // -> [{ expected: "an even number", got: 1, path: path.root }]
  *          ```
  *          The function `decodeEven` will fail with the provided message when the value it tries
  *          to decode is not an even number. As you may notice, it can be useful to define custom and
  *          informative error messages to signal the reason behind the failure of a decoder
  */
 export function fail<A>(expected: string, got: unknown): decoding.Result<A> {
-  return decoding.failWithErrors([{ expected, got, path: path.root() }])
+  return decoding.failWithErrors([{ expected, got, path: path.root }])
 }

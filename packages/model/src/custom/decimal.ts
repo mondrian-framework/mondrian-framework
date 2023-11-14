@@ -21,6 +21,7 @@ export function decimal(options?: model.OptionsOf<DecimalType>): DecimalType {
   ) {
     throw new Error('Invalid decimals, must be and integer between 0 and 100')
   }
+  //TODO [Good first issue]: do costraint check like number type
   return model.custom('decimal', encodeDecimal, decodeDecimal, validateDecimal, decimalArbitrary, options)
 }
 
@@ -75,6 +76,24 @@ function validateDecimal(
 }
 
 function decimalArbitrary(_maxDepth: number, options?: model.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {
-  //TODO [Good first issue] Implementation of decimal arbitrary needed 🙏
-  throw new Error('Arbitrary of `decimal` type not implemented yet!')
+  //this is a dummy implementation
+  return gen
+    .tuple(
+      gen.constant(options?.minimum),
+      gen.constant(options?.maximum),
+      gen.constant(options?.exclusiveMinimum),
+      gen.constant(options?.exclusiveMaximum),
+    )
+    .map((possibleValues) => {
+      const nonNull = possibleValues.find((v) => v != null)
+      if (nonNull == null) {
+        return new BigNumber(0)
+      } else if (typeof nonNull === 'number') {
+        return new BigNumber(nonNull, options?.base)
+      } else {
+        return nonNull
+      }
+    })
+
+  //TODO [Good first issue]: Implementation of decimal arbitrary needed 🙏
 }

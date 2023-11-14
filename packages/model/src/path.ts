@@ -4,24 +4,22 @@
 export type Path = string
 
 /**
- * @returns an empty path
+ * the root path
  */
-export function root(): Path {
-  return '$'
-}
+export const root: Path = '$'
 
 /**
  * @returns a path of this field name
  */
 export function ofField(fieldName: string): Path {
-  return appendField(root(), fieldName)
+  return appendField(root, fieldName)
 }
 
 /**
  * @returns a path of this index
  */
 export function ofIndex(index: number): Path {
-  return appendIndex(root(), index)
+  return appendIndex(root, index)
 }
 
 /**
@@ -42,14 +40,16 @@ export function appendIndex(path: Path, index: number): Path {
  * @returns the given path with the appended index
  */
 export function prependField(path: Path, fieldName: string): Path {
-  return `${root()}.${fieldName}${path.substring(1, path.length)}`
+  const pathWithoutRoot = path.substring(1, path.length)
+  return `${root}.${fieldName}${pathWithoutRoot}`
 }
 
 /**
  * @returns the given path with the appended index
  */
 export function prependIndex(path: Path, index: number): Path {
-  return `${root()}[${index}]${path.substring(1, path.length)}`
+  const pathWithoutRoot = path.substring(1, path.length)
+  return `${root}[${index}]${pathWithoutRoot}`
 }
 
 /**

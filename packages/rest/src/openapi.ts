@@ -3,6 +3,7 @@ import { decodeQueryObject, encodeQueryObject } from './utils'
 import { retrieve, model } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
+import BigNumber from 'bignumber.js'
 import { OpenAPIV3_1 } from 'openapi-types'
 
 export function fromModule<Fs extends functions.FunctionsInterfaces>({
@@ -529,35 +530,32 @@ function customToOpenAPIComponent(
   type: model.CustomType,
   internalData: InternalData,
 ): OpenAPIV3_1.NonArraySchemaObject {
+  const anyValue = { description: type.options?.description }
   //convert known types based on name
   if (type.typeName === model.record(model.unknown()).typeName) {
     const fieldSchema = modelToSchema((type.options as model.RecordOptions).fieldsType, internalData)
-    return {
-      type: 'object',
-      additionalProperties: fieldSchema,
-      description: type.options?.description,
-    }
+    return { type: 'object', additionalProperties: fieldSchema, description: type.options?.description }
   } else if (type.typeName === model.datetime().typeName) {
-    return {
-      type: 'string',
-      format: 'date-time',
-      description: type.options?.description,
-    }
+    return { type: 'string', format: 'date-time', description: type.options?.description }
   } else if (type.typeName === model.timestamp().typeName) {
-    return {
-      type: 'integer',
-      description: type.options?.description ?? 'unix timestamp',
-    }
+    return { type: 'integer', description: type.options?.description ?? 'unix timestamp' }
   } else if (type.typeName === model.email().typeName) {
+    return { type: 'string', format: 'email', description: type.options?.description }
+  } else if (type.typeName === model.never().typeName) {
+    return anyValue
+  } else if (type.typeName === model.unknown().typeName) {
+    return anyValue
+  } else if (type.typeName === model.json().typeName) {
+    return anyValue
+  } else if (type.typeName === model.decimal().typeName) {
+    //TODO [Good first issue]: can we add a ragex based on `opts` that describe the decimal value?
+    const opts = (type.options ?? {}) as model.DecimalTypeAdditionalOptions
+    const defaultDescription = `decimal value of base ${opts.base ?? 10} and ${opts.decimals} decimals`
     return {
       type: 'string',
-      format: 'email',
-      description: type.options?.description,
+      description: type.options?.description ?? defaultDescription,
+      example: (type.example({ seed: 0 }) as BigNumber).toString(opts.base),
     }
-  } else if (type.typeName === model.never().typeName) {
-    return {}
-  } else if (type.typeName === model.unknown().typeName) {
-    return {}
   }
 
   //TODO [Good first issue]: complete with other known custom type
@@ -565,9 +563,7 @@ function customToOpenAPIComponent(
 
   //otherwise don't known how to convert this type to openapi
   console.warn(`[OpenAPI generation] don't known how to properly map custom type "${type.typeName}"`)
-  return {
-    description: type.options?.description,
-  }
+  return { type: 'string', description: type.options?.description ?? type.typeName }
 }
 
 function arrayToOpenAPIComponent(

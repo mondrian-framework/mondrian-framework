@@ -3,9 +3,19 @@ import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
+ * Additional options for type {@link JsonType}.
+ */
+export type JsonTypeOptions = {
+  /**
+   * Size limit in bytes. Uncompressed.
+   */
+  sizeLimit?: number
+}
+
+/**
  * The type of a json, defined as a custom type.
  */
-export type JsonType = model.CustomType<'json', {}, JSONType>
+export type JsonType = model.CustomType<'json', JsonTypeOptions, JSONType>
 
 /**
  * @param options the options used to create the new json custom type
@@ -16,7 +26,15 @@ export function json(options?: model.OptionsOf<JsonType>): JsonType {
     'json',
     (v) => v,
     (v) => (v === undefined ? decoding.succeed(null) : decoding.succeed(JSON.parse(JSON.stringify(v)))),
-    () => validation.succeed(),
+    (json) => {
+      if (options?.sizeLimit != null) {
+        const size = Buffer.byteLength(JSON.stringify(json))
+        if (size > options.sizeLimit) {
+          return validation.fail(`json must be maximum of ${options.sizeLimit}B`, size)
+        }
+      }
+      return validation.succeed()
+    },
     jsonArbitrary,
     options,
   )

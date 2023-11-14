@@ -554,6 +554,10 @@ function customToOpenAPIComponent(
       format: 'email',
       description: type.options?.description,
     }
+  } else if (type.typeName === model.never().typeName) {
+    return {}
+  } else if (type.typeName === model.unknown().typeName) {
+    return {}
   }
 
   //TODO [Good first issue]: complete with other known custom type

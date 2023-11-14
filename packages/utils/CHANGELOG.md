@@ -1,7 +1,7 @@
 # @mondrian-framework/utils
 
-## 0.0.1
+## 2.0.0
 
-### Patch Changes
+### Major Changes
 
-- First beta release
+- First 2.0.0 version

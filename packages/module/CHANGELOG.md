@@ -1,9 +1,12 @@
 # @mondrian-framework/module
 
-## 0.0.1
+## 2.0.0
+
+### Major Changes
+
+- First 2.0.0 version
 
 ### Patch Changes
 
-- First beta release
 - Updated dependencies
-  - @mondrian-framework/model@0.0.1
+  - @mondrian-framework/model@2.0.0

@@ -272,15 +272,20 @@ export function build<
  *   })
  * ```
  */
-export function withContext<const Context extends Record<string, unknown>>(): FunctionBuilder<Context> {
-  return new FunctionBuilder()
+export function withContext<const Context extends Record<string, unknown>>(
+  namespace?: string,
+): FunctionBuilder<Context> {
+  return new FunctionBuilder(namespace)
 }
 
 /**
  * Mondrian function builder.
  */
 class FunctionBuilder<const Context extends Record<string, unknown>> {
-  constructor() {}
+  private readonly namespace: string | undefined
+  constructor(namespace?: string) {
+    this.namespace = namespace
+  }
   /**
    * Builds a Mondrian function.
    * @returns A Mondrian function.
@@ -291,7 +296,7 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
     const E extends ErrorType = undefined,
     const R extends OutputRetrieveCapabilities = undefined,
   >(func: Function<I, O, E, R, Context>): FunctionImplementation<I, O, E, R, Context> {
-    return new BaseFunction(func)
+    return new BaseFunction({ options: { namespace: this.namespace, ...func.options }, ...func })
   }
 }
 

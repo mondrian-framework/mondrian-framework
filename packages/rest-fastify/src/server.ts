@@ -1,6 +1,6 @@
 import { attachRestMethods } from './methods'
 import { fastifyStatic } from '@fastify/static'
-import { functions, module } from '@mondrian-framework/module'
+import { functions } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { FastifyInstance } from 'fastify'
@@ -38,6 +38,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
     server.get(`${introspectionPath}`, (req, res) => {
       res.redirect(`${introspectionPath}/index.html`)
     })
+    const cache: Map<string, unknown> = new Map()
     server.get(`${introspectionPath}/:v/schema.json`, (req, reply) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
@@ -45,7 +46,13 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
         reply.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${api.version}` }
       }
-      return rest.openapi.fromModule({ api, version, module: api.module })
+      const cachedSchema = cache.get(v)
+      if (cachedSchema) {
+        return cachedSchema
+      }
+      const schema = rest.openapi.fromModule({ api, version, module: api.module })
+      cache.set(v, schema)
+      return schema
     })
   }
   attachRestMethods({ api, server, context, pathPrefix, error })

@@ -31,6 +31,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
     server.get(`${introspectionPath}`, (req: Request, res: Response) => {
       res.redirect(`${introspectionPath}/index.html`)
     })
+    const cache: Map<string, unknown> = new Map()
     server.get(`${introspectionPath}/:v/schema.json`, (req: Request, res: Response) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
@@ -38,7 +39,13 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         res.status(404)
         return { error: 'Invalid version', minVersion: `v1`, maxVersion: `v${api.version}` }
       }
-      return rest.openapi.fromModule({ api, version, module: api.module })
+      const cachedSchema = cache.get(v)
+      if (cachedSchema) {
+        return cachedSchema
+      }
+      const schema = rest.openapi.fromModule({ api, version, module: api.module })
+      cache.set(v, schema)
+      return schema
     })
     // file deepcode ignore NoRateLimitingForExpensiveWebOperation: could disable this by disabling introspection in production environment
     server.get(`${introspectionPath}/*`, (req: Request, res: Response) => {

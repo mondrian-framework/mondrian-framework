@@ -87,7 +87,7 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
       query?: string
     }
   }
-  errorCodes?: { [K in keyof F['errors']]?: number }
+  errorCodes?: { [K in keyof Exclude<F['errors'], undefined>]?: number }
   namespace?: string | null
   security?: OpenAPIV3_1.SecurityRequirementObject[]
 }

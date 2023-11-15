@@ -33,6 +33,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
         functionName,
         functionBody,
         error,
+        api,
       })
       const fastifyHandler = async (request: FastifyRequest, reply: FastifyReply) => {
         const result = await restHandler({

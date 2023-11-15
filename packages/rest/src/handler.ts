@@ -1,4 +1,4 @@
-import { ErrorHandler, FunctionSpecifications, Request, Response } from './api'
+import { ApiSpecification, ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
 import { result, retrieve, model } from '@mondrian-framework/model'
@@ -13,6 +13,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   functionBody,
   context,
   error,
+  api,
 }: {
   functionName: string
   module: module.Module<Fs, ContextInput>
@@ -20,6 +21,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   error?: ErrorHandler<functions.Functions, ServerContext>
+  api: Pick<ApiSpecification<functions.FunctionsInterfaces>, 'errorCodes'>
 }): (args: { request: Request; serverContext: ServerContext }) => Promise<Response> {
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
@@ -85,7 +87,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
             //Output processing
             if (functionBody.errors && !applyOutput.isOk) {
-              const codes = (specification.errorCodes ?? {}) as Record<string, number>
+              const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
               const key = Object.keys(applyOutput.error as Record<string, unknown>)[0]
               const status = key ? codes[key] ?? 400 : 400
               const encoded = model

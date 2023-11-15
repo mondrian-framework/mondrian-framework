@@ -10,6 +10,8 @@ export type JSONType =
 
 export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
 
+export type KeysOfUnion<T> = T extends T ? keyof T : never
+
 /**
  * @param message the message to display in the error
  * @throws an Error with the `[internal error]` header and an additional message

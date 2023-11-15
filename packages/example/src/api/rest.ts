@@ -21,6 +21,9 @@ const api = rest.build({
   securities: {
     loggedUser: { type: 'http', scheme: 'bearer' },
   },
+  errorCodes: {
+    invalidLogin: 401,
+  },
   options: { introspection: true },
 })
 

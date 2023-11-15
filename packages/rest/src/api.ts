@@ -1,6 +1,7 @@
 import { assertApiValidity } from './utils'
 import { retrieve, model } from '@mondrian-framework/model'
 import { functions, logger, module } from '@mondrian-framework/module'
+import { KeysOfUnion } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
 export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
@@ -28,6 +29,18 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
    * Available openapi securities. The key is used as reference in the function specification.
    */
   securities?: Record<string, OpenAPIV3_1.SecuritySchemeObject>
+  /**
+   * Shared error codes.
+   */
+  errorCodes?: {
+    [K in KeysOfUnion<
+      {
+        [K2 in keyof Fs]: Exclude<Fs[K2]['errors'], undefined> extends never
+          ? never
+          : Exclude<Fs[K2]['errors'], undefined>
+      }[keyof Fs]
+    >]?: number
+  }
 }
 
 export type Api<Fs extends functions.Functions, ContextInput> = ApiSpecification<Fs> & {

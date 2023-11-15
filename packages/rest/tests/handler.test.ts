@@ -86,6 +86,7 @@ describe('rest handler', () => {
       specification,
       module: m,
       error,
+      api: {},
     })
     return (request) =>
       handler({

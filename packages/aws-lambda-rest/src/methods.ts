@@ -34,6 +34,7 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
         functionName,
         functionBody,
         error,
+        api,
       })
       const lambdaApiHandler: HandlerFunction = async (request, response) => {
         const result = await restHandler({

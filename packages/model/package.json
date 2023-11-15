@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/model",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -14,7 +14,7 @@
   },
   "keywords": [],
   "peerDependencies": {
-    "@mondrian-framework/utils": "^2.0.1"
+    "@mondrian-framework/utils": "^2.0.2"
   },
   "dependencies": {
     "fast-check": "^3.12.0",

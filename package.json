@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "build-docs": "npm run build-docs --workspace=@mondrian-framework/docs",
-    "deploy-docs": "npm run deploy-docs --workspace=@mondrian-framework/docs",
+    "build-docs": "npm run build --workspace=@mondrian-framework/docs",
+    "deploy-docs": "npm run deploy --workspace=@mondrian-framework/docs",
     "test": "npm run test --workspaces --if-present",
     "coverage": "npm run coverage --workspaces --if-present",
     "pretty": "prettier --write \"./**/*.ts\"",

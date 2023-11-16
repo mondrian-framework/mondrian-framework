@@ -678,7 +678,10 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
               const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
               outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
             } else {
-              outputValue = partialOutputType.encodeWithoutValidation(applyResult.error as never)
+              const code = Object.keys(applyResult.error)[0]
+              const value = applyResult.error[code]
+              const mappedError = { code, value, errors: applyResult.error }
+              outputValue = partialOutputType.encodeWithoutValidation(mappedError as never)
             }
             endSpanWithResult(applyResult, span)
           } else {
@@ -768,8 +771,20 @@ function getFunctionOutputTypeWithErrors(
   const success = isOutputTypeWrapped
     ? model.object({ value: fun.output }).setName(`${capitalise(functionName)}Success`)
     : fun.output
+  if (Object.keys(fun.errors).includes('code')) {
+    throw new Error("[GraphQL generation] 'code' is reserved as error code")
+  }
+  if (Object.keys(fun.errors).includes('value')) {
+    throw new Error("[GraphQL generation] 'value' is reserved as error code")
+  }
   const error = model
-    .object(mapObject(fun.errors, (_, errorType) => model.optional(errorType)))
+    .object({
+      code: model.string(),
+      value: model.unknown(),
+      errors: model
+        .object(mapObject(fun.errors, (_, errorType) => model.optional(errorType)))
+        .setName(`${capitalise(functionName)}Errors`),
+    })
     .setName(`${capitalise(functionName)}Failure`)
   return {
     outputType: model.union({ error, success }).setName(`${capitalise(functionName)}Result`),

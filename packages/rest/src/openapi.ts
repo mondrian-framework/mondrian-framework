@@ -39,7 +39,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
       const schema = modelToSchema(functionBody.output, internalData)
       const errorMap: Record<string, (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject)[]> = {}
       if (functionBody.errors) {
-        const errorCodes = (specification.errorCodes ?? {}) as Record<string, number>
+        const errorCodes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
         for (const [errorName, errorType] of Object.entries(functionBody.errors)) {
           const code = (errorCodes[errorName] ?? 400).toString()
           const ts = errorMap[code] ?? []

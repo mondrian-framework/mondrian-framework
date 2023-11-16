@@ -12,7 +12,7 @@ const api = rest.build({
       { method: 'post', path: '/subscribe', version: { min: 2 } },
       { method: 'put', path: '/user', version: { max: 1 } },
     ],
-    login: { method: 'post', path: '/login', errorCodes: { invalidLogin: 401 } },
+    login: { method: 'post', path: '/login' },
     follow: { method: 'put', path: '/user/{userId}/follow', security: [{ loggedUser: [] }] },
     writePost: { method: 'post', path: '/post', security: [{ loggedUser: [] }] },
     readPosts: [{ method: 'get', path: '/user/{userId}/posts', security: [{ loggedUser: [] }] }],
@@ -23,6 +23,7 @@ const api = rest.build({
   },
   errorCodes: {
     invalidLogin: 401,
+    tooManyRequests: 429,
   },
   options: { introspection: true },
 })

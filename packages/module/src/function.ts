@@ -262,7 +262,7 @@ export function build<
  * import { functions } from '@mondrian-framework/module'
  *
  * const loginFunction = functions
- *   .withContext<{ db: Db }>()
+ *   .withContext<{ db: Db }>('namespace')
  *   .build({
  *     input: type.object({ username: model.stirng(), password: model.string() }),
  *     output: model.string(),

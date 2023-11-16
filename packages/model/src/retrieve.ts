@@ -206,7 +206,7 @@ export function selectedType<T extends model.Type>(
       })
       return model.object(selectedFields)
     },
-    otherwise: (t) => t,
+    otherwise: (_, t) => t,
   })
 }
 
@@ -309,7 +309,7 @@ function where(type: model.Type): model.Type {
     array: ({ wrappedType }) => {
       const matcher: (type: model.Type) => model.Type = model.matcher({
         wrapper: ({ wrappedType }) => matcher(wrappedType), //isSet
-        scalar: (t) => model.object({ equals: model.optional(model.array(t)) }),
+        scalar: (_, t) => model.object({ equals: model.optional(model.array(t)) }),
         array: () => {
           throw new Error('Array of array not supported in where')
         },
@@ -321,7 +321,7 @@ function where(type: model.Type): model.Type {
             none: model.optional(fieldWhereType),
           })
         },
-        object: ({ fields }, t) => {
+        object: ({ fields }) => {
           return model.object({
             equals: model.optional(model.object(fields).array()),
             isEmpty: model.boolean().optional(),
@@ -338,7 +338,7 @@ function where(type: model.Type): model.Type {
       throw new Error('Unsupported union in where')
     },
     entity: (_, entity) => entityWhere(entity),
-    scalar: (t) => model.object({ equals: model.optional(t) }),
+    scalar: (_, t) => model.object({ equals: model.optional(t) }),
   })
 }
 

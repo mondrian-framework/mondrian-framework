@@ -4,7 +4,7 @@ import { result, retrieve, model } from '@mondrian-framework/model'
 import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
 import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
-import { groupBy } from '@mondrian-framework/utils'
+import { groupBy, uncapitalise } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
 import { SpanStatusCode, Span } from '@opentelemetry/api'
 import {
@@ -546,7 +546,7 @@ function splitIntoNamespaces(
       }
       return [
         [
-          namespace,
+          uncapitalise(namespace),
           {
             type: new GraphQLObjectType({
               name: `${capitalise(namespace)}${type}Namespace`,

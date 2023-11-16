@@ -12,6 +12,7 @@ import {
   setTraversingValue,
   sleep,
   toCamelCase,
+  uncapitalise,
 } from '../src'
 import { fc as gen, test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
@@ -122,6 +123,12 @@ test('capitalize', () => {
   expect(capitalise('asd')).toBe('Asd')
   expect(capitalise('')).toBe('')
   expect(capitalise('.')).toBe('.')
+})
+
+test('capitalize', () => {
+  expect(uncapitalise('Asd')).toBe('asd')
+  expect(uncapitalise('')).toBe('')
+  expect(uncapitalise('.')).toBe('.')
 })
 
 test('toCamelCase', () => {

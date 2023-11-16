@@ -236,6 +236,14 @@ export function capitalise(word: string): string {
 }
 
 /**
+ * @param word
+ * @returns a new string where the first letter is not a capital letter
+ */
+export function uncapitalise(word: string): string {
+  return word.charAt(0).toLocaleLowerCase() + word.slice(1)
+}
+
+/**
  * @param text the text to turn into camel case
  * @returns a new string where each space has been removed and all words
  *          have been capitalised

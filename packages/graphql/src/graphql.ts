@@ -618,12 +618,15 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
   internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>] {
   const operationName = specification.name ?? functionName
-  const plainInput = typeToGraphQLInputType(functionBody.input, {
-    ...internalData,
-    defaultName: `${capitalise(operationName)}Input`,
-  })
-  const isInputNullable = model.isOptional(functionBody.input) || model.isNullable(functionBody.input)
-  const input = { type: isInputNullable ? plainInput : new GraphQLNonNull(plainInput) }
+  let input: { type: GraphQLInputType } | undefined = undefined
+  if (!model.isNever(functionBody.input)) {
+    const plainInput = typeToGraphQLInputType(functionBody.input, {
+      ...internalData,
+      defaultName: `${capitalise(operationName)}Input`,
+    })
+    const isInputNullable = model.isOptional(functionBody.input) || model.isNullable(functionBody.input)
+    input = { type: isInputNullable ? plainInput : new GraphQLNonNull(plainInput) }
+  }
   const graphQLInputTypeName = specification.inputName ?? 'input'
 
   const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, operationName)
@@ -738,12 +741,12 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
 
   const retrieveArgs = retrieveType.isOk
     ? retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
-    : {}
+    : undefined
   return [
     operationName,
     {
       type: output,
-      args: { [graphQLInputTypeName]: input, ...retrieveArgs },
+      args: input === undefined ? retrieveArgs : { [graphQLInputTypeName]: input, ...retrieveArgs },
       resolve,
       description: functionBody.options?.description,
     },

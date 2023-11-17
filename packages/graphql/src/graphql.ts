@@ -4,7 +4,7 @@ import { result, retrieve, model } from '@mondrian-framework/model'
 import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
 import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
-import { groupBy, uncapitalise } from '@mondrian-framework/utils'
+import { flatMapObject, groupBy, uncapitalise } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
 import { SpanStatusCode, Span } from '@opentelemetry/api'
 import {
@@ -34,6 +34,8 @@ import {
   valueFromASTUntyped,
   GraphQLError,
 } from 'graphql'
+
+const IGNORE_ON_GRAPHQL_GENERATION = 'ignore_on_graphql_generation'
 
 /**
  * Generates a name for the given type with the following algorithm:
@@ -262,7 +264,7 @@ function objectToGraphQLType(
 ): GraphQLObjectType {
   const objectName = generateName(object, internalData)
   const fields = () =>
-    mapObject(object.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, objectName))
+    flatMapObject(object.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, objectName))
   return new GraphQLObjectType({
     name: checkNameOccurencies(objectName, internalData),
     fields,
@@ -290,7 +292,7 @@ function entityToGraphQLType(
 ): GraphQLObjectType {
   const entityName = generateName(entity, internalData)
   const fields = () =>
-    mapObject(entity.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, entityName))
+    flatMapObject(entity.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, entityName))
   return new GraphQLObjectType({
     name: checkNameOccurencies(entityName, internalData),
     fields,
@@ -315,8 +317,12 @@ function entityToInputGraphQLType(
 function typeToGraphQLObjectField(
   internalData: InternalData,
   objectName: string,
-): (fieldName: string, fieldType: model.Type) => GraphQLFieldConfig<any, any> {
+): (fieldName: string, fieldType: model.Type) => [string, GraphQLFieldConfig<any, any>][] {
   return (fieldName, fieldType) => {
+    const tags = model.concretise(fieldType).options?.tags ?? {}
+    if (tags[IGNORE_ON_GRAPHQL_GENERATION] === true) {
+      return []
+    }
     const fieldDefaultName = generateName(fieldType, {
       ...internalData,
       defaultName: objectName + capitalise(fieldName),
@@ -341,11 +347,16 @@ function typeToGraphQLObjectField(
         })
       }
     }
-    return {
-      type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType),
-      args: graphqlRetrieveArgs,
-      description: model.getFirstDescription(fieldType),
-    }
+    return [
+      [
+        fieldName,
+        {
+          type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType),
+          args: graphqlRetrieveArgs,
+          description: model.getFirstDescription(fieldType),
+        },
+      ],
+    ]
   }
 }
 
@@ -681,9 +692,14 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
               const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
               outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
             } else {
-              const code = Object.keys(applyResult.error)[0]
-              const value = applyResult.error[code]
-              const mappedError = { code, value, errors: applyResult.error }
+              const errorCode = Object.keys(applyResult.error)[0]
+              const errorValue = applyResult.error[errorCode]
+              const mappedError = {
+                '[GraphQL generation]: isError': true,
+                errorCode,
+                errorValue,
+                errors: applyResult.error,
+              }
               outputValue = partialOutputType.encodeWithoutValidation(mappedError as never)
             }
             endSpanWithResult(applyResult, span)
@@ -782,15 +798,17 @@ function getFunctionOutputTypeWithErrors(
   }
   const error = model
     .object({
-      code: model.string(),
-      value: model.unknown(),
+      //[GraphQL generation]: isError' is used to be confident that the union ownership is inferred correctly.
+      '[GraphQL generation]: isError': model.literal(true, { tags: { [IGNORE_ON_GRAPHQL_GENERATION]: true } }),
+      errorCode: model.string(),
+      errorValue: model.unknown(),
       errors: model
         .object(mapObject(fun.errors, (_, errorType) => model.optional(errorType)))
         .setName(`${capitalise(functionName)}Errors`),
     })
     .setName(`${capitalise(functionName)}Failure`)
   return {
-    outputType: model.union({ error, success }).setName(`${capitalise(functionName)}Result`),
+    outputType: model.union({ success, error }).setName(`${capitalise(functionName)}Result`),
     isOutputTypeWrapped,
   }
 }

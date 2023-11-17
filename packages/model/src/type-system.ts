@@ -297,6 +297,10 @@ export type BaseOptions = {
   readonly name?: string
   readonly description?: string
   readonly sensitive?: boolean
+  /**
+   * Can be used for any general purpose when traversing the AST.
+   */
+  readonly tags?: Record<string, string | number | boolean>
 }
 
 /**

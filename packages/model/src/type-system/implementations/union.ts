@@ -87,7 +87,11 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
   }
 
   variantOwnership(value: model.Infer<model.UnionType<Ts>>): keyof Ts & string {
-    const decoded = this.decodeAndTryToValidate(value)
+    const decoded = this.decodeAndTryToValidate(value, {
+      typeCastingStrategy: 'expectExactTypes',
+      errorReportingStrategy: 'stopAtFirstError',
+      fieldStrictness: 'expectExactFields',
+    })
     if (!decoded.isOk) {
       failWithInternalError(
         'Type system should have prevented this error. This values does not match with any variant of this union.',

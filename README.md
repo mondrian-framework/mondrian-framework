@@ -1,9 +1,15 @@
+![CI](https://github.com/twinlogix/mondrian-framework/actions/workflows/ci-checks.yml/badge.svg)
+[![codecov](https://codecov.io/gh/mondrian-framework/mondrian-framework/graph/badge.svg?token=DT2P5BRCMX)](https://codecov.io/gh/mondrian-framework/mondrian-framework) 
 # Mondrian
 
-![CI](https://github.com/twinlogix/mondrian-framework/actions/workflows/ci-checks.yml/badge.svg)
-[![codecov](https://codecov.io/gh/mondrian-framework/mondrian-framework/graph/badge.svg?token=DT2P5BRCMX)](https://codecov.io/gh/mondrian-framework/mondrian-framework)
-
 [Home page](https://mondrian-framework.github.io/mondrian-framework/)
+
+
+
+## How it works
+
+Mondrian allows you to define a data model in an intuitive human-readable way. In addition to model fields, types, possibly new scalars and relationships, you can utilize a wide range of validity rules or create new and reusable ones. Once the model is defined, the framework provides a set of fully automatic translation features to major standards: JSONSchema (OpenAPI), GraphQL and Protobuf.
+<img width="777" alt="graphql-example" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/1b7611d6-7a48-4190-b230-0947958e1903"/>
 
 ## Usage example
 
@@ -13,6 +19,7 @@ In this section, we’ll walk through an example of how to use the Mondrian fram
 - [Build module](#build-module)
 - [Serve module as REST endpoint](#serve-module-rest)
 - [Serve module as GRAPHQL endpoint](#serve-module-graphql)
+- [Primsa integration](#prisma-integration)
 
 For this example we'll need to install this packages:
 
@@ -168,3 +175,52 @@ server.listen({ port: 4000 }).then((address) => {
 Enabling GraphQL introspection allows you to explore your API using the Yoga schema navigator at http://localhost:4000/graphql Nothing stops you from exposing the module with both a GraphQL and a REST endpoint.
 
 <img width="777" alt="graphql-example" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/c8283eca-9aaf-48b4-91a3-80b164397a19">
+
+### Prisma integration
+
+This framework has a strong integration with prisma type-system and enable you to expose a graph of your data in a seamless-way.
+
+Schema.prisma
+```prisma
+model User {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  email      String       @unique
+  password   String
+  posts      Post[]
+}
+
+model Post {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  content     String
+  authorId    String         @db.ObjectId
+  author      User           @relation(fields: [authorId], references: [id])
+}
+```
+
+types.ts
+```typescript
+const User = () => model.entity({
+  id: model.string(),
+  email: model.string(),
+  //passowrd omitted, you can expose a subset of field
+  posts: model.array(Post)
+})
+const Post = () => model.entity({
+  id: model.string(),
+  content: model.string(),
+  author: User
+})
+
+const getUsers = functions.build({
+  input: model.never(),
+  output: model.array(User),
+  retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
+  body: async ({ retrieve }) => prismaClient.user.findMany(retrieve) //retrieve type match Prisma generated types
+})
+```
+
+By exposing the function as GraphQL endpoint we can navigate the relation between User and Post.
+
+
+
+

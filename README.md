@@ -222,5 +222,6 @@ const getUsers = functions.build({
 By exposing the function as GraphQL endpoint we can navigate the relation between User and Post.
 
 
+<img width="589" alt="image" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/76308ec0-bca1-459f-8696-a9f296bf072f">
 
 

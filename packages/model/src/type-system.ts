@@ -2170,6 +2170,18 @@ export function isOptional(type: Type): boolean {
 
 /**
  * @param type the type to check
+ * @returns the first description navigating this type.
+ */
+export function getFirstDescription(type: Type): string | undefined {
+  return match(type, {
+    array: (t) => t.options?.description,
+    wrapper: (t) => t.options?.description ?? getFirstDescription(t.wrappedType),
+    otherwise: (t) => t.options?.description,
+  })
+}
+
+/**
+ * @param type the type to check
  * @returns true if the type is a nullable type
  */
 export function isNullable(type: Type): type is NullableType<Type> {

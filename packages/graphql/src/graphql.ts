@@ -344,6 +344,7 @@ function typeToGraphQLObjectField(
     return {
       type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType),
       args: graphqlRetrieveArgs,
+      description: model.getFirstDescription(fieldType),
     }
   }
 }
@@ -544,6 +545,7 @@ function splitIntoNamespaces(
       if (namespace === '') {
         return fields
       }
+      const op = type === 'Query' ? 'queries' : 'mutations'
       return [
         [
           uncapitalise(namespace),
@@ -551,9 +553,10 @@ function splitIntoNamespaces(
             type: new GraphQLObjectType({
               name: `${capitalise(namespace)}${type}Namespace`,
               fields: Object.fromEntries(fields),
+              description: `This type contains the ${op} belonging to "${namespace}" namespace.`,
             }),
             resolve: () => ({}),
-            description: `The fields of this type are the operation that belong to ${namespace} namespace`,
+            description: `Contains the ${op} belonging to "${namespace}" namespace.`,
           },
         ],
       ]

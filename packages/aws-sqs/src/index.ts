@@ -1,1 +1,2 @@
-export * as listener from './listener'
+export { listen } from './listener'
+export * as sqs from './api'

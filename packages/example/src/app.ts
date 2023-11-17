@@ -13,13 +13,6 @@ async function main() {
   const address = await server.listen({ port: 4000 })
   console.log(`Rest    server started in ${partialTime - startTime}ms -> ${address}/openapi`)
   console.log(`Graphql server started in ${finishTime - partialTime}ms -> ${address}/graphql`)
-
-  process.on('SIGINT', () => {
-    console.log('Shutting down server...')
-    server.close().then(() => {
-      process.exit(0)
-    })
-  })
 }
 
 main()

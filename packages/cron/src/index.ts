@@ -1,1 +1,2 @@
-export * as cron from './executor'
+export * as cron from './api'
+export { start } from './executor'

@@ -1,38 +1,23 @@
+import { Api, FunctionSpecifications } from './api'
 import * as AWS from '@aws-sdk/client-sqs'
 import { model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
-export type Api<Fs extends functions.Functions> = {
-  functions: {
-    [K in keyof Fs]?: FunctionSpecifications
-  }
-  options?: {
-    config?: AWS.SQSClientConfig
-    maxConcurrency?: number
-  }
-}
-
-type FunctionSpecifications = {
-  queueUrl: string
-  malformedMessagePolicy?: 'ignore' | 'delete'
-  maxConcurrency?: number
-}
-
-export function start<const Fs extends functions.Functions, const CI>({
-  module,
+/**
+ * TODO: doc
+ */
+export function listen<const Fs extends functions.Functions, const CI>({
   api,
   context,
 }: {
-  module: module.Module<Fs, CI>
-  api: Api<Fs>
+  api: Api<Fs, CI>
   context: (args: { message: AWS.Message }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
-
   const promises: Promise<void>[] = []
   const alive: { yes: boolean } = { yes: true }
-  for (const functionName of Object.keys(module.functions.definitions)) {
+  for (const functionName of Object.keys(api.module.functions.definitions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -45,7 +30,7 @@ export function start<const Fs extends functions.Functions, const CI>({
       queueUrl: specifications.queueUrl,
       alive,
       client,
-      module,
+      module: api.module,
       functionName,
       context,
       specifications,
@@ -57,7 +42,7 @@ export function start<const Fs extends functions.Functions, const CI>({
   return {
     async close() {
       alive.yes = false
-      await logger.build({ moduleName: module.name, server: 'SQS' }).logInfo('Closing listeners...')
+      logger.build({ moduleName: api.module.name, server: 'SQS' }).logInfo('Closing listeners...')
       await Promise.all(promises)
     },
   }

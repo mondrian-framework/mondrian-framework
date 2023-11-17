@@ -7,15 +7,18 @@ export const PostVisibility = model.enumeration(['PUBLIC', 'PRIVATE', 'FOLLOWERS
 
 export type Post = model.Infer<typeof Post>
 export const Post = () =>
-  model.entity({
-    id: idType,
-    title: model.string(),
-    content: model.string(),
-    publishedAt: model.datetime(),
-    author: User,
-    likes: model.array(Like),
-    visibility: PostVisibility,
-  })
+  model.entity(
+    {
+      id: idType,
+      title: model.string(),
+      content: model.string(),
+      publishedAt: model.datetime(),
+      author: User,
+      likes: model.array(Like),
+      visibility: PostVisibility,
+    },
+    { description: 'Post of a user.' },
+  )
 
 export type Like = model.Infer<typeof Like>
 export const Like = () =>

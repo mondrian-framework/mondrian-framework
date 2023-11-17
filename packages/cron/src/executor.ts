@@ -1,33 +1,22 @@
+import { Api } from './api'
 import { model } from '@mondrian-framework/model'
-import { functions, utils, module, logger } from '@mondrian-framework/module'
+import { functions, utils, logger } from '@mondrian-framework/module'
 import { ScheduledTask } from 'node-cron'
 import { schedule, validate } from 'node-cron'
 
-export type Api<F extends functions.Functions> = {
-  functions: {
-    [K in keyof F]?: FunctionSPecifications<model.Infer<F[K]['input']>>
-  }
-}
-
-type FunctionSPecifications<Input> = {
-  cron: string
-  runAtStart?: boolean
-  timezone?: string
-  input: () => Promise<Input>
-}
-
+/**
+ * TODO: doc
+ */
 export function start<const F extends functions.Functions, CI>({
-  module,
   api,
   context,
 }: {
-  module: module.Module<F, CI>
-  api: Api<F>
+  api: Api<F, CI>
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
-  const baseLogger = logger.build({ moduleName: module.name, server: 'CRON' })
+  const baseLogger = logger.build({ moduleName: api.module.name, server: 'CRON' })
   const scheduledTasks: { task: ScheduledTask; logger: logger.MondrianLogger }[] = []
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const options = api.functions[functionName]
     if (!options) {
       continue
@@ -45,9 +34,9 @@ export function start<const F extends functions.Functions, CI>({
           operationName: functionName,
         })
         try {
-          const input = await options.input()
+          const input = model.isNever(functionBody.input) ? undefined : await options.input()
           const contextInput = await context({ cron: options.cron })
-          const ctx = await module.context(contextInput, {
+          const ctx = await api.module.context(contextInput, {
             input,
             retrieve: undefined,
             operationId,

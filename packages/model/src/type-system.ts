@@ -110,7 +110,7 @@ ApplyObjectMutability<M,
 // prettier-ignore
 type InferUnion<Ts extends Types> = { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
 // prettier-ignore
-type InferArray<M, T extends Type> = M extends Mutability.Immutable ? Readonly<Infer<T>[]> : Infer<T>[]
+type InferArray<M, T extends Type> = M extends Mutability.Immutable ? readonly Infer<T>[] : Infer<T>[]
 // prettier-ignore
 
 export type InferReturn<T extends Type>
@@ -2108,34 +2108,40 @@ export function areEqual(left: Type, right: Type): boolean {
 /**
  * @param type the type to check against
  * @param value the value whose type needs to be checked
- * @param decodingOptions the {@link decoding.Options} used for the decoding process
- * @param validationOptions the {@link validation.Options} used for the validation process
  * @returns true if `value` is actually a valid member of the type `T`
  */
-export function isType<T extends Type>(
-  type: T,
-  value: unknown,
-  decodingOptions?: decoding.Options,
-  validationOptions?: validation.Options,
-): value is Infer<T> {
-  return model.concretise(type).decode(value, decodingOptions, validationOptions).isOk
+export function isType<T extends Type>(type: T, value: unknown): value is Infer<T> {
+  return model.concretise(type).decode(
+    value,
+    {
+      errorReportingStrategy: 'stopAtFirstError',
+      fieldStrictness: 'allowAdditionalFields',
+      typeCastingStrategy: 'expectExactTypes',
+    },
+    { errorReportingStrategy: 'stopAtFirstError' },
+  ).isOk
+}
+
+const asd: unknown = 1 as unknown
+if (isType(model.string(), asd)) {
 }
 
 /**
  * @param type the type to check against
  * @param value the value whose type needs to be checked
- * @param decodingOptions the {@link DecodingOptions options} used for the decoding process
- * @param validationOptions the {@link ValidationOptions options} used for the validation process
  */
-export function assertType<T extends Type>(
-  type: T,
-  value: unknown,
-  decodingOptions?: decoding.Options,
-  validationOptions?: validation.Options,
-): asserts value is Infer<T> {
+export function assertType<T extends Type>(type: T, value: unknown): asserts value is Infer<T> {
   model
     .concretise(type)
-    .decode(value, decodingOptions, validationOptions)
+    .decode(
+      value,
+      {
+        errorReportingStrategy: 'stopAtFirstError',
+        fieldStrictness: 'allowAdditionalFields',
+        typeCastingStrategy: 'expectExactTypes',
+      },
+      { errorReportingStrategy: 'stopAtFirstError' },
+    )
     .match(
       (_) => {},
       (errors) => {

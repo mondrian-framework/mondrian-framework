@@ -41,14 +41,14 @@ const value: Model = 10
 All Mondrian primitive types are turned into the corresponding Typescript's
 primitive type:
 
-| Mondrian type                | Inferred Typescript type        |
-| ---------------------------- | ------------------------------- |
-| `model.number()`             | `number`                        |
-| `model.string()`             | `string`                        |
-| `model.boolean()`            | `boolean`                       |
-| `model.enum(["foo", "bar"])` | <code>"foo" &#124; "bar"</code> |
-| `model.literal(1)`           | `1`                             |
-| `model.literal("foo")`       | `"foo"`                         |
+| Mondrian type                       | Inferred Typescript type        |
+| ----------------------------------- | ------------------------------- |
+| `model.number()`                    | `number`                        |
+| `model.string()`                    | `string`                        |
+| `model.boolean()`                   | `boolean`                       |
+| `model.enumeration(["foo", "bar"])` | <code>"foo" &#124; "bar"</code> |
+| `model.literal(1)`                  | `1`                             |
+| `model.literal("foo")`              | `"foo"`                         |
 
 ### Inference of wrapper types
 
@@ -56,12 +56,11 @@ Inference for wrapper types works as one may expect: optional and nullable types
 are turned into an untagged union with `undefined` and `null` respectively.
 Arrays are inferred as Typescript's arrays.
 
-| Mondrian Type        | Inferred Typescript type                                  |
-| -------------------- | --------------------------------------------------------- |
-| `model.optional(t)`  | <code>undefined &#124; model.Infer&lt;typeof t&gt;</code> |
-| `model.nullable(t)`  | <code>null &#124; model.Infer&lt;typeof t&gt;</code>      |
-| `model.array(t)`     | `model.Infer<typeof t>[]`                                 |
-| `model.reference(t)` | `model.Infer<typeof t>`                                   |
+| Mondrian Type       | Inferred Typescript type                                  |
+| ------------------- | --------------------------------------------------------- |
+| `model.optional(t)` | <code>undefined &#124; model.Infer&lt;typeof t&gt;</code> |
+| `model.nullable(t)` | <code>null &#124; model.Infer&lt;typeof t&gt;</code>      |
+| `model.array(t)`    | `model.Infer<typeof t>[]`                                 |
 
 Here are some examples of inference for wrapper types:
 
@@ -69,7 +68,7 @@ Here are some examples of inference for wrapper types:
 type StringArray = model.Infer<typeof StringArray> // string[]
 const StringArray = model.string().array()
 
-const value: StringArray = ["Hello", " ", "Mondrian", "!"]
+const value: StringArray = ['Hello', ' ', 'Mondrian', '!']
 ```
 
 ```ts showLineNumbers
@@ -82,17 +81,19 @@ const value: OptionalNumber = 10
 
 ### Inference of objects
 
-Mondrian objects can be turned into Typescript's object model. Let's work through an
+Mondrian objects can be turned into Typescript's object types. Let's work through an
 example and see how it works:
 
 ```ts showLineNumbers
 const Book = model.object({
   title: model.string(),
   publicationYear: model.number(),
-  author: model.object({
-    firstName: model.string(),
-    lastName: model.string(),
-  }).optional(),
+  author: model
+    .object({
+      firstName: model.string(),
+      lastName: model.string(),
+    })
+    .optional(),
 })
 
 type Book = model.Infer<typeof Book>
@@ -145,56 +146,25 @@ mutable as well to change its inferred type.
 
 ### Inference of unions
 
-Mondrian unions behave a bit differently from Typescript's ones.
-Typescript's unions are what is usually called _untagged unions_, meaning we can
-create unions from any type. Each of the types composing a union is called a
-_variant_, for example `string | number | undefined` has 3 variants: `string`,
-`number` and `undefined`.
-
-Mondrian takes a different approach and only supports the definition of
-_tagged unions_. This means that each one of the variants of a union must have
-a name to uniquely identify it. If we were to rewrite the preious untagged union
-into a tagged one we could do it like this:
-
-```ts showLineNumbers
-type Untagged = string | number | undefined
-type Tagged = 
-  | { stringVariant: string }
-  | { numberVariant: number }
-  | { undefinedVariant: undefined }
-```
-
-As you can see now each variant is an object with a single field whose name
-can be used as the name for the variant: the first one is called `stringVariant`,
-the second one `numberVariant` and the final one `undefinedVariant` (but we could
-use any name that makes sense for the domain we're modelling).
-
-After this introduction Mondrian's type inference for unions shouldn't be too
-surprising:
+Exactly as typescript a Mondrian union is inferred as a union of two or more types.
 
 ```ts showLineNumbers
 const Response = model.union({
-  success: model.string(),
+  success: model.object({
+    success: model.literal(true),
+    value: model.string(),
+  }),
   error: model.object({
+    success: model.literal(false),
     code: model.number(),
-    message: model.string(),
-  })
+  }),
 })
 
 type Response = model.Infer<typeof Response>
 // ->
-//   { readonly success : string }
-// | {
-//     readonly error: {
-//       readonly code: number,
-//       readonly message: string, 
-//     }
-//   }
+//   { readonly success: true; readonly value: string }
+// | { readonly success: false; readonly code: number }
 ```
-
-Each of the specified variants (in the example, `success` and `error`) gets
-turned into a single-field object: the field's name is the variant's name and
-its value is the corresponding inferred type.
 
 ### Why bother with Mondrian types?
 
@@ -205,7 +175,8 @@ directly?
 
 The point is that, thanks to these definitions, Mondrian can automatically
 generate a lot of boilerplate code for you: for example
-[encoders](./03-encode.md) and [decoders](./04-decode.md).
+[encoders](./03-encode.md) and [decoders](./04-decode.md). Moreover can a Modnrian 
+model can be navigated in order to automatically generate documentation.
 
 ## Utility functions
 
@@ -216,14 +187,14 @@ verify this: `model.isType` and `model.assertType`.
 
 ### `model.isType`
 
-This function exposed by the `types` module takes two inputs: a mondrian type
+This function exposed by the `model` module takes two inputs: a mondrian type
 definition and an unknown value. It returns true if the value actually
 conforms to the mondrian definition:
 
 ```ts
 const Error = model.object({ code: model.number(), message: model.string() })
 
-model.isType(Error, { code: "not-a-code" })
+model.isType(Error, { code: 'not-a-code' })
 // -> false
 // It is missing the `message` field and `code` is not a number
 
@@ -265,7 +236,7 @@ value, it throws an exception if the given value does not conform to the given
 type:
 
 ```ts
-model.assertType(Error, { code: "not-a-number" })
+model.assertType(Error, { code: 'not-a-number' })
 // -> throws an exception
 
 model.assertType(Error, { code: 418, message: "I'm a teapot" })
@@ -280,6 +251,6 @@ expected type:
 const value: unknown = { code: 418, message: "I'm a teapot" }
 model.assertType(Error, value)
 // Here value is of type `model.Infer<typeof Error>` so we can access its fields
-console.log("Error code:", value.code)
-console.log("Error message:", value.message)
+console.log('Error code:', value.code)
+console.log('Error message:', value.message)
 ```

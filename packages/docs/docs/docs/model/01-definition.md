@@ -76,12 +76,6 @@ const greeting = model.literal('Hello, World!')
 Besides the primitive types you can find in `@mondrian-framework/model`, there's
 also a wide range of utility types that are already implemented and ready to use.
 
-To use those definitions you can import the package like this:
-
-```ts showLineNumbers
-import types from '@mondrian-framework/model'
-```
-
 There are definitions related to date and time:
 
 ```ts showLineNumbers
@@ -485,7 +479,7 @@ const Post = () =>
 //same as { id: string, content: string, author: { id: string, name: string, posts: { ... }[] } }
 ```
 
-A lazy type is any function that return a lazy type or a type, so this is also valid:
+A lazy type is any function that returns a lazy type or a type, so this is also valid:
 
 ```ts showLineNumbers
 const SuperLazyString = () => () => () => model.string()
@@ -503,6 +497,7 @@ const User = () =>
     bestFriend: model.optional(User),
   })
 //same as type User = { id: string, name: string, bestFriend?: { id: string, name: string, bestFriend?: { ... } } }
+
 type DeepArray = model.Infer<typeof DeepArray>
 const DeepArray = () => model.array(model.union({ value: model.number(), array: DeepArray }))
 //same as

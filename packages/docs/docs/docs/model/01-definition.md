@@ -23,8 +23,6 @@ model.boolean()
 model.string()
 model.number()
 model.integer()
-model.datetime()
-model.timestamp()
 ```
 
 Each of these can accept different parameters that can refine their semantics with
@@ -64,7 +62,7 @@ const userKind = model.enumeration(['customer', 'admin'])
 
 ### Literals
 
-Literals represent _specific_ strings or numbers in type positions.
+Literals represent _specific_ strings, numbers or booleans in type positions.
 They are a common construct in the TypeScript language and they are supported by
 the Mondrian Framework as well:
 
@@ -87,6 +85,8 @@ import types from '@mondrian-framework/model'
 There are definitions related to date and time:
 
 ```ts showLineNumbers
+model.datetime() // js Date
+model.timestamp() // unix time in millis
 model.date() // date string without time, ex: 2023-01-24
 model.time() // time only string RFC 3339, ex: 12:05:55Z
 model.timezone() // IANA Time Zone, ex: Europe/Rome
@@ -112,11 +112,14 @@ model.ip() // IPv4 or IPv6 address
 model.port() // TCP port
 model.version() // semantic version, ex: 1.1.2
 model.jwt() // JSON Web Token
+model.json() // only JSON values
 model.url() // RFC 3986, ex: https://www.google.com
 model.uuid() // Universal Unique Identifier
 model.isbn() // ISBN-10 or ISBN-13
 model.rgb() // CSS RGB, ex: rgb(255, 220, 200)
 model.rgba() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
+model.unknown() // any value
+model.record([type]) // Record<string, [type]>
 ```
 
 ## Wrapper types
@@ -171,7 +174,7 @@ The resulting definition describes an array of values of the wrapped type:
 ```ts showLineNumbers
 const arrayOfStrings1 = model.array(model.string())
 const arrayOfStrings2 = model.string().array()
-// same as string[]
+// same as readonly string[]
 ```
 
 Array definitions, like many other Mondrian types, support optional parameters:
@@ -187,10 +190,29 @@ Note, for example, the following two cases:
 
 ```ts showLineNumbers
 const nullableArrayOfStrings = model.string().array().nullable()
-// same as string[] | null
+// same as readonly string[] | null
 
 const arrayOfNullableStrings = model.string().nullable().array()
-// same as (string | null)[]
+// same as readonly (string | null)[]
+```
+
+#### Array mutability
+
+Being immutable is a sensitive default that should be good for almost all cases;
+however, sometimes it could be necessary to define a mutable array.
+In order to do so, one can use the `.mutable()` method:
+
+```ts showLineNumbers
+const myMutableArray = model.number().array().mutable()
+// same as number[]
+```
+
+Likewise, a mutable array definition can be turned back into an immutable one
+with the `.immutable()` method:
+
+```ts showLineNumbers
+const backToImmutable = myMutableArray.immutable()
+// same as readonly number[]
 ```
 
 ## Composite types
@@ -241,7 +263,7 @@ const myObject = model.object({
   required: model.number(),
   optional: model.string().optional(),
 })
-// same as { readonly required: number, readonly optional?: string }
+// same as { readonly required: number, readonly optional?: string | undefined }
 ```
 
 #### Complex object definitions
@@ -271,6 +293,21 @@ const user = model.object({
 })
 ```
 
+### Entities
+
+Entities are structured types with a set of fields exactly as [objects](#objects).
+
+```ts showLineNumbers
+const myObject = model.entity({
+  field1: model.number(),
+  field2: model.string(),
+})
+// same as { readonly field1: number, readonly field2: string }
+```
+
+The difference is in the semantic. As we'll se in TODO an entity represent a "root" entity, meanwhile an object
+represent an "embedded" value. We'll discuss more on this difference later but it's speculat to [Prisma model vs type difference](https://www.prisma.io/docs/concepts/components/prisma-client/composite-types).
+
 ### Unions
 
 Unions are a way to define types that can hold values from a fixed set of types
@@ -283,22 +320,20 @@ const myUnion = model.union({
   firstVariant: model.string(),
   secondVariant: model.number(),
 })
-// same as { readonly variant1: string } | { readonly variant2: number }
+// same as string | number
 ```
 
-As you can see, there is a difference in how TypeScript natively handles
-variants: Mondrian variants are _tagged_, meaning that each variant of a union
-type must have a unique name to tell it apart from the others.
+As you can see, the variants are tagged in the definition. That's because it's
+very convenient for internal usage.
 
 Just like object fields, union variants can be of any Mondrian type:
 
 ```ts showLineNumbers
-// This type models the fact that a user can either be
-// logged in, or a guest
 const user = model.union({
-  loggedIn: model.object({ name: model.string() }),
-  guest: model.object({}),
+  dog: model.object({ type: model.literal('dog') }),
+  cat: model.object({ type: model.literal('cat') }),
 })
+// same as { type: 'dog' } | { type: 'cat' }
 ```
 
 #### A thorough example
@@ -346,8 +381,8 @@ work out:
 
 ```ts showLineNumbers
 async function loginUser(auth: AuthenticationData) {
-  const user = await fetchUser(auth.username, auth.password)
-  const response = user ? { success: user } : { failure: { reason: 'wrong username or password' } }
+  const user: User | null = await fetchUser(auth.username, auth.password)
+  const response: LoginResponse = user ? user : { reason: 'wrong username or password' }
 
   await sendResponse(response)
 }
@@ -360,7 +395,7 @@ faithful to the modeled domain.
 
 Sometimes the types offered by the Mondrian framework may not be enough for
 your needs. That's why you can also define custom types that implement
-completely arbitrary logic. The mentioned [advanced types](#additional-types)
+completely arbitrary logic. The mentioned [additional types](#additional-types)
 are built exactly in this way.
 
 A custom type can be defined using the `custom` function:
@@ -383,6 +418,7 @@ Then, the arguments you need to pass to the custom builder are:
 - a decoder that can turn unknown values into that custom type's inferred type
 - an encoder that can turn custom types into JSON values
 - a validator that may perform additional validation logic to ensure that values are correct
+- an arbitraty that generates values semantically valid for the given options
 - additional options for that custom type
 
 Below is an example implementation of the `port` type that represents a TCP port.
@@ -392,12 +428,13 @@ arbitrary decoding, encoding, and validation logic:
 
 ```ts showLineNumbers
 import { validation, decoding, model } from '@mondrian-framework/model'
+import gen from 'fast-check'
 
 const MIN_PORT_NUMBER = 0
 const MAX_PORT_NUMBER = 65535
 
 export function port(options: model.BaseOptions): model.CustomType<'port', {}, number> {
-  return model.custom<'port', {}, number>('port', encodePort, decodePort, validatePort, options)
+  return model.custom<'port', {}, number>('port', encodePort, decodePort, validatePort, portArbitrary, options)
 }
 
 // Since a port is a number it is already a JSONType and encoding is a no-op
@@ -420,12 +457,54 @@ function decodePort(value: unknown): decoding.Result<number> {
 function validatePort(port: number): validation.Result {
   return validation.succeed()
 }
+
+function portArbitrary(): gen.Arbitrary<number> {
+  return gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER })
+}
 ```
 
-## Reference
+## Lazy types
 
-## Select
+In order to model complex relations Mondrian offer an easy way to express recursive types.
 
-## Merge
+```ts showLineNumbers
+const User = () =>
+  model.object({
+    id: model.string(),
+    name: model.string(),
+    posts: model.array(Post),
+  })
+//same as { id: string, name: string, posts: { id: string, content: string, author: { ... } }[] }
 
-## Recursion
+const Post = () =>
+  model.object({
+    id: model.string(),
+    content: model.string(),
+    author: User,
+  })
+//same as { id: string, content: string, author: { id: string, name: string, posts: { ... }[] } }
+```
+
+A lazy type is any function that return a lazy type or a type, so this is also valid:
+
+```ts showLineNumbers
+const SuperLazyString = () => () => () => model.string()
+//same as string
+```
+
+A lazy type can have reference to itself:
+
+```ts showLineNumbers
+type User = model.Infer<typeof User>
+const User = () =>
+  model.object({
+    id: model.string(),
+    name: model.string(),
+    bestFriend: model.optional(User),
+  })
+//same as type User = { id: string, name: string, bestFriend?: { id: string, name: string, bestFriend?: { ... } } }
+type DeepArray = model.Infer<typeof DeepArray>
+const DeepArray = () => model.array(model.union({ value: model.number(), array: DeepArray }))
+//same as
+//type DeepArray = (number | DeepArray)[]
+```

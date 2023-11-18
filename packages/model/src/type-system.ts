@@ -2122,10 +2122,6 @@ export function isType<T extends Type>(type: T, value: unknown): value is Infer<
   ).isOk
 }
 
-const asd: unknown = 1 as unknown
-if (isType(model.string(), asd)) {
-}
-
 /**
  * @param type the type to check against
  * @param value the value whose type needs to be checked

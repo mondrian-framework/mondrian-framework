@@ -368,7 +368,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.array(gen.anything(), { maxLength: minItems - 1 })
       test.prop([invalidValue])('invalid values', (invalidValue) => {
-        checkError(Model.validate(invalidValue), [{ got: invalidValue.length, path: path.root }])
+        checkError(Model.validate(invalidValue), [{ got: invalidValue.length, path: path.ofField('length') }])
       })
     })
 
@@ -383,7 +383,7 @@ describe.concurrent('validation.validate', () => {
 
       const invalidValue = gen.array(gen.anything(), { minLength: maxItems + 1 })
       test.prop([invalidValue])('invalid values', (invalidValue) => {
-        checkError(Model.validate(invalidValue), [{ got: invalidValue.length, path: path.root }])
+        checkError(Model.validate(invalidValue), [{ got: invalidValue.length, path: path.ofField('length') }])
       })
     })
 
@@ -400,7 +400,7 @@ describe.concurrent('validation.validate', () => {
         (array) => {
           const Model = model.array(alwaysFail, { minItems: 5 })
           const errors = toErrors(array)
-          errors.unshift({ got: array.length, path: path.root })
+          errors.unshift({ got: array.length, path: path.ofField('length') })
           checkError(Model.validate(array, options), errors)
         },
       )
@@ -410,7 +410,7 @@ describe.concurrent('validation.validate', () => {
         (array) => {
           const Model = model.array(alwaysFail, { maxItems: 3 })
           const errors = toErrors(array)
-          errors.unshift({ got: array.length, path: path.root })
+          errors.unshift({ got: array.length, path: path.ofField('length') })
           checkError(Model.validate(array, options), errors)
         },
       )

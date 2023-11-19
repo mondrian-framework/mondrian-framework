@@ -13,7 +13,7 @@ type NonEmpty = model.Infer<typeof NonEmpty>
 const NonEmpty = model.number().array({ minItems: 1 })
 
 NonEmpty.validate([1, 2, 3]) // -> ok
-NonEmpty.validate([]) // -> error([{ assertion: ".length >= 1", got: [], path: "$" }])
+NonEmpty.validate([]) // -> error([{ assertion: "array must have at least 1 items", got: 0, path: "$.length" }])
 ```
 
 ## How types get validated
@@ -57,8 +57,8 @@ const User = model.object({
   username: model.string({ minLength: 1 }),
 })
 
-User.validate({ username: '' }) // -> error([{ assertion: ".length >= 1", got: "", path: "$.username" }])
-User.validate({ username: 'Giacomo' }) // -> ok
+User.validate({ username: '' }) // -> error([{ assertion: "string shorter than min length (1)", got: "", path: "$.username" }])
+User.validate({ username: 'John' }) // -> ok
 ```
 
 ## Tweaking the validation process
@@ -85,8 +85,8 @@ const array = number({ minimum: 0 }).array()
 
 array.validate([-1, 0, -2], { errorReportingStrategy: 'allErrors' })
 // -> error([
-//   { assertion: ">= 0", got: -1, path: "$[0]" },
-//   { assertion: ">= 0", got: -2, path: "$[2]" },
+//   { assertion: "number must be greater than or equal to 0", got: -1, path: "$[0]" },
+//   { assertion: "number must be greater than or equal to 0", got: -2, path: "$[2]" },
 // ])
 ```
 

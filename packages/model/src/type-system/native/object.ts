@@ -26,7 +26,7 @@ import gen from 'fast-check'
  *          )
  *
  *          const exampleUser: User = {
- *            username: 'Giacomo',
+ *            username: 'John',
  *            age: 24,
  *            isAdmin: false,
  *          }

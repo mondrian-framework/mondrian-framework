@@ -57,8 +57,8 @@ To build a value of type `Result` you can use the two functions `result.ok`
 and `result.fail`:
 
 ```ts showLineNumbers
-const success: Result<number, string> = result.ok(10)
-const failure: Result<number, string> = result.fail('error!')
+const success = result.ok(10)
+const failure = result.fail('error!')
 ```
 
 Consider for example a function that performs safe division, returning
@@ -66,7 +66,7 @@ an error if the dividend is 0 instead of returning `Infinity`. It could be
 implemented using `Result`:
 
 ```ts showLineNumbers
-function safeDivide(dividend: number, divisor: number): Result<number, string> {
+function safeDivide(dividend: number, divisor: number): result.Result<number, string> {
   return divisor === 0 ? result.fail('Division by 0') : result.ok(dividend / divisor)
 }
 ```
@@ -113,21 +113,21 @@ Imagine you're working with some sensitive data that you need to hide _before_
 sharing the encoded JSON:
 
 ```ts showLineNumbers
-const User = model.Infer<typeof User>
+type User = model.Infer<typeof User>
 const User = model.object({
     name: model.string(),
     secret: model.string(),
 })
 
-const value = { name: "Giacomo", secret: "..." }
-const json = User.encode(value) // -> { name: "Giacomo", secret: "..." }
-shareJsonValue(json) // Uh oh, we ended up sharing the secret value!
+const value = { name: "John", secret: "..." }
+const encoded = User.encode(value) // -> { name: "John", secret: "..." }
+logResponse(encoded) // Uh oh, we ended up sharing the secret value!
 ```
 
 In this example every single field ends up encoded in the final object, so we
 end up sharing the user's secret.
 
-One wai to fix this problem is to remember to remove the sensitive data from
+One way to fix this problem is to remember to remove the sensitive data from
 the encoded object; however, Mondrian can help you with that; you can update
 the model definition by marking the field as `sensitive` and tell the encoder to
 hide sensitive data.
@@ -135,7 +135,7 @@ hide sensitive data.
 This way, the encoder will always turn al sensitive data into `null` values:
 
 ```ts showLineNumbers
-const User = model.Infer<typeof User>
+type User = model.Infer<typeof User>
 const User = model.object({
     name: model.string(),
     // highlight-start
@@ -143,10 +143,45 @@ const User = model.object({
     // highlight-end
 })
 
-const value = { name: "Giacomo", secret: "..." }
+const value = { name: "John", secret: "..." }
 // highlight-start
-const json = User.encode(value, { sensitiveInformationStrategy: "hide" })
+const encoded = User.encode(value, { sensitiveInformationStrategy: "hide" })
 // highlight-end
-// -> { name: "Giacomo", secret: null }
-shareJsonValue(json) // Phew! We're safe and didn't share the secret
+// -> { name: "John", secret: null }
+logResponse(encoded) // Phew! We're safe and didn't share the secret
 ```
+
+## Non biunivocal encoding
+
+Until now, every example included an encoding process that do not make any transformation
+to the data. So why is encoding needed if we don't want to hide sensitive information?
+
+```ts showLineNumbers
+type User = model.Infer<typeof User>
+const User = model.object({
+    name: model.string(),
+    secret: model.string(),
+})
+
+const value = { name: "John", secret: "..." }
+const encoded = User.encode(value)
+// value and encoded has the same value { name: "John", secret: "..." }
+// why encoding?
+```
+
+in the next example we'll se a type that will encode in a different value:
+
+```ts showLineNumbers
+type User = model.Infer<typeof User>
+const User = model.object({
+    name: model.string(),
+    secret: model.string(),
+    createdAt: model.timestamp()
+})
+
+const value = { name: "John", secret: "...", createdAt: new Date() }
+const encoded = User.encode(value)
+// -> {  name: "John", secret: "...", createdAt: 1700355790325 }
+```
+
+Now the `encoded` value can be safely converted to a json string by doing `JSON.stringify`.

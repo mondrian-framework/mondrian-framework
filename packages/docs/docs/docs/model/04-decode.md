@@ -16,14 +16,14 @@ Let's look at an example of how decoding can work out for a Mondrian type:
 ```ts showLineNumbers
 type SearchQuery = model.Infer<typeof SearchQuery>
 const SearchQuery = model.object({
-    name: model.string(),
-    limit: model.number().optional(),
-    skip: model.number().optional(),
+  name: model.string(),
+  limit: model.number().optional(),
+  skip: model.number().optional(),
 })
 
 // Imagine this value comes from an HTTP request, or anywhere else:
 // it actually is unknown and we have to decode it
-const rawQuery: unknown = { name: "Mondrian", skip: 10 }
+const rawQuery: unknown = { name: 'Mondrian', skip: 10 }
 SearchQuery.decode(rawQuery) // -> ok({ name: "Mondrian", skip: 10 })
 
 const rawWrongQuery: unknown = { skip: 10, limit: 5 }
@@ -45,11 +45,11 @@ give us an insight into how the decoding process works:
 type NonNegativeNumber = model.Infer<typeof NonNegativeNumber>
 const NonNegativeNumber = model.number({ minimum: 0 })
 
-NonNegativeNumber.decode("not-a-number")
+NonNegativeNumber.decode('not-a-number')
 // -> error([{ expected: "a number", got: "not-a-number", path: "$" }])
 
 NonNegativeNumber.decode(-1)
-// -> error([{ assertion: ">= 0", got: -1, path: "$" }])
+// -> error([{ assertion: "number must be greater than or equal to 0", got: -1, path: "$" }])
 
 NonNegativeNumber.decode(10)
 // -> ok(10)
@@ -65,8 +65,9 @@ An example of a custom configuration could be:
 
 ```ts showLineNumbers
 const options: decoding.Options = {
-    typeCastingStrategy: "tryCasting", // or "expectExactTypes"
-    errorReportingStrategy: "allErrors", // or "stopAtFirstError"
+  typeCastingStrategy: 'tryCasting', // or "expectExactTypes"
+  fieldStrictness: 'expectExactFields', // or "allowAdditionalFields"
+  errorReportingStrategy: 'allErrors', // or "stopAtFirstError"
 }
 ```
 
@@ -75,18 +76,58 @@ const options: decoding.Options = {
   unexpected type. For example, when decoding a number, if the decoder runs into
   a string it can try to turn into a number before failing.  
   The default is `"expectExactTypes"`, so the decoding fails as soon as an
-  unexpected type is met
+  unexpected type is met.
+- `fieldStrictness` can be set to `"allowAdditionalFields"` if you want the decoder
+  to ignore additional fields while decoding objects.
+  The default is `"expectExactFields"`, so the decoding fails as soon as an
+  additional fields that are not declared is present.
 - `errorReportingStrategy` can be set to `"allErrors"` if you want the decoder
   to try and gather as many errors as possible before failing.  
   The default is `"stopAtFirstError"`, so the decoding immediately fails as soon
   as the first error is encountered
 
-```ts showLineNumbers
-const array = nonNegativeNumber.array()
+Here an example using the `errorReportingStrategy`:
 
-array.decode([-1, 0, -2], { errorReportingStrategy: "allErrors" })
+```ts showLineNumbers
+const array = model.number({ minimum: 0 }).array()
+
+array.decode([-1, 0, -2], { errorReportingStrategy: 'allErrors' })
 // -> error([
-//   { assertion: ">= 0", got: -1, path: "$[0]" },
-//   { assertion: ">= 0", got: -2, path: "$[2]" },
+//   { assertion: "number must be greater than or equal to 0", got: -1, path: "$[0]" },
+//   { assertion: "number must be greater than or equal to 0", got: -2, path: "$[2]" },
+// ])
+
+array.decode([-1, 0, -2], { errorReportingStrategy: 'stopAtFirstError' })
+// -> error([
+//   { assertion: "number must be greater than or equal to 0", got: -1, path: "$[0]" },
+// ])
+```
+
+Here an example using the `typeCastingStrategy`:
+
+```ts showLineNumbers
+const array = model.number({ minimum: 0 }).array()
+
+array.decode(['10', 20, '30.0'], { typeCastingStrategy: 'tryCasting' })
+// -> ok([10, 20, 30])
+
+array.decode(['10', 20, '30.0'], { typeCastingStrategy: 'expectExactTypes' })
+// -> error([
+//   { expected: "a number", got: "10", path: "$[0]" },
+// ])
+// (only one error because the default errorReportingStrategy is stopAtFirstError)
+```
+
+Here an example using the `fieldStrictness`:
+
+```ts showLineNumbers
+const obj = model.object({ a: model.number() })
+
+obj.decode({ a: 1, b: 2 }, { fieldStrictness: 'allowAdditionalFields' })
+// -> ok({ a: 1 })
+
+obj.decode({ a: 1, b: 2 }, { fieldStrictness: 'expectExactFields' })
+// -> error([
+//   { expected: "undefined", got: "2", path: "$.b" },
 // ])
 ```

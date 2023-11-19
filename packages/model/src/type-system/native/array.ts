@@ -70,7 +70,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
       const error: validation.Error = {
         assertion: `array must have at most ${maxItems} items`,
         got: value.length,
-        path: path.root,
+        path: path.ofField('length'),
       }
       if (errorReportingStrategy === 'stopAtFirstError') {
         return validation.failWithErrors([error])
@@ -82,7 +82,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
       const error: validation.Error = {
         assertion: `array must have at least ${minItems} items`,
         got: value.length,
-        path: path.root,
+        path: path.ofField('length'),
       }
       if (errorReportingStrategy === 'stopAtFirstError') {
         return validation.failWithErrors([error])

@@ -95,7 +95,7 @@ into a string (and later decode the string with a `Date.parse`):
 
 ```ts showLineNumbers
 function encodeDate(date: Date): JSONType {
-    return date.toJSON() // This turns a Date object into a serializable string
+  return date.toJSON() // This turns a Date object into a serializable string
 }
 ```
 
@@ -171,7 +171,7 @@ function validatePort(
     }
 }
 
-const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort)
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort, ...)
 ```
 
 Similarly to the decoding function, a validation function needs to return a
@@ -187,15 +187,70 @@ Similarly to the decoding function, a validation function needs to return a
 This function will be used under the hood in pair with the provided
 encoder/decoder to implement the `encode` and `decode` methods of the new type:
 
+```ts showLineNumbers
+type Port = model.Infer<typeof Port>
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort, ...)
+
+Port.decode(1024) // -> ok(1024)
+Port.decode("foo") // -> error([{ expected: "a number (for a port)", got: "foo", path: "$" }])
+Port.decode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }])
+
+Port.encode(1024) // -> ok(1024)
+Port.encode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }])
+```
+
+### Custom types have generators
+
+The last bit needed to instantiate a custom type is the generator function. It enables
+to generate values for automated tests and to provide examples.
+
+In order to provide a generator function we use the library `fast-check` that provides very
+useful construct to define a generator.
+
+```ts showLineNumbers
+import gen from 'fast-check'
+
+function portArbitrary(_maxDepth: number, customOptions?: PortOptions & model.BaseOptions): gen.Arbitrary<number> {
+  const wellKnownPortsAllowed = customOptions?.allowWellKnownPorts ?? true
+  if (wellKnownPortsAllowed) {
+    return gen.integer({ min: 0, max: 65535 })
+  } else {
+    return gen.integer({ min: 1024, max: 65535 })
+  }
+}
+```
+
+This is the final definition of a new `Port` custom type.
 
 ```ts showLineNumbers
 type Port = model.Infer<typeof Port>
-const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort)
+const Port = model.custom<'port', PortOptions, number>('port', encodePort, decodePort, validatePort, portArbitrary)
 
-Port.decode(1024) // -> ok(1024)
-Port.decode("foo") // -> error([{ expected: "a number (for a port)", got: "foo", path: "$" }]) 
-Port.decode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }]) 
+const p = Port.example() //80
+```
 
-Port.encode(1024) // -> ok(1024)
-Port.encode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }]) 
+### Utility builder
+
+In order to provide a simplier usage for the user you can defined an utility builder for every
+custom type as follow:
+
+```ts showLineNumbers
+export type PortOptions = { allowWellKnownPorts: boolean }
+export type PortType = model.CustomType<'port', PortOptions, number>
+
+export function port(options?: PortOptions & model.BaseOptions): PortType {
+  return model.custom('port', encodePort, decodePort, validatePort, portArbitrary, options)
+}
+```
+
+So it can be used in as simple as other types.
+
+```ts showLineNumbers
+// Example: Using the custom `Port` type in an object definition
+const serverAddress = model.object({
+  address: model.string(),
+  // highlight-start
+  port: port({ allowWellKnownPorts: false }),
+  // highlight-end
+})
 ```

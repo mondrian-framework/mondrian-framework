@@ -39,35 +39,40 @@ Basically a model schema:
 The following schema describes a blogging platform:
 
 ```ts showLineNumbers
-import m from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 
-const User = m.object({
-  id: m.integer(),
-  name: m.string().optional(),
-  email: m.string({ format: 'email' }),
-  address: Address.optional(),
-  posts: m.reference(Post.array().optional()),
-})
-type User = m.Infer<typeof User>
+const Address = model.object(
+  {
+    street: model.string().optional(),
+    city: model.string().optional(),
+    zipcode: model.string().optional(),
+    district: model.string().optional(),
+    country: model.string(),
+  },
+  { name: 'Address' },
+)
+type Address = model.Infer<typeof Address>
 
-const Address = m.object({
-  street: m.string().optional(),
-  city: m.string().optional(),
-  zipcode: m.string().optional(),
-  district: m.string().optional(),
-  country: m.string(),
-})
-type Address = m.Infer<typeof Address>
+const User = () =>
+  model.entity({
+    id: model.integer(),
+    name: model.string().optional(),
+    email: model.email(),
+    address: Address.optional(),
+    posts: model.array(Post),
+  })
+type User = model.Infer<typeof User>
 
-const Post = m.object({
-  id: m.integer(),
-  createdAt: m.date(),
-  updatedAt: m.date(),
-  title: m.string({ maxLength: 200 }),
-  content: t.string({ maxLength: 5000 }).optional(),
-  author: m.reference(User),
-})
-type Post = m.Infer<typeof Post>
+const Post = () =>
+  model.entity({
+    id: model.integer(),
+    createdAt: model.datetime(),
+    updatedAt: model.datetime(),
+    title: model.string({ maxLength: 200 }),
+    content: model.string({ maxLength: 5000 }).optional(),
+    author: User,
+  })
+type Post = model.Infer<typeof Post>
 ```
 
 ## TypeScript support

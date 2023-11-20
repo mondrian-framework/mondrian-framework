@@ -138,6 +138,7 @@ describe('rest handler', () => {
       openapi: {
         specification: {},
         input: (request) => request.headers.value,
+        request: () => ({}),
       },
     })
     const response = await handler({ headers: { value: '123' } })
@@ -247,6 +248,7 @@ describe('rest handler', () => {
         input(request) {
           throw new Error('Fail')
         },
+        request: () => ({}),
       },
     })
     const response = await handler({ headers: { ping: 'ping' } })

@@ -153,13 +153,7 @@ export function generateOpenapiInput({
           ? undefined
           : specification.openapi.specification.requestBody,
       input: specification.openapi.input,
-      request: (input) => {
-        if (specification.openapi?.request) {
-          return specification.openapi.request(input)
-        } else {
-          throw new Error(`Request builder is not declared!`)
-        }
-      },
+      request: specification.openapi.request,
     }
   }
   const parametersInPath = specification.path
@@ -180,9 +174,9 @@ export function generateOpenapiInput({
   const t = model.unwrap(concreteInputType)
   if (t.kind === model.Kind.Object || t.kind === model.Kind.Entity) {
     for (const p of parametersInPath) {
-      if (!t.fields[p] || !model.isScalar(t.fields[p]) || !isInputRequired(t.fields[p])) {
+      if (!t.fields[p] || !model.isScalar(t.fields[p])) {
         throw new Error(
-          `Error while generating openapi input type. Path parameter ${p} can only be scalar type and not nullable nor optional. Path ${specification.path}`,
+          `Error while generating openapi input type. Path parameter ${p} can only be a scalar type. Path ${specification.path}`,
         )
       }
     }
@@ -550,7 +544,9 @@ function customToOpenAPIComponent(
   } else if (type.typeName === model.decimal().typeName) {
     //TODO [Good first issue]: can we add a ragex based on `opts` that describe the decimal value?
     const opts = (type.options ?? {}) as model.DecimalTypeAdditionalOptions
-    const defaultDescription = `decimal value of base ${opts.base ?? 10} and ${opts.decimals} decimals`
+    const defaultDescription = `decimal value of base ${opts.base ?? 10}${
+      opts.decimals != null ? ` and ${opts.decimals} decimals` : ''
+    }`
     return {
       type: 'string',
       description: type.options?.description ?? defaultDescription,

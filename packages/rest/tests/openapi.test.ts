@@ -49,6 +49,82 @@ describe('module to openapi', () => {
     })
   })
 
+  test("don't work if path param is not a scalar", () => {
+    const m = module.define({
+      name: 'name',
+      version: '0.0.0',
+      functions: {
+        toString: functions.define({
+          input: model.object({ a: model.object({}) }),
+          output: model.string(),
+        }),
+      },
+    })
+
+    expect(() =>
+      rest.openapi.fromModule({
+        module: m,
+        version: 1,
+        api: {
+          version: 1,
+          functions: { toString: { method: 'get', path: '/toString/{a}' } },
+        },
+      }),
+    ).toThrowError(
+      'Error while generating openapi input type. Path parameter a can only be a scalar type. Path /toString/{a}',
+    )
+  })
+
+  test("don't work if path param is inside an array", () => {
+    const m = module.define({
+      name: 'name',
+      version: '0.0.0',
+      functions: {
+        toString: functions.define({
+          input: model.object({ a: model.string().optional() }).array(),
+          output: model.string(),
+        }),
+      },
+    })
+
+    expect(() =>
+      rest.openapi.fromModule({
+        module: m,
+        version: 1,
+        api: {
+          version: 1,
+          functions: { toString: { method: 'get', path: '/toString/{a}' } },
+        },
+      }),
+    ).toThrowError(
+      'Error while generating openapi input type. Path parameter with array are not supported. Path /toString/{a}',
+    )
+  })
+
+  test("don't work with multiple path parameters if input is scalar", () => {
+    const m = module.define({
+      name: 'name',
+      version: '0.0.0',
+      functions: {
+        toString: functions.define({
+          input: model.string().optional(),
+          output: model.string(),
+        }),
+      },
+    })
+
+    expect(() =>
+      rest.openapi.fromModule({
+        module: m,
+        version: 1,
+        api: {
+          version: 1,
+          functions: { toString: { method: 'get', path: '/toString/{a}/{b}' } },
+        },
+      }),
+    ).toThrowError('Error while generating openapi input type. Only one parameter is needed. Path /toString/{a}/{b}')
+  })
+
   test('works on more complex module', () => {
     const postCategory = model.enumeration(['FUNNY', 'QUESTION']).setName('PostCategory')
     const user = () =>
@@ -73,37 +149,82 @@ describe('module to openapi', () => {
         getPosts: functions.define({
           input: model.object({ userId: model.string(), limit: model.integer().optional() }),
           output: model.array(post),
-          errors: undefined,
-          retrieve: undefined,
         }),
         getUsers: functions.define({
           input: model.object({ start: model.integer(), limit: model.integer() }),
           output: model.array(user),
-          errors: undefined,
-          retrieve: undefined,
+        }),
+        createUser: functions.define({
+          input: user,
+          output: user,
+          errors: { invalidInput: model.string(), notLoggedIn: model.string(), tooManyRequests: model.string() },
+          options: { description: 'Creates a new user', namespace: 'Managment' },
+        }),
+        getNone: functions.define({
+          input: model.never(),
+          output: model.never(),
+        }),
+        getAll: functions.define({
+          input: model.never(),
+          output: model.entity({
+            boolean: model.boolean(),
+            literal1: model.literal(true),
+            literal2: model.literal('true'),
+            literal3: model.literal(123),
+            literal4: model.literal(null),
+            record: model.record(model.string()),
+            email: model.email(),
+            unknown: model.unknown(),
+            decimal: model.decimal(),
+            json: model.json(),
+            timestapm: model.timestamp(),
+            jwt: model.jwt('jwt', model.object({}), 'secret'),
+            never: model.never(),
+            union: model.union({ a: model.string(), b: model.number() }),
+          }),
         }),
       },
     })
 
     const openapi = rest.openapi.fromModule({
       module: m,
-      version: 1,
+      version: 2,
       api: {
-        version: 1,
+        options: { pathPrefix: 'API' },
+        version: 3,
         functions: {
           getPosts: { method: 'get', path: '/posts/{userId}' },
           getUsers: [
             { method: 'post', path: '/users' },
             { method: 'get', path: '/users' },
+            { method: 'get', path: '/old_users', version: { max: 1 } },
+            { method: 'get', path: '/new_users', version: { min: 3 } },
           ],
+          createUser: [
+            { method: 'post', errorCodes: {} },
+            {
+              method: 'put',
+              openapi: { specification: {}, input: ({ body }) => body, request: (input) => ({ body: input }) },
+            },
+            {
+              method: 'put',
+              openapi: {
+                specification: { parameters: null, requestBody: null },
+                input: ({ body }) => body,
+                request: (input) => ({ body: input }),
+              },
+            },
+          ],
+          getAll: { method: 'post' },
         },
+        errorCodes: { tooManyRequests: 429 },
       },
     })
 
     expect(openapi).toEqual({
       openapi: '3.1.0',
       info: { version: '0.0.0', title: 'name' },
-      servers: [{ url: '/api/v1' }],
+      servers: [{ url: 'API/v2' }],
       paths: {
         '/posts/{userId}': {
           get: {
@@ -156,6 +277,143 @@ describe('module to openapi', () => {
                 description: 'Success',
                 content: {
                   'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/user' } } },
+                },
+              },
+            },
+            tags: [],
+          },
+        },
+        '/createUser': {
+          post: {
+            parameters: [],
+            requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/user' } } } },
+            responses: {
+              '200': {
+                description: 'Success',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/user' } } },
+              },
+              '400': {
+                description: 'Error',
+                content: {
+                  'application/json': {
+                    schema: {
+                      anyOf: [
+                        {
+                          type: 'object',
+                          required: ['invalidInput'],
+                          properties: { invalidInput: { type: 'string' } },
+                        },
+                        { type: 'object', required: ['notLoggedIn'], properties: { notLoggedIn: { type: 'string' } } },
+                      ],
+                    },
+                  },
+                },
+              },
+              '429': {
+                description: 'Error',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      required: ['tooManyRequests'],
+                      properties: { tooManyRequests: { type: 'string' } },
+                    },
+                  },
+                },
+              },
+            },
+            description: 'Creates a new user',
+            tags: ['Managment'],
+          },
+          put: {
+            parameters: [],
+            responses: {
+              '200': {
+                description: 'Success',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/user' } } },
+              },
+              '400': {
+                description: 'Error',
+                content: {
+                  'application/json': {
+                    schema: {
+                      anyOf: [
+                        {
+                          type: 'object',
+                          required: ['invalidInput'],
+                          properties: { invalidInput: { type: 'string' } },
+                        },
+                        { type: 'object', required: ['notLoggedIn'], properties: { notLoggedIn: { type: 'string' } } },
+                      ],
+                    },
+                  },
+                },
+              },
+              '429': {
+                description: 'Error',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      required: ['tooManyRequests'],
+                      properties: { tooManyRequests: { type: 'string' } },
+                    },
+                  },
+                },
+              },
+            },
+            description: 'Creates a new user',
+            tags: ['Managment'],
+          },
+        },
+        '/getAll': {
+          post: {
+            parameters: [],
+            responses: {
+              '200': {
+                description: 'Success',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      required: [
+                        'boolean',
+                        'literal1',
+                        'literal2',
+                        'literal3',
+                        'literal4',
+                        'record',
+                        'email',
+                        'unknown',
+                        'decimal',
+                        'json',
+                        'timestapm',
+                        'jwt',
+                        'never',
+                        'union',
+                      ],
+                      properties: {
+                        boolean: { type: 'boolean' },
+                        literal1: { type: 'boolean', const: true, example: true },
+                        literal2: { type: 'string', const: 'true', example: 'true' },
+                        literal3: { type: 'number', const: 123, example: 123 },
+                        literal4: { type: 'null', const: 'null' },
+                        record: { type: 'object', additionalProperties: { type: 'string' } },
+                        email: { type: 'string', format: 'email' },
+                        unknown: {},
+                        decimal: {
+                          type: 'string',
+                          description: 'decimal value of base 10',
+                          example: '0',
+                        },
+                        json: {},
+                        timestapm: { type: 'integer', description: 'unix timestamp' },
+                        jwt: { type: 'string', description: 'jwt-jwt' },
+                        never: {},
+                        union: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+                      },
+                    },
+                  },
                 },
               },
             },

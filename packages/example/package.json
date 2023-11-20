@@ -25,8 +25,8 @@
     "@prisma/instrumentation": "5.5.2",
     "jsonwebtoken": "9.0.2",
     "rest": "2.0.0",
-    "@opentelemetry/sdk-node": "0.43.0",
-    "@opentelemetry/api-logs": "0.43.0",
+    "@opentelemetry/sdk-node": "0.45.1",
+    "@opentelemetry/api-logs": "0.45.1",
     "@redis/client": "1.5.11"
   },
   "devDependencies": {

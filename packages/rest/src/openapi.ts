@@ -102,10 +102,10 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
           specification.openapi?.specification.tags === null
             ? undefined
             : specification.openapi?.specification.tags ?? specification.namespace === null
-            ? []
-            : functionBody.options?.namespace ?? specification.namespace
-            ? [functionBody.options?.namespace ?? specification.namespace ?? '']
-            : [],
+              ? []
+              : functionBody.options?.namespace ?? specification.namespace
+                ? [functionBody.options?.namespace ?? specification.namespace ?? '']
+                : [],
         security: specification.security,
       }
       if (paths[path]) {
@@ -504,10 +504,10 @@ function literalToOpenAPIComponent(type: model.LiteralType): OpenAPIV3_1.NonArra
     literalType === 'boolean'
       ? literalType
       : literalType === 'number'
-      ? literalType
-      : literalType === 'string'
-      ? literalType
-      : 'unknown'
+        ? literalType
+        : literalType === 'string'
+          ? literalType
+          : 'unknown'
   if (type.literalValue === null) {
     return {
       type: 'null',

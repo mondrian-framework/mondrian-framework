@@ -62,7 +62,7 @@ export function parseRate(rate: RateLiteral): Rate {
     scaleString === 'second' || scaleString === 'seconds'
       ? 'second'
       : scaleString === 'minute' || scaleString === 'minutes'
-      ? 'minute'
-      : 'hour'
+        ? 'minute'
+        : 'hour'
   return new Rate({ requests, period, scale })
 }

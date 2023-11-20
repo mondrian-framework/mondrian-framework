@@ -326,10 +326,10 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
           date instanceof Date
             ? date
             : typeof date === 'number'
-            ? new Date(date)
-            : Number.isNaN(Number(date))
-            ? new Date(date)
-            : new Date(Number(date)),
+              ? new Date(date)
+              : Number.isNaN(Number(date))
+                ? new Date(date)
+                : new Date(Number(date)),
         )
       })
     })
@@ -375,10 +375,10 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
           date instanceof Date
             ? date
             : typeof date === 'number'
-            ? new Date(date)
-            : Number.isNaN(Number(date))
-            ? new Date(date)
-            : new Date(Number(date)),
+              ? new Date(date)
+              : Number.isNaN(Number(date))
+                ? new Date(date)
+                : new Date(Number(date)),
         )
       })
     })

@@ -2067,40 +2067,40 @@ export function areEqual(left: Type, right: Type): boolean {
     }
     return model.match(type, {
       array: ({ wrappedType, options }) =>
-        ({ kind: 'array', wrappedType: serializeType(wrappedType, examined), options } as const),
+        ({ kind: 'array', wrappedType: serializeType(wrappedType, examined), options }) as const,
       optional: ({ wrappedType, options }) =>
-        ({ kind: 'optional', wrappedType: serializeType(wrappedType, examined), options } as const),
+        ({ kind: 'optional', wrappedType: serializeType(wrappedType, examined), options }) as const,
       nullable: ({ wrappedType, options }) =>
-        ({ kind: 'optional', wrappedType: serializeType(wrappedType, examined), options } as const),
-      string: ({ options }) => ({ kind: 'string', options: { ...options, regex: options?.regex?.source } } as const),
-      number: ({ options }) => ({ kind: 'number', options } as const),
-      boolean: ({ options }) => ({ kind: 'boolean', options } as const),
-      literal: ({ literalValue, options }) => ({ kind: 'literal', literalValue, options } as const),
-      enum: ({ variants, options }) => ({ kind: 'enumeration', variants, options } as const),
+        ({ kind: 'optional', wrappedType: serializeType(wrappedType, examined), options }) as const,
+      string: ({ options }) => ({ kind: 'string', options: { ...options, regex: options?.regex?.source } }) as const,
+      number: ({ options }) => ({ kind: 'number', options }) as const,
+      boolean: ({ options }) => ({ kind: 'boolean', options }) as const,
+      literal: ({ literalValue, options }) => ({ kind: 'literal', literalValue, options }) as const,
+      enum: ({ variants, options }) => ({ kind: 'enumeration', variants, options }) as const,
       custom: ({ typeName, options }) =>
         ({
           kind: 'custom',
           typeName,
           options: options ? JSON.stringify(options, Object.keys(options).sort()) : undefined,
-        } as const),
+        }) as const,
       object: ({ fields, options }) =>
         ({
           kind: 'object',
           fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
           options,
-        } as const),
+        }) as const,
       entity: ({ fields, options }) =>
         ({
           kind: 'entity',
           fields: mapObject(fields, (_, fieldType) => serializeType(fieldType, examined)),
           options,
-        } as const),
+        }) as const,
       union: ({ variants, options }) =>
         ({
           kind: 'union',
           variants: mapObject(variants, (_, variantType) => serializeType(variantType, examined)),
           options,
-        } as const),
+        }) as const,
     })
   }
 }

@@ -256,12 +256,15 @@ export function toCamelCase(text: string): string {
  * Groups the list element base on a string property.
  */
 export function groupBy<O, K extends string>(list: O[], getKey: (item: O) => K): Record<K, O[]> {
-  return list.reduce((previous, currentItem) => {
-    const group = getKey(currentItem)
-    if (!previous[group]) {
-      previous[group] = []
-    }
-    previous[group].push(currentItem)
-    return previous
-  }, {} as Record<K, O[]>)
+  return list.reduce(
+    (previous, currentItem) => {
+      const group = getKey(currentItem)
+      if (!previous[group]) {
+        previous[group] = []
+      }
+      previous[group].push(currentItem)
+      return previous
+    },
+    {} as Record<K, O[]>,
+  )
 }

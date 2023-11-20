@@ -1,6 +1,7 @@
 import { model, decoding, validation, path } from '../../index'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
+import { forbiddenObjectFields } from '../../utils'
 
 /**
  * The type of a record, defined as a custom type.
@@ -97,7 +98,7 @@ function recordArbitrary<T extends model.Type>(
     return gen
       .array(
         gen.tuple(
-          gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf'),
+          gen.string().filter((s) => !forbiddenObjectFields.includes(s)),
           concreteType.arbitrary(maxDepth - 1),
         ),
       )

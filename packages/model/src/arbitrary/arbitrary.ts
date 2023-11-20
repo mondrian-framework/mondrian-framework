@@ -1,5 +1,6 @@
 import { model } from '../index'
 import gen from 'fast-check'
+import { forbiddenObjectFields } from '../utils'
 
 /**
  * @return A generator for types' base options.
@@ -565,7 +566,7 @@ export function wrapperType(
  * Generator for a generic object type.
  */
 function objectType(maxDepth: number): gen.Arbitrary<model.Type> {
-  const fieldName = gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf')
+  const fieldName = gen.string().filter((s) => !forbiddenObjectFields.includes(s))
   return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain(object)
 }
 
@@ -573,7 +574,7 @@ function objectType(maxDepth: number): gen.Arbitrary<model.Type> {
  * Generator for a generic object type.
  */
 function entityType(maxDepth: number): gen.Arbitrary<model.Type> {
-  const fieldName = gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf')
+  const fieldName = gen.string().filter((s) => !forbiddenObjectFields.includes(s))
   return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain(entity)
 }
 

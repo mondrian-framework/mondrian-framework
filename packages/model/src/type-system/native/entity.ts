@@ -1,4 +1,5 @@
 import { decoding, path, model, validation } from '../..'
+import { assertSafeObjectFields } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -62,6 +63,7 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
 
   constructor(mutability: M, fields: Ts, options?: model.EntityTypeOptions) {
     super(options)
+    assertSafeObjectFields(fields)
     this.mutability = mutability
     this.fields = fields
   }

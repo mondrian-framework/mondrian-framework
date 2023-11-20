@@ -1,7 +1,11 @@
-import { arbitrary, decoding, model, validation } from '../src'
+import { arbitrary, model } from '../src'
 import { assertOk } from './testing-utils'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
+
+const typeAndEncodedValue = arbitrary
+  .typeAndValue()
+  .map(([type, value]) => [type, model.concretise(type).encodeWithoutValidation(value), value] as const)
 
 describe.concurrent('encoding', () => {
   test.prop([arbitrary.typeAndValue()])('can always encode a type and a valid value', ([type, value]) => {
@@ -12,10 +16,6 @@ describe.concurrent('encoding', () => {
     assertOk(model.concretise(type).encode(value))
   })
 
-  const typeAndEncodedValue = arbitrary
-    .typeAndValue()
-    .map(([type, value]) => [type, model.concretise(type).encodeWithoutValidation(value), value] as const)
-
   // A note on why the inverse is not true (that is `∃x. decoding(encoding(x)) !== x`)
   // Consider the following type: number().nullable().optional(): a valid value might be
   // `null`; however, both `null` and `undefined` are both encoded to the JSON value `null`!
@@ -23,9 +23,10 @@ describe.concurrent('encoding', () => {
   // the decoded result would be undefined (and not the original null)
   test.prop([typeAndEncodedValue])('is the inverse of decoding', ([type, encoded]) => {
     //encoding(decoding(x)) = x
-    const decodedResult = model.concretise(type).decode(encoded)
+    const concreteType = model.concretise(type)
+    const decodedResult = concreteType.decode(encoded)
     const decoded = assertOk(decodedResult)
-    const encodedResult = model.concretise(type).encode(decoded as never)
+    const encodedResult = concreteType.encode(decoded as never)
     const encodedAgain = assertOk(encodedResult)
     expect(encodedAgain).toEqual(encoded)
   })

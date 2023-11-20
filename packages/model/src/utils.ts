@@ -32,3 +32,22 @@ export function memoizeTransformation<T, R>(mapper: (t: T) => R): (t: T) => R {
   }
   return f
 }
+
+export const forbiddenObjectFields = [
+  'constructor',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'toLocaleString',
+  'toString',
+  'valueOf',
+  '__proto__',
+]
+export function assertSafeObjectFields(record: Record<string, unknown>) {
+  const keys = Object.keys(record)
+  for (const field of forbiddenObjectFields) {
+    if (keys.includes(field)) {
+      throw new Error(`Forbidden field name on object: ${field}`)
+    }
+  }
+}

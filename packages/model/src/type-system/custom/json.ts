@@ -1,6 +1,7 @@
 import { model, decoding, validation } from '../../index'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
+import { forbiddenObjectFields } from '../../utils'
 
 /**
  * Additional options for type {@link JsonType}.
@@ -44,7 +45,7 @@ function jsonArbitrary(maxDepth: number): gen.Arbitrary<JSONType> {
   if (maxDepth <= 0) {
     return gen.oneof(gen.double(), gen.string(), gen.boolean(), gen.constant(null))
   } else {
-    const fieldName = gen.string().filter((s) => s !== '__proto__' && s !== 'valueOf')
+    const fieldName = gen.string().filter((s) => !forbiddenObjectFields.includes(s))
     const subJson = jsonArbitrary(maxDepth - 1)
     return gen.oneof(
       gen.array(subJson),

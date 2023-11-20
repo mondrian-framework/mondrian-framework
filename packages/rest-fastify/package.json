@@ -10,7 +10,6 @@
     "test": "vitest run",
     "build": "tsc"
   },
-  "keywords": [],
   "dependencies": {
     "fastify": "4.24.3",
     "@fastify/static": "6.12.0",

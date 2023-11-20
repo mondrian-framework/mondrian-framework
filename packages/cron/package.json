@@ -10,7 +10,6 @@
     "test": "vitest run",
     "build": "tsc"
   },
-  "keywords": [],
   "dependencies": {
     "node-cron": "3.0.2",
     "@types/node-cron": "3.0.10"

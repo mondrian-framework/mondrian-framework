@@ -9,13 +9,10 @@
   ],
   "scripts": {
     "build": "prisma generate && tsc",
-    "example": "node -r dotenv/config --require ./build/opentelemetry.js build/app.js",
+    "example": "node --env-file dev.env --require ./build/opentelemetry.js build/app.js",
     "example-serverless": "serverless offline"
   },
-  "keywords": [],
   "dependencies": {
-    "@mondrian-framework/aws-lambda-sqs": "*",
-    "@mondrian-framework/aws-lambda-rest": "*",
     "@mondrian-framework/aws-sqs": "*",
     "@mondrian-framework/cron": "*",
     "@mondrian-framework/model": "*",
@@ -27,17 +24,12 @@
     "prisma": "5.5.2",
     "@prisma/instrumentation": "5.5.2",
     "jsonwebtoken": "9.0.2",
-    "serverless": "3.35.2",
-    "serverless-offline": "13.2.0",
-    "serverless-plugin-typescript": "2.1.5",
-    "serverless-plugin-monorepo": "0.11.0",
     "rest": "2.0.0",
     "@opentelemetry/sdk-node": "0.43.0",
     "@opentelemetry/api-logs": "0.43.0",
     "@redis/client": "1.5.11"
   },
   "devDependencies": {
-    "dotenv": "16.3.1",
     "@types/jsonwebtoken": "9.0.5"
   }
 }

@@ -10,7 +10,6 @@
     "test": "vitest run",
     "build": "tsc"
   },
-  "keywords": [],
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.398.0"
   },

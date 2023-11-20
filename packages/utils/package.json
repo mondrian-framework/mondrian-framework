@@ -10,6 +10,5 @@
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "build": "tsc"
-  },
-  "keywords": []
+  }
 }

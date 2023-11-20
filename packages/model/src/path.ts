@@ -26,7 +26,19 @@ export function ofIndex(index: number): Path {
  * @returns the given path with the appended fieldName
  */
 export function appendField(path: Path, fieldName: string): Path {
-  return `${path}.${fieldName}`
+  return `${path}${formatFieldName(fieldName)}`
+}
+
+/**
+ * If field name does not have a simple syntax accessible with dot notation
+ * uses index notation.
+ */
+function formatFieldName(fieldName: string) {
+  if (/^[a-zA-Z]([a-zA-Z]|[0-9])*$/.test(fieldName)) {
+    return `.${fieldName}`
+  } else {
+    return `["${fieldName}"]`
+  }
 }
 
 /**
@@ -41,7 +53,7 @@ export function appendIndex(path: Path, index: number): Path {
  */
 export function prependField(path: Path, fieldName: string): Path {
   const pathWithoutRoot = path.substring(1, path.length)
-  return `${root}.${fieldName}${pathWithoutRoot}`
+  return `${root}${formatFieldName(fieldName)}${pathWithoutRoot}`
 }
 
 /**

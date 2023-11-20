@@ -11,7 +11,6 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@apollo/server": "^4.9.4",
     "@graphql-tools/schema": "^10.0.0",
     "@graphql-tools/utils": "^10.0.8",
     "graphql": "^16.8.1"

@@ -37,7 +37,7 @@ function formatFieldName(fieldName: string) {
   if (/^[a-zA-Z]([a-zA-Z]|[0-9])*$/.test(fieldName)) {
     return `.${fieldName}`
   } else {
-    return `["${fieldName}"]`
+    return `['${fieldName}']`
   }
 }
 

@@ -462,3 +462,65 @@ function mergeSelect(
     otherwise: () => left ?? right,
   })
 }
+
+// prettier-ignore
+type Policy<T extends model.Type> 
+ = [T] extends [model.EntityType<any, infer Ts>] ? true | { [Key in keyof Ts]?: Policy<Ts[Key]> }
+ : [T] extends [model.ObjectType<any, infer Ts>] ? true | { [Key in keyof Ts]?: Policy<Ts[Key]> }
+ : [T] extends [model.ArrayType<any, infer T1>] ? Policy<T1>
+ : [T] extends [model.OptionalType<infer T1>] ? Policy<T1>
+ : [T] extends [model.NullableType<infer T1>] ? Policy<T1>
+ : [T] extends [(() => infer T1 extends model.Type)] ?  Policy<T1>
+ : true
+
+export function createReadPolicy<const T extends model.Lazy<model.EntityType<any, any>>, const P extends Policy<T>>(
+  entity: T,
+  policy: P,
+): P {
+  return policy
+}
+
+type Permission<T extends model.Type, Roles extends string> = { [K in Roles]: Policy<T> }
+
+export function createPermissions<
+  const T extends model.Lazy<model.EntityType<any, any>>,
+  const R extends string,
+  const P extends Permission<T, R>,
+>(entity: T, roles: R[], policy: P): P {
+  return policy
+}
+
+export function permissioned() {}
+
+const user = () =>
+  model.entity({
+    id: model.string(),
+    name: model.string(),
+    secret: model.string(),
+    friends: model.array(user),
+    posts: model.array(post),
+  })
+
+const post = () =>
+  model.entity({
+    id: model.string(),
+    content: model.string(),
+    author: user,
+  })
+
+// security context: { userId: 1, role: 'user' }
+
+// getPosts { author { secret } } -> no
+// getPosts({ where: { author: { id: { equals: 1 } } } }) { author { secret } } -> ok
+
+const perm = createPermissions(user, ['admin', 'owner', 'guest'], {
+  admin: true,
+  owner: true,
+  guest: { name: true },
+})
+
+const filter = { id: { equals: 1 } }
+export function isFilterBy(originalFilter: any, condition: any): boolean {
+  return false
+}
+// user.id === context.userId -> { id, name, secret }

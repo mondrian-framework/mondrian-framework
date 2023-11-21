@@ -1,7 +1,7 @@
 import { attachRestMethods } from './methods'
 import { fastifyStatic } from '@fastify/static'
 import { functions } from '@mondrian-framework/module'
-import { rest, utils } from '@mondrian-framework/rest'
+import { rest } from '@mondrian-framework/rest'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { FastifyInstance } from 'fastify'
 import fs from 'fs'
@@ -21,7 +21,6 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): void {
-  utils.assertApiValidity(api)
   const pathPrefix = api.options?.pathPrefix ?? '/api'
   if (api.options?.introspection) {
     const introspectionPath =

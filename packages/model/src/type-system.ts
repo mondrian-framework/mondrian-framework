@@ -34,6 +34,9 @@ export enum Kind {
  */
 export type Type = ConcreteType | (() => Type)
 
+/**
+ * The same of {@link Type} but without the lazyness.
+ */
 export type ConcreteType =
   | NumberType
   | StringType
@@ -48,9 +51,22 @@ export type ConcreteType =
   | NullableType<any>
   | CustomType
 
+/**
+ * Turns a type to a lazy type.
+ * It's often used to turn back a {@link ConcreteType} to a {@link Type}.
+ * @example ```ts
+ * type LazyNumber = Lazy<number>
+ * // number | (() => number) | (() => () => number) | (() => ...
+ * ```
+ */
 export type Lazy<T extends ConcreteType> = T | (() => Lazy<T>)
 
+/**
+ * Concretizes a type by removing the lazyness part.
+ * It's oftend used to turn a {@link Type} to {@link ConcreteType}.
+ */
 export type Concrete<T extends Type> = Exclude<T, () => any>
+
 /**
  * A record of {@link Type `Type`s}
  */
@@ -72,10 +88,10 @@ export type Types = { readonly [K in string]: Type }
  * @example ```ts
  *          const Model = model.object({
  *            field1: model.number(),
- *            field2: model.string(),
+ *            field2: model.string().optional(),
  *          })
  *          type Model = model.Infer<typeof Model>
- *          // Type = { field1: number, field2: string }
+ *          // Type = { readonly field1: number, readonly field2?: string }
  *          ```
  */
 // prettier-ignore
@@ -101,56 +117,30 @@ type InferObject<M extends Mutability, Ts extends Types> =
     { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
     { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   >
+
 // prettier-ignore
 type InferEntity<M extends Mutability, Ts extends Types> =
   ApplyObjectMutability<M,
     { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
     { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
   >
+
 // prettier-ignore
 type InferUnion<Ts extends Types> = { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
+
 // prettier-ignore
 type InferArray<M, T extends Type> = M extends Mutability.Immutable ? readonly Infer<T>[] : Infer<T>[]
-// prettier-ignore
-
-export type InferReturn<T extends Type>
-  = [T] extends [NumberType] ? number
-  : [T] extends [StringType] ? string
-  : [T] extends [BooleanType] ? boolean
-  : [T] extends [LiteralType<infer L>] ? L
-  : [T] extends [CustomType<any, any, infer InferredAs>] ? InferredAs
-  : [T] extends [EnumType<infer Vs>] ? Vs[number]
-  : [T] extends [OptionalType<infer T1>] ? undefined | InferReturn<T1>
-  : [T] extends [NullableType<infer T1>] ? null | InferReturn<T1>
-  : [T] extends [ArrayType<infer M, infer T1>] ? InferReturnArray<M, T1>
-  : [T] extends [ObjectType<infer M, infer Ts>] ? InferReturnObject<M, Ts>
-  : [T] extends [EntityType<infer M, infer Ts>] ? InferReturnEntity<M, Ts>
-  : [T] extends [UnionType<infer Ts>] ? InferReturnUnion<Ts>
-  : [T] extends [(() => infer T1 extends Type)] ? InferReturn<T1>
-  : never
-
-// prettier-ignore
-type InferReturnObject<M extends Mutability, Ts extends Types> =
-  ApplyObjectMutability<M,
-    { [Key in NonOptionalKeysReturn<Ts>]: InferReturn<Ts[Key]> } &
-    { [Key in OptionalKeysReturn<Ts>]?: InferReturn<Ts[Key]> }
-  >
-// prettier-ignore
-type InferReturnEntity<M extends Mutability, Ts extends Types> =
-ApplyObjectMutability<M,
-  { [Key in NonOptionalKeysReturn<Ts>]: InferReturn<Ts[Key]> } &
-  { [Key in OptionalKeysReturn<Ts>]?: InferReturn<Ts[Key]> }
->
-// prettier-ignore
-type InferReturnUnion<Ts extends Types> = { [Key in keyof Ts]: InferReturn<Ts[Key]> }[keyof Ts]
-// prettier-ignore
-type InferReturnArray<M, T extends Type> = M extends Mutability.Immutable ? readonly InferReturn<T>[] : InferReturn<T>[]
-
-// prettier-ignore
-export type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknown>> = M extends Mutability.Immutable ? { readonly [K in keyof T]: T[K] } : { [K in keyof T]: T[K] }
 
 /**
- * Given an array of types, returns the union of the fields whose type is optional
+ * Applies readonly to all property of T if M is Immutable.
+ */
+export type ApplyObjectMutability<
+  M extends Mutability,
+  T extends Record<string, unknown>,
+> = M extends Mutability.Immutable ? { readonly [K in keyof T]: T[K] } : T
+
+/**
+ * Given a type map, returns the union of the fields whose type is optional
  *
  * @example ```ts
  *          const Model = model.object({
@@ -165,17 +155,19 @@ export type OptionalKeys<T extends Types> = {
   [K in keyof T]: IsOptional<T[K]> extends true ? K : never
 }[keyof T]
 
-type OptionalKeysReturn<T extends Types> = {
-  [K in keyof T]: IsOptional<T[K]> extends true ? K : IsEntity<T[K]> extends true ? never : never
-}[keyof T]
-
-export type NonOptionalKeys<T extends Types> = {
-  [K in keyof T]: IsOptional<T[K]> extends true ? never : K
-}[keyof T]
-
-type NonOptionalKeysReturn<T extends Types> = {
-  [K in keyof T]: IsOptional<T[K]> extends true ? never : IsEntity<T[K]> extends true ? never : K
-}[keyof T]
+/**
+ * Given a type map, returns the union of the fields whose type is not optional
+ *
+ * @example ```ts
+ *          const Model = model.object({
+ *            foo: model.string(),
+ *            bar: model.number().optional(),
+ *            baz: model.boolean().array().optional(),
+ *          })
+ *          OptionalKeys<typeof Model> // "foo"
+ *          ```
+ */
+export type NonOptionalKeys<T extends Types> = Exclude<keyof T, OptionalKeys<T>>
 
 /**
  * Returns the literal type `true` for any {@link Type} that is optional. That is, if the type has a top-level
@@ -202,15 +194,6 @@ export type IsOptional<T extends Type>
   = [T] extends [OptionalType<any>] ? true
   : [T] extends [NullableType<infer T1>] ? IsOptional<T1>
   : [T] extends [(() => infer T1 extends Type)] ? IsOptional<T1>
-  : false
-
-//prettier-ignore
-type IsEntity<T extends Type> 
-  = [T] extends [EntityType<any, any>] ? true
-  : [T] extends [OptionalType<infer T1>] ? IsEntity<T1>
-  : [T] extends [NullableType<infer T1>] ? IsEntity<T1>
-  : [T] extends [ArrayType<any, infer T1>] ? IsEntity<T1>
-  : [T] extends [(() => infer T1 extends Type)] ? IsEntity<T1>
   : false
 
 /**

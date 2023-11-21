@@ -29,14 +29,6 @@ type SdkFunction<
       options?: { retrieve?: P; metadata?: Metadata; operationId?: string },
     ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
-//prettier-ignore
-export type IsNever<T extends model.Type> 
-  = [T] extends [model.CustomType<'never'>] ? true
-  : [T] extends [model.OptionalType<any>] ? IsNever<T>
-  : [T] extends [model.NullableType<infer T1>] ? IsNever<T1>
-  : [T] extends [(() => infer T1 extends model.Type)] ? IsNever<T1>
-  : false
-
 type SdkFunctionResult<
   O extends model.Type,
   E extends ErrorType,
@@ -53,13 +45,13 @@ type SdkFunctionResult<
 // prettier-ignore
 export type Project<T extends model.Type, R extends retrieve.GenericRetrieve>
   = [R] extends [{ select: infer Select }] ? Select extends retrieve.GenericSelect ? InferSelection<T, Select>
-    : model.InferReturn<T>
-  : model.InferReturn<T>
+    : InferReturn<T>
+  : InferReturn<T>
 
 // prettier-ignore
 type InferSelection<T extends model.Type, S extends retrieve.GenericSelect> 
   = [S] extends [{ readonly [K in string]?: retrieve.GenericRetrieve | boolean }] ? InferSelectionInternal<T, S>
-  : model.InferReturn<T>
+  : InferReturn<T>
 
 // prettier-ignore
 type InferSelectionInternal<T extends model.Type, P extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean }>
@@ -74,7 +66,7 @@ type InferSelectionInternal<T extends model.Type, P extends { readonly [K in str
   : [T] extends [model.ArrayType<infer M, infer T1>] ? M extends model.Mutability.Immutable ? readonly InferSelectionInternal<T1, P>[] : InferSelectionInternal<T1, P>[]
   : [T] extends [model.ObjectType<infer M, infer Ts>] ? InferObject<M, Ts, P>
   : [T] extends [model.EntityType<infer M, infer Ts>] ? InferObject<M, Ts, P>
-  : [T] extends [model.UnionType<any>] ? model.InferReturn<T>
+  : [T] extends [model.UnionType<any>] ? InferReturn<T>
   : [T] extends [(() => infer T1 extends model.Type)] ? InferSelectionInternal<T1, P>
   : never
 
@@ -99,6 +91,79 @@ type IsObjectOrEntity<T extends model.Type>
   : [T] extends [model.NullableType<infer T1>] ? IsObjectOrEntity<T1>
   : [T] extends [model.ArrayType<any, infer T1>] ? IsObjectOrEntity<T1>
   : [T] extends [() => infer T1 extends model.Type] ? IsObjectOrEntity<T1>
+  : false
+
+/**
+ * Similar to {@link model.Infer Infer} but the embedded entities are inferred as optional.
+ * @example ```ts
+ *          const Model = () => model.object({
+ *            field1: model.number(),
+ *            embedded: Model,
+ *          })
+ *          type Model = model.InferReturn<typeof Model>
+ *          // Type = { readonly field1: number, readonly embedded?: Type }
+ *          ```
+ */
+//prettier-ignore
+type InferReturn<T extends model.Type>
+  = [T] extends [model.NumberType] ? number
+  : [T] extends [model.StringType] ? string
+  : [T] extends [model.BooleanType] ? boolean
+  : [T] extends [model.LiteralType<infer L>] ? L
+  : [T] extends [model.CustomType<any, any, infer InferredAs>] ? InferredAs
+  : [T] extends [model.EnumType<infer Vs>] ? Vs[number]
+  : [T] extends [model.OptionalType<infer T1>] ? undefined | InferReturn<T1>
+  : [T] extends [model.NullableType<infer T1>] ? null | InferReturn<T1>
+  : [T] extends [model.ArrayType<infer M, infer T1>] ? InferReturnArray<M, T1>
+  : [T] extends [model.ObjectType<infer M, infer Ts>] ? InferReturnObject<M, Ts>
+  : [T] extends [model.EntityType<infer M, infer Ts>] ? InferReturnEntity<M, Ts>
+  : [T] extends [model.UnionType<infer Ts>] ? InferReturnUnion<Ts>
+  : [T] extends [(() => infer T1 extends model.Type)] ? InferReturn<T1>
+  : never
+
+// prettier-ignore
+type InferReturnObject<M extends model.Mutability, Ts extends model.Types> =
+  model.ApplyObjectMutability<M,
+    { [Key in NonOptionalKeysReturn<Ts>]: InferReturn<Ts[Key]> } &
+    { [Key in OptionalKeysReturn<Ts>]?: InferReturn<Ts[Key]> }
+  >
+
+// prettier-ignore
+type InferReturnEntity<M extends model.Mutability, Ts extends model.Types> =
+  model.ApplyObjectMutability<M,
+    { [Key in NonOptionalKeysReturn<Ts>]: InferReturn<Ts[Key]> } &
+    { [Key in OptionalKeysReturn<Ts>]?: InferReturn<Ts[Key]> }
+  >
+
+// prettier-ignore
+type InferReturnUnion<Ts extends model.Types> = { [Key in keyof Ts]: InferReturn<Ts[Key]> }[keyof Ts]
+
+// prettier-ignore
+type InferReturnArray<M, T extends model.Type> = M extends model.Mutability.Immutable ? readonly InferReturn<T>[] : InferReturn<T>[]
+
+type OptionalKeysReturn<T extends model.Types> = {
+  [K in keyof T]: model.IsOptional<T[K]> extends true ? K : IsEntity<T[K]> extends true ? never : never
+}[keyof T]
+
+type NonOptionalKeysReturn<T extends model.Types> = {
+  [K in keyof T]: model.IsOptional<T[K]> extends true ? never : IsEntity<T[K]> extends true ? never : K
+}[keyof T]
+
+//prettier-ignore
+type IsEntity<T extends model.Type> 
+  = [T] extends [model.EntityType<any, any>] ? true
+  : [T] extends [model.OptionalType<infer T1>] ? IsEntity<T1>
+  : [T] extends [model.NullableType<infer T1>] ? IsEntity<T1>
+  : [T] extends [model.ArrayType<any, infer T1>] ? IsEntity<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? IsEntity<T1>
+  : false
+
+//prettier-ignore
+type IsNever<T extends model.Type> 
+  = [T] extends [model.CustomType<'never'>] ? true
+  : [T] extends [model.OptionalType<any>] ? IsNever<T>
+  : [T] extends [model.NullableType<infer T1>] ? IsNever<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? IsNever<T1>
   : false
 
 class SdkBuilder<const Metadata> {

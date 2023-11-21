@@ -50,7 +50,9 @@ export type Api<Fs extends functions.Functions, ContextInput> = ApiSpecification
   module: module.Module<Fs, ContextInput>
 }
 
-export function build<Fs extends functions.Functions, ContextInput>(api: Api<Fs, ContextInput>): Api<Fs, ContextInput> {
+export function build<const Fs extends functions.Functions, ContextInput>(
+  api: Api<Fs, ContextInput>,
+): Api<Fs, ContextInput> {
   assertApiValidity(api)
   return api
 }

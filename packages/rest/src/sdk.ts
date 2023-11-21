@@ -27,9 +27,9 @@ type SdkFunctionResult<
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
   P extends retrieve.FromType<O, C>,
-> = [E] extends [model.Types]
-  ? result.Result<sdk.Project<O, P>, { [K in keyof E]: model.Infer<E[K]> }>
-  : sdk.Project<O, P>
+> = [Exclude<E, undefined>] extends [never]
+  ? sdk.Project<O, P>
+  : result.Result<sdk.Project<O, P>, { [K in keyof Exclude<E, undefined>]: model.Infer<Exclude<E, undefined>[K]> }>
 
 function getRequestBuilder(args: { specification: FunctionSpecifications; functionBody: functions.FunctionInterface }) {
   const internalData = emptyInternalData()
@@ -54,15 +54,22 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
       const specs = api.functions[functionName]
       const specification = Array.isArray(specs) ? specs[specs.length - 1] : specs
       if (!specification) {
-        return []
+        return [
+          [
+            functionName,
+            () => {
+              throw new Error(`${functionName} is not exposed through rest api.`)
+            },
+          ],
+        ]
       }
       const outputType = model.concretise(model.partialDeep(functionBody.output))
       const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
       const requestBuilder = getRequestBuilder({ specification, functionBody })
       const resolver = async (input: never, options?: { headers?: any; retrieve: any }) => {
-        const url = `${endpoint}/${module.name}/api/v${specification.version?.max ?? specification.version?.min ?? 1}${
-          specification.path ?? `/${functionName}`
-        }`
+        const url = `${endpoint}${api.options?.pathPrefix ?? '/api'}/v${
+          specification.version?.max ?? specification.version?.min ?? 1
+        }${specification.path ?? `/${functionName}`}`
         const request = requestBuilder(input)
         const urlWithParam = Object.entries(request.params ?? {}).reduce((p, [key, param]) => {
           return p.replaceAll(`{${key}}`, param)

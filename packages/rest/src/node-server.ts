@@ -33,13 +33,13 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
   api,
   context,
   error,
-  transport,
+  maxBodySize,
 }: {
   api: Api<Fs, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   error?: ErrorHandler<Fs, Context>
-  transport: { port: number; maxBodySize?: number; maxConnections?: number }
-}): void {
+  maxBodySize?: number
+}): http.Server {
   const pathPrefix = api.options?.pathPrefix ?? '/api'
   const introspectionPath = api.options?.introspection
     ? typeof api.options.introspection === 'object'
@@ -53,13 +53,10 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
     const [url, urlQueryPart] = rawUrl?.split('?') ?? [rawUrl, null]
     const query = Object.fromEntries(urlQueryPart?.split('&').map((v) => v.split('=')) ?? [])
     const pieces: Uint8Array[] = []
-    const maximumBodySize = transport.maxBodySize ?? 5 * 1024 * 1024
+    const maximumBodySize = maxBodySize ?? 5 * 1024 * 1024 //5mb
     let totalLength = 0
     let closed = false
     request
-      .on('error', (err) => {
-        console.error(err)
-      })
       .on('data', (chunk: Uint8Array) => {
         if (totalLength <= maximumBodySize) {
           pieces.push(chunk)
@@ -92,10 +89,12 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
             ) as FunctionSpecifications[]
             for (const spec of specifications) {
               const paramsKey: string[] = []
-              const pathRegex = (spec.path ?? `/${functionName}`).replaceAll(/{.*}/g, (s) => {
-                paramsKey.push(s.replace('}', '').replace('{', ''))
-                return '([a-zA-Z0-9_]+)'
-              })
+              const pathRegex =
+                '/v?[0-9]+' +
+                (spec.path ?? `/${functionName}`).replaceAll(/{.*}/g, (s) => {
+                  paramsKey.push(s.replace('}', '').replace('{', ''))
+                  return '(.*)'
+                })
               const match = new RegExp(`^${pathRegex}$`).exec(path)
               if (spec.method === lMethod && match) {
                 const params = Object.fromEntries(paramsKey.map((k, i) => [k, match[i + 1]]))
@@ -109,13 +108,21 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
                   error,
                 })
                 handler({
-                  request: { body, headers, method: lMethod, params, query, route: url },
+                  request: { body: body.value, headers, method: lMethod, params, query, route: url },
                   serverContext: { server: { request, response } },
-                }).then(({ body, status, headers }: Response) => {
-                  response.writeHead(status, { ...headers, 'Content-Type': 'application/json' })
-                  response.write(JSON.stringify(body))
-                  response.end()
                 })
+                  .then(({ body, status, headers }: Response) => {
+                    response.writeHead(status, { ...headers, 'Content-Type': 'application/json' })
+                    response.write(JSON.stringify(body))
+                    response.end()
+                  })
+                  .catch((error: unknown) => {
+                    response.writeHead(500)
+                    if (error instanceof Error) {
+                      response.write(error.message)
+                    }
+                    response.end()
+                  })
                 return
               }
             }
@@ -125,11 +132,6 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
           return
         }
         if (introspectionPath != null && url?.startsWith(introspectionPath) && method === 'GET') {
-          if (url.includes('..')) {
-            response.writeHead(404)
-            response.end()
-            return
-          }
           const schemaRegex = new RegExp(`^${introspectionPath}/v?([1-9]+)/schema\.json$`)
           const schemaMatch = schemaRegex.exec(url)
           if (schemaMatch) {
@@ -188,10 +190,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
         response.end()
       })
   })
-  if (transport.maxConnections != null) {
-    server.maxConnections = transport.maxConnections
-  }
-  server.listen(transport.port)
+  return server
 }
 
 function parseJSON(buffer: Buffer): result.Result<unknown, string> {

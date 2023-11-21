@@ -81,7 +81,7 @@ test('Rate limiter middleware', async () => {
   expect(failedLoginResult3.isOk).toBe(false)
   expect(!failedLoginResult3.isOk && failedLoginResult3.error).toEqual({ invalidUsernameOrPassword: '' })
 
-  expect(async () => await client.functions.login({ email: 'admin@domain.com', password: '4321' })).rejects.toThrow(
-    'Too many requests',
-  )
+  await expect(
+    async () => await client.functions.login({ email: 'admin@domain.com', password: '4321' }),
+  ).rejects.toThrow('Too many requests')
 })

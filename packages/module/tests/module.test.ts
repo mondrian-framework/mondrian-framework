@@ -173,7 +173,7 @@ test('Real example', async () => {
 
   const completeProfileResult = await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
   expect(!completeProfileResult.isOk && completeProfileResult.error).toEqual({ unauthorized: 'unauthorized' })
-  expect(
+  await expect(
     async () =>
       await client.functions.completeProfile(
         { firstname: 'Pieter', lastname: 'Mondriaan' },
@@ -257,7 +257,7 @@ describe('Default middlewares', () => {
     expect(result1).toEqual({ value: '123' })
     const result2 = await client.functions.dummy({ value: 'wrong' }, { retrieve: { select: {} } })
     expect(result2).toEqual({})
-    expect(
+    await expect(
       async () =>
         await client.functions.dummy(
           { value: '123' },

@@ -1,6 +1,6 @@
 import { module, functions, sdk } from '../src'
-import { result, model } from '@mondrian-framework/model'
-import { describe, expect, test } from 'vitest'
+import { result, model, retrieve } from '@mondrian-framework/model'
+import { describe, expect, expectTypeOf, test } from 'vitest'
 
 test('Real example', async () => {
   ///Types
@@ -268,4 +268,84 @@ describe('Default middlewares', () => {
       'Invalid output on function dummy. Errors: (1) {"expected":"string","path":"$.value"}',
     )
   })
+})
+
+test('Return types', async () => {
+  ///Types
+  const User = () =>
+    model.entity({
+      email: model.string(),
+      friends: model.array(User),
+      metadata: model.object({ tags: model.string().array() }).optional(),
+    })
+
+  const login = functions.build({
+    input: model.never(),
+    output: User,
+    retrieve: { select: true },
+    body: async () => {
+      return { email: 'email@domain.com', metadata: { tags: [] }, friends: [] }
+    },
+  })
+
+  const m = module.build({
+    name: 'test',
+    version: '1.0.0',
+    functions: { login },
+    context: async () => ({}),
+  })
+
+  const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
+    module: m,
+    context: async ({ metadata }) => {
+      return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
+    },
+  })
+
+  type NoRetrieveType = {
+    readonly email: string
+    readonly metadata?:
+      | {
+          readonly tags: readonly string[]
+        }
+      | undefined
+  }
+  const r1 = await client.functions.login({})
+  expectTypeOf(r1).toEqualTypeOf<NoRetrieveType>()
+
+  const r2 = await client.functions.login({ retrieve: {} })
+  expectTypeOf(r2).toEqualTypeOf<NoRetrieveType>()
+
+  const r3 = await client.functions.login({ retrieve: { select: undefined } })
+  expectTypeOf(r3).toEqualTypeOf<NoRetrieveType>()
+
+  const r4 = await client.functions.login({ retrieve: { select: {} } })
+  expectTypeOf(r4).toEqualTypeOf<{}>()
+
+  const r5 = await client.functions.login({ retrieve: { select: { email: true } } })
+  expectTypeOf(r5).toEqualTypeOf<{ readonly email: string }>()
+
+  const r6 = await client.functions.login({ retrieve: { select: { metadata: undefined } } })
+  expectTypeOf(r6).toEqualTypeOf<{}>()
+
+  const r7 = await client.functions.login({ retrieve: { select: { metadata: {} } } })
+  expectTypeOf(r7).toEqualTypeOf<{ readonly metadata?: { readonly tags: readonly string[] } }>()
+
+  const r8 = await client.functions.login({ retrieve: { select: { metadata: { select: {} } } } })
+  expectTypeOf(r8).toEqualTypeOf<{ readonly metadata?: {} }>()
+
+  const r9 = await client.functions.login({ retrieve: { select: { metadata: { select: { tags: true } } } } })
+  expectTypeOf(r9).toEqualTypeOf<{ readonly metadata?: { readonly tags: readonly string[] } }>()
+
+  const r10 = await client.functions.login({ retrieve: { select: { friends: undefined } } })
+  expectTypeOf(r10).toEqualTypeOf<{}>()
+
+  const r11 = await client.functions.login({ retrieve: { select: { friends: { select: undefined } } } })
+  expectTypeOf(r11).toEqualTypeOf<{ readonly friends: readonly NoRetrieveType[] }>()
+
+  const r12 = await client.functions.login({ retrieve: { select: { friends: { select: {} } } } })
+  expectTypeOf(r12).toEqualTypeOf<{ readonly friends: readonly {}[] }>()
+
+  const r13 = await client.functions.login({ retrieve: { select: { friends: { select: { email: true } } } } })
+  expectTypeOf(r13).toEqualTypeOf<{ readonly friends: readonly { readonly email: string }[] }>()
 })

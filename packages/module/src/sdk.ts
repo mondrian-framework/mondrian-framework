@@ -18,10 +18,24 @@ type SdkFunction<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   Metadata,
-> = <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
-  input: model.Infer<InputType>,
-  options?: { retrieve?: P; metadata?: Metadata; operationId?: string },
-) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+> = IsNever<InputType> extends true
+  ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(options?: {
+      retrieve?: P
+      metadata?: Metadata
+      operationId?: string
+    }) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+  : <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
+      input: model.Infer<InputType>,
+      options?: { retrieve?: P; metadata?: Metadata; operationId?: string },
+    ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+
+//prettier-ignore
+export type IsNever<T extends model.Type> 
+  = [T] extends [model.CustomType<'never'>] ? true
+  : [T] extends [model.OptionalType<any>] ? IsNever<T>
+  : [T] extends [model.NullableType<infer T1>] ? IsNever<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? IsNever<T1>
+  : false
 
 type SdkFunctionResult<
   O extends model.Type,
@@ -37,9 +51,55 @@ type SdkFunctionResult<
  * If not explicitly required, all embedded entities are excluded.
  **/
 // prettier-ignore
-export type Project<T extends model.Type, P extends retrieve.GenericRetrieve> //TODO
-  = [P] extends [Record<string, unknown>] ? model.Infer<model.PartialDeep<T>> 
-  : model.Infer<T>
+export type Project<T extends model.Type, R extends retrieve.GenericRetrieve>
+  = [R] extends [{ select: infer Select }] ? Select extends retrieve.GenericSelect ? InferSelection<T, Select>
+    : model.InferReturn<T>
+  : model.InferReturn<T>
+
+// prettier-ignore
+type InferSelection<T extends model.Type, S extends retrieve.GenericSelect> 
+  = [S] extends [{ readonly [K in string]?: retrieve.GenericRetrieve | boolean }] ? InferSelectionInternal<T, S>
+  : model.InferReturn<T>
+
+// prettier-ignore
+type InferSelectionInternal<T extends model.Type, P extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean }>
+  = [T] extends [model.NumberType] ? number
+  : [T] extends [model.StringType] ? string
+  : [T] extends [model.BooleanType] ? boolean
+  : [T] extends [model.LiteralType<infer L>] ? L
+  : [T] extends [model.CustomType<any, any, infer InferredAs>] ? InferredAs
+  : [T] extends [model.EnumType<infer Vs>] ? Vs[number]
+  : [T] extends [model.OptionalType<infer T1>] ? undefined | InferSelectionInternal<T1, P>
+  : [T] extends [model.NullableType<infer T1>] ? null | InferSelectionInternal<T1, P>
+  : [T] extends [model.ArrayType<infer M, infer T1>] ? M extends model.Mutability.Immutable ? readonly InferSelectionInternal<T1, P>[] : InferSelectionInternal<T1, P>[]
+  : [T] extends [model.ObjectType<infer M, infer Ts>] ? InferObject<M, Ts, P>
+  : [T] extends [model.EntityType<infer M, infer Ts>] ? InferObject<M, Ts, P>
+  : [T] extends [model.UnionType<any>] ? model.InferReturn<T>
+  : [T] extends [(() => infer T1 extends model.Type)] ? InferSelectionInternal<T1, P>
+  : never
+
+// prettier-ignore
+type InferObject<M extends model.Mutability, Ts extends model.Types, P extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean }> =
+  model.ApplyObjectMutability<M,
+    //@ts-ignore
+    { [Key in (NonUndefinedKeys<P> & model.NonOptionalKeys<Ts>)]: IsObjectOrEntity<Ts[Key]> extends true ? Project<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], P[Key]> } &
+    //@ts-ignore
+    { [Key in (NonUndefinedKeys<P> & model.OptionalKeys<Ts>)]?: IsObjectOrEntity<Ts[Key]> extends true ? Project<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], P[Key]> }
+  >
+
+type NonUndefinedKeys<P extends Record<string, unknown>> = {
+  [K in keyof P]: [Exclude<P[K], undefined>] extends [never] ? never : K
+}[keyof P]
+
+// prettier-ignore
+type IsObjectOrEntity<T extends model.Type> 
+  = [T] extends [model.EntityType<any, any>] ? true
+  : [T] extends [model.ObjectType<any, any>] ? true
+  : [T] extends [model.OptionalType<infer T1>] ? IsObjectOrEntity<T1>
+  : [T] extends [model.NullableType<infer T1>] ? IsObjectOrEntity<T1>
+  : [T] extends [model.ArrayType<any, infer T1>] ? IsObjectOrEntity<T1>
+  : [T] extends [() => infer T1 extends model.Type] ? IsObjectOrEntity<T1>
+  : false
 
 class SdkBuilder<const Metadata> {
   private metadata?: Metadata

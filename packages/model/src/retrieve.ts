@@ -31,7 +31,7 @@ export type GenericRetrieve = {
   skip?: number
 }
 export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere[] } & { readonly [K in string]: any }
-export type GenericSelect = null | { readonly [K in string]: undefined | GenericRetrieve | boolean }
+export type GenericSelect = null | { readonly [K in string]?: GenericRetrieve | boolean }
 export type GenericOrderBy = {} | {}[]
 
 /**
@@ -40,8 +40,8 @@ export type GenericOrderBy = {} | {}[]
 // prettier-ignore
 export type FromType<T extends model.Type, C extends Capabilities | undefined>
   = [model.Type] extends [T] ? GenericRetrieve 
-  : [C] extends [Capabilities]
-  ? [T] extends [model.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
+  : [C] extends [Capabilities] ? [C] extends [never] ? never
+  : [T] extends [model.EntityType<any, any>] ? WhereType<T, C> & SelectType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
   : [T] extends [model.ArrayType<any, infer T1>] ? FromType<T1, C>
   : [T] extends [model.OptionalType<infer T1>] ? FromType<T1, C>
   : [T] extends [model.NullableType<infer T1>] ? FromType<T1, C>
@@ -200,6 +200,8 @@ export function selectedType<T extends model.Type>(
           return [[fieldName, optionalizeEmbeddedEntities(fieldType)]]
         } else if (typeof selection === 'object' && selection.select) {
           return [[fieldName, selectedType(fieldType, selection)]]
+        } else if (typeof selection === 'object') {
+          return [[fieldName, optionalizeEmbeddedEntities(fieldType)]]
         } else {
           return []
         }

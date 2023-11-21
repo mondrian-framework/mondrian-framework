@@ -103,10 +103,10 @@ type InferObject<M extends Mutability, Ts extends Types> =
   >
 // prettier-ignore
 type InferEntity<M extends Mutability, Ts extends Types> =
-ApplyObjectMutability<M,
-  { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
-  { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
->
+  ApplyObjectMutability<M,
+    { [Key in NonOptionalKeys<Ts>]: Infer<Ts[Key]> } &
+    { [Key in OptionalKeys<Ts>]?: Infer<Ts[Key]> }
+  >
 // prettier-ignore
 type InferUnion<Ts extends Types> = { [Key in keyof Ts]: Infer<Ts[Key]> }[keyof Ts]
 // prettier-ignore
@@ -144,10 +144,10 @@ ApplyObjectMutability<M,
 // prettier-ignore
 type InferReturnUnion<Ts extends Types> = { [Key in keyof Ts]: InferReturn<Ts[Key]> }[keyof Ts]
 // prettier-ignore
-type InferReturnArray<M, T extends Type> = M extends Mutability.Immutable ? Readonly<InferReturn<T>[]> : InferReturn<T>[]
+type InferReturnArray<M, T extends Type> = M extends Mutability.Immutable ? readonly InferReturn<T>[] : InferReturn<T>[]
 
 // prettier-ignore
-type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknown>> = M extends Mutability.Immutable ? { readonly [K in keyof T]: T[K] } : { [K in keyof T]: T[K] }
+export type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknown>> = M extends Mutability.Immutable ? { readonly [K in keyof T]: T[K] } : { [K in keyof T]: T[K] }
 
 /**
  * Given an array of types, returns the union of the fields whose type is optional
@@ -161,27 +161,15 @@ type ApplyObjectMutability<M extends Mutability, T extends Record<string, unknow
  *          OptionalKeys<typeof Model> // "bar" | "baz"
  *          ```
  */
-type OptionalKeys<T extends Types> = {
+export type OptionalKeys<T extends Types> = {
   [K in keyof T]: IsOptional<T[K]> extends true ? K : never
 }[keyof T]
 
 type OptionalKeysReturn<T extends Types> = {
-  [K in keyof T]: IsOptional<T[K]> extends true ? K : IsEntity<T[K]> extends true ? K : never
+  [K in keyof T]: IsOptional<T[K]> extends true ? K : IsEntity<T[K]> extends true ? never : never
 }[keyof T]
 
-/**
- * Given an array of types, returns the union of the fields whose type is not optional
- *
- * @example ```ts
- *          const Model = model.object({
- *            foo: model.string(),
- *            bar: model.number().optional(),
- *            baz: model.boolean().array(),
- *          })
- *          OptionalKeys<typeof Model> // "foo" | "baz"
- *          ```
- */
-type NonOptionalKeys<T extends Types> = {
+export type NonOptionalKeys<T extends Types> = {
   [K in keyof T]: IsOptional<T[K]> extends true ? never : K
 }[keyof T]
 
@@ -194,7 +182,7 @@ type NonOptionalKeysReturn<T extends Types> = {
  * {@link OptionalType optional wrapper}
  *
  * @example ```ts
- *          const Model = model.number().optional().reference()
+ *          const Model = model.number().optional().nullable()
  *          IsOptional<typeof Model> // true
  *          ```
  *          The top-level decorators are `OptionalType` and `ReferenceType` so the type is optional
@@ -210,7 +198,7 @@ type NonOptionalKeysReturn<T extends Types> = {
  *          The top-level decorator is `ArrayType` so the type is not optional
  */
 //prettier-ignore
-type IsOptional<T extends Type> 
+export type IsOptional<T extends Type> 
   = [T] extends [OptionalType<any>] ? true
   : [T] extends [NullableType<infer T1>] ? IsOptional<T1>
   : [T] extends [(() => infer T1 extends Type)] ? IsOptional<T1>

@@ -37,6 +37,30 @@ describe('selectedType', () => {
     const res = model.concretise(type).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res.isOk && res.value).toEqual({})
   })
+  test('empty retrieve', () => {
+    const type = retrieve.selectedType(user, {})
+    const fullObject = { name: 'Jonh', metadata: { registeredAt: new Date(), loggedInAt: new Date() } }
+    const res = model.concretise(type).decode(fullObject, {})
+    expect(res.isOk && res.value).toEqual(fullObject)
+  })
+  test('undefiend selection', () => {
+    const type = retrieve.selectedType(user, { select: undefined })
+    const fullObject = { name: 'Jonh', metadata: { registeredAt: new Date(), loggedInAt: new Date() } }
+    const res = model.concretise(type).decode(fullObject, {})
+    expect(res.isOk && res.value).toEqual(fullObject)
+  })
+  test('undefiend sub selection', () => {
+    const type = retrieve.selectedType(user, { select: { posts: undefined } })
+    const fullObject = {}
+    const res = model.concretise(type).decode(fullObject, {})
+    expect(res.isOk && res.value).toEqual(fullObject)
+  })
+  test('empty sub selection', () => {
+    const type = retrieve.selectedType(user, { select: { posts: {} } })
+    const fullObject = { posts: [{ title: 't', content: 'c', tags: [] }] }
+    const res = model.concretise(type).decode(fullObject, {})
+    expect(res.isOk && res.value).toEqual(fullObject)
+  })
   test('select one scalar', () => {
     const type1 = retrieve.selectedType(user, { select: { name: true } })
     const res1 = model.concretise(type1).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
@@ -49,7 +73,7 @@ describe('selectedType', () => {
     expect(res3.isOk).toBe(false)
   })
   test('select one scalar and one entity', () => {
-    const type1 = retrieve.selectedType(user, { select: { name: true, posts: {} } })
+    const type1 = retrieve.selectedType(user, { select: { name: true, posts: undefined } })
     const res1 = model.concretise(type1).decode({ name: 'Jonh' }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res1.isOk && res1.value).toEqual({ name: 'Jonh' })
     const type2 = retrieve.selectedType(user, { select: { name: true, posts: { select: {} } } })

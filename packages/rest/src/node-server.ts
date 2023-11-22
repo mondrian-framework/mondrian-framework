@@ -50,7 +50,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
   const openapiCache: Map<number, unknown> = new Map()
   const server = http.createServer({}, async (request, response) => {
     const { headers, method, url: rawUrl } = request
-    const [url, urlQueryPart] = rawUrl!.split('?') 
+    const [url, urlQueryPart] = rawUrl!.split('?')
     const query = Object.fromEntries(urlQueryPart?.split('&').map((v) => v.split('=')) ?? [])
     const pieces: Uint8Array[] = []
     const maximumBodySize = maxBodySize ?? 5 * 1024 * 1024 //5mb

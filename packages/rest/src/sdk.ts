@@ -90,10 +90,10 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
           method: specification.method,
           body: request.body !== undefined ? JSON.stringify(request.body) : null,
         })
-        const operationId = response.headers.get('operationId')
-        const json = await readJSON(response) //TODO: better error message
+        const operationId = response.headers.get('operationId') //TODO: opentelemetry instrumentation
+        const json = await readJSON(response)
         if (!json.isOk) {
-          throw new Error(json.error)
+          throw new Error(json.error) //TODO: better error message
         } else if (response.status >= 200 && response.status < 299) {
           const res = outputType.decode(json.value, { typeCastingStrategy: 'tryCasting' })
           if (!res.isOk) {

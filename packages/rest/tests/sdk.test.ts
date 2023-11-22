@@ -155,12 +155,12 @@ test('test sdk', async () => {
   })
   expect(introspectionRes10.status).toBe(413)
   const introspectionRes11 = await fetch('http://127.0.0.1:50123/api/v1/register', {
-    body: "not a valid json",
+    body: 'not a valid json',
     method: 'put',
   })
   expect(introspectionRes11.status).toBe(400)
   const introspectionRes12 = await fetch('http://127.0.0.1:50123/api/v1/notFound', {
-    body: "{}",
+    body: '{}',
     method: 'put',
   })
   expect(introspectionRes12.status).toBe(404)
@@ -172,7 +172,7 @@ test('test sdk', async () => {
   ).rejects.toThrowError('completeProfile is not exposed through rest api.')
 
   await expect(async () =>
-    client.functions.register({ email: 'email@domain.com', password: '1234' }, { headers: { Authorization: ''}}),
+    client.functions.register({ email: 'email@domain.com', password: '1234' }, { headers: { Authorization: '' } }),
   ).rejects.toThrowError('Invalid authorization header')
 
   const res1 = await client.functions.login({ email: 'email@domain.com', password: '1234' })

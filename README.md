@@ -148,7 +148,7 @@ By enabling REST introspection, you can explore your API using the Swagger docum
 You can serve the module also as a GraphQL endpoint with the following code:
 
 ```typescript
-import { serve, graphql } from '@mondrian-framework/graphql-yoga'
+import { serveWithFastify, graphql } from '@mondrian-framework/graphql-yoga'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods
@@ -162,7 +162,7 @@ const api = graphql.build({
 
 //Start the server
 const server = fastify()
-serve({ server, api, context: async ({}) => ({}) })
+serveWithFastify({ server, api, context: async ({}) => ({}) })
 server.listen({ port: 4000 }).then((address) => {
   console.log(`Server started at address ${address}/graphql`)
 })

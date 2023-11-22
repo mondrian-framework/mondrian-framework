@@ -1,7 +1,7 @@
 import { module } from '../core'
 import { InvalidJwtError } from '../core/errors'
 import { graphql } from '@mondrian-framework/graphql'
-import { serve } from '@mondrian-framework/graphql-yoga'
+import { serveWithFastify as serve } from '@mondrian-framework/graphql-yoga'
 import { FastifyInstance } from 'fastify'
 
 const api = graphql.build({
@@ -21,9 +21,9 @@ export function serveGraphql(server: FastifyInstance) {
   serve({
     server,
     api,
-    context: async ({ fastify }) => ({
-      authorization: fastify.request.headers.authorization,
-      ip: fastify.request.ip,
+    context: async ({ request }) => ({
+      authorization: request.headers.authorization,
+      ip: request.ip,
     }),
     errorHandler: async ({ error, logger }) => {
       if (error instanceof InvalidJwtError) {

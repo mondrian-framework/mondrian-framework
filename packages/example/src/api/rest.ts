@@ -25,16 +25,16 @@ const api = rest.build({
     invalidLogin: 401,
     tooManyRequests: 429,
   },
-  options: { introspection: { endpoint: 'http://127.0.0.1' } },
+  options: { introspection: { endpoint: 'http://localhost:4000' } },
 })
 
 export function serveRest(server: FastifyInstance) {
   serve({
     server,
     api,
-    context: async ({ fastify }) => ({
-      authorization: fastify.request.headers.authorization,
-      ip: fastify.request.ip,
+    context: async ({ request }) => ({
+      authorization: request.headers.authorization,
+      ip: request.ip,
     }),
     async error({ error, logger }) {
       if (error instanceof InvalidJwtError) {

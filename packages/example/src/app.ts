@@ -1,10 +1,12 @@
 import { serveGraphql } from './api/graphql'
 import { serveRest } from './api/rest'
 import { fastify } from 'fastify'
+import cors from '@fastify/cors'
 
 //Entry point of the application
 async function main() {
   const server = fastify()
+  await server.register(cors, { origin: '*' })
   const startTime = new Date().getTime()
   serveRest(server)
   const partialTime = new Date().getTime()

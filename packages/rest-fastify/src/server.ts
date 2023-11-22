@@ -8,7 +8,7 @@ import fs from 'fs'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
-export type Context = { fastify: { request: FastifyRequest; reply: FastifyReply } }
+export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 
 export function serve<const Fs extends functions.Functions, ContextInput>({
   api,
@@ -18,8 +18,8 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
 }: {
   api: rest.Api<Fs, ContextInput>
   server: FastifyInstance
-  context: (serverContext: Context) => Promise<ContextInput>
-  error?: rest.ErrorHandler<Fs, Context>
+  context: (serverContext: ServerContext) => Promise<ContextInput>
+  error?: rest.ErrorHandler<Fs, ServerContext>
 }): void {
   const pathPrefix = api.options?.pathPrefix ?? '/api'
   if (api.options?.introspection) {

@@ -24,7 +24,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
   const pathPrefix = api.options?.pathPrefix ?? '/api'
   if (api.options?.introspection) {
     const introspectionPath =
-      typeof api.options.introspection === 'object' ? api.options.introspection.path : `/openapi`
+      (typeof api.options.introspection === 'object' ? api.options.introspection?.path : null) ?? `/openapi`
     server.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
       prefix: introspectionPath,

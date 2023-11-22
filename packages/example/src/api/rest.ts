@@ -25,7 +25,7 @@ const api = rest.build({
     invalidLogin: 401,
     tooManyRequests: 429,
   },
-  options: { introspection: true },
+  options: { introspection: { endpoint: 'http://127.0.0.1' } },
 })
 
 export function serveRest(server: FastifyInstance) {

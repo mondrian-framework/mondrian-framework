@@ -22,7 +22,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   const server = lambdaApi()
   if (api.options?.introspection) {
     const introspectionPath =
-      typeof api.options.introspection === 'object' ? api.options.introspection.path : `/openapi`
+      (typeof api.options.introspection === 'object' ? api.options.introspection?.path : null) ?? `/openapi`
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()

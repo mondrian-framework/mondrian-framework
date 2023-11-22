@@ -42,9 +42,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
 }): http.Server {
   const pathPrefix = api.options?.pathPrefix ?? '/api'
   const introspectionPath = api.options?.introspection
-    ? typeof api.options.introspection === 'object'
-      ? api.options.introspection.path
-      : `/openapi`
+    ? (typeof api.options.introspection === 'object' ? api.options.introspection?.path : null) ?? `/openapi`
     : null
 
   const openapiCache: Map<number, unknown> = new Map()

@@ -18,14 +18,10 @@ const User = () =>
   })
 type User = model.Infer<typeof User>
 const LoginInput = () =>
-  model.object(
-    {
-      email: model.string(),
-      password: model.string(),
-    },
-    { name: 'LoginInput' },
-  )
-const LoginOutput = model.object({ jwt: model.string(), user: User }).nullable().setName('LoginOuput')
+  model.object({
+    email: model.string(),
+    password: model.string(),
+  })
 
 //Functions
 type SharedContext = {
@@ -37,16 +33,13 @@ type SharedContext = {
 
 const login = functions.withContext<SharedContext & { from?: string }>().build({
   input: LoginInput,
-  output: LoginOutput,
-  errors: { invalidEmailOrPassword: model.literal('Invalid email or password') },
-  retrieve: undefined,
-  body: async ({ input, context: { db }, logger }) => {
+  output: model.object({ jwt: model.string(), user: User }).nullable().setName('LoginOuput'),
+  errors: { invalidEmailOrPassword: model.string() },
+  body: async ({ input, context: { db } }) => {
     const user = db.findUser({ email: input.email })
     if (!user || user.password !== input.password) {
-      logger.logWarn(`Invalid email or password: ${input.email}`)
       return result.fail({ invalidEmailOrPassword: 'Invalid email or password' })
     }
-    logger.logInfo(`Logged in: ${input.email}`)
     return result.ok({ jwt: user.email, user })
   },
   middlewares: [
@@ -67,7 +60,7 @@ const login = functions.withContext<SharedContext & { from?: string }>().build({
 const register = functions.withContext<SharedContext & { from?: string }>().build({
   input: LoginInput,
   output: User,
-  errors: { doubleRegister: model.literal('Double register') },
+  errors: { doubleRegister: model.string() },
   body: async ({ input, context: { db } }) => {
     const user = db.findUser({ email: input.email })
     if (user) {
@@ -78,22 +71,12 @@ const register = functions.withContext<SharedContext & { from?: string }>().buil
   },
 })
 
-const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
+const completeProfile = functions.build({
   input: model.object({ firstname: model.string(), lastname: model.string() }),
   output: User,
-  errors: { unauthorized: model.literal('unauthorized') },
-  retrieve: undefined,
-  body: async ({ input, context: { db, authenticatedUser } }) => {
-    if (!authenticatedUser) {
-      return result.fail({ unauthorized: 'unauthorized' })
-    }
-    const user = db.findUser({ email: authenticatedUser.email })
-    if (!user) {
-      throw new Error('Unrechable')
-    }
-    return result.ok(db.updateUser({ ...user, ...input }))
+  body: async () => {
+    throw new Error('Unreachable')
   },
-  options: { namespace: 'business-logic' },
 })
 const memory = new Map<string, User>()
 const db: SharedContext['db'] = {
@@ -118,7 +101,7 @@ const m = module.build({
       if (user) {
         return { from: ip, authenticatedUser: { email: user.email }, db }
       } else {
-        throw `Invalid authorization`
+        throw new Error(`Invalid authorization header`)
       }
     }
     return { from: ip, db }
@@ -134,7 +117,7 @@ const api = rest.build({
     ],
     login: { method: 'post' },
   },
-  options: { introspection: true },
+  options: { introspection: { path: '/openapi' } },
   version: 2,
 })
 
@@ -171,12 +154,26 @@ test('test sdk', async () => {
     method: 'post',
   })
   expect(introspectionRes10.status).toBe(413)
+  const introspectionRes11 = await fetch('http://127.0.0.1:50123/api/v1/register', {
+    body: "not a valid json",
+    method: 'put',
+  })
+  expect(introspectionRes11.status).toBe(400)
+  const introspectionRes12 = await fetch('http://127.0.0.1:50123/api/v1/notFound', {
+    body: "{}",
+    method: 'put',
+  })
+  expect(introspectionRes12.status).toBe(404)
 
   const client = sdk.build({ api, endpoint: 'http://127.0.0.1:50123', module: m })
 
   await expect(async () =>
     client.functions.completeProfile({ firstname: 'asd', lastname: 'asd' }),
   ).rejects.toThrowError('completeProfile is not exposed through rest api.')
+
+  await expect(async () =>
+    client.functions.register({ email: 'email@domain.com', password: '1234' }, { headers: { Authorization: ''}}),
+  ).rejects.toThrowError('Invalid authorization header')
 
   const res1 = await client.functions.login({ email: 'email@domain.com', password: '1234' })
   expect(!res1.isOk && res1.error).toEqual({ invalidEmailOrPassword: 'Invalid email or password' })

@@ -90,10 +90,12 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
           method: specification.method,
           body: request.body !== undefined ? JSON.stringify(request.body) : null,
         })
-        const operationId = response.headers.get('operation-id')
-        if (response.status === 200) {
-          const json = await response.json()
-          const res = outputType.decode(json, { typeCastingStrategy: 'tryCasting' })
+        const operationId = response.headers.get('operationId')
+        const json = await readJSON(response) //TODO: better error message
+        if (!json.isOk) {
+          throw new Error(json.error)
+        } else if (response.status >= 200 && response.status < 299) {
+          const res = outputType.decode(json.value, { typeCastingStrategy: 'tryCasting' })
           if (!res.isOk) {
             throw new Error(JSON.stringify(res.error))
           }
@@ -103,12 +105,12 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
             return res.value
           }
         } else if (functionBody.errors) {
-          const json = await response.json()
+          const jsonValue = json.value
           const [error] = Object.entries(functionBody.errors).flatMap(([k, v]) =>
-            typeof json === 'object' && json && k in json ? [[k, v, json[k]] as const] : [],
+            typeof jsonValue === 'object' && jsonValue && k in jsonValue ? [[k, v, jsonValue[k]] as const] : [],
           )
           if (!error) {
-            throw new Error(`Unexpected error: ${JSON.stringify(json)}`)
+            throw new Error(`Unexpected error: ${JSON.stringify(jsonValue)}`)
           }
           const [errorName, errorType, errorValue] = error
           const decodedError = model.concretise(errorType).decode(errorValue, { typeCastingStrategy: 'tryCasting' })
@@ -117,7 +119,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
           }
           return result.fail({ [errorName]: decodedError.value })
         } else {
-          throw new Error(await response.text())
+          throw new Error(JSON.stringify(json.value)) //TODO: better error message
         }
       }
       return [[functionName, resolver]]
@@ -127,5 +129,14 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
   return {
     functions: functions as unknown as SdkFunctions<Fs>,
     withHeaders: (headers: Record<string, string | string[] | undefined>) => build({ api, endpoint, module, headers }),
+  }
+}
+
+async function readJSON(response: Response): Promise<result.Result<any, string>> {
+  const text = await response.text()
+  try {
+    return result.ok(JSON.parse(text))
+  } catch {
+    return result.fail(text)
   }
 }

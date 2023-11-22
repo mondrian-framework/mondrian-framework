@@ -19,7 +19,7 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
     /**
      * Default path is /openapi
      */
-    introspection?: true | { path?: string; endpoint?: string }
+    introspection?: true | { path?: string; endpoints?: string[] }
     /**
      * Default is /api
      */

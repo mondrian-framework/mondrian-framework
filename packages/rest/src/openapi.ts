@@ -116,15 +116,16 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
     }
   }
   clearInternalData(internalData)
-  const servers: { url: string }[] = []
-  for (let v = version; v > 0; v--) {
-    const endpoint =
-      api.options?.introspection && typeof api.options.introspection === 'object'
-        ? api.options.introspection.endpoint
-        : null
-    const url = `${endpoint ?? ''}${api.options?.pathPrefix ?? '/api'}/v${v}`
-    servers.push({ url })
-  }
+
+  //servers
+  const endpoints =
+    api.options?.introspection && typeof api.options.introspection === 'object'
+      ? api.options.introspection.endpoints
+      : undefined
+  const servers = endpoints
+    ? endpoints.map((e) => ({ url: `${e}${api.options?.pathPrefix ?? '/api'}/v${version}` }))
+    : [{ url: `${api.options?.pathPrefix ?? '/api'}/v${version}` }]
+
   return {
     openapi: '3.1.0',
     info: { version: module.version, title: module.name },

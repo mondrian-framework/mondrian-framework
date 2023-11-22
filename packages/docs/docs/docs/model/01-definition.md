@@ -105,7 +105,6 @@ model.mac() // IEEE 802 48-bit
 model.ip() // IPv4 or IPv6 address
 model.port() // TCP port
 model.version() // semantic version, ex: 1.1.2
-model.jwt() // JSON Web Token
 model.json() // only JSON values
 model.url() // RFC 3986, ex: https://www.google.com
 model.uuid() // Universal Unique Identifier

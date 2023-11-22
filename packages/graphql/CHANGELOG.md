@@ -1,5 +1,15 @@
 # @mondrian-framework/graphql
 
+## 2.0.5
+
+### Patch Changes
+
+- Minor improvements
+- Updated dependencies
+  - @mondrian-framework/module@2.0.5
+  - @mondrian-framework/model@2.0.5
+  - @mondrian-framework/utils@2.0.5
+
 ## 2.0.4
 
 ### Patch Changes

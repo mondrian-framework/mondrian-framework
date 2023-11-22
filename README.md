@@ -26,9 +26,7 @@ For this example we'll need to install this packages:
 ```
 npm i @mondrian-framework/model \
       @mondrian-framework/module \
-      @mondrian-framework/rest \
       @mondrian-framework/rest-fastify \
-      @mondrian-framework/graphql \
       @mondrian-framework/graphql-yoga \
       fastify
 ```
@@ -107,8 +105,7 @@ This snippet showcases how to instantiate the Mondrian module, incorporating the
 Now, let's move on to serving the module as a REST API endpoint. The following TypeScript code demonstrates the mapping of functions to methods and how to start the server:
 
 ```typescript
-import { rest } from '@mondrian-framework/rest'
-import { serve } from '@mondrian-framework/rest-fastify'
+import { serve, rest } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods
@@ -151,8 +148,7 @@ By enabling REST introspection, you can explore your API using the Swagger docum
 You can serve the module also as a GraphQL endpoint with the following code:
 
 ```typescript
-import { graphql } from '@mondrian-framework/graphql'
-import { serve } from '@mondrian-framework/graphql-yoga'
+import { serve, graphql } from '@mondrian-framework/graphql-yoga'
 import { fastify } from 'fastify'
 
 //Define the mapping of Functions<->Methods

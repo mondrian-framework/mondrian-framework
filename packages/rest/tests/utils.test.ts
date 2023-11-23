@@ -35,25 +35,29 @@ test('assertApiValidity', () => {
   assertApiValidity({ module: null as any, version: 1, functions: { f1: { method: 'get' } } })
   expect(() =>
     assertApiValidity({ module: null as any, version: 1, functions: { f1: { method: 'get', version: { min: 2 } } } }),
-  ).toThrow()
+  ).toThrowError("Invalid version for function f1. 'min' must be between 1 and 1 and be an integer")
   expect(() =>
     assertApiValidity({ module: null as any, version: 3, functions: { f1: { method: 'get', version: { min: 2.2 } } } }),
-  ).toThrow()
+  ).toThrowError("Invalid version for function f1. 'min' must be between 1 and 3 and be an integer")
   expect(() =>
     assertApiValidity({ module: null as any, version: 3, functions: { f1: { method: 'get', version: { max: 2.2 } } } }),
-  ).toThrow()
+  ).toThrowError("Invalid version for function f1. 'max' must be between 1 and 3 and be an integer")
   expect(() =>
     assertApiValidity({ module: null as any, version: 1, functions: { f1: { method: 'get', version: { max: 2 } } } }),
-  ).toThrow()
+  ).toThrowError("Invalid version for function f1. 'max' must be between 1 and 1 and be an integer")
   expect(() =>
     assertApiValidity({
       module: null as any,
       version: 10,
       functions: { f1: { method: 'get', version: { max: 2, min: 3 } } },
     }),
-  ).toThrow()
-  expect(() => assertApiValidity({ module: null as any, version: 1.5, functions: { f1: { method: 'get' } } })).toThrow()
-  expect(() => assertApiValidity({ module: null as any, version: -1, functions: { f1: { method: 'get' } } })).toThrow()
+  ).toThrowError("Invalid version for function f1. 'min' must be less than or equals to 'max'")
+  expect(() =>
+    assertApiValidity({ module: null as any, version: 1.5, functions: { f1: { method: 'get' } } }),
+  ).toThrowError('Invalid api version. Must be between 1 and 100 and be an integer. Got 1.5')
+  expect(() =>
+    assertApiValidity({ module: null as any, version: -1, functions: { f1: { method: 'get' } } }),
+  ).toThrowError('Invalid api version. Must be between 1 and 100 and be an integer. Got -1')
 })
 
 test('getPathsFromSpecification', () => {

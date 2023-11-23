@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "build": "tsc"
+    "build": "tsc",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@graphql-tools/schema": "^10.0.0",
@@ -19,5 +20,8 @@
     "@mondrian-framework/model": "^2.0.6",
     "@mondrian-framework/module": "^2.0.6",
     "@mondrian-framework/utils": "^2.0.6"
+  },
+  "devDependencies": {
+    "graphql-yoga": "^5.0.0"
   }
 }

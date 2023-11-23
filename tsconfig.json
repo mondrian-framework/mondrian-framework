@@ -37,9 +37,6 @@
   },
   "references": [
     {
-      "path": "packages/docs"
-    },
-    {
       "path": "packages/utils"
     },
     {

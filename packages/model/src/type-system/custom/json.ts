@@ -1,7 +1,7 @@
 import { model, decoding, validation } from '../../index'
+import { forbiddenObjectFields } from '../../utils'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
-import { forbiddenObjectFields } from '../../utils'
 
 /**
  * Additional options for type {@link JsonType}.

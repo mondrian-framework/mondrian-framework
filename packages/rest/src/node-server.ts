@@ -1,13 +1,13 @@
+import { Api, ErrorHandler, FunctionSpecifications, Response } from './api'
+import { fromFunction } from './handler'
+import { fromModule } from './openapi'
+import { result } from '@mondrian-framework/model'
+import { functions } from '@mondrian-framework/module'
+import { isArray } from '@mondrian-framework/utils'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
-import { Api, ErrorHandler, FunctionSpecifications, Response } from './api'
-import { functions } from '@mondrian-framework/module'
-import { fromModule } from './openapi'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
-import { result } from '@mondrian-framework/model'
-import { fromFunction } from './handler'
-import { isArray } from '@mondrian-framework/utils'
 
 const MIME_TYPES: Record<string, string> = {
   default: 'application/octet-stream',

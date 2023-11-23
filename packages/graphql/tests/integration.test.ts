@@ -1,10 +1,10 @@
-import { afterAll, describe, expect, test } from 'vitest'
+import { build } from '../src/api'
 import { fromModule } from '../src/graphql'
+import { model } from '@mondrian-framework/model'
+import { functions, module } from '@mondrian-framework/module'
 import { createYoga } from 'graphql-yoga'
 import http from 'node:http'
-import { functions, module } from '@mondrian-framework/module'
-import { model } from '@mondrian-framework/model'
-import { build } from '../src/api'
+import { afterAll, describe, expect, test } from 'vitest'
 
 const addOne = functions.build({
   input: model.number(),

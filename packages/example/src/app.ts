@@ -1,7 +1,7 @@
 import { serveGraphql } from './api/graphql'
 import { serveRest } from './api/rest'
-import { fastify } from 'fastify'
 import cors from '@fastify/cors'
+import { fastify } from 'fastify'
 
 //Entry point of the application
 async function main() {

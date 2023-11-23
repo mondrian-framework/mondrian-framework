@@ -1,6 +1,6 @@
 import { model } from '../index'
-import gen from 'fast-check'
 import { forbiddenObjectFields } from '../utils'
+import gen from 'fast-check'
 
 /**
  * @return A generator for types' base options.

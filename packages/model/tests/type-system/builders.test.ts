@@ -1,6 +1,6 @@
+import { model } from '../../src'
 import { test } from '@fast-check/vitest'
 import { describe, expect } from 'vitest'
-import { model } from '../../src'
 
 //TODO [Good first issue]: test other types constructor
 

@@ -1,6 +1,6 @@
+import { rest, serve, sdk } from '../src'
 import { model, result } from '@mondrian-framework/model'
 import { module, functions } from '@mondrian-framework/module'
-import { rest, serve, sdk } from '../src'
 import { afterAll, describe, expect, test } from 'vitest'
 
 ///Types

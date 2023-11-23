@@ -1,7 +1,7 @@
 import { model, decoding, validation, path } from '../../index'
+import { forbiddenObjectFields } from '../../utils'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
-import { forbiddenObjectFields } from '../../utils'
 
 /**
  * The type of a record, defined as a custom type.

@@ -1,4 +1,10 @@
-import { assertApiValidity, completeRetrieve } from '../src/utils'
+import {
+  assertApiValidity,
+  completeRetrieve,
+  decodeQueryObject,
+  encodeQueryObject,
+  getPathsFromSpecification,
+} from '../src/utils'
 import { model } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
 
@@ -48,4 +54,41 @@ test('assertApiValidity', () => {
   ).toThrow()
   expect(() => assertApiValidity({ module: null as any, version: 1.5, functions: { f1: { method: 'get' } } })).toThrow()
   expect(() => assertApiValidity({ module: null as any, version: -1, functions: { f1: { method: 'get' } } })).toThrow()
+})
+
+test('getPathsFromSpecification', () => {
+  const r1 = getPathsFromSpecification({
+    functionName: 'f',
+    maxVersion: 3,
+    prefix: '/api',
+    specification: { method: 'get' },
+  })
+  expect(r1).toEqual(['/api/v1/f', '/api/v2/f', '/api/v3/f'])
+
+  const r2 = getPathsFromSpecification({
+    functionName: 'f',
+    maxVersion: 3,
+    prefix: '/api',
+    specification: { method: 'get', version: { min: 2, max: 2 } },
+  })
+  expect(r2).toEqual(['/api/v2/f'])
+})
+
+test('decodeQueryObject', () => {
+  const decoded1 = decodeQueryObject({ 'input[id]': '1', 'input[meta][info]': 123 }, 'input')
+  expect(decoded1).toEqual({ id: '1', meta: { info: 123 } })
+
+  const decoded2 = decodeQueryObject({ 'input[id]': '1', 'input[meta][0]': 1, 'input[meta][1]': 2 }, 'input')
+  expect(decoded2).toEqual({ id: '1', meta: { 0: 1, 1: 2 } })
+
+  const decoded3 = decodeQueryObject({ input: '1' }, 'input')
+  expect(decoded3).toEqual('1')
+})
+
+test('encodeQueryObject', () => {
+  const encoded1 = encodeQueryObject({ id: '1', meta: { info: 123 } }, 'input')
+  expect(encoded1).toEqual('input[id]=1&input[meta][info]=123')
+
+  const encoded2 = encodeQueryObject({ id: '1', meta: [1, 2] }, 'input')
+  expect(encoded2).toEqual('input[id]=1&input[meta][0]=1&input[meta][1]=2')
 })

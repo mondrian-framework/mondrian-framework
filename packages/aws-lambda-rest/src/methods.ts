@@ -25,7 +25,7 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
         functionName,
         specification,
         prefix: api.options?.pathPrefix ?? '/api',
-        globalMaxVersion: api.version,
+        maxVersion: api.version,
       })
       const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
         module: api.module,

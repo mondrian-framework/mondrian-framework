@@ -88,14 +88,23 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
             for (const spec of specifications) {
               const paramsKey: string[] = []
               const pathRegex =
-                '/v?[0-9]+' +
+                '/v?([0-9]+)' +
                 (spec.path ?? `/${functionName}`).replaceAll(/{.*}/g, (s) => {
                   paramsKey.push(s.replace('}', '').replace('{', ''))
                   return '(.*)'
                 })
               const match = new RegExp(`^${pathRegex}$`).exec(path)
               if (spec.method === lMethod && match) {
-                const params = Object.fromEntries(paramsKey.map((k, i) => [k, match[i + 1]]))
+                const version = Number(match[1])
+                if (
+                  Number.isNaN(version) ||
+                  !Number.isInteger(version) ||
+                  version < (spec.version?.min ?? 1) ||
+                  version > (spec.version?.max ?? api.version)
+                ) {
+                  continue
+                }
+                const params = Object.fromEntries(paramsKey.map((k, i) => [k, match[i + 2]]))
                 const handler = fromFunction({
                   api,
                   functionBody: api.module.functions[functionName],
@@ -192,6 +201,9 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
 }
 
 function parseJSON(buffer: Buffer): result.Result<unknown, string> {
+  if (buffer.length === 0) {
+    return result.ok(null)
+  }
   try {
     return result.ok(JSON.parse(buffer.toString()))
   } catch (error) {

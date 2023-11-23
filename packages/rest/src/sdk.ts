@@ -17,9 +17,9 @@ type SdkFunction<
   OutputType extends model.Type,
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
-> = <const P extends retrieve.FromType<OutputType, C>>(
+> = <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
   input: model.Infer<InputType>,
-  options?: { retrieve?: P; operationId?: string; headers?: Record<string, string | string[] | undefined> },
+  options?: { retrieve?: P; headers?: Record<string, string | string[] | undefined> },
 ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<

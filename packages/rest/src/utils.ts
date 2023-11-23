@@ -8,20 +8,20 @@ export function encodeQueryObject(input: JSONType, prefix: string): string {
 }
 
 function internalEncodeQueryObject(input: JSONType, prefix: string): string[] {
+  if (input && Array.isArray(input)) {
+    const params = []
+    for (let i = 0; i < input.length; i++) {
+      for (const v of internalEncodeQueryObject(input[i], '')) {
+        params.push(`${prefix}[${i}]${v}`)
+      }
+    }
+    return params
+  }
   if (typeof input === 'object' && input) {
     const params = []
     for (const [key, value] of Object.entries(input)) {
       for (const v of internalEncodeQueryObject(value === undefined ? null : value, '')) {
         params.push(`${prefix}[${key}]${v}`)
-      }
-    }
-    return params
-  }
-  if (Array.isArray(input)) {
-    const params = []
-    for (let i = 0; i < input.length; i++) {
-      for (const v of internalEncodeQueryObject(input[i], '')) {
-        params.push(`${prefix}[${i}]${v}`)
       }
     }
     return params
@@ -41,9 +41,6 @@ export function decodeQueryObject(input: Record<string, unknown>, prefix: string
     }
     const path = key.replace(prefix, '').split('][').join('.').replace('[', '').replace(']', '')
     if (path === '') {
-      if (Array.isArray(value)) {
-        return value.map((v) => JSON.parse(v as string))
-      }
       return value as JSONType
     }
     setTraversingValue(value, path, output)
@@ -58,15 +55,15 @@ export function getPathsFromSpecification({
   functionName,
   specification,
   prefix,
-  globalMaxVersion,
+  maxVersion,
 }: {
   functionName: string
   specification: FunctionSpecifications
   prefix: string
-  globalMaxVersion: number
+  maxVersion: number
 }): string[] {
   const paths = []
-  for (let i = specification.version?.min ?? 1; i <= (specification.version?.max ?? globalMaxVersion); i++) {
+  for (let i = specification.version?.min ?? 1; i <= (specification.version?.max ?? maxVersion); i++) {
     paths.push(`${prefix}/v${i}${specification.path ?? `/${functionName}`}`)
   }
   return paths
@@ -127,13 +124,13 @@ export function completeRetrieve(
   if (!retr) {
     return undefined
   }
-  //TODO: GenericRetrieve could be inside an object
   return model.match(type, {
     wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
-    entity: ({ fields }) =>
+    record: ({ fields }) =>
       retrieve.merge(type, retr, {
         select: mapObject(fields, (fieldName, fieldType) => {
-          if (model.unwrap(fieldType).kind === model.Kind.Entity) {
+          const unwrapped = model.unwrap(fieldType)
+          if (unwrapped.kind === model.Kind.Entity || unwrapped.kind === model.Kind.Object) {
             const subRetrieve = (retr.select ?? {})[fieldName]
             if (subRetrieve && subRetrieve !== true) {
               return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)
@@ -144,17 +141,6 @@ export function completeRetrieve(
           return true
         }),
       }) as retrieve.GenericRetrieve,
-    object: ({ fields }) =>
-      flatMapObject(fields, (fieldName, fieldType) =>
-        model.match(model.unwrap(fieldType), {
-          entity: (_, entity) =>
-            [[fieldName, completeRetrieve(((retr ?? {}) as any)[fieldName], entity)]] as [
-              string,
-              retrieve.GenericRetrieve,
-            ][],
-          otherwise: () => [],
-        }),
-      ),
     otherwise: () => retr,
   })
 }

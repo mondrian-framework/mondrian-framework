@@ -181,10 +181,9 @@ export function generateOpenapiInput({
   const isScalar = model.isScalar(concreteInputType)
   const isArray = model.isArray(concreteInputType)
   const isRequired = isInputRequired(concreteInputType)
-  const t = model.unwrap(concreteInputType)
-  if (t.kind === model.Kind.Object || t.kind === model.Kind.Entity) {
+  if (concreteInputType.kind === model.Kind.Object || concreteInputType.kind === model.Kind.Entity) {
     for (const p of parametersInPath) {
-      if (!t.fields[p] || !model.isScalar(t.fields[p])) {
+      if (!concreteInputType.fields[p] || !model.isScalar(concreteInputType.fields[p])) {
         throw new Error(
           `Error while generating openapi input type. Path parameter ${p} can only be a scalar type. Path ${specification.path}`,
         )
@@ -215,9 +214,9 @@ export function generateOpenapiInput({
     }
   }
   if (specification.method === 'get' || specification.method === 'delete') {
-    if (t.kind === model.Kind.Object) {
-      const parameters = generatePathParameters({ parameters: parametersInPath, type: t, internalData })
-      for (const [key, subtype] of Object.entries(t.fields)
+    if (concreteInputType.kind === model.Kind.Object || concreteInputType.kind === model.Kind.Entity) {
+      const parameters = generatePathParameters({ parameters: parametersInPath, type: concreteInputType, internalData })
+      for (const [key, subtype] of Object.entries(concreteInputType.fields as model.Types)
         .map(([k, v]) => [k, v] as const)
         .filter(([k, _]) => !parametersInPath.includes(k))) {
         const schema = modelToSchema(subtype, { ...internalData, ignoreFirstLevelOptionality: true })
@@ -236,7 +235,7 @@ export function generateOpenapiInput({
           const object: Record<string, unknown> = Object.fromEntries(
             parametersInPath.map((p) => [p, request.params[p]]),
           )
-          for (const [key, subtype] of Object.entries(t.fields).filter(
+          for (const [key, subtype] of Object.entries(concreteInputType.fields as model.Types).filter(
             ([fieldName]) => !parametersInPath.includes(fieldName),
           )) {
             if (model.isScalar(subtype)) {
@@ -249,7 +248,7 @@ export function generateOpenapiInput({
         },
         request: (input) => {
           const params = Object.fromEntries(
-            Object.entries(t.fields)
+            Object.entries(concreteInputType.fields as model.Types)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
                 const fieldType = model.concretise(field)
@@ -257,7 +256,7 @@ export function generateOpenapiInput({
                 return [fieldName, `${encoded}`] as const
               }),
           )
-          const queries = Object.entries(t.fields)
+          const queries = Object.entries(concreteInputType.fields as model.Types)
             .filter(([fieldName]) => !parametersInPath.includes(fieldName))
             .map(([fieldName, field]) => {
               const fieldType = model.concretise(field)
@@ -265,10 +264,10 @@ export function generateOpenapiInput({
               if (model.isScalar(field)) {
                 return [fieldName, encoded]
               } else {
-                return [fieldName, encodeQueryObject(encoded, fieldName)]
+                return [null, encodeQueryObject(encoded, fieldName)]
               }
             })
-          return { query: queries.map(([k, v]) => `${k}=${v}`).join('&'), params }
+          return { query: queries.map(([k, v]) => (k !== null ? `${k}=${v}` : v)).join('&'), params }
         },
       }
     }
@@ -314,9 +313,11 @@ export function generateOpenapiInput({
         },
       }
     }
-    if (t.kind === model.Kind.Object || t.kind === model.Kind.Entity) {
-      const parameters = generatePathParameters({ parameters: parametersInPath, type: t, internalData })
-      const remainingFields = Object.entries(t.fields).filter((v) => !parametersInPath.includes(v[0]))
+    if (concreteInputType.kind === model.Kind.Object || concreteInputType.kind === model.Kind.Entity) {
+      const parameters = generatePathParameters({ parameters: parametersInPath, type: concreteInputType, internalData })
+      const remainingFields = Object.entries(concreteInputType.fields as model.Types).filter(
+        (v) => !parametersInPath.includes(v[0]),
+      )
       const remainingObject = model.object(Object.fromEntries(remainingFields))
       const schema = modelToSchema(remainingObject, internalData)
       return {
@@ -331,7 +332,7 @@ export function generateOpenapiInput({
         },
         request: (input) => {
           const params = Object.fromEntries(
-            Object.entries(t.fields)
+            Object.entries(concreteInputType.fields as model.Types)
               .filter(([fieldName]) => parametersInPath.includes(fieldName))
               .map(([fieldName, field]) => {
                 const fieldType = model.concretise(field)

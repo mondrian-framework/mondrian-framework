@@ -15,7 +15,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: '20.5'
+          node-version: '20.10'
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
       - name: Install dependencies

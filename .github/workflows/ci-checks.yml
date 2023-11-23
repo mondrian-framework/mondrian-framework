@@ -25,7 +25,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Run tests
-        run: npm run coverage
+        run: rm node_modules/graphql/index.mjs && npx vitest run --coverage
       - name: Upload to Codecov
         uses: codecov/codecov-action@v3
         env:

@@ -223,7 +223,7 @@ describe('module to openapi', () => {
     expect(openapi).toEqual({
       openapi: '3.1.0',
       info: { version: '0.0.0', title: 'name' },
-      servers: [{ url: 'API/v2' }, { url: 'API/v1' }],
+      servers: [{ url: 'API/v2' }],
       paths: {
         '/posts/{userId}': {
           get: {

@@ -1,6 +1,6 @@
 import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
-import { result, retrieve, model } from '@mondrian-framework/model'
+import { result, retrieve, model, decoding, utils as modelUtils } from '@mondrian-framework/model'
 import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
 import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
@@ -448,7 +448,7 @@ function typeToGraphQLInputUnionVariant(
       ...internalData,
       defaultName: fieldDefaultName,
     })
-    return { type: new GraphQLNonNull(graphQLType) }
+    return { type: getNullableType(graphQLType) }
   }
 }
 
@@ -822,7 +822,10 @@ function getFunctionOutputTypeWithErrors(
  */
 function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogger, tracer: functions.Tracer): unknown {
   const decoded = tracer.startActiveSpan(`decode-input`, (span) =>
-    endSpanWithResult(model.concretise(inputType).decode(rawInput, { typeCastingStrategy: 'tryCasting' }), span),
+    endSpanWithResult(
+      model.concretise(mapInputType(inputType)).decode(rawInput, { typeCastingStrategy: 'tryCasting' }),
+      span,
+    ),
   )
   if (decoded.isOk) {
     return decoded.value
@@ -830,6 +833,43 @@ function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogg
     log.logError('Bad request. (input)')
     throw createGraphQLError(`Invalid input.`, { extensions: decoded.error })
   }
+}
+
+function taggedUnion(union: model.UnionType<model.Types>): model.Type {
+  const variantsKeys = Object.keys(union.variants)
+  return model.custom<'tagged-union', {}, any>(
+    'tagged-union',
+    () => {
+      throw new Error('Unreachable')
+    },
+    (v, options) => {
+      const keys = Object.keys(v ?? {})
+      if (!v || typeof v !== 'object' || keys.length !== 1 || !variantsKeys.includes(keys[0])) {
+        return decoding.fail(`object with exactly one of this keys: ${variantsKeys.map((v) => `'${v}'`).join(', ')}`, v)
+      }
+      const type = union.variants[keys[0]]
+      const mappedType = mapInputType(type)
+      return model.concretise(mappedType).decodeWithoutValidation((v as Record<string, unknown>)[keys[0]], options)
+    },
+    (v, options) => {
+      return union.validate(v as never, options)
+    },
+    () => {
+      throw new Error('Unreachable')
+    },
+  )
+}
+
+const mapInputType = modelUtils.memoizeTypeTransformation(mapInputTypeInternal)
+function mapInputTypeInternal(inputType: model.Type): model.Type {
+  return model.match(inputType, {
+    union: (union) => taggedUnion(union),
+    object: ({ fields }) => model.object(mapObject(fields, (_, fieldType) => mapInputType(fieldType))),
+    array: ({ wrappedType }) => model.array(mapInputType(wrappedType)),
+    optional: ({ wrappedType }) => model.optional(mapInputType(wrappedType)),
+    nullable: ({ wrappedType }) => model.nullable(mapInputType(wrappedType)),
+    otherwise: (_, t) => t,
+  })
 }
 
 /**

@@ -329,6 +329,9 @@ function where(type: model.Type): model.Type {
             isEmpty: model.boolean().optional(),
           })
         },
+        union: () => {
+          throw new Error('Unsupported array of union in where')
+        },
         otherwise: () => {
           throw new Error('Unsupported where field')
         },

@@ -586,10 +586,10 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
       return [arg.name.value, value]
     })
     const args = argumentEntries ? Object.fromEntries(argumentEntries) : undefined
-    const select = info.selectionSet?.selections
+    const selections = info.selectionSet?.selections
       .filter((n) => n.kind !== Kind.INLINE_FRAGMENT || !n.typeCondition?.name.value.includes('Failure')) //TODO: weak check
       .map(selectionNodeToRetrieve)
-      .reduce((p, c) => ({ ...p, ...c }))
+    const select = selections?.length ? selections.reduce((p, c) => ({ ...p, ...c })) : undefined
     if (!select) {
       return { [info.name.value]: true }
     }
@@ -845,8 +845,8 @@ function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: model.Type, trac
   const result = tracer.startActiveSpan('decode-retrieve', (span) => {
     const node = info.fieldNodes[0]
     const retrieve = selectionNodeToRetrieve(node)
-    const rawRetrieve = retrieve[node.name.value] as GenericRetrieve
-    const result = model.concretise(retrieveType).decode(rawRetrieve)
+    const rawRetrieve = retrieve[node.name.value]
+    const result = model.concretise(retrieveType).decode(rawRetrieve === true ? {} : rawRetrieve)
     return endSpanWithResult(result, span)
   })
   if (result.isOk) {

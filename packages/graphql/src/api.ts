@@ -5,7 +5,6 @@ export type FunctionSpecifications = {
   type: 'query' | 'mutation'
   name?: string
   inputName?: string
-  namespace?: string | null
 }
 
 export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {

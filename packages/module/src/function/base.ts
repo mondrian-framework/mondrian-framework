@@ -31,7 +31,7 @@ export class BaseFunction<
     this.body = func.body
     this.middlewares = func.middlewares ?? []
     this.options = func.options
-    this.tracer = VOID_TRACDER
+    this.tracer = voidTracer
   }
 
   public apply(args: functions.FunctionArguments<I, O, C, Context>): FunctionResult<O, E, C> {
@@ -65,4 +65,4 @@ class VoidTracer implements Tracer {
     return fn(undefined) as ReturnType<F>
   }
 }
-const VOID_TRACDER = new VoidTracer()
+export const voidTracer = new VoidTracer()

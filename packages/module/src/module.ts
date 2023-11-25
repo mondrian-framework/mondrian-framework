@@ -117,7 +117,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   assertUniqueNames(module.functions)
   const maxProjectionDepthMiddleware =
     module.options?.maxSelectionDepth != null
-      ? [middleware.checkMaxProjectionDepth(module.options.maxSelectionDepth)]
+      ? [middleware.checkMaxSelectionDepth(module.options.maxSelectionDepth)]
       : []
 
   const wrappedFunctions = Object.fromEntries(

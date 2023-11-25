@@ -35,9 +35,9 @@ export function allUniqueTypes(from: model.Type[]): Set<model.Type> {
 function gatherUniqueTypes(inspectedTypes: Set<model.Type>, type: model.Type): Set<model.Type> {
   if (inspectedTypes.has(type)) {
     return inspectedTypes
-  } else {
-    inspectedTypes.add(type)
   }
+
+  inspectedTypes.add(type)
   return model.match(type, {
     scalar: () => inspectedTypes,
     wrapper: ({ wrappedType }) => gatherUniqueTypes(inspectedTypes, wrappedType),

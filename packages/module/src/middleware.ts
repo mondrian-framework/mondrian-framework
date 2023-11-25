@@ -1,29 +1,25 @@
 import { functions } from '.'
 import { ErrorType, OutputRetrieveCapabilities } from './function'
-import { decoding, result, retrieve, model, validation } from '@mondrian-framework/model'
+import { result, retrieve, model } from '@mondrian-framework/model'
 import { assertNever } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
 /**
- * This middleware checks if the requested projection does not exceed the maximum given depth.
+ * This middleware checks if the requested selection does not exceed the maximum given depth.
  * @param maxDepth the maximum depth.
  */
-export function checkMaxProjectionDepth(
+export function checkMaxSelectionDepth(
   maxDepth: number,
 ): functions.Middleware<model.Type, model.Type, ErrorType, OutputRetrieveCapabilities, {}> {
   return {
-    name: 'Check max projection depth',
+    name: 'Check max selection depth',
     apply: (args, next, thisFunction) => {
       const depth = retrieve.selectionDepth(thisFunction.output, args.retrieve ?? {})
       if (depth > maxDepth) {
         const errorMessage = `Max selection depth reached: requested selection have a depth of ${depth}. The maximum is ${maxDepth}.`
         args.logger.emit({
           body: errorMessage,
-          attributes: {
-            projection: JSON.stringify(retrieve),
-            depth,
-            maxDepth,
-          },
+          attributes: { retrieve: JSON.stringify(retrieve), depth, maxDepth },
           severityNumber: SeverityNumber.WARN,
         })
         throw new Error(errorMessage)

@@ -1,5 +1,5 @@
 import { LoggedUserContext } from '..'
-import { idType, notLoggedInType } from '../common/model'
+import { idType } from '../common/model'
 import { Post, PostVisibility } from './model'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
@@ -10,11 +10,11 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
     .object({ title: model.string(), content: model.string(), visibility: PostVisibility })
     .setName('WritePostInput'),
   output: Post,
-  errors: { notLoggedInType },
+  errors: { notLoggedIn: model.string() },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
-      return result.fail({ notLoggedInType: 'Invalid authentication' })
+      return result.fail({ notLoggedIn: 'Invalid authentication' })
     }
     const post = await context.prisma.post.create({
       data: {
@@ -66,11 +66,11 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
 export const likePost = functions.withContext<LoggedUserContext>().build({
   input: model.object({ postId: idType }, { name: 'LikePostInput' }),
   output: Post,
-  errors: { notLoggedInType, postNotFound: model.string() },
+  errors: { notLoggedIn: model.string(), postNotFound: model.string() },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
-      return result.fail({ notLoggedInType: 'Invalid authentication' })
+      return result.fail({ notLoggedIn: 'Invalid authentication' })
     }
     const canViewPost = await context.prisma.post.findFirst({
       where: {

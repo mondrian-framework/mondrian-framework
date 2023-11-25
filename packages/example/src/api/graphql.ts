@@ -10,9 +10,9 @@ const api = graphql.build({
     register: { type: 'mutation' },
     login: { type: 'query' },
     follow: { type: 'mutation' },
-    writePost: { type: 'mutation' },
+    writePost: { type: 'mutation', name: 'write' },
     readPosts: { type: 'query', name: 'posts' },
-    likePost: { type: 'mutation' },
+    likePost: { type: 'mutation', name: 'like' },
   },
   options: { introspection: true },
 })

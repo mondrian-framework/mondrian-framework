@@ -1,5 +1,5 @@
 import { slotProvider } from '../../rate-limiter'
-import { idType, notLoggedInType } from '../common/model'
+import { idType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
 import { User } from './model'
 import { result, retrieve, model } from '@mondrian-framework/model'
@@ -105,11 +105,11 @@ export const register = functions.withContext<Context>().build({
 export const follow = functions.withContext<LoggedUserContext>().build({
   input: model.object({ userId: idType }),
   output: User,
-  errors: { notLoggedInType, userNotExists: model.string() },
+  errors: { notLoggedIn: model.string(), userNotExists: model.string() },
   retrieve: { select: true },
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {
-      return result.fail({ notLoggedInType: 'Invalid authentication' })
+      return result.fail({ notLoggedIn: 'Invalid authentication' })
     }
     if (input.userId === context.userId || (await context.prisma.user.count({ where: { id: input.userId } })) === 0) {
       return result.fail({ userNotExists: 'User does not exists' })

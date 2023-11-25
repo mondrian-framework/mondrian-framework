@@ -6,5 +6,3 @@ export const idType = model.string({
   description: 'an id that uniquely identifies an entity',
   regex: /^[0-9a-f]{24}$/,
 })
-
-export const notLoggedInType = model.string()

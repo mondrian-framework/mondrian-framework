@@ -47,19 +47,29 @@ export function integer(options?: model.NumberTypeOptions): model.NumberType {
 
 class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.NumberType {
   readonly kind = model.Kind.Number
+  private readonly validator: validation.Validator<number>
 
   getThis = () => this
   fromOptions = number
 
   constructor(options?: model.NumberTypeOptions) {
     super(options)
-    const minimum = options?.minimum
-    const exclusiveMinimum = options?.exclusiveMinimum
-    const maximum = options?.maximum
-    const exclusiveMaximum = options?.exclusiveMaximum
+    const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, isInteger } = options ?? {}
     const lowerBound = minimum && exclusiveMinimum ? Math.max(minimum, exclusiveMinimum) : minimum ?? exclusiveMinimum
     const upperBound = maximum && exclusiveMaximum ? Math.min(maximum, exclusiveMaximum) : maximum ?? exclusiveMaximum
     const exclude = lowerBound === exclusiveMinimum || upperBound === exclusiveMaximum
+    if (
+      Number.isNaN(maximum ?? 0) ||
+      Number.isNaN(minimum ?? 0) ||
+      Number.isNaN(exclusiveMaximum ?? 0) ||
+      Number.isNaN(exclusiveMinimum ?? 0) ||
+      !Number.isFinite(maximum ?? 0) ||
+      !Number.isFinite(minimum ?? 0) ||
+      !Number.isFinite(exclusiveMaximum ?? 0) ||
+      !Number.isFinite(exclusiveMinimum ?? 0)
+    ) {
+      throw new Error(`maximum, minimum, exclusiveMaximum, exclusiveMinimum shouldn't be NaN`)
+    }
     if (lowerBound != null && upperBound != null) {
       if (exclude && lowerBound === upperBound) {
         throw new Error(
@@ -83,6 +93,17 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
         `If both lower bound and upper bound are enabled on integer types the minimum difference between the two bounds must be grater than 1`,
       )
     }
+    this.validator = new validation.Validator(
+      //prettier-ignore
+      {
+        ['Number must be differnt to NaN or Infinity)']: (value) => Number.isNaN(value) || !Number.isFinite(value),
+        ...(maximum != null ? { [`number must be less than or equal to ${maximum}`]: (value) => !(value <= maximum) } : {}),
+        ...(exclusiveMaximum != null ? { [`number must be less than to ${exclusiveMaximum}`]: (value) => !(value < exclusiveMaximum) } : {}),
+        ...(minimum != null ? { [`number must be greater than or equal to ${minimum}`]: (value) => !(value >= minimum) } : {}),
+        ...(exclusiveMinimum != null ? { [`number must be greater than ${exclusiveMinimum}`]: (value) => !(value > exclusiveMinimum) } : {}),
+        ...(isInteger === true ? { [`number must be an integer`]: (value) => !Number.isInteger(value) } : {})
+      },
+    )
   }
 
   encodeWithNoChecks(value: model.Infer<model.NumberType>): JSONType {
@@ -90,23 +111,7 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
   }
 
   validate(value: model.Infer<model.NumberType>, validationOptions?: validation.Options): validation.Result {
-    if (this.options === undefined) {
-      return validation.succeed()
-    }
-    const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, isInteger } = this.options
-    if (maximum != null && !(value <= maximum)) {
-      return validation.fail(`number must be less than or equal to ${maximum}`, value)
-    } else if (exclusiveMaximum != null && !(value < exclusiveMaximum)) {
-      return validation.fail(`number must be less than to ${exclusiveMaximum}`, value)
-    } else if (minimum != null && !(value >= minimum)) {
-      return validation.fail(`number must be greater than or equal to ${minimum}`, value)
-    } else if (exclusiveMinimum != null && !(value > exclusiveMinimum)) {
-      return validation.fail(`number must be greater than ${exclusiveMinimum}`, value)
-    } else if (isInteger === true && !Number.isInteger(value)) {
-      return validation.fail(`number must be an integer`, value)
-    } else {
-      return validation.succeed()
-    }
+    return this.validator.apply(value, validationOptions)
   }
 
   decodeWithoutValidation(
@@ -127,7 +132,7 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
       const min = selectMinimumDouble(minimum, exclusiveMinimum)
       const max = selectMaximumDouble(maximum, exclusiveMaximum)
-      return gen.double({ ...min, ...max, noNaN: true })
+      return gen.double({ ...min, ...max, noNaN: true, noDefaultInfinity: true })
     }
 
     function integerMatchingOptions(options: model.NumberTypeOptions): gen.Arbitrary<number> {
@@ -138,15 +143,15 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     }
 
     function selectMinimumInteger(inclusive: number | undefined, exclusive: number | undefined): number | undefined {
-      if (inclusive && exclusive) {
+      if (inclusive != null && exclusive != null) {
         if (inclusive > exclusive) {
           return inclusive
         } else {
           return exclusive + 1
         }
-      } else if (inclusive) {
+      } else if (inclusive != null) {
         return inclusive
-      } else if (exclusive) {
+      } else if (exclusive != null) {
         return exclusive + 1
       } else {
         return undefined
@@ -154,15 +159,15 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     }
 
     function selectMaximumInteger(inclusive: number | undefined, exclusive: number | undefined): number | undefined {
-      if (inclusive && exclusive) {
+      if (inclusive != null && exclusive != null) {
         if (inclusive < exclusive) {
           return inclusive
         } else {
           return exclusive - 1
         }
-      } else if (inclusive) {
+      } else if (inclusive != null) {
         return inclusive
-      } else if (exclusive) {
+      } else if (exclusive != null) {
         return exclusive - 1
       } else {
         return undefined
@@ -173,15 +178,15 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
       inclusive: number | undefined,
       exclusive: number | undefined,
     ): { minExcluded: boolean; min: number } | undefined {
-      if (inclusive && exclusive) {
+      if (inclusive != null && exclusive != null) {
         if (inclusive > exclusive) {
           return { minExcluded: false, min: inclusive }
         } else {
           return { minExcluded: true, min: exclusive }
         }
-      } else if (inclusive) {
+      } else if (inclusive != null) {
         return { minExcluded: false, min: inclusive }
-      } else if (exclusive) {
+      } else if (exclusive != null) {
         return { minExcluded: true, min: exclusive }
       } else {
         return undefined
@@ -192,15 +197,15 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
       inclusive: number | undefined,
       exclusive: number | undefined,
     ): { maxExcluded: boolean; max: number } | undefined {
-      if (inclusive && exclusive) {
+      if (inclusive != null && exclusive != null) {
         if (inclusive < exclusive) {
           return { maxExcluded: false, max: inclusive }
         } else {
           return { maxExcluded: true, max: exclusive }
         }
-      } else if (inclusive) {
+      } else if (inclusive != null) {
         return { maxExcluded: false, max: inclusive }
-      } else if (exclusive) {
+      } else if (exclusive != null) {
         return { maxExcluded: true, max: exclusive }
       } else {
         return undefined
@@ -209,7 +214,7 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     if (this.options) {
       return this.options.isInteger ? integerMatchingOptions(this.options) : doubleMatchingOptions(this.options)
     } else {
-      return gen.double()
+      return gen.double({ noNaN: true, noDefaultInfinity: true })
     }
   }
 }

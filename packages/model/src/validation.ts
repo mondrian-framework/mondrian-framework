@@ -92,3 +92,41 @@ export const failWithErrors = (errors: Error[]): result.Failure<Error[]> => resu
 export function fail(assertion: string, got: unknown): result.Failure<Error[]> {
   return failWithErrors([{ assertion, got, path: path.root }])
 }
+
+/**
+ * Performs a check with the given check map by handling the errorReportingStrategy of the validation options.
+ * @param value The value to validate
+ * @param errorMap The map of checks to perform, the key is used as error message, the value is a function that determine if there is a validatio error
+ * @param options the validation options
+ * @returns a validation result
+ */
+export class Validator<T> {
+  private readonly errorMap: Record<string, (value: T) => unknown>
+
+  constructor(errorMap: Record<string, (value: T) => unknown>) {
+    this.errorMap = errorMap
+  }
+
+  apply(value: T, options?: Options) {
+    if ((options ?? defaultOptions).errorReportingStrategy === 'allErrors') {
+      const errors: Error[] = []
+      for (const [errorMessage, condition] of Object.entries(this.errorMap)) {
+        if (condition(value)) {
+          errors.push(...fail(errorMessage, value).error)
+        }
+      }
+      if (errors.length > 0) {
+        return failWithErrors(errors)
+      } else {
+        return succeed()
+      }
+    } else {
+      for (const [errorMessage, condition] of Object.entries(this.errorMap)) {
+        if (condition(value)) {
+          return fail(errorMessage, value)
+        }
+      }
+      return succeed()
+    }
+  }
+}

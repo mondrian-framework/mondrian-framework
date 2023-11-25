@@ -1,12 +1,12 @@
 /**
  * a string representation of the given path following the {@link https://goessner.net/articles/JsonPath/index.html#e2 xpath} notation
  * */
-export type Path = string
+export type Path = `$${string}`
 
 /**
  * the root path
  */
-export const root: Path = '$'
+export const root: '$' = '$'
 
 /**
  * @returns a path of this field name
@@ -33,7 +33,7 @@ export function appendField(path: Path, fieldName: string): Path {
  * If field name does not have a simple syntax accessible with dot notation
  * uses index notation.
  */
-function formatFieldName(fieldName: string) {
+function formatFieldName(fieldName: string): string {
   if (/^[a-zA-Z]([a-zA-Z]|[0-9])*$/.test(fieldName)) {
     return `.${fieldName}`
   } else {

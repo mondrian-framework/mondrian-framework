@@ -26,48 +26,44 @@ export function string(options?: model.StringTypeOptions): model.StringType {
 
 class StringTypeImpl extends DefaultMethods<model.StringType> implements model.StringType {
   readonly kind = model.Kind.String
+  private readonly validator: validation.Validator<string>
 
   fromOptions = string
   getThis = () => this
 
   constructor(options?: model.StringTypeOptions) {
     super(options)
-    const minLength = options?.minLength
-    const maxLength = options?.maxLength
+    const { minLength, maxLength, regex } = options ?? {}
     if (minLength && maxLength && minLength > maxLength) {
       throw new Error(
         `String type's minimum length (${minLength}) should be lower than its maximum length ${maxLength}`,
       )
-    } else if (minLength && !Number.isInteger(minLength)) {
+    } else if (minLength != null && !Number.isInteger(minLength)) {
       throw new Error(`The minimum length (${minLength}) must be an integer`)
-    } else if (maxLength && !Number.isInteger(maxLength)) {
+    } else if (maxLength != null && !Number.isInteger(maxLength)) {
       throw new Error(`The maximum length (${maxLength}) must be an integer`)
-    } else if (minLength && minLength < 0) {
+    } else if (minLength != null && minLength < 0) {
       throw new Error(`The minimum length (${minLength}) cannot be negative`)
-    } else if (maxLength && maxLength < 0) {
+    } else if (maxLength != null && maxLength < 0) {
       throw new Error(`The maximum length (${maxLength}) cannot be negative`)
     }
+
+    this.validator = new validation.Validator(
+      //prettier-ignore
+      {
+        ...( maxLength != null ? { [`string longer than max length (${maxLength})`]: (value) => value.length > maxLength } : {}),
+        ...( minLength != null ? {[`string shorter than min length (${minLength})`]: (value) => value.length < minLength } : {}),
+        ...( regex ? {[`string regex mismatch (${regex.source})`]: (value) => !regex.test(value) } : {}),
+      },
+    )
   }
 
   encodeWithNoChecks(value: model.Infer<model.StringType>): JSONType {
     return value
   }
 
-  validate(value: model.Infer<model.StringType>, _validationOptions?: validation.Options): validation.Result {
-    if (this.options === undefined) {
-      return validation.succeed()
-    }
-    const { regex, maxLength, minLength } = this.options
-    if (maxLength && value.length > maxLength) {
-      return validation.fail(`string longer than max length (${maxLength})`, value)
-    }
-    if (minLength && value.length < minLength) {
-      return validation.fail(`string shorter than min length (${minLength})`, value)
-    }
-    if (regex && !regex.test(value)) {
-      return validation.fail(`string regex mismatch (${regex.source})`, value)
-    }
-    return validation.succeed()
+  validate(value: model.Infer<model.StringType>, validationOptions?: validation.Options): validation.Result {
+    return this.validator.apply(value, validationOptions)
   }
 
   decodeWithoutValidation(
@@ -90,7 +86,7 @@ class StringTypeImpl extends DefaultMethods<model.StringType> implements model.S
       return gen.string()
     } else {
       const { regex, minLength, maxLength } = this.options
-      if ((regex && minLength) || (regex && maxLength)) {
+      if ((regex && minLength != null) || (regex && maxLength != null)) {
         const message = 'I cannot generate values from string types that have both a regex and min/max length defined'
         throw new Error(message)
       } else {

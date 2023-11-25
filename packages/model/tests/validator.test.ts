@@ -140,6 +140,22 @@ describe.concurrent('validation.validate', () => {
         checkError(Model.validate(number), expectedError)
       })
     })
+
+    test('checks the number with multiple errors', () => {
+      const Model = model.number({ isInteger: true, minimum: 0, maximum: 10 })
+
+      const res1 = Model.validate(-1.1, { errorReportingStrategy: 'allErrors' })
+      expect(!res1.isOk && res1.error).toEqual([
+        { assertion: 'number must be greater than or equal to 0', got: -1.1, path: '$' },
+        { assertion: 'number must be an integer', got: -1.1, path: '$' },
+      ])
+
+      const res2 = Model.validate(10.1, { errorReportingStrategy: 'allErrors' })
+      expect(!res2.isOk && res2.error).toEqual([
+        { assertion: 'number must be less than or equal to 10', got: 10.1, path: '$' },
+        { assertion: 'number must be an integer', got: 10.1, path: '$' },
+      ])
+    })
   })
 
   describe.concurrent('on string types', () => {

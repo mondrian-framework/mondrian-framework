@@ -1115,6 +1115,19 @@ export type UnionType<Ts extends Types> = {
 
   /**
    * Gets the variant name of the given variant instance.
+   * @example
+   * ```ts
+   * const union = model.union({
+   *   a: model.integer(),
+   *   b: model.number({ minimum: 0 }),
+   *   c: model.string()
+   * })
+   *
+   * union.variantOwnership(-5) // "a"
+   * union.variantOwnership("Hello") // "c"
+   * union.variantOwnership(1.1) // "b"
+   * union.variantOwnership(-1.1) // "a" (this doesn't validate but it gives first that at least decode)
+   * ```
    */
   variantOwnership(value: InferUnion<Ts>): keyof Ts & string
 }

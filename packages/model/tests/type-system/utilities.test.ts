@@ -77,3 +77,16 @@ describe('partialDeep', () => {
     assertOk(PartialModel().validate({ inner: { inner: '' } }))
   })
 })
+
+test('variant ownership', () => {
+  const union = model.union({
+    a: model.integer(),
+    b: model.number({ minimum: 0 }),
+    c: model.string(),
+  })
+
+  expect(union.variantOwnership(-5)).toBe('a')
+  expect(union.variantOwnership('Hello')).toBe('c')
+  expect(union.variantOwnership(1.1)).toBe('b')
+  expect(union.variantOwnership(-1.1)).toBe('a')
+})

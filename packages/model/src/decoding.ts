@@ -1,4 +1,4 @@
-import { decoding, result, path } from './index'
+import { result, path } from './index'
 
 /**
  * The options that can be used when decoding a type:
@@ -31,7 +31,7 @@ export const defaultOptions: Options = {
  * The result of the process of decoding: it can either hold a value `A` or an array of
  * {@link Error decoding errors}
  */
-export type Result<A> = result.Result<A, decoding.Error[]>
+export type Result<A> = result.Result<A, Error[]>
 
 /**
  * An error that may take place in the decoding process:
@@ -66,8 +66,8 @@ export type Error = {
  *          // newError -> { expected: "foo or bar", got: 1, path: path.root }
  *          ```
  */
-export function addExpected(otherExpected: string): (error: decoding.Error) => decoding.Error {
-  return (error: decoding.Error) => ({
+export function addExpected(otherExpected: string): (error: Error) => Error {
+  return (error: Error) => ({
     ...error,
     expected: `${error.expected} or ${otherExpected}`,
   })
@@ -84,7 +84,7 @@ export function addExpected(otherExpected: string): (error: decoding.Error) => d
  *          ```
  *          This is a decoder that ignores the given value and always succeeds returning a `null` value.
  */
-export const succeed = <A>(value: A): decoding.Result<A> => result.ok(value)
+export const succeed = <A>(value: A): result.Ok<A> => result.ok(value)
 
 /**
  * @param errors the errors that made the decoding process fail
@@ -104,7 +104,7 @@ export const succeed = <A>(value: A): decoding.Result<A> => result.ok(value)
  *          ```
  *          This decoder always fails with a default list of errors
  */
-export const failWithErrors = <A>(errors: decoding.Error[]): decoding.Result<A> => result.fail(errors)
+export const failWithErrors = (errors: Error[]): result.Failure<Error[]> => result.fail(errors)
 
 /**
  * @param expected the expected value
@@ -128,6 +128,6 @@ export const failWithErrors = <A>(errors: decoding.Error[]): decoding.Result<A> 
  *          to decode is not an even number. As you may notice, it can be useful to define custom and
  *          informative error messages to signal the reason behind the failure of a decoder
  */
-export function fail<A>(expected: string, got: unknown): decoding.Result<A> {
-  return decoding.failWithErrors([{ expected, got, path: path.root }])
+export function fail(expected: string, got: unknown): result.Failure<Error[]> {
+  return failWithErrors([{ expected, got, path: path.root }])
 }

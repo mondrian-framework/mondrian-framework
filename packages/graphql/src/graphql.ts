@@ -835,6 +835,9 @@ function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogg
   }
 }
 
+/**
+ * Tagged union used only for decoding unions on graphql input.
+ */
 function taggedUnion(union: model.UnionType<model.Types>): model.Type {
   const variantsKeys = Object.keys(union.variants)
   return model.custom<'tagged-union', {}, any>(
@@ -860,6 +863,10 @@ function taggedUnion(union: model.UnionType<model.Types>): model.Type {
   )
 }
 
+/**
+ * Replaces all union type of a type with the custom type {@link taggedUnion} in order to
+ * decode the union type as defined in GraphQL.
+ */
 const mapInputType = modelUtils.memoizeTypeTransformation(mapInputTypeInternal)
 function mapInputTypeInternal(inputType: model.Type): model.Type {
   return model.match(inputType, {

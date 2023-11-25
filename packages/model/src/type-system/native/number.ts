@@ -89,20 +89,20 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     return value
   }
 
-  validate(value: model.Infer<model.NumberType>, _validationOptions?: validation.Options): validation.Result {
+  validate(value: model.Infer<model.NumberType>, validationOptions?: validation.Options): validation.Result {
     if (this.options === undefined) {
       return validation.succeed()
     }
     const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, isInteger } = this.options
-    if (maximum && !(value <= maximum)) {
+    if (maximum != null && !(value <= maximum)) {
       return validation.fail(`number must be less than or equal to ${maximum}`, value)
-    } else if (exclusiveMaximum && !(value < exclusiveMaximum)) {
+    } else if (exclusiveMaximum != null && !(value < exclusiveMaximum)) {
       return validation.fail(`number must be less than to ${exclusiveMaximum}`, value)
-    } else if (minimum && !(value >= minimum)) {
+    } else if (minimum != null && !(value >= minimum)) {
       return validation.fail(`number must be greater than or equal to ${minimum}`, value)
-    } else if (exclusiveMinimum && !(value > exclusiveMinimum)) {
+    } else if (exclusiveMinimum != null && !(value > exclusiveMinimum)) {
       return validation.fail(`number must be greater than ${exclusiveMinimum}`, value)
-    } else if (isInteger && !Number.isInteger(value)) {
+    } else if (isInteger === true && !Number.isInteger(value)) {
       return validation.fail(`number must be an integer`, value)
     } else {
       return validation.succeed()

@@ -21,9 +21,17 @@ export function date(options?: model.OptionsOf<DateType>): DateType {
   )
 }
 
+const dayOfMonths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const
+
 function decodeDate(value: unknown): decoding.Result<Date> {
   if (typeof value !== 'string' || !DATE_REGEX.test(value)) {
     return decoding.fail('Invalid date format (expected: yyyy-mm-dd)', value)
+  }
+  const [yearS, monthS, dayS] = value.startsWith('-') ? value.substring(1).split('-') : value.split('-')
+  const [year, month, day] = [Number(yearS) * (value.startsWith('-') ? -1 : 1), Number(monthS), Number(dayS)]
+  const daysOfMonth = dayOfMonths[month - 1] + (month === 2 && isLeapYear(year) ? 1 : 0)
+  if (day > daysOfMonth) {
+    return decoding.fail('Invalid date', value)
   }
   const date = new Date(Date.parse(value))
   return Number.isNaN(date.valueOf()) ? decoding.fail('Invalid date', value) : decoding.succeed(date)
@@ -41,4 +49,8 @@ function dateArbitrary(_maxDepth: number, options?: model.OptionsOf<DateType>): 
   return gen
     .date({ min: options?.minimum, max: options?.maximum })
     .map((d) => new Date(Date.parse(d.toISOString().split('T')[0])))
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }

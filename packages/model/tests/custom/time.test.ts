@@ -6,11 +6,6 @@ test('Time - encode', async () => {
   expect(model.time().encodeWithoutValidation(new Date('2023-01-01T00:00:00.223Z'))).toBe('00:00:00.223Z')
 })
 
-const today = new Date()
-const year = today.getFullYear()
-const month = today.getMonth()
-const day = today.getDate()
-
 const knownValidValues = [
   { raw: '00:00:00Z', expected: new Date(Date.UTC(0, 0, 0)) },
   { raw: '00:00:59Z', expected: new Date(Date.UTC(0, 0, 0, 0, 0, 59)) },

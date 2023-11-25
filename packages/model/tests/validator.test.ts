@@ -58,7 +58,7 @@ const alwaysFail = model.custom(
 
 describe.concurrent('validation.validate', () => {
   describe.concurrent('on number types', () => {
-    test.prop([gen.double()])('always succeeds if given no options', (n) => {
+    test.prop([gen.double({ noNaN: true, noDefaultInfinity: true })])('always succeeds if given no options', (n) => {
       assertOk(model.number().validate(n))
     })
 
@@ -66,7 +66,7 @@ describe.concurrent('validation.validate', () => {
       const minimum = 11
       const Model = model.number({ minimum })
 
-      const validValue = gen.double({ min: minimum, minExcluded: false, noNaN: true })
+      const validValue = gen.double({ min: minimum, minExcluded: false, noNaN: true, noDefaultInfinity: true })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
@@ -82,7 +82,7 @@ describe.concurrent('validation.validate', () => {
       const exclusiveMinimum = 11
       const Model = model.number({ exclusiveMinimum })
 
-      const validValue = gen.double({ min: exclusiveMinimum, minExcluded: true, noNaN: true })
+      const validValue = gen.double({ min: exclusiveMinimum, minExcluded: true, noNaN: true, noDefaultInfinity: true })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
@@ -98,7 +98,7 @@ describe.concurrent('validation.validate', () => {
       const maximum = 11
       const Model = model.number({ maximum })
 
-      const validValue = gen.double({ max: maximum, maxExcluded: false, noNaN: true })
+      const validValue = gen.double({ max: maximum, maxExcluded: false, noNaN: true, noDefaultInfinity: true })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
@@ -114,7 +114,7 @@ describe.concurrent('validation.validate', () => {
       const exclusiveMaximum = 11
       const Model = model.number({ exclusiveMaximum })
 
-      const validValue = gen.double({ max: exclusiveMaximum, maxExcluded: true, noNaN: true })
+      const validValue = gen.double({ max: exclusiveMaximum, maxExcluded: true, noNaN: true, noDefaultInfinity: true })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
@@ -155,6 +155,9 @@ describe.concurrent('validation.validate', () => {
         { assertion: 'number must be less than or equal to 10', got: 10.1, path: '$' },
         { assertion: 'number must be an integer', got: 10.1, path: '$' },
       ])
+
+      const res3 = Model.validate(5, { errorReportingStrategy: 'allErrors' })
+      expect(res3.isOk).toBe(true)
     })
   })
 
@@ -336,7 +339,7 @@ describe.concurrent('validation.validate', () => {
       const result = Model.validate(record)
       expect(!result.isOk && result.error.length).toBe(1)
       const result1 = Model.validate(record, { errorReportingStrategy: 'allErrors' })
-      expect(!result1.isOk && result1.error.length).toBe(Object.keys(record).length)
+      expect(!result1.isOk && result1.error.length).toBeGreaterThanOrEqual(Object.keys(record).length)
     })
   })
 

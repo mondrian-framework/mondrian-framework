@@ -7,8 +7,14 @@
 
 ## 1 minute spinup example
 
-Just run on Node >= 20
-`npm run spinup`
+Prerequisite: 
+ - Node >= 20
+ 
+```
+git clone https://github.com/mondrian-framework/mondrian-framework.git
+cd mondrian-framework
+npm run spinup
+```
 
 Then query your endpoint with graphql or rest:
 

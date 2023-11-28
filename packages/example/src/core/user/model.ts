@@ -14,12 +14,8 @@ export const User = () =>
       givenLikes: model.array(Like),
       followers: model.array(Follower),
       followeds: model.array(Follower),
-      metadata: model
-        .object({
-          createdAt: model.datetime(),
-          lastLogin: model.datetime(),
-        })
-        .setName('UserMetadata'),
+      registeredAt: model.datetime(),
+      loginAt: model.datetime(),
     },
     { name: 'User' },
   )

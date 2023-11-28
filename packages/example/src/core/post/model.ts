@@ -15,7 +15,7 @@ export const Post = () =>
       publishedAt: model.datetime(),
       author: User,
       likes: model.array(Like),
-      visibility: PostVisibility,
+      visibility: model.string(),
     },
     { description: 'Post of a user.' },
   )

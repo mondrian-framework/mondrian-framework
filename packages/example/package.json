@@ -8,7 +8,7 @@
     "build"
   ],
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "prisma migrate dev --name init && prisma generate && tsc",
     "example": "node --env-file dev.env --require ./build/opentelemetry.js build/app.js",
     "example-serverless": "serverless offline"
   },

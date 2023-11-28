@@ -14,7 +14,8 @@
     "clear-modules": "rimraf packages/*/node_modules/**",
     "prerelease": "npm run clear && npm run build",
     "release": "changeset add && changeset version",
-    "publish": "changeset publish"
+    "publish": "changeset publish",
+    "spinup": "npm ci && npm run build --workspaces --if-present && npm run example --workspace=@mondrian-framework/example"
   },
   "devDependencies": {
     "@changesets/cli": "2.26.2",

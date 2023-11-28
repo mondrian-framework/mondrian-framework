@@ -31,7 +31,7 @@ export const instance = module.build({
       try {
         const jwt = jsonwebtoken.verify(authorization.replace('Bearer ', ''), secret, { complete: true })
         if (typeof jwt.payload === 'object' && jwt.payload.sub) {
-          return { ...context, userId: jwt.payload.sub }
+          return { ...context, userId: Number(jwt.payload.sub) }
         }
       } catch {
         throw new InvalidJwtError('Invalid jwt')

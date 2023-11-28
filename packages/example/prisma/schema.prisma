@@ -4,52 +4,42 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId
-  email      String       @unique
-  password   String
-  firstName  String
-  lastName   String
-  posts      Post[]
-  metadata   UserMetadata
-  followeds  Follower[]   @relation(name: "follower")
-  followers  Follower[]   @relation(name: "followed")
-  givenLikes Like[]
-}
-
-type UserMetadata {
-  createdAt DateTime
-  lastLogin DateTime
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  password     String
+  firstName    String
+  lastName     String
+  posts        Post[]
+  followeds    Follower[] @relation(name: "follower")
+  followers    Follower[] @relation(name: "followed")
+  givenLikes   Like[]
+  loginAt      DateTime
+  registeredAt DateTime
 }
 
 model Follower {
-  id         String @id @default(auto()) @map("_id") @db.ObjectId
-  followedId String @db.ObjectId
-  followed   User   @relation(fields: [followedId], references: [id], name: "followed")
-  followerId String @db.ObjectId
-  follower   User   @relation(fields: [followerId], references: [id], name: "follower")
+  id         Int  @id @default(autoincrement())
+  followedId Int
+  followed   User @relation(fields: [followedId], references: [id], name: "followed")
+  followerId Int
+  follower   User @relation(fields: [followerId], references: [id], name: "follower")
 
   @@unique([followedId, followerId])
 }
 
-enum PostVisibility {
-  PRIVATE
-  FOLLOWERS
-  PUBLIC
-}
-
 model Post {
-  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int      @id @default(autoincrement())
   title       String
   content     String
   publishedAt DateTime
-  visibility  PostVisibility
-  authorId    String         @db.ObjectId
-  author      User           @relation(fields: [authorId], references: [id])
+  visibility  String
+  authorId    Int
+  author      User     @relation(fields: [authorId], references: [id])
   likes       Like[]
 
   //embedded  ExampleType
@@ -58,13 +48,12 @@ model Post {
 }
 
 model Like {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        Int      @id @default(autoincrement())
   createdAt DateTime
-  userId    String   @db.ObjectId
+  userId    Int
   user      User     @relation(fields: [userId], references: [id])
-  postId    String   @db.ObjectId
+  postId    Int
   post      Post     @relation(fields: [postId], references: [id])
 
   @@unique([userId, postId])
 }
-

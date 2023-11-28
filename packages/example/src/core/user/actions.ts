@@ -50,7 +50,7 @@ export const login = functions.withContext<Context>().build({
     }
     await context.prisma.user.update({
       where: { id: loggedUser.id },
-      data: { metadata: { update: { lastLogin: new Date() } } },
+      data: { loginAt: new Date() },
     })
     const secret = process.env.JWT_SECRET ?? 'secret'
     const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
@@ -82,12 +82,8 @@ export const register = functions.withContext<Context>().build({
       const user = await context.prisma.user.create({
         data: {
           ...input,
-          metadata: {
-            set: {
-              createdAt: new Date(),
-              lastLogin: new Date(),
-            },
-          },
+          registeredAt: new Date(),
+          loginAt: new Date(),
         },
       })
       return result.ok(user)

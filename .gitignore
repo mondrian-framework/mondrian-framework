@@ -16,5 +16,6 @@ packages/api/.env-stage
 packages/api/.env-stage-test
 **/.secrets.json
 **/tsconfig.tsbuildinfo
-
+**/prisma
+!**/prisma/schema.prisma
 **/.DS_Store

@@ -1,10 +1,22 @@
 ![CI](https://github.com/twinlogix/mondrian-framework/actions/workflows/ci-checks.yml/badge.svg)
-[![codecov](https://codecov.io/gh/mondrian-framework/mondrian-framework/graph/badge.svg?token=DT2P5BRCMX)](https://codecov.io/gh/mondrian-framework/mondrian-framework) 
+[![codecov](https://codecov.io/gh/mondrian-framework/mondrian-framework/graph/badge.svg?token=DT2P5BRCMX)](https://codecov.io/gh/mondrian-framework/mondrian-framework)
+
 # Mondrian
 
 [Home page](https://mondrian-framework.github.io/mondrian-framework/)
 
+## 1 minute spinup example
 
+Just run on Node >= 20
+`npm run spinup`
+
+Then query your endpoint with graphql or rest:
+
+```bash
+curl --location --globoff 'http://localhost:4000/graphql' \
+--header 'Content-Type: application/json' \
+--data-raw '{"query":"mutation register { user { register(input: { email: \"john@domain.com\", password: \"12345\", firstName: \"John\", lastName: \"Wick\" }) { ... on User { id } ... on RegisterFailure { errorCode errorValue } } } }" }'
+```
 
 ## How it works
 
@@ -142,7 +154,6 @@ server.listen({ port: 4000 }).then((address) => {
 By enabling REST introspection, you can explore your API using the Swagger documentation at http://localhost:4000/openapi.
 <img width="777" alt="swagger-example" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/12a5433d-5138-4e75-99de-4385b77b9062">
 
-
 ### Serve module GRAPHQL
 
 You can serve the module also as a GraphQL endpoint with the following code:
@@ -177,6 +188,7 @@ Enabling GraphQL introspection allows you to explore your API using the Yoga sch
 This framework has a strong integration with prisma type-system and enable you to expose a graph of your data in a seamless-way.
 
 Schema.prisma
+
 ```prisma
 model User {
   id         String       @id @default(auto()) @map("_id") @db.ObjectId
@@ -194,30 +206,30 @@ model Post {
 ```
 
 types.ts
+
 ```typescript
-const User = () => model.entity({
-  id: model.string(),
-  email: model.string(),
-  //passowrd omitted, you can expose a subset of field
-  posts: model.array(Post)
-})
-const Post = () => model.entity({
-  id: model.string(),
-  content: model.string(),
-  author: User
-})
+const User = () =>
+  model.entity({
+    id: model.string(),
+    email: model.string(),
+    //passowrd omitted, you can expose a subset of field
+    posts: model.array(Post),
+  })
+const Post = () =>
+  model.entity({
+    id: model.string(),
+    content: model.string(),
+    author: User,
+  })
 
 const getUsers = functions.build({
   input: model.never(),
   output: model.array(User),
   retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
-  body: async ({ retrieve }) => prismaClient.user.findMany(retrieve) //retrieve type match Prisma generated types
+  body: async ({ retrieve }) => prismaClient.user.findMany(retrieve), //retrieve type match Prisma generated types
 })
 ```
 
 By exposing the function as GraphQL endpoint we can navigate the relation between User and Post.
 
-
 <img width="589" alt="image" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/76308ec0-bca1-459f-8696-a9f296bf072f">
-
-

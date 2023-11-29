@@ -159,7 +159,9 @@ type FunctionResultInternal<O extends model.Type, E extends ErrorType, C extends
     : [E] extends [undefined] ? model.Infer<O>
     : any
 
-type InferErrorType<Ts extends model.Types> = { [K in keyof Ts]: { [K2 in K]: model.Infer<Ts[K]> } }[keyof Ts]
+type InferErrorType<Ts extends model.Types> = AtLeastOnePropertyOf<{ [K in keyof Ts]: model.Infer<Ts[K]> }>
+
+type AtLeastOnePropertyOf<T> = { [K in keyof T]: { [L in K]: T[L] } & { [L in Exclude<keyof T, K>]?: T[L] } }[keyof T]
 
 /**
  * Mondrian function's middleware type. Applied before calling the {@link Function}'s body.

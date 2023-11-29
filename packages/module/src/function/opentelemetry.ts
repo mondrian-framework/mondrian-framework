@@ -84,11 +84,9 @@ export class OpentelemetryFunction<
     span: Span,
   ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
-      span.addEvent('execution', { type: 'body' })
       return this.body(args)
     }
     const middleware = this.middlewares[middlewareIndex]
-    span.addEvent('execution', { type: 'middleware', name: middleware.name })
     return middleware.apply(args, (mappedArgs) => this.executeWithinSpan(middlewareIndex + 1, mappedArgs, span), this)
   }
 }

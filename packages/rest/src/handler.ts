@@ -3,6 +3,7 @@ import { clearInternalData, emptyInternalData, generateOpenapiInput } from './op
 import { completeRetrieve } from './utils'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
+import { mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
@@ -28,7 +29,9 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     : generateGetInputFromRequest({ functionBody, specification })
   const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
-
+  const errorOutputType = functionBody.errors
+    ? model.object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
+    : model.never()
   const thisLogger = logger.build({
     moduleName: module.name,
     operationName: functionName,
@@ -93,12 +96,15 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
             //Output processing
             if (functionBody.errors && !applyOutput.isOk) {
-              const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
-              const key = Object.keys(applyOutput.error as Record<string, unknown>)[0]
-              const status = key ? codes[key] ?? 400 : 400
+              if (!model.isType(errorOutputType, applyOutput.error)) {
+                throw new Error('Invalid output error type')
+              }
               const encoded = model
-                .concretise(functionBody.errors[key])
+                .object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
                 .encodeWithoutValidation(applyOutput.error as never)
+              const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
+              const key = Object.keys(encoded as Record<string, unknown>)[0]
+              const status = key ? codes[key] ?? 400 : 400
               const response: Response = { status, body: encoded }
               endSpanWithResponse({ span, response })
               return response

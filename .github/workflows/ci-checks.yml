@@ -19,7 +19,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
       - name: Install dependencies
-        run: npm i -g @rollup/rollup-linux-x64-gnu && npm i
+        run: npm ci
       - name: Check packages are formatted
         run: npx prettier --check ./**/*.ts
       - name: Build

@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.7
+
+### Patch Changes
+
+- Minor improvements
+- Updated dependencies
+  - @mondrian-framework/model@2.0.7
+
 ## 2.0.6
 
 ### Patch Changes

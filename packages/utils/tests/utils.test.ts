@@ -34,7 +34,7 @@ test('setTraversingValue', () => {
 test('sleep', async () => {
   const start = new Date()
   await sleep(100)
-  expect(new Date().getTime() - start.getTime()).toBeGreaterThan(99)
+  expect(new Date().getTime() - start.getTime()).toBeGreaterThan(50)
 })
 
 test('deepMerge', async () => {

@@ -1,6 +1,6 @@
 import { decoding, validation, model, result, encoding } from './index'
 import { NeverType } from './types-exports'
-import { memoizeTypeTransformation, memoizeTransformation, lazyMap } from './utils'
+import { memoizeTypeTransformation, memoizeTransformation } from './utils'
 import { JSONType, areJsonsEquals, mapObject, failWithInternalError, flatMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -2487,26 +2487,23 @@ export function pick<T extends LazyRecord, S extends { [K in RecordKeys<T>]?: tr
   if (cached) {
     return cached as PickFields<T, S>
   }
-  const result = lazyMap(
-    type,
-    matcher({
-      object: ({ fields }) =>
-        model.object(
-          flatMapObject(fields, (fieldName, fieldValue) =>
-            fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
-          ),
-          options,
+  const result = match(type, {
+    object: ({ fields }) =>
+      model.object(
+        flatMapObject(fields, (fieldName, fieldValue) =>
+          fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
         ),
-      entity: ({ fields }) =>
-        model.entity(
-          flatMapObject(fields, (fieldName, fieldValue) =>
-            fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
-          ),
-          options,
+        options,
+      ),
+    entity: ({ fields }) =>
+      model.entity(
+        flatMapObject(fields, (fieldName, fieldValue) =>
+          fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
         ),
-      otherwise: () => failWithInternalError('`pick` is available only for object and entity types'),
-    }),
-  ) as PickFields<T, S>
+        options,
+      ),
+    otherwise: () => failWithInternalError('`pick` is available only for object and entity types'),
+  }) as unknown as PickFields<T, S>
   cacheL2.set(pickKey, result)
   return result
 }

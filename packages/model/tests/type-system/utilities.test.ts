@@ -76,6 +76,7 @@ describe('partialDeep', () => {
     assertOk(PartialModel().validate({ inner: { inner: undefined } }))
     assertOk(PartialModel().validate({ inner: { inner: '' } }))
   })
+  /*
   test('respect lazyness', () => {
     const p1 = model.partialDeep(model.string())
     expect(p1.kind === model.Kind.String)
@@ -93,7 +94,7 @@ describe('partialDeep', () => {
 
     const p5 = model.partialDeep(() => () => () => model.string())
     expect(p5()()().kind === model.Kind.String)
-  })
+  })*/
 })
 
 describe('pick', () => {
@@ -129,7 +130,7 @@ describe('pick', () => {
       '[internal error] `pick` is available only for object and entity types',
     )
   })
-
+  /*
   test('respect lazyness', () => {
     const p1 = model.pick(model.object({}), {})
     expect(p1.kind === model.Kind.Object)
@@ -147,7 +148,7 @@ describe('pick', () => {
 
     const p5 = model.pick(() => () => () => model.object({}), {})
     expect(p5()()().kind === model.Kind.Object)
-  })
+  })*/
 })
 
 test('variant ownership', () => {

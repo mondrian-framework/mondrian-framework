@@ -40,7 +40,6 @@ export function build<const Fs extends functions.Functions, CI>({
 
   return async (event, fContext) => {
     const baseLogger = logger.build({ moduleName: module.name, server: 'LAMBDA-SQS' })
-    baseLogger.logInfo(`Received ${event.Records.length} messages.`)
     const batchItemFailures: SQSBatchItemFailure[] = []
     let spec: FunctionSpecifications | undefined = undefined
     for (let i = 0; i < event.Records.length; i++) {
@@ -49,7 +48,6 @@ export function build<const Fs extends functions.Functions, CI>({
       const [functionName, specification] =
         specifications.find(([_, s]) => 'anyQueue' in s || s.queueUrl === url) ?? ([null, null] as const)
       if (!specification || !functionName) {
-        baseLogger.logWarn(`Message ${i} ignored! source: ${url}`)
         continue
       }
       const functionBody = module.functions[functionName]
@@ -61,7 +59,6 @@ export function build<const Fs extends functions.Functions, CI>({
         try {
           body = m.body === undefined ? undefined : JSON.parse(m.body)
         } catch {
-          operationLogger.logError(`Bad message: not a valid json ${m.body}`)
           if (specification.malformedMessagePolicy === 'delete') {
             continue
           }
@@ -73,7 +70,6 @@ export function build<const Fs extends functions.Functions, CI>({
 
         const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
         if (!decoded.isOk) {
-          operationLogger.logError(`Bad message: ${JSON.stringify(decoded.error)}`)
           if (specification.malformedMessagePolicy === 'delete') {
             continue
           }
@@ -89,6 +85,7 @@ export function build<const Fs extends functions.Functions, CI>({
           retrieve: undefined,
           operationId,
           logger: operationLogger,
+          functionName,
         })
         await functionBody.apply({
           input: decoded.value as never,
@@ -97,7 +94,6 @@ export function build<const Fs extends functions.Functions, CI>({
           context: ctx,
           logger: operationLogger,
         })
-        operationLogger.logInfo(`Completed.`)
       } catch (error) {
         if (!specification.reportBatchItemFailures) {
           throw new Error(`Bad message: not a valid json ${m.body}`)

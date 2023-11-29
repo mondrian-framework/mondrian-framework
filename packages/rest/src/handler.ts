@@ -74,7 +74,13 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           try {
             //context building
             const contextInput = await context(serverContext)
-            moduleContext = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
+            moduleContext = await module.context(contextInput, {
+              retrieve: retrieveValue,
+              input,
+              operationId,
+              logger,
+              functionName,
+            })
 
             // Function call
             const applyOutput = await functionBody.apply({
@@ -94,14 +100,12 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
                 .concretise(functionBody.errors[key])
                 .encodeWithoutValidation(applyOutput.error as never)
               const response: Response = { status, body: encoded }
-              logger.logInfo('Completed with error.')
               endSpanWithResponse({ span, response })
               return response
             } else {
               const value = functionBody.errors ? applyOutput.value : applyOutput //unwrap output
               const encoded = partialOutputType.encodeWithoutValidation(value as never)
               const response: Response = { status: 200, body: encoded }
-              logger.logInfo('Completed.')
               endSpanWithResponse({ span, response })
               return response
             }
@@ -110,7 +114,6 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
             if (e instanceof Error) {
               span?.recordException(e)
             }
-            logger.logError('Failed with exception.')
             if (error) {
               const result = await error({
                 error: e,
@@ -163,7 +166,6 @@ function decodeInput(
       .decode(rawInput, { typeCastingStrategy: 'tryCasting' })
       .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid input' }, headers: {} }))
     if (!decoded.isOk) {
-      logger.logError('Bad request. (input)')
       endSpanWithError({ span, failure: decoded })
       return result.fail(decoded.error)
     } else {
@@ -199,7 +201,6 @@ function decodeRetrieve(
         .decode(jsonRawRetrieve, { typeCastingStrategy: 'tryCasting' })
         .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid retrieve' }, headers: {} }))
       if (!decodedRetrieve.isOk) {
-        logger.logError('Bad request. (retrieve)')
         endSpanWithError({ span, failure: decodedRetrieve })
         return result.fail(decodedRetrieve.error)
       }

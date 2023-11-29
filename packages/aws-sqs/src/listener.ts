@@ -74,7 +74,6 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
     operationName: functionName,
     server: 'SQS',
   })
-  baseLogger.logInfo('Started.')
   while (alive.yes) {
     try {
       const message = await client.receiveMessage({ QueueUrl: queueUrl, MaxNumberOfMessages: 1, WaitTimeSeconds: 20 })
@@ -92,7 +91,6 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
         }
-        operationLogger.logError(`Bad message: not a valid json ${m.Body}`)
         continue
       }
       const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
@@ -100,7 +98,6 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
         }
-        operationLogger.logError(`Bad message: ${JSON.stringify(decoded.error)}`)
         continue
       }
       const contextInput = await context({ message: m })
@@ -109,6 +106,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         retrieve: undefined,
         operationId,
         logger: operationLogger,
+        functionName,
       })
       await functionBody.apply({
         input: decoded.value as never,
@@ -118,13 +116,8 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         logger: operationLogger,
       })
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
-      operationLogger.logInfo(`Completed.`)
     } catch (error) {
-      if (error instanceof Error) {
-        baseLogger.logError(error.message)
-      }
       await sleep(1000)
     }
   }
-  baseLogger.logInfo('Stopped.')
 }

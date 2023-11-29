@@ -6,12 +6,10 @@ import { logs, LogRecord, LogAttributes, Logger, SeverityNumber } from '@opentel
 export class MondrianLogger implements Logger {
   private readonly logger: Logger
   private readonly context: MondrianLoggerContext
-  private readonly createdAt: number
 
   constructor(logger: Logger, context: MondrianLoggerContext) {
     this.logger = logger
     this.context = context
-    this.createdAt = new Date().getTime()
   }
   emit(logRecord: LogRecord): void {
     this.logger.emit({
@@ -19,7 +17,6 @@ export class MondrianLogger implements Logger {
       attributes: {
         ...logRecord.attributes,
         ...this.context,
-        elapsedMs: new Date().getTime() - this.createdAt,
       },
     })
   }

@@ -34,6 +34,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
       retrieve: retrieve.GenericRetrieve | undefined
       operationId: string
       logger: logger.MondrianLogger
+      functionName: string
     },
   ) => Promise<ContextType<Fs>>
   options?: ModuleOptions<Fs, ContextInput>

@@ -200,6 +200,7 @@ class SdkBuilder<const Metadata> {
               retrieve: options?.retrieve,
               operationId,
               logger: thisLogger,
+              functionName,
             })
             const result = await func.apply({
               input: input as never,
@@ -208,10 +209,8 @@ class SdkBuilder<const Metadata> {
               operationId,
               logger: thisLogger,
             })
-            thisLogger.logInfo('Done.')
             return result
           } catch (error) {
-            thisLogger.logError(error instanceof Error ? `Call failed. ${error.message}` : `Call failed.`)
             throw error
           }
         }

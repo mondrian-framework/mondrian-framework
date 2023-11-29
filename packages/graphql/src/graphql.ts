@@ -675,7 +675,13 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
         try {
           //Context building
           const contextInput = await fromModuleInput.context(serverContext, info)
-          moduleContext = await module.context(contextInput, { retrieve: retrieveValue, input, operationId, logger })
+          moduleContext = await module.context(contextInput, {
+            retrieve: retrieveValue,
+            input,
+            operationId,
+            logger,
+            functionName,
+          })
 
           // Function call
           const applyOutput = await functionBody.apply({
@@ -711,10 +717,8 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
             span?.setStatus({ code: SpanStatusCode.OK })
             span?.end()
           }
-          logger.logInfo('Completed.')
           return outputValue
         } catch (error) {
-          logger.logError('Failed.')
           if (fromModuleInput.errorHandler) {
             const result = await fromModuleInput.errorHandler({
               context: moduleContext,

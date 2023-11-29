@@ -15,7 +15,7 @@ export function start<const F extends functions.Functions, CI>({
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const baseLogger = logger.build({ moduleName: api.module.name, server: 'CRON' })
-  const scheduledTasks: { task: ScheduledTask; logger: logger.MondrianLogger }[] = []
+  const scheduledTasks: { task: ScheduledTask }[] = []
   for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const options = api.functions[functionName]
     if (!options) {
@@ -41,6 +41,7 @@ export function start<const F extends functions.Functions, CI>({
             retrieve: undefined,
             operationId,
             logger: operationLogger,
+            functionName,
           })
           await functionBody.apply({
             input: input as never,
@@ -49,13 +50,7 @@ export function start<const F extends functions.Functions, CI>({
             logger: operationLogger,
             context: ctx,
           })
-        } catch (error) {
-          if (error instanceof Error) {
-            operationLogger.logError(error.message)
-          }
-          operationLogger.logError('Unknown error')
-        }
-        await operationLogger.logInfo('Done.')
+        } catch {}
       },
       {
         runOnInit: options.runAtStart ?? false,
@@ -64,18 +59,13 @@ export function start<const F extends functions.Functions, CI>({
       },
     )
     task.start()
-    scheduledTasks.push({
-      task,
-      logger: baseLogger.updateContext({ operationType: options.cron, operationName: functionName }),
-    })
+    scheduledTasks.push({ task })
   }
 
   return {
     async close() {
-      baseLogger.logInfo('Stopping jobs...')
-      for (const { task, logger } of scheduledTasks) {
+      for (const { task } of scheduledTasks) {
         task.stop()
-        logger.logInfo('Stopped.')
       }
     },
   }

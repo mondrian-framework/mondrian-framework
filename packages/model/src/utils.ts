@@ -1,5 +1,41 @@
 import { model } from '.'
 
+/**
+ * Applies the mapping logic of a type in a lazy fashion.
+ * It respects the lazyness depth.
+ *
+ * @example
+ *
+ * ```typescript
+ * const m = () => () => () => model.string()
+ * const mapped = lazyMap(m, (t) => { ... }) // it's of type () => () => () => [MAPPED]
+ * ```
+ * @param type the type to map
+ * @param mapper the mapper function
+ */
+export function lazyMap<T extends model.Type>(type: T, mapper: TypeTransformer<T>): T {
+  if (typeof type === 'function') {
+    let concreteType: model.Type = type()
+    let depth = 1
+    while (typeof concreteType === 'function') {
+      concreteType = concreteType() as T
+      depth++
+    }
+    const namedConcreteType =
+      concreteType.options?.name === undefined && type.name ? concreteType.setName(type.name) : concreteType
+    return lazyfy(depth, () => mapper(namedConcreteType as T, type)) as T
+  } else {
+    return mapper(type, type) as T
+  }
+}
+
+function lazyfy<T>(depth: number, value: () => T): T {
+  if (depth > 0) {
+    return (() => lazyfy(depth - 1, value)) as T
+  }
+  return value()
+}
+
 type TypeTransformer<T extends model.Type> = (type: T, lazyType: T) => model.Type
 export function memoizeTypeTransformation<T extends model.Type>(mapper: TypeTransformer<T>): (type: T) => model.Type {
   const cache = new Map<model.Type, model.Type>()
@@ -9,7 +45,8 @@ export function memoizeTypeTransformation<T extends model.Type>(mapper: TypeTran
       return cachedResult
     }
     if (typeof type === 'function') {
-      const lazyResult = () => mapper(model.concretise(type), type)
+      const lazyResult = lazyMap(type, mapper)
+      //const lazyResult = () => mapper(model.concretise(type), type)
       cache.set(type, lazyResult)
       return lazyResult
     }

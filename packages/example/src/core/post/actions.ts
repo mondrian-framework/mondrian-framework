@@ -1,14 +1,12 @@
 import { LoggedUserContext } from '..'
 import { idType } from '../common/model'
-import { Post, PostVisibility } from './model'
+import { Post } from './model'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { Prisma } from '@prisma/client'
 
 export const writePost = functions.withContext<LoggedUserContext>().build({
-  input: model
-    .object({ title: model.string(), content: model.string(), visibility: PostVisibility })
-    .setName('WritePostInput'),
+  input: model.pick(Post, { title: true, content: true, visibility: true }, { name: 'WritePostInput' }),
   output: Post,
   errors: { notLoggedIn: model.string() },
   retrieve: { select: true },

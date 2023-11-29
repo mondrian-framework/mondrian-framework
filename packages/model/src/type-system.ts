@@ -1,7 +1,7 @@
 import { decoding, validation, model, result, encoding } from './index'
 import { NeverType } from './types-exports'
-import { memoizeTypeTransformation, memoizeTransformation } from './utils'
-import { JSONType, areJsonsEquals, mapObject, failWithInternalError } from '@mondrian-framework/utils'
+import { memoizeTypeTransformation, memoizeTransformation, lazyMap } from './utils'
+import { JSONType, areJsonsEquals, mapObject, failWithInternalError, flatMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**
@@ -248,7 +248,7 @@ function concretiseInternal<T extends Type>(type: T): Concrete<T> {
     while (typeof concreteType === 'function') {
       concreteType = concreteType()
     }
-    if (concreteType.options?.name === undefined) {
+    if (concreteType.options?.name === undefined && type.name) {
       return concreteType.setName(type.name) as Concrete<T>
     } else {
       return concreteType as Concrete<T>
@@ -2353,10 +2353,8 @@ export function match<const M extends TypeMatch<unknown>>(
  */
 export function matcher<const M extends TypeMatch<unknown>>(
   cases: M,
-  options?: { memoize?: boolean },
 ): (type: MatcherInputType<M>) => M extends TypeMatch<infer T> ? T : unknown {
-  const mapper = (type: Type) => match(type as any, cases)
-  return (options?.memoize ? memoizeTransformation(mapper) : mapper) as any
+  return ((type: Type) => match(type as any, cases)) as any
 }
 
 /**
@@ -2439,3 +2437,76 @@ type MatherInputTypeFromKeys<M extends keyof MatcherNameToType> = AllTypeNames e
 type MatcherInputType<M extends TypeMatch<unknown>> = MatherInputTypeFromKeys<
   keyof M extends keyof MatcherNameToType ? keyof M : never
 >
+
+//PICK
+
+type LazyRecord = Lazy<ObjectType<any, any>> | Lazy<EntityType<any, any>>
+
+//prettier-ignore
+type PickFields<T extends LazyRecord, S extends { [K in RecordKeys<T>]?: true }> 
+  = [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in (keyof Ts & keyof S)]: Ts[Key] }>
+  : [T] extends [EntityType<infer Mutability, infer Ts>] ? EntityType<Mutability, { [Key in (keyof Ts & keyof S)]: Ts[Key] }>
+  : [T] extends [(() => infer T1 extends LazyRecord)] ? () => PickFields<T1, S>
+  : never
+
+//prettier-ignore
+type RecordKeys<T extends LazyRecord> 
+  = [T] extends [ObjectType<any, infer Ts>] ? keyof Ts
+  : [T] extends [EntityType<any, infer Ts>] ? keyof Ts
+  : [T] extends [(() => infer T1 extends LazyRecord)] ? RecordKeys<T1>
+  : never
+
+const pickCache: Map<Type, Map<string, Type>> = new Map()
+/**
+ * Picks specific field of an object or entity. It works like the {@link Pick} of Typescript but with Mondrian types.
+ *
+ * @example
+ * const User = () =>
+ * model.object({
+ *   email: model.email(),
+ *   firstName: model.string(),
+ *   friend: model.optional(User),
+ * })
+ *
+ * const UserInput = model.pick(User, { email: true, firstName: true }, { name: 'UserInput' })
+ * type UserInput = model.Infer<typeof UserInput> // { readonly email: string; readonly firstName: string }
+ *
+ * @param type the type to pick fields
+ * @param picks the wanted fields
+ * @param options the options to pass to the new instance of the object or instance
+ */
+export function pick<T extends LazyRecord, S extends { [K in RecordKeys<T>]?: true }>(
+  type: T,
+  picks: S,
+  options?: OptionsOf<T>,
+): PickFields<T, S> {
+  const cacheL2 = pickCache.get(type) ?? new Map<string, Type>()
+  pickCache.set(type, cacheL2)
+  const pickKey = JSON.stringify(picks)
+  const cached = cacheL2.get(pickKey)
+  if (cached) {
+    return cached as PickFields<T, S>
+  }
+  const result = lazyMap(
+    type,
+    matcher({
+      object: ({ fields }) =>
+        model.object(
+          flatMapObject(fields, (fieldName, fieldValue) =>
+            fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
+          ),
+          options,
+        ),
+      entity: ({ fields }) =>
+        model.entity(
+          flatMapObject(fields, (fieldName, fieldValue) =>
+            fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
+          ),
+          options,
+        ),
+      otherwise: () => failWithInternalError('`pick` is available only for object and entity types'),
+    }),
+  ) as PickFields<T, S>
+  cacheL2.set(pickKey, result)
+  return result
+}

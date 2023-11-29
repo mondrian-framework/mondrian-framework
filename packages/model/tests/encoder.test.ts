@@ -147,7 +147,7 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
     expect(encodeSpy).toHaveBeenCalledTimes(1)
   })
 
-  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([Model, value]) => {
+  test.prop([arbitrary.modelAndValue()])('hides sensitive data', ([Model, value]) => {
     const result = model
       .concretise(Model)
       .sensitive()
@@ -157,7 +157,7 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
 })
 
 describe.concurrent('encoder.encode', () => {
-  test.prop([arbitrary.typeAndValue()])('hides sensitive data', ([Model, value]) => {
+  test.prop([arbitrary.modelAndValue()])('hides sensitive data', ([Model, value]) => {
     const result = model.concretise(Model).sensitive().encode(value, { sensitiveInformationStrategy: 'hide' })
     expect(assertOk(result)).toEqual(null)
   })

@@ -495,16 +495,57 @@ export function nullable<T extends model.Type>(
   })
 }
 
-// TODO: add custom type generator
+export function customType(maxDepth: number): gen.Arbitrary<model.Type> {
+  //could be improved by giving options
+  const nonDeepCustom = [
+    gen.constant(model.countryCode()),
+    gen.constant(model.currency()),
+    gen.constant(model.date()),
+    gen.constant(model.datetime()),
+    gen.constant(model.decimal()),
+    gen.constant(model.email()),
+    gen.constant(model.ip()),
+    gen.constant(model.isbn()),
+    gen.constant(model.json()),
+    gen.constant(model.latitude()),
+    gen.constant(model.locale()),
+    gen.constant(model.longitude()),
+    gen.constant(model.mac()),
+    //gen.constant(model.never()),
+    gen.constant(model.phoneNumber()),
+    gen.constant(model.port()),
+    gen.constant(model.rgb()),
+    gen.constant(model.rgba()),
+    gen.constant(model.time()),
+    gen.constant(model.timestamp()),
+    gen.constant(model.unknown()),
+    gen.constant(model.url()),
+    gen.constant(model.uuid()),
+    gen.constant(model.version()),
+  ]
+  return maxDepth <= 1
+    ? gen.oneof(...nonDeepCustom)
+    : gen.oneof(
+        arbitraryModel(maxDepth - 1).map((t) => model.record(t)),
+        ...nonDeepCustom,
+      )
+}
 
 /**
  * @param maxDepth the maximum depth of the generated type
  * @returns a generator for random types
  */
-export function type(maxDepth: number = 5): gen.Arbitrary<model.Type> {
+export function arbitraryModel(maxDepth: number = 5): gen.Arbitrary<model.Type> {
   return maxDepth <= 1
-    ? baseType()
-    : gen.oneof(wrapperType(maxDepth), objectType(maxDepth), entityType(maxDepth), unionType(), baseType())
+    ? gen.oneof(baseType(), customType(maxDepth))
+    : gen.oneof(
+        wrapperType(maxDepth),
+        objectType(maxDepth),
+        entityType(maxDepth),
+        unionType(),
+        baseType(),
+        customType(maxDepth),
+      )
 }
 
 /**
@@ -552,7 +593,7 @@ export function baseType(): gen.Arbitrary<
  */
 export function wrapperType(
   maxDepth: number = 3,
-  wrappedType: gen.Arbitrary<model.Type> = type(maxDepth - 1),
+  wrappedType: gen.Arbitrary<model.Type> = arbitraryModel(maxDepth - 1),
 ): gen.Arbitrary<
   | model.OptionalType<model.Type>
   | model.NullableType<model.Type>
@@ -567,7 +608,7 @@ export function wrapperType(
  */
 function objectType(maxDepth: number): gen.Arbitrary<model.Type> {
   const fieldName = gen.string().filter((s) => !forbiddenObjectFields.includes(s))
-  return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain(object)
+  return gen.dictionary(fieldName, gen.constant(arbitraryModel(maxDepth - 1))).chain(object)
 }
 
 /**
@@ -575,7 +616,7 @@ function objectType(maxDepth: number): gen.Arbitrary<model.Type> {
  */
 function entityType(maxDepth: number): gen.Arbitrary<model.Type> {
   const fieldName = gen.string().filter((s) => !forbiddenObjectFields.includes(s))
-  return gen.dictionary(fieldName, gen.constant(type(maxDepth - 1))).chain(entity)
+  return gen.dictionary(fieldName, gen.constant(arbitraryModel(maxDepth - 1))).chain(entity)
 }
 
 /**
@@ -623,8 +664,8 @@ function orUndefined<A>(generator: gen.Arbitrary<A>): gen.Arbitrary<A | undefine
   return gen.oneof(gen.constant(undefined), generator)
 }
 
-export function typeAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[model.Type, never]> {
-  return type(typeDepth)
+export function modelAndValue(typeDepth: number = 3, valueDepth: number = 3): gen.Arbitrary<[model.Type, never]> {
+  return arbitraryModel(typeDepth)
     .filter(canGenerateValueFrom)
     .chain((type) => {
       return model

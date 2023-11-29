@@ -42,7 +42,7 @@ describe('Utilities', () => {
 })
 
 describe('partialDeep', () => {
-  test.prop([arbitrary.typeAndValue()])('with random types', ([Model, value]) => {
+  test.prop([arbitrary.modelAndValue()])('with random types', ([Model, value]) => {
     const PartialModel = model.concretise(model.partialDeep(Model))
     assertOk(PartialModel.validate(value))
   })

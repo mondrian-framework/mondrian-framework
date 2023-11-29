@@ -2,7 +2,7 @@ import { arbitrary, model } from '../../src'
 import { test } from '@fast-check/vitest'
 import { expect } from 'vitest'
 
-test.prop([arbitrary.type()])('A type is always equal to itself', (type) => {
+test.prop([arbitrary.arbitraryModel()])('A type is always equal to itself', (type) => {
   expect(model.areEqual(type, type)).toBe(true)
 })
 

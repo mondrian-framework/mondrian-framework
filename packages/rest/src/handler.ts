@@ -99,11 +99,12 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
               if (!model.isType(errorOutputType, applyOutput.error)) {
                 throw new Error('Invalid output error type')
               }
-              const encoded = model
-                .object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
-                .encodeWithoutValidation(applyOutput.error as never)
+              const encoded = errorOutputType.encodeWithoutValidation(applyOutput.error as never) as Record<
+                string,
+                unknown
+              >
               const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
-              const key = Object.keys(encoded as Record<string, unknown>)[0]
+              const key = Object.keys(encoded)[0]
               const status = key ? codes[key] ?? 400 : 400
               const response: Response = { status, body: encoded }
               endSpanWithResponse({ span, response })

@@ -631,6 +631,9 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
 
   const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, operationName)
   const partialOutputType = model.concretise(model.partialDeep(outputType))
+  const errorOutputType = functionBody.errors
+    ? model.object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
+    : model.never()
   const plainOutput = typeToGraphQLOutputType(outputType, {
     ...internalData,
     defaultName: `${capitalise(operationName)}Result`,
@@ -701,13 +704,20 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
               const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
               outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
             } else {
-              const errorCode = Object.keys(applyResult.error)[0]
-              const errorValue = applyResult.error[errorCode]
+              if (!model.isType(errorOutputType, applyResult.error)) {
+                throw new Error('Invalid output error type')
+              }
+              const encoded = errorOutputType.encodeWithoutValidation(applyResult.error as never) as Record<
+                string,
+                number
+              >
+              const errorCode = Object.keys(encoded)[0]
+              const errorValue = encoded[errorCode]
               const mappedError = {
                 '[GraphQL generation]: isError': true,
                 errorCode,
                 errorValue,
-                errors: applyResult.error,
+                errors: encoded,
               }
               outputValue = partialOutputType.encodeWithoutValidation(mappedError as never)
             }

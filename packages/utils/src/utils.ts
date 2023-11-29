@@ -19,7 +19,7 @@ export type KeysOfUnion<T> = T extends T ? keyof T : never
  */
 export function failWithInternalError(message: string): never {
   const header = '[internal error]'
-  const mondrianIssueUrl = 'https://github.com/twinlogix/mondrian-framework/issues'
+  const mondrianIssueUrl = 'https://github.com/mondrian-framework/mondrian-framework/issues'
   const reportMessage = `If you think this could be a bug in the framework, please report it at ${mondrianIssueUrl}`
   throw new Error(`${header} ${message}\n${reportMessage}`)
 }

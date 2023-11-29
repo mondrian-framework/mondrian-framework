@@ -1,4 +1,4 @@
-![CI](https://github.com/twinlogix/mondrian-framework/actions/workflows/ci-checks.yml/badge.svg)
+![CI](https://github.com/mondrian-framework/mondrian-framework/actions/workflows/ci-checks.yml/badge.svg)
 [![codecov](https://codecov.io/gh/mondrian-framework/mondrian-framework/graph/badge.svg?token=DT2P5BRCMX)](https://codecov.io/gh/mondrian-framework/mondrian-framework)
 
 # Mondrian
@@ -33,11 +33,15 @@ Mondrian allows you to define a data model in an intuitive human-readable way. I
 
 In this section, we’ll walk through an example of how to use the Mondrian framework in TypeScript. We’ll create a simple registration function, add typed errors, and serve it through a REST API.
 
-- [Build functions](#build-functions)
-- [Build module](#build-module)
-- [Serve module as REST endpoint](#serve-module-rest)
-- [Serve module as GRAPHQL endpoint](#serve-module-graphql)
-- [Primsa integration](#prisma-integration)
+- [Mondrian](#mondrian)
+  - [1 minute spinup example](#1-minute-spinup-example)
+  - [How it works](#how-it-works)
+  - [Usage example](#usage-example)
+    - [Build functions](#build-functions)
+    - [Build module](#build-module)
+    - [Serve module REST](#serve-module-rest)
+    - [Serve module GRAPHQL](#serve-module-graphql)
+    - [Prisma integration](#prisma-integration)
 
 For this example we'll need to install this packages:
 

@@ -76,7 +76,7 @@ describe('partialDeep', () => {
     assertOk(PartialModel().validate({ inner: { inner: undefined } }))
     assertOk(PartialModel().validate({ inner: { inner: '' } }))
   })
-  /*
+
   test('respect lazyness', () => {
     const p1 = model.partialDeep(model.string())
     expect(p1.kind === model.Kind.String)
@@ -86,15 +86,15 @@ describe('partialDeep', () => {
 
     const m = () => () => model.string()
     const p3 = model.partialDeep(m)
-    expect(p3()().kind === model.Kind.String)
+    expect(p3().kind === model.Kind.String)
 
     const p4 = model.partialDeep(m)
-    expect(p4()().kind === model.Kind.String)
+    expect(p4().kind === model.Kind.String)
     expect(p3 === p4).toBe(true)
 
     const p5 = model.partialDeep(() => () => () => model.string())
-    expect(p5()()().kind === model.Kind.String)
-  })*/
+    expect(p5().kind === model.Kind.String)
+  })
 })
 
 describe('pick', () => {
@@ -130,7 +130,7 @@ describe('pick', () => {
       '[internal error] `pick` is available only for object and entity types',
     )
   })
-  /*
+
   test('respect lazyness', () => {
     const p1 = model.pick(model.object({}), {})
     expect(p1.kind === model.Kind.Object)
@@ -140,15 +140,15 @@ describe('pick', () => {
 
     const m = () => () => model.object({})
     const p3 = model.pick(m, {})
-    expect(p3()().kind === model.Kind.Object)
+    expect(p3().kind === model.Kind.Object)
 
     const p4 = model.pick(m, {})
-    expect(p4()().kind === model.Kind.Object)
-    expect(p3 === p4).toBe(true)
+    expect(p4().kind === model.Kind.Object)
+    //expect(p3 === p4).toBe(true)
 
     const p5 = model.pick(() => () => () => model.object({}), {})
-    expect(p5()()().kind === model.Kind.Object)
-  })*/
+    expect(p5().kind === model.Kind.Object)
+  })
 })
 
 test('variant ownership', () => {

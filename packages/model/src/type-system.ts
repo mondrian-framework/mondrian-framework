@@ -1992,13 +1992,18 @@ export type CustomTypeOptions<AdditionalOptions extends Record<string, unknown>>
  */
 //prettier-ignore
 export type PartialDeep<T extends Type> 
+  = [T] extends [(() => infer T1 extends Type)] ? () => PartialDeepInternal<T1>
+  : PartialDeepInternal<T>
+
+//prettier-ignore
+type PartialDeepInternal<T extends Type> 
   = [T] extends [UnionType<infer Ts>] ? UnionType<{ [Key in keyof Ts]: PartialDeep<Ts[Key]> }>
   : [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<Ts[Key]>> }>
   : [T] extends [EntityType<infer Mutability, infer Ts>] ? EntityType<Mutability, { [Key in keyof Ts]: OptionalType<PartialDeep<Ts[Key]>> }>
   : [T] extends [ArrayType<infer Mutability, infer T1>] ? ArrayType<Mutability, PartialDeep<T1>>
   : [T] extends [OptionalType<infer T1>] ? OptionalType<PartialDeep<T1>>
   : [T] extends [NullableType<infer T1>] ? NullableType<PartialDeep<T1>>
-  : [T] extends [(() => infer T1 extends Type)] ? () => PartialDeep<T1>
+  : [T] extends [(() => infer T1 extends Type)] ? PartialDeepInternal<T1>
   : T
 
 /**
@@ -2444,9 +2449,14 @@ type LazyRecord = Lazy<ObjectType<any, any>> | Lazy<EntityType<any, any>>
 
 //prettier-ignore
 type PickFields<T extends LazyRecord, S extends { [K in RecordKeys<T>]?: true }> 
+  = [T] extends [(() => infer T1 extends LazyRecord)] ? () => PickFieldsInternal<T1, S>
+  : PickFieldsInternal<T, S>
+
+//prettier-ignore
+type PickFieldsInternal<T extends LazyRecord, S extends { [K in RecordKeys<T>]?: true }> 
   = [T] extends [ObjectType<infer Mutability, infer Ts>] ? ObjectType<Mutability, { [Key in (keyof Ts & keyof S)]: Ts[Key] }>
   : [T] extends [EntityType<infer Mutability, infer Ts>] ? EntityType<Mutability, { [Key in (keyof Ts & keyof S)]: Ts[Key] }>
-  : [T] extends [(() => infer T1 extends LazyRecord)] ? () => PickFields<T1, S>
+  : [T] extends [(() => infer T1 extends LazyRecord)] ? PickFieldsInternal<T1, S>
   : never
 
 //prettier-ignore
@@ -2456,7 +2466,6 @@ type RecordKeys<T extends LazyRecord>
   : [T] extends [(() => infer T1 extends LazyRecord)] ? RecordKeys<T1>
   : never
 
-const pickCache: Map<Type, Map<string, Type>> = new Map()
 /**
  * Picks specific field of an object or entity. It works like the {@link Pick} of Typescript but with Mondrian types.
  *
@@ -2480,30 +2489,20 @@ export function pick<T extends LazyRecord, S extends { [K in RecordKeys<T>]?: tr
   picks: S,
   options?: OptionsOf<T>,
 ): PickFields<T, S> {
-  const cacheL2 = pickCache.get(type) ?? new Map<string, Type>()
-  pickCache.set(type, cacheL2)
-  const pickKey = JSON.stringify(picks)
-  const cached = cacheL2.get(pickKey)
-  if (cached) {
-    return cached as PickFields<T, S>
+  if (typeof type === 'function') {
+    return (() => pick(model.concretise(type), picks, options as undefined)) as PickFields<T, S>
   }
-  const result = match(type, {
+  return match(type, {
     object: ({ fields }) =>
       model.object(
-        flatMapObject(fields, (fieldName, fieldValue) =>
-          fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
-        ),
+        flatMapObject(fields, (fieldName, fieldValue) => (fieldName in picks ? [[fieldName, fieldValue]] : [])),
         options,
       ),
     entity: ({ fields }) =>
       model.entity(
-        flatMapObject(fields, (fieldName, fieldValue) =>
-          fieldName in picks ? [[fieldName, partialDeep(fieldValue)]] : [],
-        ),
+        flatMapObject(fields, (fieldName, fieldValue) => (fieldName in picks ? [[fieldName, fieldValue]] : [])),
         options,
       ),
     otherwise: () => failWithInternalError('`pick` is available only for object and entity types'),
   }) as unknown as PickFields<T, S>
-  cacheL2.set(pickKey, result)
-  return result
 }

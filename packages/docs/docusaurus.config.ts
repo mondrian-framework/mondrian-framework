@@ -78,7 +78,7 @@ const config: Config = {
         height: '25px',
         src: 'img/logo-white.png',
       },
-      copyright: `Copyright © ${new Date().getFullYear()} TwinLogix srl.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Mondrian Framework.`,
     },
     prism: {
       theme: prismThemes.github,

@@ -32,7 +32,7 @@ function HomepageHeader() {
                 </Link>
                 <Link
                   className={`button ${styles.button} button--secondary button--lg`}
-                  to="https://github.com/twinlogix/mondrian-framework"
+                  to="https://github.com/mondrian-framework/mondrian-framework"
                 >
                   <GitHubSVG />
                   Source Code
@@ -169,8 +169,7 @@ const userModule = module.build({
               </div>
               <div className={styles.featureColumn}>
                 <CodeBlock language="ts" title="model.ts" showLineNumbers>
-                  {`
-import { graphql } from '@mondrian-framework/graphql'
+                  {`import { graphql } from '@mondrian-framework/graphql'
 import { serve } from '@mondrian-framework/graphql-fastify'
 import { fastify } from 'fastify'
 

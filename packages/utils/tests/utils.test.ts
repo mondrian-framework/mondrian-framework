@@ -19,7 +19,7 @@ import { describe, expect } from 'vitest'
 
 test('assertNever', () => {
   expect(() => assertNever(1 as never, 'message')).toThrowError(
-    '[internal error] message\nIf you think this could be a bug in the framework, please report it at https://github.com/twinlogix/mondrian-framework/issues',
+    '[internal error] message\nIf you think this could be a bug in the framework, please report it at https://github.com/mondrian-framework/mondrian-framework/issues',
   )
 })
 

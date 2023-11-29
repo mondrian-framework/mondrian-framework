@@ -46,7 +46,7 @@ export const login = functions.withContext<Context>().build({
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {
-      return result.fail({ tooManyRequests: 'asd', invalidLogin: 'invalid username or password',  })
+      return result.fail({ invalidLogin: 'invalid username or password' })
     }
     await context.prisma.user.update({
       where: { id: loggedUser.id },

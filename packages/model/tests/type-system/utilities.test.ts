@@ -127,7 +127,7 @@ describe('pick', () => {
   })
   test('unexpected type', () => {
     expect(() => model.pick(model.string() as any, {})).toThrowError(
-      '[internal error] `pick` is available only for object and entity types',
+      '[Mondrian-Framework internal error] `pick` is available only for object and entity types\nIf you think this could be a bug in the framework, please report it at https://github.com/mondrian-framework/mondrian-framework/issues',
     )
   })
 
@@ -219,6 +219,6 @@ test('isEntity', () => {
 
 test('failing match', () => {
   expect(() => model.match(model.string() as any, { number: () => 1 })).toThrowError(
-    '[internal error] `model.match` with not exhaustive cases occurs',
+    '[Mondrian-Framework internal error] `model.match` with not exhaustive cases occurs\nIf you think this could be a bug in the framework, please report it at https://github.com/mondrian-framework/mondrian-framework/issues',
   )
 })

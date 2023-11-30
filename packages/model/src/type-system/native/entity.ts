@@ -156,7 +156,9 @@ function decodeEntityProperties(
     }
     const decodedValue = model.concretise(type).decodeWithoutValidation(value, decodingOptions)
     if (decodedValue.isOk) {
-      result[key] = decodedValue.value
+      if (decodedValue.value !== undefined) {
+        result[key] = decodedValue.value
+      }
     } else {
       errors.push(...path.prependFieldToAll(decodedValue.error, key))
     }

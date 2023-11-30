@@ -118,8 +118,8 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
     })
 
     test.prop([unionModel])('fails if called with unhandled variant', (model) => {
-      expect(() => model.encodeWithoutValidation(true as any)).toThrowError(/^\[internal error\]/)
-      expect(() => model.encodeWithoutValidation({} as any)).toThrowError(/^\[internal error\]/)
+      expect(() => model.encodeWithoutValidation(true as any)).toThrowError(/^\[Mondrian-Framework internal error\]/)
+      expect(() => model.encodeWithoutValidation({} as any)).toThrowError(/^\[Mondrian-Framework internal error\]/)
     })
   })
 

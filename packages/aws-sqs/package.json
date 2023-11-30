@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/aws-sqs",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -14,8 +14,8 @@
     "@aws-sdk/client-sqs": "^3.454.0"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^2.0.9",
-    "@mondrian-framework/module": "^2.0.9",
-    "@mondrian-framework/utils": "^2.0.9"
+    "@mondrian-framework/model": "^2.0.10",
+    "@mondrian-framework/module": "^2.0.10",
+    "@mondrian-framework/utils": "^2.0.10"
   }
 }

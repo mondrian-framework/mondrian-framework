@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.10
+
+### Patch Changes
+
+- Minor decoding improvement
+
 ## 2.0.9
 
 ### Patch Changes

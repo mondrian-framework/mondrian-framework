@@ -1,5 +1,16 @@
 # @mondrian-framework/graphql-yoga
 
+## 2.0.10
+
+### Patch Changes
+
+- Minor decoding improvement
+- Updated dependencies
+  - @mondrian-framework/graphql@2.0.10
+  - @mondrian-framework/model@2.0.10
+  - @mondrian-framework/module@2.0.10
+  - @mondrian-framework/utils@2.0.10
+
 ## 2.0.9
 
 ### Patch Changes

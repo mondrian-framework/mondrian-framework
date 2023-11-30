@@ -404,3 +404,16 @@ test('Errors return', async () => {
     'Invalid output on function errorTest. Errors: (1) {"expected":"undefined","got":1,"path":"$.wrong"}',
   )
 })
+
+test('Undefiend function error tyoe', async () => {
+  expect(() =>
+    functions.build({
+      input: model.unknown(),
+      output: model.unknown(),
+      errors: { error1: model.string(), error2: model.number().optional() },
+      body: async () => {
+        return result.ok(null)
+      },
+    }),
+  ).toThrowError('Function errors cannot be optional. Error "error2" is optional')
+})

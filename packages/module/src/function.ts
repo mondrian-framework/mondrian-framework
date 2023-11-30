@@ -298,6 +298,12 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
     const E extends ErrorType = undefined,
     const R extends OutputRetrieveCapabilities = undefined,
   >(func: Function<I, O, E, R, Context>): FunctionImplementation<I, O, E, R, Context> {
+    if (func.errors) {
+      const undefinedError = Object.entries(func.errors).find(([_, errorType]) => model.isOptional(errorType))
+      if (undefinedError) {
+        throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
+      }
+    }
     return new BaseFunction({ options: { namespace: this.namespace, ...func.options }, ...func })
   }
 }

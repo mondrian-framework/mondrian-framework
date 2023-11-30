@@ -65,6 +65,10 @@ export function decodeFunctionFailure(
   if (errorDecodeResult.isFailure) {
     return errorDecodeResult
   }
+  // here an empty object {} would pass the decoding process
+  // this is wrong because the result.fail({ }) requires at least one property of the errors map
+  // so we add another step that checks for empty objects.
+  // in case of {} we return a decoding error as if the decoding process failed
   if (Object.keys(values as object).length === 0) {
     return decoding.fail(`An object with at least one of this field: ${Object.keys(errors).join(', ')}`, {})
   }

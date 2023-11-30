@@ -2,6 +2,7 @@ import {
   areJsonsEquals,
   areSameArray,
   assertNever,
+  buildErrorMessage,
   capitalise,
   deepMerge,
   filterMapObject,
@@ -19,7 +20,11 @@ import { describe, expect } from 'vitest'
 
 test('assertNever', () => {
   expect(() => assertNever(1 as never, 'message')).toThrowError(
-    '[internal error] message\nIf you think this could be a bug in the framework, please report it at https://github.com/mondrian-framework/mondrian-framework/issues',
+    'Mondrian-Framework internal error] message\nIf you think this could be a bug in the framework, please report it at https://github.com/mondrian-framework/mondrian-framework/issues',
+  )
+
+  expect(buildErrorMessage('message', '23')).toBe(
+    '[Mondrian-Framework internal error] message\n(at 23)\nIf you think this could be a bug in the framework, please report it at https://github.com/mondrian-framework/mondrian-framework/issues',
   )
 })
 

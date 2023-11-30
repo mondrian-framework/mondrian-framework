@@ -1,5 +1,6 @@
 import { functions, logger, utils } from '.'
 import { result, retrieve, model, decoding, validation } from '@mondrian-framework/model'
+import { buildErrorMessage } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
 /**
@@ -14,13 +15,9 @@ export function checkMaxSelectionDepth(
     apply: (args, next, thisFunction) => {
       const depth = retrieve.selectionDepth(thisFunction.output, args.retrieve ?? {})
       if (depth > maxDepth) {
-        const errorMessage = `Max selection depth reached: requested selection have a depth of ${depth}. The maximum is ${maxDepth}.`
-        args.logger.emit({
-          body: errorMessage,
-          attributes: { retrieve: JSON.stringify(retrieve), depth, maxDepth },
-          severityNumber: SeverityNumber.WARN,
-        })
-        throw new Error(errorMessage)
+        throw new Error(
+          `Max selection depth reached: requested selection have a depth of ${depth}. The maximum is ${maxDepth}.`,
+        )
       }
       return next(args)
     },
@@ -96,16 +93,15 @@ function handleFailure({
   functionName: string
 }): void {
   if (onFailure === 'log') {
-    logger.emit({
-      body: 'Invalid output',
-      attributes: {
+    logger.logWarn(
+      buildErrorMessage(`Invalid value returned by the function ${functionName}`, 'module/middleware/checkOutputType'),
+      {
         retrieve: JSON.stringify(retrieve),
         errors: Object.fromEntries(
           result.error.map((v, i) => [i, { ...v, gotJSON: JSON.stringify(v.got), got: `${v.got}`, path: v.path }]),
         ),
       },
-      severityNumber: SeverityNumber.ERROR,
-    })
+    )
   } else {
     throw new Error(
       `Invalid output on function ${functionName}. Errors: ${result.error

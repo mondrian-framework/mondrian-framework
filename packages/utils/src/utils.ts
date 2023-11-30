@@ -18,10 +18,19 @@ export type KeysOfUnion<T> = T extends T ? keyof T : never
  *         redirecting to the project's issue page
  */
 export function failWithInternalError(message: string): never {
-  const header = '[internal error]'
+  throw new Error(buildErrorMessage(message))
+}
+
+/**
+ * Builds an internal error message for the Mondrian-Framework.
+ */
+export function buildErrorMessage(message: string, location?: string): string {
+  const header = '[Mondrian-Framework internal error]'
   const mondrianIssueUrl = 'https://github.com/mondrian-framework/mondrian-framework/issues'
   const reportMessage = `If you think this could be a bug in the framework, please report it at ${mondrianIssueUrl}`
-  throw new Error(`${header} ${message}\n${reportMessage}`)
+  return location
+    ? `${header} ${message}\n(at ${location})\n${reportMessage}`
+    : `${header} ${message}\n${reportMessage}`
 }
 
 /**

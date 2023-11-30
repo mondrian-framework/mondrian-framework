@@ -94,7 +94,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         continue
       }
       const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
-      if (!decoded.isOk) {
+      if (decoded.isFailure) {
         if (specifications.malformedMessagePolicy === 'delete') {
           await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
         }

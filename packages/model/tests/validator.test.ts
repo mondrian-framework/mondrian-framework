@@ -145,13 +145,13 @@ describe.concurrent('validation.validate', () => {
       const Model = model.number({ isInteger: true, minimum: 0, maximum: 10 })
 
       const res1 = Model.validate(-1.1, { errorReportingStrategy: 'allErrors' })
-      expect(!res1.isOk && res1.error).toEqual([
+      expect(res1.isFailure && res1.error).toEqual([
         { assertion: 'number must be greater than or equal to 0', got: -1.1, path: '$' },
         { assertion: 'number must be an integer', got: -1.1, path: '$' },
       ])
 
       const res2 = Model.validate(10.1, { errorReportingStrategy: 'allErrors' })
-      expect(!res2.isOk && res2.error).toEqual([
+      expect(res2.isFailure && res2.error).toEqual([
         { assertion: 'number must be less than or equal to 10', got: 10.1, path: '$' },
         { assertion: 'number must be an integer', got: 10.1, path: '$' },
       ])
@@ -337,9 +337,9 @@ describe.concurrent('validation.validate', () => {
       gen.array(gen.tuple(gen.string(), gen.double({ min: 0, max: 10 })), { minLength: 1 }).map(Object.fromEntries),
     ])('always fails on wrong record fields', (record) => {
       const result = Model.validate(record)
-      expect(!result.isOk && result.error.length).toBe(1)
+      expect(result.isFailure && result.error.length).toBe(1)
       const result1 = Model.validate(record, { errorReportingStrategy: 'allErrors' })
-      expect(!result1.isOk && result1.error.length).toBeGreaterThanOrEqual(Object.keys(record).length)
+      expect(result1.isFailure && result1.error.length).toBeGreaterThanOrEqual(Object.keys(record).length)
     })
   })
 

@@ -72,7 +72,7 @@ export function testTypeEncodingAndDecoding<T extends model.Type>(
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValidValue)
 
       const decodingResult = model.concretise(type).decode(raw)
-      if (!decodingResult.isOk) {
+      if (decodingResult.isFailure) {
         expect.fail(`I was expecting to get only valid raw values as input but got ${rawValidValue}.
         Most likely there is a bug in the \`validValues\` passed as input`)
       } else {
@@ -167,7 +167,7 @@ export function testTypeDecodingAndEncoding<T extends model.Type>(
     test('decoding fails for invalid values', () =>
       invalidValues.forEach((v) => {
         const result = model.concretise(type).decode(v, decodingOptions)
-        if (!result.isOk) {
+        if (result.isFailure) {
           expect(result.error.length).greaterThan(0)
         } else {
           expect(result.value).toEqual(result.value === null ? undefined : null)
@@ -185,7 +185,7 @@ export function testWithArbitrary(type: model.Type, biunivocalEquality = true): 
       test.prop([arbitrary])('encode and decode with arbitrary values is ok', (value) => {
         const encoded = t.encode(value as never)
         expect(encoded.isOk).toBe(true)
-        if (!encoded.isOk) {
+        if (encoded.isFailure) {
           return
         }
         const decoded = t.decode(encoded.value)

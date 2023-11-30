@@ -32,6 +32,10 @@ export class Ok<A> {
    * {@link Result} discriminant to tell wether a result is successful or not. Always true
    */
   readonly isOk: true = true
+  /**
+   * {@link Result} discriminant to tell wether a result is successful or not. Always false
+   */
+  readonly isFailure: false = false
   constructor(value: A) {
     this.value = value
   }
@@ -98,6 +102,10 @@ export class Failure<E> {
    *  {@link Result} discriminant to tell wether a result is successful or not. Always false
    */
   readonly isOk: false = false
+  /**
+   *  {@link Result} discriminant to tell wether a result is successful or not. Always true
+   */
+  readonly isFailure: true = true
   constructor(error: E) {
     this.error = error
   }

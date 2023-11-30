@@ -113,7 +113,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
         break
       }
       const result = concreteType.validate(array[i] as never, validationOptions)
-      if (!result.isOk) {
+      if (result.isFailure) {
         errors.push(...path.prependIndexToAll(result.error, i))
       }
     }

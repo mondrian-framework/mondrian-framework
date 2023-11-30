@@ -72,7 +72,7 @@ function validateRecord<T extends model.Type>(
   const errors: validation.Error[] = []
   for (const [key, v] of Object.entries(value)) {
     const result = concreteFieldsType.validate(v as never, validationOptions)
-    if (!result.isOk) {
+    if (result.isFailure) {
       if (validationOptions?.errorReportingStrategy === 'allErrors') {
         errors.push(...path.prependFieldToAll(result.error, key))
       } else {

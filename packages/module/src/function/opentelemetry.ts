@@ -72,7 +72,7 @@ export class OpentelemetryFunction<
     )
     const endTime = new Date().getTime()
     this.histogram.record(endTime - startTime)
-    if (!spanResult.isOk) {
+    if (spanResult.isFailure) {
       throw spanResult.error
     }
     return spanResult.value

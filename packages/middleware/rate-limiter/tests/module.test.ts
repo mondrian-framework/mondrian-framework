@@ -69,17 +69,17 @@ test('Rate limiter middleware', async () => {
 
   const failedLoginResult = await client.functions.login({ email: 'test@domain.com', password: '4321' })
   expect(failedLoginResult.isOk).toBe(false)
-  expect(!failedLoginResult.isOk && failedLoginResult.error).toEqual({ invalidUsernameOrPassword: '' })
+  expect(failedLoginResult.isFailure && failedLoginResult.error).toEqual({ invalidUsernameOrPassword: '' })
 
   const failedLoginResult2 = await client.functions.login({ email: 'test@domain.com', password: '1234' })
   expect(failedLoginResult2.isOk).toBe(false)
-  expect(!failedLoginResult2.isOk && failedLoginResult2.error).toEqual({
+  expect(failedLoginResult2.isFailure && failedLoginResult2.error).toEqual({
     tooManyRequests: 'Too many requests. Retry in few minutes.',
   })
 
   const failedLoginResult3 = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult3.isOk).toBe(false)
-  expect(!failedLoginResult3.isOk && failedLoginResult3.error).toEqual({ invalidUsernameOrPassword: '' })
+  expect(failedLoginResult3.isFailure && failedLoginResult3.error).toEqual({ invalidUsernameOrPassword: '' })
 
   await expect(
     async () => await client.functions.login({ email: 'admin@domain.com', password: '4321' }),

@@ -99,7 +99,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test('can decode NaN', () => {
         const result = Model.decodeWithoutValidation(NaN, options)
-        if (!result.isOk || !Number.isNaN(result.value)) {
+        if (result.isFailure || !Number.isNaN(result.value)) {
           expect.fail('should work on NaN')
         }
       })
@@ -414,7 +414,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
         'fails on records of non number',
         (value) => {
           const result = Model.decodeWithoutValidation(value, options)
-          expect(!result.isOk && result.error[0].expected).toBe('number')
+          expect(result.isFailure && result.error[0].expected).toBe('number')
         },
       )
 
@@ -422,8 +422,8 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
         'fails on records of non number with every error',
         (value) => {
           const result = Model.decodeWithoutValidation(value, { errorReportingStrategy: 'allErrors', ...options })
-          expect(!result.isOk && result.error[0].expected).toBe('number')
-          expect(!result.isOk && result.error.length).toBe(Object.keys(value).length)
+          expect(result.isFailure && result.error[0].expected).toBe('number')
+          expect(result.isFailure && result.error.length).toBe(Object.keys(value).length)
         },
       )
 
@@ -665,7 +665,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
     test('fails with non correct value', () => {
       const result = Model.decodeWithoutValidation({})
-      expect(!result.isOk && result.error.length).toBe(2)
+      expect(result.isFailure && result.error.length).toBe(2)
     })
 
     test('get the correct variant with ambiguos (but correct) value', () => {

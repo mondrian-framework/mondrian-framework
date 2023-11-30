@@ -1,7 +1,5 @@
-import { functions } from '.'
-import { ErrorType, OutputRetrieveCapabilities } from './function'
-import { result, retrieve, model } from '@mondrian-framework/model'
-import { assertNever } from '@mondrian-framework/utils'
+import { functions, logger, utils } from '.'
+import { result, retrieve, model, decoding, validation } from '@mondrian-framework/model'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
 /**
@@ -10,7 +8,7 @@ import { SeverityNumber } from '@opentelemetry/api-logs'
  */
 export function checkMaxSelectionDepth(
   maxDepth: number,
-): functions.Middleware<model.Type, model.Type, ErrorType, OutputRetrieveCapabilities, {}> {
+): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check max selection depth',
     apply: (args, next, thisFunction) => {
@@ -37,17 +35,31 @@ export function checkMaxSelectionDepth(
 export function checkOutputType(
   functionName: string,
   onFailure: 'log' | 'throw',
-): functions.Middleware<model.Type, model.Type, ErrorType, OutputRetrieveCapabilities, {}> {
+): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
-      const nextRes: any = await next(args)
-      let outputValue
+      const nextRes: result.Result<unknown, unknown> | unknown = await next(args)
+      if (thisFunction.errors && (nextRes as result.Result<unknown, unknown>).isFailure) {
+        //Checks the error type
+        const errorDecodeResult = utils.decodeFunctionFailure(
+          (nextRes as result.Failure<unknown>).error,
+          thisFunction.errors,
+          {
+            errorReportingStrategy: 'allErrors',
+            fieldStrictness: 'expectExactFields',
+          },
+        )
+        if (errorDecodeResult.isFailure) {
+          handleFailure({ onFailure, functionName, logger: args.logger, result: errorDecodeResult })
+        }
+        return errorDecodeResult.isOk ? result.fail(errorDecodeResult.value) : nextRes
+      }
+
       //Unwrap the value
-      if (thisFunction.errors && !nextRes.isOk) {
-        return nextRes
-      } else if (thisFunction.errors) {
-        outputValue = nextRes.value
+      let outputValue
+      if (thisFunction.errors) {
+        outputValue = (nextRes as result.Ok<unknown>).value
       } else {
         outputValue = nextRes
       }
@@ -55,44 +67,50 @@ export function checkOutputType(
       const defaultRetrieve = retrieveType.isOk ? { select: {} } : {}
 
       const typeToRespect = retrieve.selectedType(thisFunction.output, args.retrieve ?? defaultRetrieve)
-      const respectResult = model.concretise(typeToRespect).decode(outputValue as never, {
+      const valueDecodeResult = model.concretise(typeToRespect).decode(outputValue as never, {
         errorReportingStrategy: 'allErrors',
         fieldStrictness: 'allowAdditionalFields',
       })
 
-      if (!respectResult.isOk) {
-        args.logger.emit({
-          body: 'Invalid output',
-          attributes: {
-            retrieve: JSON.stringify(retrieve),
-            errors: Object.fromEntries(
-              respectResult.error.map((v, i) => [
-                i,
-                { ...v, gotJSON: JSON.stringify(v.got), got: `${v.got}`, path: v.path },
-              ]),
-            ),
-          },
-          severityNumber: SeverityNumber.ERROR,
-        })
-
-        switch (onFailure) {
-          case 'log':
-            return outputValue
-          case 'throw':
-            throw new Error(
-              `Invalid output on function ${functionName}. Errors: ${respectResult.error
-                .map((v, i) => `(${i + 1}) ${JSON.stringify(v)}`)
-                .join('; ')}`,
-            )
-          default:
-            assertNever(onFailure, 'Unexpected onFailure action!')
-        }
-      }
-      if (thisFunction.errors) {
-        return result.ok(respectResult.value)
+      if (valueDecodeResult.isFailure) {
+        handleFailure({ onFailure, functionName, logger: args.logger, result: valueDecodeResult })
+        return outputValue
+      } else if (thisFunction.errors) {
+        return result.ok(valueDecodeResult.value)
       } else {
-        return respectResult.value
+        return valueDecodeResult.value
       }
     },
+  }
+}
+
+function handleFailure({
+  onFailure,
+  logger,
+  result,
+  functionName,
+}: {
+  result: result.Failure<decoding.Error[] | validation.Error[]>
+  onFailure: 'log' | 'throw'
+  logger: logger.MondrianLogger
+  functionName: string
+}): void {
+  if (onFailure === 'log') {
+    logger.emit({
+      body: 'Invalid output',
+      attributes: {
+        retrieve: JSON.stringify(retrieve),
+        errors: Object.fromEntries(
+          result.error.map((v, i) => [i, { ...v, gotJSON: JSON.stringify(v.got), got: `${v.got}`, path: v.path }]),
+        ),
+      },
+      severityNumber: SeverityNumber.ERROR,
+    })
+  } else {
+    throw new Error(
+      `Invalid output on function ${functionName}. Errors: ${result.error
+        .map((v, i) => `(${i + 1}) ${JSON.stringify(v)}`)
+        .join('; ')}`,
+    )
   }
 }

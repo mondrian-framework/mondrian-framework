@@ -3,7 +3,6 @@ import { clearInternalData, emptyInternalData, generateOpenapiInput } from './op
 import { completeRetrieve } from './utils'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
-import { mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
@@ -29,9 +28,6 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     : generateGetInputFromRequest({ functionBody, specification })
   const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
-  const errorOutputType = functionBody.errors
-    ? model.object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
-    : model.never()
   const thisLogger = logger.build({
     moduleName: module.name,
     operationName: functionName,
@@ -59,7 +55,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         const subHandler = async () => {
           //Decode input
           const inputResult = decodeInput(functionBody.input, request, getInputFromRequest, logger, tracer)
-          if (!inputResult.isOk) {
+          if (inputResult.isFailure) {
             span?.end()
             return inputResult.error
           }
@@ -67,7 +63,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
           //Decode retrieve
           const retrieveResult = decodeRetrieve(retrieveType, functionBody.output, request, logger, tracer)
-          if (!retrieveResult.isOk) {
+          if (retrieveResult.isFailure) {
             span?.end()
             return retrieveResult.error
           }
@@ -93,20 +89,12 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
               operationId,
               logger,
             })
-
             //Output processing
-            if (functionBody.errors && !applyOutput.isOk) {
-              if (!model.isType(errorOutputType, applyOutput.error)) {
-                throw new Error('Invalid output error type')
-              }
-              const encoded = errorOutputType.encodeWithoutValidation(applyOutput.error as never) as Record<
-                string,
-                unknown
-              >
+            if (functionBody.errors && applyOutput.isFailure) {
               const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
-              const key = Object.keys(encoded)[0]
+              const key = Object.keys(applyOutput.error)[0]
               const status = key ? codes[key] ?? 400 : 400
-              const response: Response = { status, body: encoded }
+              const response: Response = { status, body: applyOutput.error }
               endSpanWithResponse({ span, response })
               return response
             } else {
@@ -172,7 +160,7 @@ function decodeInput(
       .concretise(inputType)
       .decode(rawInput, { typeCastingStrategy: 'tryCasting' })
       .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid input' }, headers: {} }))
-    if (!decoded.isOk) {
+    if (decoded.isFailure) {
       endSpanWithError({ span, failure: decoded })
       return result.fail(decoded.error)
     } else {
@@ -189,7 +177,7 @@ function decodeRetrieve(
   logger: logger.MondrianLogger,
   tracer: functions.Tracer,
 ): result.Result<retrieve.GenericRetrieve | undefined, Response> {
-  if (!retrieveType.isOk) {
+  if (retrieveType.isFailure) {
     return result.ok(undefined)
   }
   return tracer.startActiveSpan('decode-retrieve', (span) => {
@@ -207,7 +195,7 @@ function decodeRetrieve(
         .concretise(retrieveType.value)
         .decode(jsonRawRetrieve, { typeCastingStrategy: 'tryCasting' })
         .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid retrieve' }, headers: {} }))
-      if (!decodedRetrieve.isOk) {
+      if (decodedRetrieve.isFailure) {
         endSpanWithError({ span, failure: decodedRetrieve })
         return result.fail(decodedRetrieve.error)
       }

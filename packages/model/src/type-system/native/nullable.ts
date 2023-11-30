@@ -55,7 +55,7 @@ class NullableTypeImpl<T extends model.Type>
             .concretise(this.wrappedType)
             .decodeWithoutValidation(value, decodingOptions)
             .mapError((errors) => errors.map(decoding.addExpected('null')))
-    if (!resWithoutCast.isOk && value === undefined && decodingOptions?.typeCastingStrategy === 'tryCasting') {
+    if (resWithoutCast.isFailure && value === undefined && decodingOptions?.typeCastingStrategy === 'tryCasting') {
       return decoding.succeed(null)
     } else {
       return resWithoutCast

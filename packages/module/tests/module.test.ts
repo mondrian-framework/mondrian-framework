@@ -156,11 +156,11 @@ test('Real example', async () => {
   await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   const failedRegisterResult = await client.functions.register({ email: 'admin@domain.com', password: '1234' })
   expect(failedRegisterResult.isOk).toBe(false)
-  expect(!failedRegisterResult.isOk && failedRegisterResult.error).toEqual({ doubleRegister: 'Double register' })
+  expect(failedRegisterResult.isFailure && failedRegisterResult.error).toEqual({ doubleRegister: 'Double register' })
 
   const failedLoginResult = await client.functions.login({ email: 'admin@domain.com', password: '4321' })
   expect(failedLoginResult.isOk).toBe(false)
-  expect(!failedLoginResult.isOk && failedLoginResult.error).toEqual({
+  expect(failedLoginResult.isFailure && failedLoginResult.error).toEqual({
     invalidEmailOrPassword: 'Invalid email or password',
   })
 
@@ -172,7 +172,7 @@ test('Real example', async () => {
   })
 
   const completeProfileResult = await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
-  expect(!completeProfileResult.isOk && completeProfileResult.error).toEqual({ unauthorized: 'unauthorized' })
+  expect(completeProfileResult.isFailure && completeProfileResult.error).toEqual({ unauthorized: 'unauthorized' })
   await expect(
     async () =>
       await client.functions.completeProfile(
@@ -348,4 +348,59 @@ test('Return types', async () => {
 
   const r13 = await client.functions.login({ retrieve: { select: { friends: { select: { email: true } } } } })
   expectTypeOf(r13).toEqualTypeOf<{ readonly friends: readonly { readonly email: string }[] }>()
+})
+
+test('Errors return', async () => {
+  const errorTest = functions.build({
+    input: model.enumeration(['1', '2', '3', '4', '5', '6']),
+    output: model.string(),
+    retrieve: { select: true },
+    errors: { error1: model.string(), error2: model.object({ a: model.string() }) },
+    body: async ({ input }) => {
+      if (input === '1') {
+        return result.fail({ error1: 'ok' })
+      } else if (input === '2') {
+        return result.fail({ error2: { a: 'ok' } })
+      } else if (input === '3') {
+        return result.fail({ error2: { a: 'ok' }, error1: 'ok' })
+      } else if (input === '4') {
+        return result.fail({} as any)
+      } else if (input === '5') {
+        return result.fail({ error1: new Date(1) } as any)
+      } else {
+        return result.fail({ wrong: 1 } as any)
+      }
+    },
+  })
+
+  const m = module.build({
+    name: 'test',
+    version: '1.0.0',
+    functions: { errorTest },
+    options: { checkOutputType: 'throw' },
+    context: async () => ({}),
+  })
+
+  const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
+    module: m,
+    context: async () => {
+      return {}
+    },
+  })
+
+  const r1 = await client.functions.errorTest('1')
+  expect(r1.isFailure && r1.error).toEqual({ error1: 'ok' })
+  const r2 = await client.functions.errorTest('2')
+  expect(r2.isFailure && r2.error).toEqual({ error2: { a: 'ok' } })
+  const r3 = await client.functions.errorTest('3')
+  expect(r3.isFailure && r3.error).toEqual({ error2: { a: 'ok' }, error1: 'ok' })
+  expect(() => client.functions.errorTest('4')).rejects.toThrowError(
+    'Invalid output on function errorTest. Errors: (1) {"expected":"An object with at least one of this field: error1, error2","got":{},"path":"$"}',
+  )
+  expect(() => client.functions.errorTest('5')).rejects.toThrowError(
+    'Invalid output on function errorTest. Errors: (1) {"expected":"string or undefined","got":"1970-01-01T00:00:00.001Z","path":"$.error1"}',
+  )
+  expect(() => client.functions.errorTest('6')).rejects.toThrowError(
+    'Invalid output on function errorTest. Errors: (1) {"expected":"undefined","got":1,"path":"$.wrong"}',
+  )
 })

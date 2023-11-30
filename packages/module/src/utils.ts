@@ -1,4 +1,6 @@
-import { model } from '@mondrian-framework/model'
+import { functions } from '.'
+import { decoding, model, result, validation } from '@mondrian-framework/model'
+import { mapObject } from '@mondrian-framework/utils'
 import crypto from 'crypto'
 
 /**
@@ -45,4 +47,26 @@ function gatherUniqueTypes(inspectedTypes: Set<model.Type>, type: model.Type): S
     object: ({ fields }) => Object.values(fields).reduce(gatherUniqueTypes, inspectedTypes),
     entity: ({ fields }) => Object.values(fields).reduce(gatherUniqueTypes, inspectedTypes),
   })
+}
+
+/**
+ * Decodes the value with the expected failure result of a function that support typed errors.
+ */
+export function decodeFunctionFailure(
+  values: unknown,
+  errors: Exclude<functions.ErrorType, undefined>,
+  options?: decoding.Options,
+): result.Result<unknown, validation.Error[] | decoding.Error[]> {
+  const errorType = model.object(mapObject(errors, (_, errorType) => model.optional(errorType))) as model.ObjectType<
+    model.Mutability.Immutable,
+    model.Types
+  >
+  const errorDecodeResult = errorType.decode(values as never, options)
+  if (errorDecodeResult.isFailure) {
+    return errorDecodeResult
+  }
+  if (Object.keys(values as object).length === 0) {
+    return decoding.fail(`An object with at least one of this field: ${Object.keys(errors).join(', ')}`, {})
+  }
+  return errorDecodeResult
 }

@@ -73,7 +73,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
         }
         if (url?.startsWith(pathPrefix)) {
           const body = parseJSON(Buffer.concat(pieces))
-          if (!body.isOk) {
+          if (body.isFailure) {
             response.writeHead(400)
             response.write(body.error)
             response.end()

@@ -62,7 +62,7 @@ class OptionalTypeImpl<T extends model.Type>
                 error.expected !== 'undefined' ? decoding.addExpected('undefined')(error) : error,
               ),
             )
-    if (!resWithoutCast.isOk && value === null) {
+    if (resWithoutCast.isFailure && value === null) {
       return decoding.succeed(undefined)
     } else {
       return resWithoutCast

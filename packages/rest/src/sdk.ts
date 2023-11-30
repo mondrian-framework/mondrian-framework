@@ -1,7 +1,7 @@
 import { ApiSpecification, FunctionSpecifications } from './api'
 import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { retrieve, result, model } from '@mondrian-framework/model'
-import { functions, module, sdk } from '@mondrian-framework/module'
+import { functions, module, sdk, utils } from '@mondrian-framework/module'
 
 export type Sdk<Fs extends functions.FunctionsInterfaces> = {
   functions: SdkFunctions<Fs>
@@ -92,11 +92,11 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
         })
         const operationId = response.headers.get('operationId') //TODO: opentelemetry instrumentation
         const json = await readJSON(response)
-        if (!json.isOk) {
+        if (json.isFailure) {
           throw new Error(json.error) //TODO: better error message
         } else if (response.status >= 200 && response.status < 299) {
           const res = outputType.decode(json.value, { typeCastingStrategy: 'tryCasting' })
-          if (!res.isOk) {
+          if (res.isFailure) {
             throw new Error(JSON.stringify(res.error))
           }
           if (functionBody.errors) {
@@ -105,19 +105,12 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
             return res.value
           }
         } else if (functionBody.errors) {
-          const jsonValue = json.value
-          const [error] = Object.entries(functionBody.errors).flatMap(([k, v]) =>
-            typeof jsonValue === 'object' && jsonValue && k in jsonValue ? [[k, v, jsonValue[k]] as const] : [],
-          )
-          if (!error) {
-            throw new Error(`Unexpected error: ${JSON.stringify(jsonValue)}`)
+          const decodedError = utils.decodeFunctionFailure(json.value, functionBody.errors)
+          if (decodedError.isOk) {
+            return result.fail(decodedError.value)
+          } else {
+            throw new Error('Unexpected error type')
           }
-          const [errorName, errorType, errorValue] = error
-          const decodedError = model.concretise(errorType).decode(errorValue, { typeCastingStrategy: 'tryCasting' })
-          if (!decodedError.isOk) {
-            throw new Error(JSON.stringify(decodedError.error))
-          }
-          return result.fail({ [errorName]: decodedError.value })
         } else {
           throw new Error(JSON.stringify(json.value)) //TODO: better error message
         }

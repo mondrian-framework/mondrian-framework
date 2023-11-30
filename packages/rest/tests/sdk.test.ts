@@ -124,6 +124,26 @@ const findUsers2 = functions.build({
   },
 })
 
+const errorTest = functions.build({
+  input: model.enumeration(['1', '2', '3', '4', '5']),
+  output: model.string(),
+  retrieve: { select: true },
+  errors: { error1: model.string(), error2: model.object({ a: model.string() }) },
+  body: async ({ input }) => {
+    if (input === '1') {
+      return result.fail({ error1: 'ok' })
+    } else if (input === '2') {
+      return result.fail({ error2: { a: 'ok' } })
+    } else if (input === '3') {
+      return result.fail({ error2: { a: 'ok' }, error1: 'ok' })
+    } else if (input === '4') {
+      return result.fail({} as any)
+    } else {
+      return result.fail({ wrong: 1 } as any)
+    }
+  },
+})
+
 const memory = new Map<string, User>()
 const db: SharedContext['db'] = {
   updateUser(user) {
@@ -138,8 +158,8 @@ const db: SharedContext['db'] = {
 const m = module.build({
   name: 'test',
   version: '1.0.0',
-  options: { maxSelectionDepth: 2 },
-  functions: { getCount, login, register, completeProfile, findUsers, findUsers2 },
+  options: { maxSelectionDepth: 2, checkOutputType: 'ignore' },
+  functions: { getCount, login, register, completeProfile, findUsers, findUsers2, errorTest },
   context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
     if (authorization != null) {
       //dummy auth
@@ -165,6 +185,7 @@ const api = rest.build({
     login: { method: 'post' },
     findUsers: { method: 'get', path: '/findUsers/{firstname}' },
     findUsers2: { method: 'get', path: '/findUsers2' },
+    errorTest: { method: 'put' },
   },
   options: { introspection: { path: '/openapi' } },
   version: 2,
@@ -211,6 +232,7 @@ describe('rest sdk', async () => {
       { email: 'test2@domain.com', password: '***', firstname: 'lol', lastname: 'asd' },
     ])
   })
+
   test('simple calls', async () => {
     const introspectionRes1 = await fetch('http://127.0.0.1:50123/openapi')
     expect(introspectionRes1.status).toBe(308)
@@ -257,7 +279,7 @@ describe('rest sdk', async () => {
     ).rejects.toThrowError('Invalid authorization header')
 
     const res1 = await client.functions.login({ email: 'email@domain.com', password: '1234' })
-    expect(!res1.isOk && res1.error).toEqual({ invalidEmailOrPassword: 'Invalid email or password' })
+    expect(res1.isFailure && res1.error).toEqual({ invalidEmailOrPassword: 'Invalid email or password' })
 
     const res2 = await client.functions.register({ email: 'email@domain.com', password: '1234' })
     expect(res2.isOk && res2.value).toEqual({ email: 'email@domain.com', password: '1234' })
@@ -270,5 +292,16 @@ describe('rest sdk', async () => {
 
     const res4 = await client.functions.getCount(2)
     expect(res4).toEqual(2)
+  })
+
+  test('Errors return', async () => {
+    const r1 = await client.functions.errorTest('1')
+    expect(r1.isFailure && r1.error).toEqual({ error1: 'ok' })
+    const r2 = await client.functions.errorTest('2')
+    expect(r2.isFailure && r2.error).toEqual({ error2: { a: 'ok' } })
+    const r3 = await client.functions.errorTest('3')
+    expect(r3.isFailure && r3.error).toEqual({ error2: { a: 'ok' }, error1: 'ok' })
+    expect(() => client.functions.errorTest('4')).rejects.toThrowError('Unexpected error type')
+    expect(() => client.functions.errorTest('5')).rejects.toThrowError('Unexpected error type')
   })
 })

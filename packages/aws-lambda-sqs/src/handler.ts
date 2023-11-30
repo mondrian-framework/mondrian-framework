@@ -69,7 +69,7 @@ export function build<const Fs extends functions.Functions, CI>({
         }
 
         const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
-        if (!decoded.isOk) {
+        if (decoded.isFailure) {
           if (specification.malformedMessagePolicy === 'delete') {
             continue
           }

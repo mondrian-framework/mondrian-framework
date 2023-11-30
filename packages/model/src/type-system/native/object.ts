@@ -90,7 +90,7 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
       }
       const concreteFieldType = model.concretise(this.fields[fieldName])
       const result = concreteFieldType.validate(fieldValue as never, options)
-      if (!result.isOk) {
+      if (result.isFailure) {
         errors.push(...path.prependFieldToAll(result.error, fieldName))
       }
     }

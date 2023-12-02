@@ -8,7 +8,7 @@ import gen from 'fast-check'
  * @param options the {@link model.OptionalTypeOptions} used to define the new `OptionalType`
  * @returns an {@link model.OptionalType} holding an item of the given type
  * @example ```ts
- *          type OptionalNumber = model.Infer<typeof stringArray>
+ *          type OptionalNumber = model.Infer<typeof optionalNumber> // number | undefined
  *          const optionalNumber = model.optional(model.number()) // model.number().optional()
  *
  *          const exampleMissing: OptionalNumber = undefined
@@ -62,7 +62,7 @@ class OptionalTypeImpl<T extends model.Type>
                 error.expected !== 'undefined' ? decoding.addExpected('undefined')(error) : error,
               ),
             )
-    if (resWithoutCast.isFailure && value === null) {
+    if (resWithoutCast.isFailure && value === null) { //TODO: only when casting?
       return decoding.succeed(undefined)
     } else {
       return resWithoutCast

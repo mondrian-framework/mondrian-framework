@@ -8,7 +8,7 @@ import gen from 'fast-check'
  * @param options the {@link model.NullableTypeOptions} used to define the new `NullableType`
  * @returns a {@link model.NullableType} holding an item of the given type
  * @example ```ts
- *          type NullableString = model.Infer<typeof nullableString>
+ *          type NullableString = model.Infer<typeof nullableString> // string | null
  *          const nullableString = model.nullable(model.string()) // or model.string().nullable()
  *
  *          const exampleNull: NullableString = null

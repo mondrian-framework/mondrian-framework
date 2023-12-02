@@ -18,7 +18,7 @@ export abstract class DefaultMethods<T extends model.Type> {
   abstract arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<T>>
 
   encodeWithoutValidation(value: model.Infer<T>, encodingOptions?: encoding.Options): JSONType {
-    return encodingOptions?.sensitiveInformationStrategy === 'hide'
+    return encodingOptions?.sensitiveInformationStrategy === 'hide' && this.options?.sensitive === true
       ? null
       : this.encodeWithNoChecks(value, encodingOptions)
   }

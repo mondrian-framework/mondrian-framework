@@ -197,7 +197,7 @@ test('encoding value with circular dependency', () => {
   type User = model.Infer<typeof user>
   const value: User = { value: 1, friend: { value: 2 } }
   value.friend!.friend = value.friend
-  expect(() => user().encode(value)).toThrowError('Maximum call stack size exceeded')
+  expect(() => model.concretise(user).encode(value)).toThrowError('Maximum call stack size exceeded')
 
   // should the encoded result be something like this?
   // { "value": 1, "friend": { "value": 2, "friend": { _ref: "$.friend" } } }

@@ -21,7 +21,14 @@ export type UnknownOptions = {}
  * @returns a {@link CustomType `CustomType`} representing a unknown
  */
 export function unknown(options?: model.OptionsOf<UnknownType>): UnknownType {
-  return model.custom('unknown', encodeUnknown, decodeUnknown, validateUnknown, unknownArbitrary, options)
+  return model.custom({
+    typeName: 'unknown',
+    encoder: encodeUnknown,
+    decoder: decodeUnknown,
+    validator: validateUnknown,
+    arbitrary: unknownArbitrary,
+    options,
+  })
 }
 
 function encodeUnknown(value: unknown): JSONType {

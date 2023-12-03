@@ -8,15 +8,15 @@ const MAX_PRECISION = 8
 export type LatitudeType = model.CustomType<'latitude', {}, number>
 
 export function latitude(options?: model.BaseOptions): LatitudeType {
-  return model.custom(
-    'latitude',
-    (number) => number,
-    (value) =>
+  return model.custom({
+    typeName: 'latitude',
+    encoder: (number) => number,
+    decoder: (value) =>
       typeof value === 'number' ? decoding.succeed(value) : decoding.fail('Expected a latitude number', value),
-    validateLatitude,
-    () => gen.integer({ min: MIN_LAT * 1000, max: MAX_LAT * 1000 }).map((v) => v / 1000),
+    validator: validateLatitude,
+    arbitrary: () => gen.integer({ min: MIN_LAT * 1000, max: MAX_LAT * 1000 }).map((v) => v / 1000),
     options,
-  )
+  })
 }
 
 function validateLatitude(value: number): validation.Result {

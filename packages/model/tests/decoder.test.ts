@@ -719,13 +719,13 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       }
       const decoderSpy = vi.spyOn(decoderFunction, 'decode')
 
-      const Model = model.custom<'custom', {}, number>(
-        'custom',
-        () => null,
-        decoderFunction.decode,
-        () => validation.fail('test', 'test'),
-        () => gen.double(),
-      )
+      const Model = model.custom<'custom', {}, number>({
+        typeName: 'custom',
+        encoder: () => null,
+        decoder: decoderFunction.decode,
+        validator: () => validation.fail('test', 'test'),
+        arbitrary: () => gen.double(),
+      })
       checkValue(Model.decodeWithoutValidation(value, options), 1)
       expect(decoderSpy).toHaveBeenCalledTimes(1)
     })
@@ -751,7 +751,14 @@ describe.concurrent('decoding.decode', () => {
     }
     const validateSpy = vi.spyOn(mocks, 'validate')
     const decodeSpy = vi.spyOn(mocks, 'decode')
-    const Model = model.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, options)
+    const Model = model.custom({
+      typeName: 'test',
+      encoder: mocks.encode,
+      decoder: mocks.decode,
+      validator: mocks.validate,
+      arbitrary: mocks.arbitrary,
+      options,
+    })
     checkValue(Model.decode(value, {}, validationOptions), 'decoded successfully')
     expect(validateSpy).toBeCalledTimes(1)
     expect(decodeSpy).toBeCalledTimes(1)

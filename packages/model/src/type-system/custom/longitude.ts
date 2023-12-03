@@ -8,15 +8,15 @@ const MAX_PRECISION = 8
 export type LongitudeType = model.CustomType<'longitude', {}, number>
 
 export function longitude(options?: model.BaseOptions): model.CustomType<'longitude', {}, number> {
-  return model.custom(
-    'longitude',
-    (number) => number,
-    (value) =>
+  return model.custom({
+    typeName: 'longitude',
+    encoder: (number) => number,
+    decoder: (value) =>
       typeof value === 'number' ? decoding.succeed(value) : decoding.fail('Expected a longitude number', value),
-    validateLongitude,
-    () => gen.integer({ min: MIN_LON * 1000, max: MAX_LON * 1000 }).map((v) => v / 1000),
+    validator: validateLongitude,
+    arbitrary: () => gen.integer({ min: MIN_LON * 1000, max: MAX_LON * 1000 }).map((v) => v / 1000),
     options,
-  )
+  })
 }
 
 function validateLongitude(value: number): validation.Result {

@@ -9,21 +9,17 @@ export function fromRegexes<Name extends string, Options extends Record<string, 
   regex: RegExp,
   ...regexes: RegExp[]
 ): model.CustomType<Name, Options, string> {
-  return model.custom(
+  return model.custom({
     typeName,
-    encode,
-    decode,
-    (input) => validate(input, errorMessage, [regex, ...regexes]),
-    () => arbitrary ?? gen.stringMatching(regex),
+    encoder: (value) => value,
+    decoder,
+    validator: (input) => validate(input, errorMessage, [regex, ...regexes]),
+    arbitrary: () => arbitrary ?? gen.stringMatching(regex),
     options,
-  )
+  })
 }
 
-function encode(string: string): string {
-  return string
-}
-
-function decode<Name extends string, Options extends Record<string, any>>(
+function decoder<Name extends string, Options extends Record<string, any>>(
   value: unknown,
   _decodingOptions: Required<decoding.Options>,
   _options?: model.OptionsOf<model.CustomType<Name, Options, string>>,

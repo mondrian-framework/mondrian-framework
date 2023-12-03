@@ -4,14 +4,14 @@ import gen from 'fast-check'
 export type URLType = model.CustomType<'URL', {}, URL>
 
 export function url(options?: model.BaseOptions): URLType {
-  return model.custom(
-    'URL',
-    (value) => value.toString(),
-    decodeUrl,
-    (_url) => validation.succeed(),
-    () => gen.webUrl().map((v) => new URL(v)),
+  return model.custom({
+    typeName: 'URL',
+    encoder: (value) => value.toString(),
+    decoder: decodeUrl,
+    validator: (_url) => validation.succeed(),
+    arbitrary: () => gen.webUrl().map((v) => new URL(v)),
     options,
-  )
+  })
 }
 
 function decodeUrl(value: unknown): decoding.Result<URL> {

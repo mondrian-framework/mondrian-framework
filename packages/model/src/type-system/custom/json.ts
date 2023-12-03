@@ -23,11 +23,11 @@ export type JsonType = model.CustomType<'json', JsonTypeOptions, JSONType>
  * @returns a {@link CustomType `CustomType`} representing a json
  */
 export function json(options?: model.OptionsOf<JsonType>): JsonType {
-  return model.custom(
-    'json',
-    (v) => v,
-    (v) => (v === undefined ? decoding.succeed(null) : decoding.succeed(JSON.parse(JSON.stringify(v)))),
-    (json) => {
+  return model.custom({
+    typeName: 'json',
+    encoder: (v) => v,
+    decoder: (v) => (v === undefined ? decoding.succeed(null) : decoding.succeed(JSON.parse(JSON.stringify(v)))),
+    validator: (json) => {
       if (options?.sizeLimit != null) {
         const size = Buffer.byteLength(JSON.stringify(json))
         if (size > options.sizeLimit) {
@@ -36,9 +36,9 @@ export function json(options?: model.OptionsOf<JsonType>): JsonType {
       }
       return validation.succeed()
     },
-    jsonArbitrary,
+    arbitrary: jsonArbitrary,
     options,
-  )
+  })
 }
 
 function jsonArbitrary(maxDepth: number): gen.Arbitrary<JSONType> {

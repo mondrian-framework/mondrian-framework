@@ -16,14 +16,23 @@ export type DateTimeOptions = { minimum?: Date; maximum?: Date }
  * @returns a {@link CustomType `CustomType`} representing a datetime
  */
 export function datetime(options?: model.OptionsOf<DateTimeType>): DateTimeType {
-  return model.custom('datetime', encodeDateTime, decodeDateTime, validateDateTime, datetimeArbitrary, options)
+  //TODO [Good first issue]: check options validity
+  const { maximum, minimum } = options ?? {}
+  const validator = validation.buildValidator<Date>(
+    //prettier-ignore
+    {
+      ...(maximum ? { [`Datetime must be maximum ${maximum.toISOString()}`]: (date) => Number.isNaN(date.valueOf()) || date.getTime() > maximum.getTime() } : {}),
+      ...(minimum ? { [`Datetime must be minimum ${minimum.toISOString()}`]: (date) => Number.isNaN(date.valueOf()) || date.getTime() < minimum.getTime() } : {}),
+    },
+  )
+  return model.custom({ typeName: 'datetime', encoder, decoder, validator, arbitrary, options })
 }
 
-function encodeDateTime(date: Date): string {
+function encoder(date: Date): string {
   return date.toISOString()
 }
 
-function decodeDateTime(
+function decoder(
   value: unknown,
   decodingOptions: Required<decoding.Options>,
   _options?: model.OptionsOf<DateTimeType>,
@@ -53,24 +62,6 @@ function tryMakeDate(value: number | string): decoding.Result<Date> {
   return Number.isNaN(date.valueOf()) ? decoding.fail('ISO date', value) : decoding.succeed(date)
 }
 
-function validateDateTime(
-  date: Date,
-  _validationOptions: Required<validation.Options>,
-  options?: model.OptionsOf<DateTimeType>,
-): validation.Result {
-  if (options === undefined) {
-    return validation.succeed()
-  }
-  const { maximum, minimum } = options
-  if (maximum && (Number.isNaN(date.valueOf()) || date.getTime() > maximum.getTime())) {
-    return validation.fail(`Datetime must be maximum ${maximum.toISOString()}`, date)
-  }
-  if (minimum && (Number.isNaN(date.valueOf()) || date.getTime() < minimum.getTime())) {
-    return validation.fail(`Datetime must be minimum ${minimum.toISOString()}`, date)
-  }
-  return validation.succeed()
-}
-
-function datetimeArbitrary(_maxDepth: number, options?: model.DateTimeOptions): gen.Arbitrary<Date> {
+function arbitrary(_maxDepth: number, options?: model.DateTimeOptions): gen.Arbitrary<Date> {
   return gen.date({ min: options?.minimum, max: options?.maximum })
 }

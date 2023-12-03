@@ -18,14 +18,14 @@ export type RecordOptions = { fieldsType: model.Type }
  * @returns a {@link CustomType `CustomType`} representing a record
  */
 export function record<const T extends model.Type>(fieldsType: T, options?: model.BaseOptions): RecordType<T> {
-  return model.custom(
-    'record',
-    (value, encodingOptions) => encodeRecord(fieldsType, value, encodingOptions),
-    (value, decodingOptions) => decodeRecord(fieldsType, value, decodingOptions),
-    (value, validationOptions) => validateRecord(fieldsType, value, validationOptions),
-    (maxDepth) => recordArbitrary(fieldsType, maxDepth),
-    { ...options, fieldsType },
-  )
+  return model.custom({
+    typeName: 'record',
+    encoder: (value, encodingOptions) => encodeRecord(fieldsType, value, encodingOptions),
+    decoder: (value, decodingOptions) => decodeRecord(fieldsType, value, decodingOptions),
+    validator: (value, validationOptions) => validateRecord(fieldsType, value, validationOptions),
+    arbitrary: (maxDepth) => recordArbitrary(fieldsType, maxDepth),
+    options: { ...options, fieldsType },
+  })
 }
 
 function encodeRecord<T extends model.Type>(

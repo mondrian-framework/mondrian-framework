@@ -844,12 +844,12 @@ function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogg
  */
 function taggedUnion(union: model.UnionType<model.Types>): model.Type {
   const variantsKeys = Object.keys(union.variants)
-  return model.custom<'tagged-union', {}, any>(
-    'tagged-union',
-    () => {
+  return model.custom<'tagged-union', {}, any>({
+    typeName: 'tagged-union',
+    encoder: () => {
       throw new Error('Unreachable')
     },
-    (v, options) => {
+    decoder: (v, options) => {
       const keys = Object.keys(v ?? {})
       if (!v || typeof v !== 'object' || keys.length !== 1 || !variantsKeys.includes(keys[0])) {
         return decoding.fail(`object with exactly one of this keys: ${variantsKeys.map((v) => `'${v}'`).join(', ')}`, v)
@@ -858,13 +858,13 @@ function taggedUnion(union: model.UnionType<model.Types>): model.Type {
       const mappedType = mapInputType(type)
       return model.concretise(mappedType).decodeWithoutValidation((v as Record<string, unknown>)[keys[0]], options)
     },
-    (v, options) => {
+    validator: (v, options) => {
       return union.validate(v as never, options)
     },
-    () => {
+    arbitrary: () => {
       throw new Error('Unreachable')
     },
-  )
+  })
 }
 
 /**

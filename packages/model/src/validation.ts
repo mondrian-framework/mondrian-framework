@@ -93,6 +93,13 @@ export function fail(assertion: string, got: unknown): result.Failure<Error[]> {
   return failWithErrors([{ assertion, got, path: path.root }])
 }
 
+export function buildValidator<T>(
+  errorMap: Record<string, (value: T) => unknown>,
+): (value: T, options: Required<Options>) => Result {
+  const validator = new Validator(errorMap)
+  return (value, options) => validator.apply(value, options)
+}
+
 /**
  * Performs a check with the given check map by handling the errorReportingStrategy of the validation options.
  * @param value The value to validate
@@ -107,8 +114,8 @@ export class Validator<T> {
     this.errorMap = errorMap
   }
 
-  apply(value: T, options?: Options) {
-    if ((options ?? defaultOptions).errorReportingStrategy === 'allErrors') {
+  apply(value: T, options: Required<Options>) {
+    if (options.errorReportingStrategy === 'allErrors') {
       const errors: Error[] = []
       for (const [errorMessage, condition] of Object.entries(this.errorMap)) {
         if (condition(value)) {

@@ -142,7 +142,14 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
     }
 
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const Model = model.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, customOptions)
+    const Model = model.custom({
+      typeName: 'test',
+      encoder: mocks.encode,
+      decoder: mocks.decode,
+      validator: mocks.validate,
+      arbitrary: mocks.arbitrary,
+      options: customOptions,
+    })
     expect(Model.encodeWithoutValidation(value)).toEqual(value)
     expect(encodeSpy).toHaveBeenCalledTimes(1)
   })
@@ -185,7 +192,14 @@ describe.concurrent('encoder.encode', () => {
     }
     const validateSpy = vi.spyOn(mocks, 'validate')
     const encodeSpy = vi.spyOn(mocks, 'encode')
-    const Model = model.custom('test', mocks.encode, mocks.decode, mocks.validate, mocks.arbitrary, options)
+    const Model = model.custom({
+      typeName: 'test',
+      encoder: mocks.encode,
+      decoder: mocks.decode,
+      validator: mocks.validate,
+      arbitrary: mocks.arbitrary,
+      options,
+    })
     assertOk(Model.encode(value, undefined, validationOptions))
     expect(validateSpy).toBeCalledTimes(1)
     expect(encodeSpy).toBeCalledTimes(1)
@@ -205,5 +219,5 @@ test('encoding value with circular dependency', () => {
 
   // this feature is out of scope, will not be implemented
   // reason 1: for example a value like the above one would not be correct to
-  //   the respectively openapi and graphql generted schema
+  //   the respectively openapi and graphql generated schema
 })

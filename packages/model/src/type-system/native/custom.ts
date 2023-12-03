@@ -50,15 +50,15 @@ type CustomArbitrary<Options extends Record<string, any>, InferredAs> = (
  *          can pick whatever best suits your needs as long as you can encode/decode it
  *          to a JSON type
  */
-export function custom<Name extends string, Options extends Record<string, unknown>, InferredAs>(
-  typeName: Name,
-  encodeWithoutValidation: CustomEncoder<Options, InferredAs>,
-  decoder: CustomDecoder<Options, InferredAs>,
-  validator: CustomValidator<Options, InferredAs>,
-  arbitrary: CustomArbitrary<Options, InferredAs>,
-  options?: model.CustomTypeOptions<Options>,
-): model.CustomType<Name, Options, InferredAs> {
-  return new CustomTypeImpl(typeName, encodeWithoutValidation, decoder, validator, arbitrary, options)
+export function custom<Name extends string, Options extends Record<string, unknown>, InferredAs>(args: {
+  typeName: Name
+  encoder: CustomEncoder<Options, InferredAs>
+  decoder: CustomDecoder<Options, InferredAs>
+  validator: CustomValidator<Options, InferredAs>
+  arbitrary: CustomArbitrary<Options, InferredAs>
+  options?: model.CustomTypeOptions<Options>
+}): model.CustomType<Name, Options, InferredAs> {
+  return new CustomTypeImpl(args)
 }
 
 class CustomTypeImpl<Name extends string, Options extends Record<string, any>, InferredAs>
@@ -74,16 +74,30 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
 
   getThis = () => this
   fromOptions = (options: model.CustomTypeOptions<Options>) =>
-    custom(this.typeName, this.encodeWithoutValidationInternal, this.decoder, this.validator, this.arbitrary, options)
+    custom({
+      typeName: this.typeName,
+      encoder: this.encoder,
+      decoder: this.decoder,
+      validator: this.validator,
+      arbitrary: this.arbitraryFromOptions,
+      options,
+    })
 
-  constructor(
-    typeName: Name,
-    encoder: CustomEncoder<Options, InferredAs>,
-    decoder: CustomDecoder<Options, InferredAs>,
-    validator: CustomValidator<Options, InferredAs>,
-    arbitrary: CustomArbitrary<Options, InferredAs>,
-    options?: model.CustomTypeOptions<Options>,
-  ) {
+  constructor({
+    options,
+    typeName,
+    encoder,
+    decoder,
+    validator,
+    arbitrary,
+  }: {
+    typeName: Name
+    encoder: CustomEncoder<Options, InferredAs>
+    decoder: CustomDecoder<Options, InferredAs>
+    validator: CustomValidator<Options, InferredAs>
+    arbitrary: CustomArbitrary<Options, InferredAs>
+    options?: model.CustomTypeOptions<Options>
+  }) {
     super(options)
     this.typeName = typeName
     this.encoder = encoder

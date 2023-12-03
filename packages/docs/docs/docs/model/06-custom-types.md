@@ -239,7 +239,14 @@ export type PortOptions = { allowWellKnownPorts: boolean }
 export type PortType = model.CustomType<'port', PortOptions, number>
 
 export function port(options?: PortOptions & model.BaseOptions): PortType {
-  return model.custom('port', encodePort, decodePort, validatePort, portArbitrary, options)
+  return model.custom({
+    typeName: 'port',
+    encoder: encodePort,
+    decoder: decodePort,
+    validator: validatePort,
+    arbitrary: portArbitrary,
+    options,
+  })
 }
 ```
 

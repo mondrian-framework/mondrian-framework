@@ -318,15 +318,7 @@ const customTypeSchema = model.object({
   type: model.literal('custom'),
   typeName: model.string(),
   options: model.object(baseOptionsFields).optional(),
-  custom: model
-    .custom<'json', {}, JSONType>(
-      'json',
-      (v) => v,
-      (v) => (v === undefined ? result.ok(null) : result.ok(v as JSONType)),
-      () => validation.succeed(),
-      () => gen.constant({}),
-    )
-    .optional(),
+  custom: model.json().optional(),
 })
 const TypeSchema = model
   .union({

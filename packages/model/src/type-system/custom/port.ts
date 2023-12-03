@@ -7,17 +7,17 @@ const MAX_PORT_NUMBER = 65535
 export type PortType = model.CustomType<'port', {}, number>
 
 export function port(options?: model.BaseOptions): PortType {
-  return model.custom(
-    'port',
-    (number) => number,
-    (value) =>
+  return model.custom({
+    typeName: 'port',
+    encoder: (number) => number,
+    decoder: (value) =>
       typeof value === 'number' && Number.isInteger(value)
         ? decoding.succeed(value)
         : decoding.fail('Expected a TCP port number', value),
-    validatePort,
-    () => gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER }),
+    validator: validatePort,
+    arbitrary: () => gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER }),
     options,
-  )
+  })
 }
 
 function validatePort(value: number): validation.Result {

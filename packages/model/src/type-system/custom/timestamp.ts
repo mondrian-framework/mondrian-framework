@@ -17,7 +17,14 @@ export type TimestampOptions = { minimum?: Date; maximum?: Date }
  * @returns a {@link CustomType `CustomType`} representing a timestamp
  */
 export function timestamp(options?: model.OptionsOf<TimestampType>): TimestampType {
-  return model.custom('timestamp', encodeTimestamp, decodeTimestamp, validateTimestamp, timestampArbitrary, options)
+  return model.custom({
+    typeName: 'timestamp',
+    encoder: encodeTimestamp,
+    decoder: decodeTimestamp,
+    validator: validateTimestamp,
+    arbitrary: timestampArbitrary,
+    options,
+  })
 }
 
 function encodeTimestamp(timestamp: Date): JSONType {

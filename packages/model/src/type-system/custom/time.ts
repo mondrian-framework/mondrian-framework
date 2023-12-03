@@ -7,7 +7,14 @@ const TIME_REGEX =
 export type TimeType = model.CustomType<'time', {}, Date>
 
 export function time(options?: model.BaseOptions): TimeType {
-  return model.custom('time', encodeTime, decodeTime, validateTime, timeArbitrary, options)
+  return model.custom({
+    typeName: 'time',
+    encoder: encodeTime,
+    decoder: decodeTime,
+    validator: validateTime,
+    arbitrary: timeArbitrary,
+    options,
+  })
 }
 
 function encodeTime(value: Date) {

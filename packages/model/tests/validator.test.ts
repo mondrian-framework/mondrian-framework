@@ -41,20 +41,20 @@ const mockGenerator = () => {
   throw 'test'
 }
 
-const alwaysSuccess = model.custom(
-  'alwaysSuccess',
-  mockEncode,
-  (v) => decoding.succeed(v),
-  () => validation.succeed(),
-  mockGenerator,
-)
-const alwaysFail = model.custom(
-  'alwaysFail',
-  mockEncode,
-  (v) => decoding.succeed(v),
-  (value) => validation.fail('test', value),
-  mockGenerator,
-)
+const alwaysSuccess = model.custom({
+  typeName: 'alwaysSuccess',
+  encoder: mockEncode,
+  decoder: (v) => decoding.succeed(v),
+  validator: () => validation.succeed(),
+  arbitrary: mockGenerator,
+})
+const alwaysFail = model.custom({
+  typeName: 'alwaysFail',
+  encoder: mockEncode,
+  decoder: (v) => decoding.succeed(v),
+  validator: (value) => validation.fail('test', value),
+  arbitrary: mockGenerator,
+})
 
 describe.concurrent('validation.validate', () => {
   describe.concurrent('on number types', () => {
@@ -490,7 +490,13 @@ describe.concurrent('validation.validate', () => {
         },
       }
       const validationSpy = vi.spyOn(validationFunction, 'validate')
-      const Model = model.custom('custom', mockEncode, mockDecode, validationFunction.validate, mockGenerator)
+      const Model = model.custom({
+        typeName: 'custom',
+        encoder: mockEncode,
+        decoder: mockDecode,
+        validator: validationFunction.validate,
+        arbitrary: mockGenerator,
+      })
       assertOk(Model.validate(value, options))
       expect(validationSpy).toHaveBeenCalledTimes(1)
     })

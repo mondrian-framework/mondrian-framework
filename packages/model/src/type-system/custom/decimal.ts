@@ -22,10 +22,10 @@ export function decimal(options?: model.OptionsOf<DecimalType>): DecimalType {
     throw new Error('Invalid decimals, must be and integer between 0 and 100')
   }
   //TODO [Good first issue]: do costraint check like number type
-  return model.custom('decimal', encodeDecimal, decodeDecimal, validateDecimal, decimalArbitrary, options)
+  return model.custom({ typeName: 'decimal', encoder, decoder, validator, arbitrary, options })
 }
 
-function encodeDecimal(
+function encoder(
   value: BigNumber,
   _encodingOptions: Required<encoding.Options>,
   options?: model.OptionsOf<DecimalType>,
@@ -34,7 +34,7 @@ function encodeDecimal(
   return encoded.toString(options?.base ?? 10)
 }
 
-function decodeDecimal(
+function decoder(
   value: unknown,
   decodingOptions: Required<decoding.Options>,
   options?: model.OptionsOf<DecimalType>,
@@ -56,7 +56,7 @@ function decodeDecimal(
   return decoding.fail(`Number or string representing a number expected. (base ${options?.decimals ?? 10})`, value)
 }
 
-function validateDecimal(
+function validator(
   value: BigNumber,
   _validationOptions: Required<validation.Options>,
   options?: model.OptionsOf<DecimalType>,
@@ -79,7 +79,7 @@ function validateDecimal(
   return validation.succeed()
 }
 
-function decimalArbitrary(_maxDepth: number, options?: model.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {
+function arbitrary(_maxDepth: number, options?: model.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {
   //this is a dummy implementation
   return gen
     .tuple(

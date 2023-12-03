@@ -4,16 +4,16 @@ import gen from 'fast-check'
 export type TimezoneType = model.CustomType<'timezone', {}, string>
 
 export function timezone(options?: model.BaseOptions): TimezoneType {
-  return model.custom(
-    'timezone',
-    (value) => value,
-    (value) =>
+  return model.custom({
+    typeName: 'timezone',
+    encoder: (value) => value,
+    decoder: (value) =>
       typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a string timezone', value),
-    validateTimezone,
-    () =>
+    validator: validateTimezone,
+    arbitrary: () =>
       gen.constantFrom('Europe/Rome', 'europe/rome', 'europe/Rome', 'EUROPE/ROME', 'Africa/Cairo', 'America/Halifax'),
     options,
-  )
+  })
 }
 
 function validateTimezone(value: string): validation.Result {

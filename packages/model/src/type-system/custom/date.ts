@@ -11,19 +11,16 @@ export type DateTypeAdditionalOptions = {
 export type DateType = model.CustomType<'date', DateTypeAdditionalOptions, Date>
 
 export function date(options?: model.OptionsOf<DateType>): DateType {
-  return model.custom(
-    'date',
-    (value) => value.toISOString().split('T')[0],
-    decodeDate,
-    validateDate,
-    dateArbitrary,
-    options,
-  )
+  return model.custom({ typeName: 'date', encoder, decoder, validator, arbitrary, options })
 }
 
 const dayOfMonths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const
 
-function decodeDate(value: unknown): decoding.Result<Date> {
+function encoder(value: Date): string {
+  return value.toISOString().split('T')[0]
+}
+
+function decoder(value: unknown): decoding.Result<Date> {
   if (typeof value !== 'string' || !DATE_REGEX.test(value)) {
     return decoding.fail('Invalid date format (expected: yyyy-mm-dd)', value)
   }
@@ -37,7 +34,7 @@ function decodeDate(value: unknown): decoding.Result<Date> {
   return Number.isNaN(date.valueOf()) ? decoding.fail('Invalid date', value) : decoding.succeed(date)
 }
 
-function validateDate(
+function validator(
   value: Date,
   validationOptions: Required<validation.Options>,
   options?: model.OptionsOf<DateType>,
@@ -45,7 +42,7 @@ function validateDate(
   return model.datetime(options).validate(value, validationOptions)
 }
 
-function dateArbitrary(_maxDepth: number, options?: model.OptionsOf<DateType>): gen.Arbitrary<Date> {
+function arbitrary(_maxDepth: number, options?: model.OptionsOf<DateType>): gen.Arbitrary<Date> {
   return gen
     .date({ min: options?.minimum, max: options?.maximum })
     .map((d) => new Date(Date.parse(d.toISOString().split('T')[0])))

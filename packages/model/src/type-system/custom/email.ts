@@ -3,21 +3,26 @@ import gen from 'fast-check'
 
 export type EmailType = model.CustomType<'email', {}, string>
 
-export function email(options?: model.BaseOptions): EmailType {
-  return model.custom(
-    'email',
-    (value) => value,
-    (value) => (typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a mail string', value)),
-    validateEmail,
-    () => gen.emailAddress(),
-    options,
-  )
-}
-
 const EMAIL_REGEX =
   /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/
 
-function validateEmail(value: string): validation.Result {
+export function email(options?: model.BaseOptions): EmailType {
+  return model.custom({ typeName: 'email', encoder, decoder, validator, arbitrary, options })
+}
+
+function encoder(value: string): string {
+  return value
+}
+
+function decoder(value: unknown): decoding.Result<string> {
+  if (typeof value === 'string') {
+    return decoding.succeed(value)
+  } else {
+    return decoding.fail('Expected a mail string', value)
+  }
+}
+
+function validator(value: string): validation.Result {
   //thanks to https://github.com/manishsaraan/email-validator
   const emailParts = value.split('@')
   if (emailParts.length !== 2) {
@@ -35,4 +40,8 @@ function validateEmail(value: string): validation.Result {
     return validation.fail('Invalid email', value)
   }
   return validation.succeed()
+}
+
+function arbitrary(): gen.Arbitrary<string> {
+  return gen.emailAddress()
 }

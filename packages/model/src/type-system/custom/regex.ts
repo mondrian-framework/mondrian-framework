@@ -25,7 +25,7 @@ function encode(string: string): string {
 
 function decode<Name extends string, Options extends Record<string, any>>(
   value: unknown,
-  _decodingOptions?: decoding.Options,
+  _decodingOptions: Required<decoding.Options>,
   _options?: model.OptionsOf<model.CustomType<Name, Options, string>>,
 ): decoding.Result<string> {
   return typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a string value', value)

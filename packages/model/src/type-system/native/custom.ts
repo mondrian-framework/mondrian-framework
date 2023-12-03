@@ -10,13 +10,13 @@ type CustomEncoder<Options extends Record<string, any>, InferredAs> = (
 
 type CustomDecoder<Options extends Record<string, any>, InferredAs> = (
   value: unknown,
-  decodingOptions: decoding.Options,
+  decodingOptions: Required<decoding.Options>,
   options?: model.CustomTypeOptions<Options>,
 ) => decoding.Result<InferredAs>
 
 type CustomValidator<Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
-  validationOptions?: validation.Options,
+  validationOptions: Required<validation.Options>,
   options?: model.CustomTypeOptions<Options>,
 ) => validation.Result
 
@@ -95,9 +95,9 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     return this.encoder(value, this.options)
   }
 
-  validate(
+  validateInternal(
     value: model.Infer<model.CustomType<Name, Options, InferredAs>>,
-    options?: validation.Options,
+    options: Required<validation.Options>,
   ): validation.Result {
     return this.validator(value, options, this.options)
   }

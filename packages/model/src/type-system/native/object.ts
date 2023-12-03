@@ -83,8 +83,10 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     })
   }
 
-  validate(value: model.Infer<model.ObjectType<M, Ts>>, validationOptions?: validation.Options): validation.Result {
-    const options = { ...validation.defaultOptions, ...validationOptions }
+  validateInternal(
+    value: model.Infer<model.ObjectType<M, Ts>>,
+    options: Required<validation.Options>,
+  ): validation.Result {
     const entries = Object.entries(value)
     const errors: validation.Error[] = []
     for (const [fieldName, fieldValue] of entries) {

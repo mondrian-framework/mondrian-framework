@@ -43,10 +43,10 @@ class OptionalTypeImpl<T extends model.Type>
       : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
-  validate(value: undefined | model.Infer<T>, validationOptions?: validation.Options): validation.Result {
+  validateInternal(value: undefined | model.Infer<T>, options: Required<validation.Options>): validation.Result {
     return value === undefined
       ? validation.succeed()
-      : model.concretise(this.wrappedType).validate(value as never, validationOptions)
+      : model.concretise(this.wrappedType).validate(value as never, options)
   }
 
   decodeWithoutValidationInternal(

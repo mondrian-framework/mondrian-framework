@@ -48,7 +48,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
     return value
   }
 
-  validate(_value: model.Infer<model.EnumType<Vs>>, _validationOptions?: validation.Options): validation.Result {
+  validateInternal(_value: model.Infer<model.EnumType<Vs>>): validation.Result {
     return validation.succeed()
   }
 

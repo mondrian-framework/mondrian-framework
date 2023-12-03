@@ -47,7 +47,7 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
     return value
   }
 
-  validate(_value: L, _validationOptions?: validation.Options): validation.Result {
+  validateInternal(_value: L): validation.Result {
     return validation.succeed()
   }
 

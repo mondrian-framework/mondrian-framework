@@ -17,7 +17,7 @@ export abstract class DefaultMethods<T extends model.Type> {
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<T>>
-  abstract validate(value: model.Infer<T>, validationOptions?: validation.Options): validation.Result
+  abstract validateInternal(value: model.Infer<T>, options: Required<validation.Options>): validation.Result
   abstract arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<T>>
 
   encodeWithoutValidation(value: model.Infer<T>, options?: encoding.Options): JSONType {
@@ -32,6 +32,11 @@ export abstract class DefaultMethods<T extends model.Type> {
   decodeWithoutValidation(value: unknown, options?: decoding.Options): decoding.Result<model.Infer<T>> {
     const decodingOptions = { ...decoding.defaultOptions, ...options }
     return this.decodeWithoutValidationInternal(value, decodingOptions)
+  }
+
+  validate(value: model.Infer<T>, options?: validation.Options): validation.Result {
+    const validateOptions = { ...validation.defaultOptions, ...options }
+    return this.validateInternal(value, validateOptions)
   }
 
   encode(

@@ -26,7 +26,7 @@ function decodeTime(value: unknown): decoding.Result<Date> {
 
 function validateTime(
   value: Date,
-  validationOptions?: validation.Options,
+  validationOptions: Required<validation.Options>,
   options?: model.BaseOptions,
 ): validation.Result {
   return model.datetime(options).validate(value, validationOptions)

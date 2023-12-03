@@ -32,7 +32,7 @@ function encodeDecimal(value: BigNumber, options?: model.OptionsOf<DecimalType>)
 
 function decodeDecimal(
   value: unknown,
-  decodingOptions?: decoding.Options,
+  decodingOptions: Required<decoding.Options>,
   options?: model.OptionsOf<DecimalType>,
 ): decoding.Result<BigNumber> {
   if (typeof value === 'string' || typeof value === 'number') {
@@ -41,7 +41,7 @@ function decodeDecimal(
     if (number.isNaN()) {
       return decoding.fail(`Invalid decimal. (base ${options?.decimals ?? 10})`, value)
     }
-    if (decodingOptions?.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
+    if (decodingOptions.typeCastingStrategy === 'expectExactTypes' && !number.eq(decoded)) {
       return decoding.fail(
         `Invalid decimal places (need exactly ${options?.decimals}). (base ${options?.decimals ?? 10})`,
         value,
@@ -54,7 +54,7 @@ function decodeDecimal(
 
 function validateDecimal(
   value: BigNumber,
-  _validationOptions?: validation.Options,
+  _validationOptions: Required<validation.Options>,
   options?: model.OptionsOf<DecimalType>,
 ): validation.Result {
   if (options?.maximum != null && value.gt(options.maximum)) {

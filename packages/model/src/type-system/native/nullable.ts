@@ -41,10 +41,8 @@ class NullableTypeImpl<T extends model.Type>
     return value === null ? null : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
-  validate(value: null | model.Infer<T>, validationOptions?: validation.Options | undefined): validation.Result {
-    return value === null
-      ? validation.succeed()
-      : model.concretise(this.wrappedType).validate(value as never, validationOptions)
+  validateInternal(value: null | model.Infer<T>, options: Required<validation.Options>): validation.Result {
+    return value === null ? validation.succeed() : model.concretise(this.wrappedType).validate(value as never, options)
   }
 
   decodeWithoutValidationInternal(

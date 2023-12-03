@@ -65,9 +65,11 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     return value.map((item) => concreteItemType.encodeWithoutValidation(item as never, options))
   }
 
-  validate(value: model.Infer<model.ArrayType<M, T>>, validationOptions?: validation.Options): validation.Result {
+  validateInternal(
+    value: model.Infer<model.ArrayType<M, T>>,
+    options: Required<validation.Options>,
+  ): validation.Result {
     const { maxItems, minItems } = this.options ?? {}
-    const { errorReportingStrategy } = { ...validation.defaultOptions, ...validationOptions }
     const errors: validation.Error[] = []
     if (this.options?.maxItems != null && value.length > this.options.maxItems) {
       const error: validation.Error = {
@@ -75,7 +77,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
         got: value.length,
         path: path.ofField('length'),
       }
-      if (errorReportingStrategy === 'stopAtFirstError') {
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
         return validation.failWithErrors([error])
       } else {
         errors.push(error)
@@ -87,13 +89,13 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
         got: value.length,
         path: path.ofField('length'),
       }
-      if (errorReportingStrategy === 'stopAtFirstError') {
+      if (options.errorReportingStrategy === 'stopAtFirstError') {
         return validation.failWithErrors([error])
       } else {
         errors.push(error)
       }
     }
-    const result = this.validateArrayElements(value, { errorReportingStrategy })
+    const result = this.validateArrayElements(value, options)
     if (errors.length > 0) {
       const additionalErrors = result.match(
         () => [],
@@ -107,15 +109,15 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
 
   private validateArrayElements(
     array: model.Infer<model.ArrayType<any, T>>,
-    validationOptions: validation.Options,
+    options: Required<validation.Options>,
   ): validation.Result {
     const concreteType = model.concretise(this.wrappedType)
     const errors: validation.Error[] = []
     for (let i = 0; i < array.length; i++) {
-      if (errors.length > 0 && validationOptions.errorReportingStrategy === 'stopAtFirstError') {
+      if (errors.length > 0 && options.errorReportingStrategy === 'stopAtFirstError') {
         break
       }
-      const result = concreteType.validate(array[i] as never, validationOptions)
+      const result = concreteType.validate(array[i] as never, options)
       if (result.isFailure) {
         errors.push(...path.prependIndexToAll(result.error, i))
       }

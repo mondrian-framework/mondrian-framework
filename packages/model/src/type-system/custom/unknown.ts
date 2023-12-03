@@ -31,19 +31,11 @@ function encodeUnknown(value: unknown): JSONType {
   return JSON.parse(JSON.stringify(value))
 }
 
-function decodeUnknown(
-  value: unknown,
-  _decodingOptions?: decoding.Options,
-  _options?: model.OptionsOf<UnknownType>,
-): decoding.Result<unknown> {
+function decodeUnknown(value: unknown): decoding.Result<unknown> {
   return decoding.succeed(value)
 }
 
-function validateUnknown(
-  _value: unknown,
-  _validationOptions?: validation.Options,
-  _options?: model.OptionsOf<UnknownType>,
-): validation.Result {
+function validateUnknown(_value: unknown): validation.Result {
   return validation.succeed()
 }
 

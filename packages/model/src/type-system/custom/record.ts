@@ -36,7 +36,7 @@ function encodeRecord<T extends model.Type>(fieldsType: T, value: Record<string,
 function decodeRecord<T extends model.Type>(
   fieldsType: T,
   value: unknown,
-  decodingOptions?: decoding.Options,
+  decodingOptions: Required<decoding.Options>,
 ): decoding.Result<Record<string, model.Infer<T>>> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return decoding.fail('object', value)
@@ -49,7 +49,7 @@ function decodeRecord<T extends model.Type>(
     if (result.isOk) {
       entries.push([key, result.value])
     } else {
-      if (decodingOptions?.errorReportingStrategy === 'allErrors') {
+      if (decodingOptions.errorReportingStrategy === 'allErrors') {
         errors.push(...path.prependFieldToAll(result.error, key))
       } else {
         return result.mapError((error) => path.prependFieldToAll(error, key))
@@ -66,14 +66,14 @@ function decodeRecord<T extends model.Type>(
 function validateRecord<T extends model.Type>(
   fieldsType: T,
   value: Record<string, model.Infer<T>>,
-  validationOptions?: validation.Options,
+  validationOptions: Required<validation.Options>,
 ): validation.Result {
   const concreteFieldsType = model.concretise(fieldsType)
   const errors: validation.Error[] = []
   for (const [key, v] of Object.entries(value)) {
     const result = concreteFieldsType.validate(v as never, validationOptions)
     if (result.isFailure) {
-      if (validationOptions?.errorReportingStrategy === 'allErrors') {
+      if (validationOptions.errorReportingStrategy === 'allErrors') {
         errors.push(...path.prependFieldToAll(result.error, key))
       } else {
         return result.mapError((error) => path.prependFieldToAll(error, key))

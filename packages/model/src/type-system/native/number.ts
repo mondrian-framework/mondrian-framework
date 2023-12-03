@@ -110,8 +110,8 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     return value
   }
 
-  validate(value: model.Infer<model.NumberType>, validationOptions?: validation.Options): validation.Result {
-    return this.validator.apply(value, validationOptions)
+  validateInternal(value: model.Infer<model.NumberType>, options: Required<validation.Options>): validation.Result {
+    return this.validator.apply(value, options)
   }
 
   decodeWithoutValidationInternal(

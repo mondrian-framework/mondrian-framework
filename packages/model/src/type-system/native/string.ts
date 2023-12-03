@@ -62,8 +62,8 @@ class StringTypeImpl extends DefaultMethods<model.StringType> implements model.S
     return value
   }
 
-  validate(value: model.Infer<model.StringType>, validationOptions?: validation.Options): validation.Result {
-    return this.validator.apply(value, validationOptions)
+  validateInternal(value: model.Infer<model.StringType>, options: Required<validation.Options>): validation.Result {
+    return this.validator.apply(value, options)
   }
 
   decodeWithoutValidationInternal(

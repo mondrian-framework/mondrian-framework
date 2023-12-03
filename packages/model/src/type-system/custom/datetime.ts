@@ -25,17 +25,17 @@ function encodeDateTime(date: Date): string {
 
 function decodeDateTime(
   value: unknown,
-  decodingOptions?: decoding.Options,
+  decodingOptions: Required<decoding.Options>,
   _options?: model.OptionsOf<DateTimeType>,
 ): decoding.Result<Date> {
   if (value instanceof Date) {
     return decoding.succeed(value)
-  } else if (typeof value === 'string' && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
+  } else if (typeof value === 'string' && decodingOptions.typeCastingStrategy === 'expectExactTypes') {
     const date = new Date(value)
     return Number.isNaN(date.valueOf()) ? decoding.fail('ISO date', value) : decoding.succeed(date)
   } else if (
     (typeof value === 'number' || typeof value === 'string') &&
-    decodingOptions?.typeCastingStrategy === 'tryCasting'
+    decodingOptions.typeCastingStrategy === 'tryCasting'
   ) {
     return tryMakeDate(value)
   }
@@ -55,7 +55,7 @@ function tryMakeDate(value: number | string): decoding.Result<Date> {
 
 function validateDateTime(
   date: Date,
-  _validationOptions?: validation.Options,
+  _validationOptions: Required<validation.Options>,
   options?: model.OptionsOf<DateTimeType>,
 ): validation.Result {
   if (options === undefined) {

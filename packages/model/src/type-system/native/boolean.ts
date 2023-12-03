@@ -37,7 +37,7 @@ class BooleanTypeImpl extends DefaultMethods<model.BooleanType> implements model
     return value
   }
 
-  validate(_value: model.Infer<model.BooleanType>, _validationOptions?: validation.Options): validation.Result {
+  validateInternal(_value: model.Infer<model.BooleanType>): validation.Result {
     return validation.succeed()
   }
 

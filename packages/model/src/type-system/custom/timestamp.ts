@@ -26,13 +26,13 @@ function encodeTimestamp(timestamp: Date): JSONType {
 
 function decodeTimestamp(
   value: unknown,
-  decodingOptions?: decoding.Options,
+  decodingOptions: Required<decoding.Options>,
   options?: model.OptionsOf<TimestampType>,
 ): decoding.Result<Date> {
   if (value instanceof Date) {
     return decoding.succeed(value)
   }
-  if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
+  if (decodingOptions.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
     return decodeTimestamp(Number(value), decodingOptions, options).lazyOr(() =>
       decodeTimestamp(new Date(value).getTime(), decodingOptions, options),
     )
@@ -44,7 +44,7 @@ function decodeTimestamp(
 
 function validateTimestamp(
   input: Date,
-  _validationOptions?: validation.Options,
+  _validationOptions: Required<validation.Options>,
   options?: model.OptionsOf<TimestampType>,
 ): validation.Result {
   if (options === undefined) {

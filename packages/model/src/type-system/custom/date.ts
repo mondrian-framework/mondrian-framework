@@ -39,7 +39,7 @@ function decodeDate(value: unknown): decoding.Result<Date> {
 
 function validateDate(
   value: Date,
-  validationOptions?: validation.Options,
+  validationOptions: Required<validation.Options>,
   options?: model.OptionsOf<DateType>,
 ): validation.Result {
   return model.datetime(options).validate(value, validationOptions)

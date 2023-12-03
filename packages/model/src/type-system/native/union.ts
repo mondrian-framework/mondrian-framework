@@ -60,8 +60,8 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
     }
   }
 
-  validate(value: model.Infer<model.UnionType<Ts>>, validationOptions?: validation.Options): validation.Result {
-    const decoded = this.decodeAndTryToValidate(value, undefined, validationOptions)
+  validateInternal(value: model.Infer<model.UnionType<Ts>>, options: Required<validation.Options>): validation.Result {
+    const decoded = this.decodeAndTryToValidate(value, undefined, options)
     if (decoded.isFailure) {
       failWithInternalError(
         'Type system should have prevented this error in validation. This values does not match with any variant of this union.',

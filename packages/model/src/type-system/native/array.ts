@@ -1,4 +1,4 @@
-import { decoding, path, model, validation } from '../..'
+import { decoding, path, model, validation, encoding } from '../..'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -57,9 +57,9 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     this.mutability = mutability
   }
 
-  encodeWithNoChecks(value: model.Infer<model.ArrayType<M, T>>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.ArrayType<M, T>>, options: Required<encoding.Options>): JSONType {
     const concreteItemType = model.concretise(this.wrappedType)
-    return value.map((item) => concreteItemType.encodeWithoutValidation(item as never))
+    return value.map((item) => concreteItemType.encodeWithoutValidation(item as never, options))
   }
 
   validate(value: model.Infer<model.ArrayType<M, T>>, validationOptions?: validation.Options): validation.Result {

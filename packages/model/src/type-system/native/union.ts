@@ -1,4 +1,4 @@
-import { decoding, model, validation } from '../..'
+import { decoding, encoding, model, validation } from '../..'
 import { DefaultMethods } from './base'
 import { JSONType, failWithInternalError } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -43,7 +43,7 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
     this.variants = variants
   }
 
-  encodeWithNoChecks(value: model.Infer<model.UnionType<Ts>>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.UnionType<Ts>>, options: Required<encoding.Options>): JSONType {
     const variantName = this.variantOwnership(value)
     const variantType = this.variants[variantName]
     if (variantType === undefined) {
@@ -52,7 +52,7 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
       )
     } else {
       const concreteVariantType = model.concretise(variantType)
-      const encoded = concreteVariantType.encodeWithoutValidation(value as never)
+      const encoded = concreteVariantType.encodeWithoutValidation(value as never, options)
       return encoded
     }
   }

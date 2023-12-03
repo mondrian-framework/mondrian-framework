@@ -1,4 +1,4 @@
-import { decoding, path, model, validation } from '../..'
+import { decoding, path, model, validation, encoding } from '../..'
 import { assertSafeObjectFields } from '../../utils'
 import { DefaultMethods } from './base'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
@@ -68,7 +68,7 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
     this.fields = fields
   }
 
-  encodeWithNoChecks(value: model.Infer<model.EntityType<M, Ts>>): JSONType {
+  encodeWithNoChecks(value: model.Infer<model.EntityType<M, Ts>>, options: Required<encoding.Options>): JSONType {
     const entity = value as Record<string, model.Type>
     return filterMapObject(this.fields, (fieldName, fieldType) => {
       const concreteFieldType = model.concretise(fieldType)
@@ -76,7 +76,7 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
       const rawField = entity[fieldName]
       return fieldIsOptional && rawField === undefined
         ? undefined
-        : concreteFieldType.encodeWithoutValidation(rawField as never)
+        : concreteFieldType.encodeWithoutValidation(rawField as never, options)
     })
   }
 

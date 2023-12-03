@@ -15,7 +15,7 @@ export type Options = {
 /**
  * The default recommended options to be used in the validation process.
  */
-export const defaultOptions: Options = {
+export const defaultOptions: Required<Options> = {
   errorReportingStrategy: 'stopAtFirstError',
 }
 

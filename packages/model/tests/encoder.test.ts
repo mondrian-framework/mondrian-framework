@@ -202,4 +202,8 @@ test('encoding value with circular dependency', () => {
   // should the encoded result be something like this?
   // { "value": 1, "friend": { "value": 2, "friend": { _ref: "$.friend" } } }
   // if so, also the decoding process must implement this process
+
+  // this feature is out of scope, will not be implemented
+  // reason 1: for example a value like the above one would not be correct to
+  //   the respectively openapi and graphql generted schema
 })

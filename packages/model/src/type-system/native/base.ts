@@ -12,15 +12,18 @@ export abstract class DefaultMethods<T extends model.Type> {
 
   abstract getThis(): T
   abstract fromOptions(options?: model.OptionsOf<T>): T
-  abstract encodeWithNoChecks(value: model.Infer<T>, encodingOptions?: encoding.Options): JSONType
+  abstract encodeWithNoChecks(value: model.Infer<T>, options: Required<encoding.Options>): JSONType
   abstract decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<model.Infer<T>>
   abstract validate(value: model.Infer<T>, validationOptions?: validation.Options): validation.Result
   abstract arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<T>>
 
-  encodeWithoutValidation(value: model.Infer<T>, encodingOptions?: encoding.Options): JSONType {
-    return encodingOptions?.sensitiveInformationStrategy === 'hide' && this.options?.sensitive === true
-      ? null
-      : this.encodeWithNoChecks(value, encodingOptions)
+  encodeWithoutValidation(value: model.Infer<T>, options?: encoding.Options): JSONType {
+    const encodingOptions = { ...encoding.defaultOptions, ...options }
+    if (encodingOptions.sensitiveInformationStrategy === 'hide' && this.options?.sensitive === true) {
+      return null
+    } else {
+      return this.encodeWithNoChecks(value, encodingOptions)
+    }
   }
 
   encode(

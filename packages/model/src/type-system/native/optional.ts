@@ -1,4 +1,4 @@
-import { decoding, model, validation } from '../..'
+import { decoding, encoding, model, validation } from '../..'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -37,8 +37,10 @@ class OptionalTypeImpl<T extends model.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithNoChecks(value: undefined | model.Infer<T>): JSONType {
-    return value === undefined ? null : model.concretise(this.wrappedType).encodeWithoutValidation(value as never)
+  encodeWithNoChecks(value: undefined | model.Infer<T>, options: Required<encoding.Options>): JSONType {
+    return value === undefined
+      ? null
+      : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
   validate(value: undefined | model.Infer<T>, validationOptions?: validation.Options): validation.Result {
@@ -62,7 +64,8 @@ class OptionalTypeImpl<T extends model.Type>
                 error.expected !== 'undefined' ? decoding.addExpected('undefined')(error) : error,
               ),
             )
-    if (resWithoutCast.isFailure && value === null) { //TODO: only when casting?
+    if (resWithoutCast.isFailure && value === null) {
+      //TODO: only when casting?
       return decoding.succeed(undefined)
     } else {
       return resWithoutCast

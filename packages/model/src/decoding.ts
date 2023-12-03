@@ -13,15 +13,15 @@ import { result, path } from './index'
  *   - `"allowAdditionalFields"`:  when decoding objects or entities it will ignore additional fields if present
  */
 export type Options = {
-  typeCastingStrategy?: 'tryCasting' | 'expectExactTypes'
-  errorReportingStrategy?: 'allErrors' | 'stopAtFirstError'
-  fieldStrictness?: 'allowAdditionalFields' | 'expectExactFields'
+  readonly typeCastingStrategy?: 'tryCasting' | 'expectExactTypes'
+  readonly errorReportingStrategy?: 'allErrors' | 'stopAtFirstError'
+  readonly fieldStrictness?: 'allowAdditionalFields' | 'expectExactFields'
 }
 
 /**
  * The default recommended options to be used in the decoding process.
  */
-export const defaultOptions: Options = {
+export const defaultOptions: Required<Options> = {
   typeCastingStrategy: 'expectExactTypes',
   errorReportingStrategy: 'stopAtFirstError',
   fieldStrictness: 'expectExactFields',

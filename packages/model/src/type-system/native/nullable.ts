@@ -1,4 +1,4 @@
-import { decoding, model, validation } from '../..'
+import { decoding, encoding, model, validation } from '../..'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -37,8 +37,8 @@ class NullableTypeImpl<T extends model.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithNoChecks(value: null | model.Infer<T>): JSONType {
-    return value === null ? null : model.concretise(this.wrappedType).encodeWithoutValidation(value as never)
+  encodeWithNoChecks(value: null | model.Infer<T>, options: Required<encoding.Options>): JSONType {
+    return value === null ? null : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
   validate(value: null | model.Infer<T>, validationOptions?: validation.Options | undefined): validation.Result {

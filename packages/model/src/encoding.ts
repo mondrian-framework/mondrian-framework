@@ -5,9 +5,9 @@
  *   - `"keep"`: will encode any sensitive type leaving it unchanged
  */
 export type Options = {
-  sensitiveInformationStrategy?: 'hide' | 'keep'
+  readonly sensitiveInformationStrategy?: 'hide' | 'keep'
 }
 
-export const defaultOptions = {
+export const defaultOptions: Required<Options> = {
   sensitiveInformationStrategy: 'keep',
-} as const
+}

@@ -37,7 +37,7 @@ class NullableTypeImpl<T extends model.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithNoChecks(value: null | model.Infer<T>, options: Required<encoding.Options>): JSONType {
+  encodeWithoutValidationInternal(value: null | model.Infer<T>, options: Required<encoding.Options>): JSONType {
     return value === null ? null : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
@@ -47,15 +47,18 @@ class NullableTypeImpl<T extends model.Type>
       : model.concretise(this.wrappedType).validate(value as never, validationOptions)
   }
 
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<null | model.Infer<T>> {
+  decodeWithoutValidationInternal(
+    value: unknown,
+    options: Required<decoding.Options>,
+  ): decoding.Result<null | model.Infer<T>> {
     const resWithoutCast =
       value === null
         ? decoding.succeed(null)
         : model
             .concretise(this.wrappedType)
-            .decodeWithoutValidation(value, decodingOptions)
+            .decodeWithoutValidation(value, options)
             .mapError((errors) => errors.map(decoding.addExpected('null')))
-    if (resWithoutCast.isFailure && value === undefined && decodingOptions?.typeCastingStrategy === 'tryCasting') {
+    if (resWithoutCast.isFailure && value === undefined && options.typeCastingStrategy === 'tryCasting') {
       return decoding.succeed(null)
     } else {
       return resWithoutCast

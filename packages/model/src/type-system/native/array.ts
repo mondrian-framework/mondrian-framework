@@ -57,7 +57,10 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     this.mutability = mutability
   }
 
-  encodeWithNoChecks(value: model.Infer<model.ArrayType<M, T>>, options: Required<encoding.Options>): JSONType {
+  encodeWithoutValidationInternal(
+    value: model.Infer<model.ArrayType<M, T>>,
+    options: Required<encoding.Options>,
+  ): JSONType {
     const concreteItemType = model.concretise(this.wrappedType)
     return value.map((item) => concreteItemType.encodeWithoutValidation(item as never, options))
   }
@@ -124,14 +127,14 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     }
   }
 
-  decodeWithoutValidation(
+  decodeWithoutValidationInternal(
     value: unknown,
-    decodingOptions?: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {
     if (value instanceof Array) {
-      return this.decodeArrayValues(value, { ...decoding.defaultOptions, ...decodingOptions })
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
-      return this.decodeObjectAsArray(value, decodingOptions)
+      return this.decodeArrayValues(value, options)
+    } else if (options.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
+      return this.decodeObjectAsArray(value, options)
     } else {
       return decoding.fail('array', value)
     }
@@ -139,16 +142,16 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
 
   private decodeArrayValues<T extends model.Type>(
     array: unknown[],
-    decodingOptions: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {
     const concreteType = model.concretise(this.wrappedType)
     const results: any[] = []
     const errors: decoding.Error[] = []
     for (let i = 0; i < array.length; i++) {
-      if (errors.length > 0 && decodingOptions.errorReportingStrategy === 'stopAtFirstError') {
+      if (errors.length > 0 && options.errorReportingStrategy === 'stopAtFirstError') {
         break
       }
-      const result = concreteType.decodeWithoutValidation(array[i] as never, decodingOptions)
+      const result = concreteType.decodeWithoutValidation(array[i] as never, options)
       if (result.isOk) {
         results.push(result.value)
       } else {
@@ -164,9 +167,9 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
 
   private decodeObjectAsArray(
     object: Object,
-    decodingOptions: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {
-    return objectToArray(object).chain((object) => this.decodeArrayValues(Object.values(object), decodingOptions))
+    return objectToArray(object).chain((object) => this.decodeArrayValues(Object.values(object), options))
   }
 
   arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.ArrayType<M, T>>> {

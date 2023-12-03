@@ -68,7 +68,10 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
     this.fields = fields
   }
 
-  encodeWithNoChecks(value: model.Infer<model.EntityType<M, Ts>>, options: Required<encoding.Options>): JSONType {
+  encodeWithoutValidationInternal(
+    value: model.Infer<model.EntityType<M, Ts>>,
+    options: Required<encoding.Options>,
+  ): JSONType {
     const entity = value as Record<string, model.Type>
     return filterMapObject(this.fields, (fieldName, fieldType) => {
       const concreteFieldType = model.concretise(fieldType)
@@ -101,13 +104,11 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
     }
   }
 
-  decodeWithoutValidation(
+  decodeWithoutValidationInternal(
     value: unknown,
-    decodingOptions?: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.EntityType<M, Ts>>> {
-    return castToEntity(value, decodingOptions).chain((entity) =>
-      decodeEntityProperties(this.fields, entity, decodingOptions),
-    )
+    return castToEntity(value, options).chain((entity) => decodeEntityProperties(this.fields, entity, options))
   }
 
   arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.ObjectType<M, Ts>>> {
@@ -121,40 +122,40 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
   }
 }
 
-function castToEntity(value: unknown, decodingOptions?: decoding.Options): decoding.Result<Record<string, unknown>> {
-  if (typeof value === 'object') {
-    if (value === null && decodingOptions?.typeCastingStrategy !== 'tryCasting') {
-      return decoding.fail('entity', null)
-    }
-    return decoding.succeed((value ?? {}) as Record<string, unknown>)
-  } else {
+function castToEntity(value: unknown, options: Required<decoding.Options>): decoding.Result<Record<string, unknown>> {
+  if (typeof value !== 'object') {
     return decoding.fail('entity', value)
+  }
+  if (value === null && options.typeCastingStrategy === 'expectExactTypes') {
+    return decoding.fail('entity', null)
+  } else {
+    return decoding.succeed((value ?? {}) as Record<string, unknown>)
   }
 }
 
 function decodeEntityProperties(
   fields: model.Types,
   entity: Record<string, unknown>,
-  decodingOptions?: decoding.Options,
+  options: Required<decoding.Options>,
 ): decoding.Result<any> {
   const keySet = new Set([...Object.keys(fields), ...Object.keys(entity)])
   const errors: decoding.Error[] = []
   const result: Record<string, unknown> = {}
   for (const key of keySet) {
-    if (errors.length > 0 && decodingOptions?.errorReportingStrategy !== 'allErrors') {
+    if (errors.length > 0 && options.errorReportingStrategy === 'stopAtFirstError') {
       break
     }
     const type = fields[key]
     const value = entity[key]
     if (type === undefined && value === undefined) {
       continue
-    } else if (!type && decodingOptions?.fieldStrictness === 'expectExactFields') {
+    } else if (!type && options.fieldStrictness === 'expectExactFields') {
       errors.push({ expected: 'undefined', got: value, path: path.ofField(key) })
       continue
     } else if (!type) {
       continue
     }
-    const decodedValue = model.concretise(type).decodeWithoutValidation(value, decodingOptions)
+    const decodedValue = model.concretise(type).decodeWithoutValidation(value, options)
     if (decodedValue.isOk) {
       if (decodedValue.value !== undefined) {
         result[key] = decodedValue.value

@@ -703,10 +703,11 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
   })
 
   describe.concurrent('custom type', () => {
-    const options = {
+    const options: Required<decoding.Options> = {
       typeCastingStrategy: 'tryCasting',
       errorReportingStrategy: 'allErrors',
-    } as const
+      fieldStrictness: 'allowAdditionalFields',
+    }
     test.prop([gen.anything()])('calls the provided decoder', (value) => {
       // spy function: https://vitest.dev/api/expect.html#tohavebeencalled
       const decoderFunction = {

@@ -37,7 +37,7 @@ class OptionalTypeImpl<T extends model.Type>
     this.wrappedType = wrappedType
   }
 
-  encodeWithNoChecks(value: undefined | model.Infer<T>, options: Required<encoding.Options>): JSONType {
+  encodeWithoutValidationInternal(value: undefined | model.Infer<T>, options: Required<encoding.Options>): JSONType {
     return value === undefined
       ? null
       : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
@@ -49,16 +49,16 @@ class OptionalTypeImpl<T extends model.Type>
       : model.concretise(this.wrappedType).validate(value as never, validationOptions)
   }
 
-  decodeWithoutValidation(
+  decodeWithoutValidationInternal(
     value: unknown,
-    decodingOptions?: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<undefined | model.Infer<T>> {
     const resWithoutCast =
       value === undefined
         ? decoding.succeed(undefined)
         : model
             .concretise(this.wrappedType)
-            .decodeWithoutValidation(value, decodingOptions)
+            .decodeWithoutValidation(value, options)
             .mapError((errors) =>
               errors.map((error) =>
                 error.expected !== 'undefined' ? decoding.addExpected('undefined')(error) : error,

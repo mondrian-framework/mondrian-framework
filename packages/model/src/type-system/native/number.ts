@@ -106,7 +106,7 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     )
   }
 
-  encodeWithNoChecks(value: model.Infer<model.NumberType>): JSONType {
+  encodeWithoutValidationInternal(value: model.Infer<model.NumberType>): JSONType {
     return value
   }
 
@@ -114,13 +114,13 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     return this.validator.apply(value, validationOptions)
   }
 
-  decodeWithoutValidation(
+  decodeWithoutValidationInternal(
     value: unknown,
-    decodingOptions?: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.NumberType>> {
     if (typeof value === 'number') {
       return decoding.succeed(value)
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
+    } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
       return numberFromString(value)
     } else {
       return decoding.fail('number', value)

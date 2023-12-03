@@ -10,7 +10,7 @@ type CustomEncoder<Options extends Record<string, any>, InferredAs> = (
 
 type CustomDecoder<Options extends Record<string, any>, InferredAs> = (
   value: unknown,
-  decodingOptions?: decoding.Options,
+  decodingOptions: decoding.Options,
   options?: model.CustomTypeOptions<Options>,
 ) => decoding.Result<InferredAs>
 
@@ -73,7 +73,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
 
   getThis = () => this
   fromOptions = (options: model.CustomTypeOptions<Options>) =>
-    custom(this.typeName, this.encodeWithNoChecks, this.decoder, this.validator, this.arbitrary, options)
+    custom(this.typeName, this.encodeWithoutValidationInternal, this.decoder, this.validator, this.arbitrary, options)
 
   constructor(
     typeName: Name,
@@ -91,7 +91,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     this.arbitraryFromOptions = arbitrary
   }
 
-  encodeWithNoChecks(value: model.Infer<model.CustomType<Name, Options, InferredAs>>): JSONType {
+  encodeWithoutValidationInternal(value: model.Infer<model.CustomType<Name, Options, InferredAs>>): JSONType {
     return this.encoder(value, this.options)
   }
 
@@ -102,8 +102,8 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     return this.validator(value, options, this.options)
   }
 
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options | undefined): decoding.Result<InferredAs> {
-    return this.decoder(value, decodingOptions, this.options)
+  decodeWithoutValidationInternal(value: unknown, options: Required<decoding.Options>): decoding.Result<InferredAs> {
+    return this.decoder(value, options, this.options)
   }
 
   arbitrary(maxDepth: number): gen.Arbitrary<InferredAs> {

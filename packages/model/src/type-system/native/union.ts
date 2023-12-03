@@ -43,7 +43,10 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
     this.variants = variants
   }
 
-  encodeWithNoChecks(value: model.Infer<model.UnionType<Ts>>, options: Required<encoding.Options>): JSONType {
+  encodeWithoutValidationInternal(
+    value: model.Infer<model.UnionType<Ts>>,
+    options: Required<encoding.Options>,
+  ): JSONType {
     const variantName = this.variantOwnership(value)
     const variantType = this.variants[variantName]
     if (variantType === undefined) {
@@ -72,11 +75,11 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
     }
   }
 
-  decodeWithoutValidation(
+  decodeWithoutValidationInternal(
     value: unknown,
-    decodingOptions?: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.UnionType<Ts>>> {
-    return this.decodeAndTryToValidate(value, decodingOptions).map(({ value }) => value)
+    return this.decodeAndTryToValidate(value, options).map(({ value }) => value)
   }
 
   arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.UnionType<Ts>>> {

@@ -44,7 +44,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
     this.variantSet = new Set(variants)
   }
 
-  encodeWithNoChecks(value: model.Infer<model.EnumType<Vs>>): JSONType {
+  encodeWithoutValidationInternal(value: model.Infer<model.EnumType<Vs>>): JSONType {
     return value
   }
 
@@ -52,7 +52,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
     return validation.succeed()
   }
 
-  decodeWithoutValidation(value: unknown, _decodingOptions?: decoding.Options): decoding.Result<Vs[number]> {
+  decodeWithoutValidationInternal(value: unknown): decoding.Result<Vs[number]> {
     return typeof value === 'string' && this.variantSet.has(value)
       ? decoding.succeed(value)
       : decoding.fail(`enum (${this.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)

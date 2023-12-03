@@ -33,7 +33,7 @@ class BooleanTypeImpl extends DefaultMethods<model.BooleanType> implements model
     super(options)
   }
 
-  encodeWithNoChecks(value: model.Infer<model.BooleanType>): JSONType {
+  encodeWithoutValidationInternal(value: model.Infer<model.BooleanType>): JSONType {
     return value
   }
 
@@ -41,14 +41,14 @@ class BooleanTypeImpl extends DefaultMethods<model.BooleanType> implements model
     return validation.succeed()
   }
 
-  decodeWithoutValidation(value: unknown, decodingOptions?: decoding.Options): decoding.Result<boolean> {
+  decodeWithoutValidationInternal(value: unknown, options: Required<decoding.Options>): decoding.Result<boolean> {
     if (value === true || value === false) {
       return decoding.succeed(value)
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === 'true') {
+    } else if (options.typeCastingStrategy === 'tryCasting' && value === 'true') {
       return decoding.succeed(true)
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && value === 'false') {
+    } else if (options.typeCastingStrategy === 'tryCasting' && value === 'false') {
       return decoding.succeed(false)
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+    } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
       return decoding.succeed(value !== 0)
     } else {
       return decoding.fail('boolean', value)

@@ -58,7 +58,7 @@ class StringTypeImpl extends DefaultMethods<model.StringType> implements model.S
     )
   }
 
-  encodeWithNoChecks(value: model.Infer<model.StringType>): JSONType {
+  encodeWithoutValidationInternal(value: model.Infer<model.StringType>): JSONType {
     return value
   }
 
@@ -66,15 +66,15 @@ class StringTypeImpl extends DefaultMethods<model.StringType> implements model.S
     return this.validator.apply(value, validationOptions)
   }
 
-  decodeWithoutValidation(
+  decodeWithoutValidationInternal(
     value: unknown,
-    decodingOptions?: decoding.Options,
+    options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.StringType>> {
     if (typeof value === 'string') {
       return decoding.succeed(value)
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
+    } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
       return decoding.succeed(value.toString())
-    } else if (decodingOptions?.typeCastingStrategy === 'tryCasting' && typeof value === 'boolean') {
+    } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'boolean') {
       return decoding.succeed(value.toString())
     } else {
       return decoding.fail('string', value)

@@ -7,11 +7,15 @@ import { describe, expect } from 'vitest'
 describe('type contructor', () => {
   test('object invalid fields', () => {
     expect(() => model.object({ constructor: model.string() })).toThrowError(
-      'Forbidden field name on object: constructor',
+      'Forbidden field name on object: "constructor"',
     )
 
     expect(() => model.object(Object.fromEntries([['__proto__', model.string()]]))).toThrowError(
-      'Forbidden field name on object: __proto__',
+      'Forbidden field name on object: "__proto__"',
+    )
+
+    expect(() => model.object(Object.fromEntries([['', model.string()]]))).toThrowError(
+      'Forbidden field name on object: ""',
     )
   })
 

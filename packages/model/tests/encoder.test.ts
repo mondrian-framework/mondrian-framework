@@ -126,7 +126,7 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
   test.prop([gen.anything().filter((value) => value !== undefined)])('encodes a custom type', (value) => {
     const customOptions = { foo: 1, bar: 2 }
     const mocks = {
-      encode: (value: any, options: any) => {
+      encode: (value: any, _encodingOptions: any, options: any) => {
         expect(options).toBe(customOptions)
         return value
       },
@@ -166,7 +166,7 @@ describe.concurrent('encoder.encode', () => {
     const options = { foo: 'bar', baz: 1 }
     const validationOptions = { errorReportingStrategy: 'allErrors' } as const
     const mocks = {
-      encode: (innerValue: any, innerOptions: any) => {
+      encode: (innerValue: any, _encodingOptions: any, innerOptions: any) => {
         expect(innerOptions).toEqual(options)
         return innerValue
       },

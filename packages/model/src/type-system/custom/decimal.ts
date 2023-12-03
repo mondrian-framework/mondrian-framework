@@ -1,4 +1,4 @@
-import { decoding, result, model, validation } from '../..'
+import { decoding, result, model, validation, encoding } from '../..'
 import BigNumber from 'bignumber.js'
 import gen from 'fast-check'
 
@@ -25,7 +25,11 @@ export function decimal(options?: model.OptionsOf<DecimalType>): DecimalType {
   return model.custom('decimal', encodeDecimal, decodeDecimal, validateDecimal, decimalArbitrary, options)
 }
 
-function encodeDecimal(value: BigNumber, options?: model.OptionsOf<DecimalType>): string {
+function encodeDecimal(
+  value: BigNumber,
+  _encodingOptions: Required<encoding.Options>,
+  options?: model.OptionsOf<DecimalType>,
+): string {
   const encoded = options?.decimals != null ? value.decimalPlaces(options.decimals) : value
   return encoded.toString(options?.base ?? 10)
 }

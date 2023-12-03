@@ -1,10 +1,11 @@
-import { decoding, model, validation } from '../..'
+import { decoding, encoding, model, validation } from '../..'
 import { DefaultMethods } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 type CustomEncoder<Options extends Record<string, any>, InferredAs> = (
   value: InferredAs,
+  encodingOptions: Required<encoding.Options>,
   options?: model.CustomTypeOptions<Options>,
 ) => JSONType
 
@@ -91,8 +92,11 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     this.arbitraryFromOptions = arbitrary
   }
 
-  encodeWithoutValidationInternal(value: model.Infer<model.CustomType<Name, Options, InferredAs>>): JSONType {
-    return this.encoder(value, this.options)
+  encodeWithoutValidationInternal(
+    value: model.Infer<model.CustomType<Name, Options, InferredAs>>,
+    options: Required<encoding.Options>,
+  ): JSONType {
+    return this.encoder(value, options, this.options)
   }
 
   validateInternal(

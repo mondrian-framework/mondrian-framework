@@ -1,4 +1,4 @@
-import { model, decoding, validation, path } from '../../index'
+import { model, decoding, validation, path, encoding } from '../../index'
 import { forbiddenObjectFields } from '../../utils'
 import { JSONType, mapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -20,7 +20,7 @@ export type RecordOptions = { fieldsType: model.Type }
 export function record<const T extends model.Type>(fieldsType: T, options?: model.BaseOptions): RecordType<T> {
   return model.custom(
     'record',
-    (value) => encodeRecord(fieldsType, value),
+    (value, encodingOptions) => encodeRecord(fieldsType, value, encodingOptions),
     (value, decodingOptions) => decodeRecord(fieldsType, value, decodingOptions),
     (value, validationOptions) => validateRecord(fieldsType, value, validationOptions),
     (maxDepth) => recordArbitrary(fieldsType, maxDepth),
@@ -28,9 +28,15 @@ export function record<const T extends model.Type>(fieldsType: T, options?: mode
   )
 }
 
-function encodeRecord<T extends model.Type>(fieldsType: T, value: Record<string, model.Infer<T>>): JSONType {
+function encodeRecord<T extends model.Type>(
+  fieldsType: T,
+  value: Record<string, model.Infer<T>>,
+  encodingOptions: Required<encoding.Options>,
+): JSONType {
   const concreteFieldsType = model.concretise(fieldsType)
-  return mapObject(value, (_, fieldValue) => concreteFieldsType.encodeWithoutValidation(fieldValue as never))
+  return mapObject(value, (_, fieldValue) =>
+    concreteFieldsType.encodeWithoutValidation(fieldValue as never, encodingOptions),
+  )
 }
 
 function decodeRecord<T extends model.Type>(

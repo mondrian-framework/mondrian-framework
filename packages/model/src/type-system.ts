@@ -229,6 +229,8 @@ export enum Mutability {
   Immutable,
 }
 
+type Concretise<T extends Type> = [T] extends [() => infer T1 extends Type] ? Concretise<T1> : Concrete<T>
+
 /**
  * @param type the possibly lazy {@link Type type} to turn into a concrete type
  * @returns a new {@link ConcreteType type} that is guaranteed to not be lazily defined
@@ -242,19 +244,19 @@ export enum Mutability {
  *          ```
  */
 export const concretise = memoizeTransformation(concretiseInternal)
-function concretiseInternal<T extends Type>(type: T): Concrete<T> {
+function concretiseInternal<T extends Type>(type: T): Concretise<T> {
   if (typeof type === 'function') {
     let concreteType: Type = type
     while (typeof concreteType === 'function') {
       concreteType = concreteType()
     }
     if (concreteType.options?.name === undefined && type.name) {
-      return concreteType.setName(type.name) as Concrete<T>
+      return concreteType.setName(type.name) as Concretise<T>
     } else {
-      return concreteType as Concrete<T>
+      return concreteType as Concretise<T>
     }
   } else {
-    return type as Concrete<T>
+    return type as Concretise<T>
   }
 }
 
@@ -2490,7 +2492,7 @@ export function pick<T extends LazyRecord, S extends { [K in RecordKeys<T>]?: tr
   options?: OptionsOf<T>,
 ): PickFields<T, S> {
   if (typeof type === 'function') {
-    return (() => pick(model.concretise(type), picks, options as undefined)) as PickFields<T, S>
+    return (() => pick(model.concretise(type as Type) as LazyRecord, picks, options as undefined)) as PickFields<T, S>
   }
   return match(type, {
     object: ({ fields }) =>

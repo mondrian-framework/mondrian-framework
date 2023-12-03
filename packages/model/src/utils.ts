@@ -9,7 +9,7 @@ export function memoizeTypeTransformation<T extends model.Type>(mapper: TypeTran
       return cachedResult
     }
     if (typeof type === 'function') {
-      const lazyResult = () => mapper(model.concretise(type), type)
+      const lazyResult = () => mapper(model.concretise(type) as T, type)
       cache.set(type, lazyResult)
       return lazyResult
     }

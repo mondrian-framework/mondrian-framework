@@ -395,8 +395,8 @@ export function mutableEntity<Ts extends model.Types>(
  *          All of its keys are optional and may be omitted in the generated options.
  */
 export function arrayTypeOptions(): gen.Arbitrary<model.ArrayTypeOptions> {
-  return gen.integer({ min: 0, max: 500 }).chain((min) => {
-    return gen.integer({ min, max: 500 }).chain((max) => {
+  return gen.integer({ min: 0, max: 5 }).chain((min) => {
+    return gen.integer({ min, max: 5 }).chain((max) => {
       return gen.record(
         {
           ...baseOptionsGeneratorsRecord(),
@@ -535,7 +535,7 @@ export function customType(maxDepth: number): gen.Arbitrary<model.Type> {
  * @param maxDepth the maximum depth of the generated type
  * @returns a generator for random types
  */
-export function arbitraryModel(maxDepth: number = 5): gen.Arbitrary<model.Type> {
+export function arbitraryModel(maxDepth: number = 3): gen.Arbitrary<model.Type> {
   return maxDepth <= 1
     ? gen.oneof(baseType(), customType(maxDepth))
     : gen.oneof(

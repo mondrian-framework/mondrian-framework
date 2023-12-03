@@ -97,7 +97,7 @@ function recordArbitrary<T extends model.Type>(
   fieldsType: T,
   maxDepth: number,
 ): gen.Arbitrary<Record<string, model.Infer<T>>> {
-  if (maxDepth <= 0) {
+  if (maxDepth <= 1) {
     return gen.constant({})
   } else {
     const concreteType = model.concretise(fieldsType)

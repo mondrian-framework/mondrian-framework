@@ -17,21 +17,14 @@ export type TimestampOptions = { minimum?: Date; maximum?: Date }
  * @returns a {@link CustomType `CustomType`} representing a timestamp
  */
 export function timestamp(options?: model.OptionsOf<TimestampType>): TimestampType {
-  return model.custom({
-    typeName: 'timestamp',
-    encoder: encodeTimestamp,
-    decoder: decodeTimestamp,
-    validator: validateTimestamp,
-    arbitrary: timestampArbitrary,
-    options,
-  })
+  return model.custom({ typeName: 'timestamp', encoder, decoder, validator, arbitrary, options })
 }
 
-function encodeTimestamp(timestamp: Date): JSONType {
+function encoder(timestamp: Date): JSONType {
   return timestamp.getTime()
 }
 
-function decodeTimestamp(
+function decoder(
   value: unknown,
   decodingOptions: Required<decoding.Options>,
   options?: model.OptionsOf<TimestampType>,
@@ -40,8 +33,8 @@ function decodeTimestamp(
     return decoding.succeed(value)
   }
   if (decodingOptions.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {
-    return decodeTimestamp(Number(value), decodingOptions, options).lazyOr(() =>
-      decodeTimestamp(new Date(value).getTime(), decodingOptions, options),
+    return decoder(Number(value), decodingOptions, options).lazyOr(() =>
+      decoder(new Date(value).getTime(), decodingOptions, options),
     )
   }
   return typeof value === 'number' && -8640000000000000 <= value && value <= 8640000000000000
@@ -49,7 +42,7 @@ function decodeTimestamp(
     : decoding.fail(`timestamp`, value)
 }
 
-function validateTimestamp(
+function validator(
   input: Date,
   _validationOptions: Required<validation.Options>,
   options?: model.OptionsOf<TimestampType>,
@@ -67,6 +60,6 @@ function validateTimestamp(
   return validation.succeed()
 }
 
-function timestampArbitrary(_maxDepth: number, options?: model.TimestampOptions): gen.Arbitrary<Date> {
+function arbitrary(_maxDepth: number, options?: model.TimestampOptions): gen.Arbitrary<Date> {
   return gen.date({ min: options?.minimum, max: options?.maximum })
 }

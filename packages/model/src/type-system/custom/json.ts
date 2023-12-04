@@ -23,22 +23,33 @@ export type JsonType = model.CustomType<'json', JsonTypeOptions, JSONType>
  * @returns a {@link CustomType `CustomType`} representing a json
  */
 export function json(options?: model.OptionsOf<JsonType>): JsonType {
-  return model.custom({
-    typeName: 'json',
-    encoder: (v) => v,
-    decoder: (v) => (v === undefined ? decoding.succeed(null) : decoding.succeed(JSON.parse(JSON.stringify(v)))),
-    validator: (json) => {
-      if (options?.sizeLimit != null) {
-        const size = Buffer.byteLength(JSON.stringify(json))
-        if (size > options.sizeLimit) {
-          return validation.fail(`json must be maximum of ${options.sizeLimit}B`, size)
-        }
-      }
-      return validation.succeed()
-    },
-    arbitrary: jsonArbitrary,
-    options,
-  })
+  return model.custom({ typeName: 'json', encoder, decoder, validator, arbitrary: jsonArbitrary, options })
+}
+
+function encoder(json: JSONType): JSONType {
+  return json
+}
+
+function decoder(value: unknown): decoding.Result<JSONType> {
+  if (value === undefined) {
+    return decoding.succeed(null)
+  } else {
+    return decoding.succeed(JSON.parse(JSON.stringify(value)))
+  }
+}
+
+function validator(
+  json: JSONType,
+  _validationOptions: Required<validation.Options>,
+  options?: model.OptionsOf<JsonType>,
+): validation.Result {
+  if (options?.sizeLimit != null) {
+    const size = Buffer.byteLength(JSON.stringify(json))
+    if (size > options.sizeLimit) {
+      return validation.fail(`json must be maximum of ${options.sizeLimit}B`, size)
+    }
+  }
+  return validation.succeed()
 }
 
 function jsonArbitrary(maxDepth: number): gen.Arbitrary<JSONType> {

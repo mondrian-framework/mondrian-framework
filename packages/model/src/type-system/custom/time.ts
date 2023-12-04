@@ -7,22 +7,15 @@ const TIME_REGEX =
 export type TimeType = model.CustomType<'time', {}, Date>
 
 export function time(options?: model.BaseOptions): TimeType {
-  return model.custom({
-    typeName: 'time',
-    encoder: encodeTime,
-    decoder: decodeTime,
-    validator: validateTime,
-    arbitrary: timeArbitrary,
-    options,
-  })
+  return model.custom({ typeName: 'time', encoder, decoder, validator, arbitrary, options })
 }
 
-function encodeTime(value: Date) {
+function encoder(value: Date) {
   const datetimeString = value.toISOString()
   return datetimeString.substring(datetimeString.indexOf('T') + 1)
 }
 
-function decodeTime(value: unknown): decoding.Result<Date> {
+function decoder(value: unknown): decoding.Result<Date> {
   if (typeof value !== 'string' || !TIME_REGEX.test(value)) {
     return decoding.fail('Invalid time format [RFC 3339]', value)
   }
@@ -31,7 +24,7 @@ function decodeTime(value: unknown): decoding.Result<Date> {
   return decoding.succeed(new Date(currentDateAtGivenTime))
 }
 
-function validateTime(
+function validator(
   value: Date,
   validationOptions: Required<validation.Options>,
   options?: model.BaseOptions,
@@ -39,7 +32,7 @@ function validateTime(
   return model.datetime(options).validate(value, validationOptions)
 }
 
-function timeArbitrary(_maxDepth: number, options?: model.OptionsOf<TimeType>): gen.Arbitrary<Date> {
+function arbitrary(_maxDepth: number, options?: model.OptionsOf<TimeType>): gen.Arbitrary<Date> {
   return gen.date().map((t) => {
     const datetimeString = t.toISOString()
     const timeStr = datetimeString.substring(datetimeString.indexOf('T') + 1)

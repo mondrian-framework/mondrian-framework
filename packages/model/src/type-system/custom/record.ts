@@ -20,15 +20,15 @@ export type RecordOptions = { fieldsType: model.Type }
 export function record<const T extends model.Type>(fieldsType: T, options?: model.BaseOptions): RecordType<T> {
   return model.custom({
     typeName: 'record',
-    encoder: (value, encodingOptions) => encodeRecord(fieldsType, value, encodingOptions),
-    decoder: (value, decodingOptions) => decodeRecord(fieldsType, value, decodingOptions),
-    validator: (value, validationOptions) => validateRecord(fieldsType, value, validationOptions),
-    arbitrary: (maxDepth) => recordArbitrary(fieldsType, maxDepth),
+    encoder: (value, encodingOptions) => encode(fieldsType, value, encodingOptions),
+    decoder: (value, decodingOptions) => decode(fieldsType, value, decodingOptions),
+    validator: (value, validationOptions) => validate(fieldsType, value, validationOptions),
+    arbitrary: (maxDepth) => arbitrary(fieldsType, maxDepth),
     options: { ...options, fieldsType },
   })
 }
 
-function encodeRecord<T extends model.Type>(
+function encode<T extends model.Type>(
   fieldsType: T,
   value: Record<string, model.Infer<T>>,
   encodingOptions: Required<encoding.Options>,
@@ -39,7 +39,7 @@ function encodeRecord<T extends model.Type>(
   )
 }
 
-function decodeRecord<T extends model.Type>(
+function decode<T extends model.Type>(
   fieldsType: T,
   value: unknown,
   decodingOptions: Required<decoding.Options>,
@@ -69,7 +69,7 @@ function decodeRecord<T extends model.Type>(
   }
 }
 
-function validateRecord<T extends model.Type>(
+function validate<T extends model.Type>(
   fieldsType: T,
   value: Record<string, model.Infer<T>>,
   validationOptions: Required<validation.Options>,
@@ -93,7 +93,7 @@ function validateRecord<T extends model.Type>(
   }
 }
 
-function recordArbitrary<T extends model.Type>(
+function arbitrary<T extends model.Type>(
   fieldsType: T,
   maxDepth: number,
 ): gen.Arbitrary<Record<string, model.Infer<T>>> {

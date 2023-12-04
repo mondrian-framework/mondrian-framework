@@ -17,15 +17,14 @@ export type DateTimeOptions = { minimum?: Date; maximum?: Date }
  */
 export function datetime(options?: model.OptionsOf<DateTimeType>): DateTimeType {
   //TODO [Good first issue]: check options validity
-  const { maximum, minimum } = options ?? {}
-  const validator = validation.buildValidator<Date>(
-    //prettier-ignore
-    {
-      ...(maximum ? { [`Datetime must be maximum ${maximum.toISOString()}`]: (date) => Number.isNaN(date.valueOf()) || date.getTime() > maximum.getTime() } : {}),
-      ...(minimum ? { [`Datetime must be minimum ${minimum.toISOString()}`]: (date) => Number.isNaN(date.valueOf()) || date.getTime() < minimum.getTime() } : {}),
-    },
-  )
-  return model.custom({ typeName: 'datetime', encoder, decoder, validator, arbitrary, options })
+  return model.custom({
+    typeName: 'datetime',
+    encoder,
+    decoder,
+    validator: buildValidator(options),
+    arbitrary,
+    options,
+  })
 }
 
 function encoder(date: Date): string {
@@ -49,6 +48,17 @@ function decoder(
     return tryMakeDate(value)
   }
   return decoding.fail('ISO date', value)
+}
+
+function buildValidator(options?: model.OptionsOf<DateTimeType>) {
+  const { maximum, minimum } = options ?? {}
+  return validation.buildValidator<Date>(
+    //prettier-ignore
+    {
+      ...(maximum ? { [`Datetime must be maximum ${maximum.toISOString()}`]: (date) => Number.isNaN(date.valueOf()) || date.getTime() > maximum.getTime() } : {}),
+      ...(minimum ? { [`Datetime must be minimum ${minimum.toISOString()}`]: (date) => Number.isNaN(date.valueOf()) || date.getTime() < minimum.getTime() } : {}),
+    },
+  )
 }
 
 function tryMakeDate(value: number | string): decoding.Result<Date> {

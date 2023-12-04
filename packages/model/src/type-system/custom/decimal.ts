@@ -15,14 +15,14 @@ export type DecimalTypeAdditionalOptions = {
 export type DecimalType = model.CustomType<'decimal', DecimalTypeAdditionalOptions, BigNumber>
 
 export function decimal(options?: model.OptionsOf<DecimalType>): DecimalType {
+  //TODO [Good first issue]: do costraint check like number type
   if (
     options?.decimals != null &&
     (options.decimals < 0 || options.decimals > 100 || !Number.isInteger(options.decimals))
   ) {
     throw new Error('Invalid decimals, must be and integer between 0 and 100')
   }
-  //TODO [Good first issue]: do costraint check like number type
-  return model.custom({ typeName: 'decimal', encoder, decoder, validator, arbitrary, options })
+  return model.custom({ typeName: 'decimal', encoder, decoder, validator: buildValidator(options), arbitrary, options })
 }
 
 function encoder(
@@ -56,27 +56,18 @@ function decoder(
   return decoding.fail(`Number or string representing a number expected. (base ${options?.decimals ?? 10})`, value)
 }
 
-function validator(
-  value: BigNumber,
-  _validationOptions: Required<validation.Options>,
+function buildValidator(
   options?: model.OptionsOf<DecimalType>,
-): validation.Result {
-  if (options?.maximum != null && value.gt(options.maximum)) {
-    return validation.fail(`decimal must be less than or equal to ${options.maximum}`, value)
-  }
-  if (options?.minimum != null && value.lt(options.minimum)) {
-    return validation.fail(`decimal must be greater than or equal to ${options.minimum}`, value)
-  }
-  if (options?.exclusiveMaximum != null && value.gte(options.exclusiveMaximum)) {
-    return validation.fail(`decimal must be less than ${options.exclusiveMaximum}`, value)
-  }
-  if (options?.exclusiveMinimum != null && value.lte(options.exclusiveMinimum)) {
-    return validation.fail(`decimal must be greater than ${options.exclusiveMinimum}`, value)
-  }
-  if (options?.multipleOf != null && !value.mod(options.multipleOf).eq(0)) {
-    return validation.fail(`decimal must be multiple of ${options.multipleOf}`, value)
-  }
-  return validation.succeed()
+): (value: BigNumber, options: Required<validation.Options>) => validation.Result {
+  const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, multipleOf } = options ?? {}
+  //prettier-ignore
+  return validation.buildValidator<BigNumber>({
+    ...(maximum != null ? { [`decimal must be less than or equal to ${maximum}`]: (value) => value.gt(maximum) } : {}),
+    ...(minimum != null ? { [`decimal must be greater than or equal to ${minimum}`]: (value) => value.lt(minimum) } : {}),
+    ...(exclusiveMaximum != null ? { [`decimal must be less than ${exclusiveMaximum}`]: (value) => value.gte(exclusiveMaximum) } : {}),
+    ...(exclusiveMinimum != null ? { [`decimal must be greater than ${exclusiveMinimum}`]: (value) => value.lte(exclusiveMinimum) } : {}),
+    ...(multipleOf != null ? { [`decimal must be multiple of ${multipleOf}`]: (value) => !value.mod(multipleOf).eq(0) } : {}),
+  })
 }
 
 function arbitrary(_maxDepth: number, options?: model.OptionsOf<DecimalType>): gen.Arbitrary<BigNumber> {

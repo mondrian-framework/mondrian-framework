@@ -4,19 +4,22 @@ import gen from 'fast-check'
 export type TimezoneType = model.CustomType<'timezone', {}, string>
 
 export function timezone(options?: model.BaseOptions): TimezoneType {
-  return model.custom({
-    typeName: 'timezone',
-    encoder: (value) => value,
-    decoder: (value) =>
-      typeof value === 'string' ? decoding.succeed(value) : decoding.fail('Expected a string timezone', value),
-    validator: validateTimezone,
-    arbitrary: () =>
-      gen.constantFrom('Europe/Rome', 'europe/rome', 'europe/Rome', 'EUROPE/ROME', 'Africa/Cairo', 'America/Halifax'),
-    options,
-  })
+  return model.custom({ typeName: 'timezone', encoder, decoder, validator, arbitrary, options })
 }
 
-function validateTimezone(value: string): validation.Result {
+function encoder(value: string): string {
+  return value
+}
+
+function decoder(value: unknown): decoding.Result<string> {
+  if (typeof value === 'string') {
+    return decoding.succeed(value)
+  } else {
+    return decoding.fail('Expected a string timezone', value)
+  }
+}
+
+function validator(value: string): validation.Result {
   if (!Intl?.DateTimeFormat().resolvedOptions().timeZone) {
     validation.fail('Time zones are not available in this environment', value)
   }
@@ -30,4 +33,8 @@ function validateTimezone(value: string): validation.Result {
       return validation.fail('Invalid time zone', value)
     }
   }
+}
+
+function arbitrary(): gen.Arbitrary<string> {
+  return gen.constantFrom('Europe/Rome', 'europe/rome', 'europe/Rome', 'EUROPE/ROME', 'Africa/Cairo', 'America/Halifax')
 }

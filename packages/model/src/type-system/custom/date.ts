@@ -49,5 +49,5 @@ function arbitrary(_maxDepth: number, options?: model.OptionsOf<DateType>): gen.
 }
 
 function isLeapYear(year: number): boolean {
-  return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
 }

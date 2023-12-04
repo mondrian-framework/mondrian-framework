@@ -14,12 +14,11 @@ function encoder(value: number): number {
   return value
 }
 
-function decoder(value: unknown): decoding.Result<number> {
-  if (typeof value === 'number' && Number.isInteger(value)) {
-    return decoding.succeed(value)
-  } else {
-    return decoding.fail('Expected a TCP port number', value)
-  }
+function decoder(value: unknown, options: Required<decoding.Options>): decoding.Result<number> {
+  return model
+    .integer()
+    .decode(value, options)
+    .mapError(() => decoding.fail('Expected a TCP port number', value).error)
 }
 
 function validator(value: number): validation.Result {

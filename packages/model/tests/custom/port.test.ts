@@ -10,7 +10,7 @@ const isPort = (n: number) => min <= n && n <= max && Number.isInteger(n)
 
 const validValues = gen.integer(constraints)
 const invalidValues = gen.oneof(gen.integer(), gen.float()).filter((n) => !isPort(n))
-const knownInvalidValues = [-200, 2000000, 10.1, null, undefined, { field: 42 }, NaN]
+const knownInvalidValues = [-200, 2000000, '10', 10.1, null, undefined, { field: 42 }, NaN]
 
 describe(
   'standard property based tests',

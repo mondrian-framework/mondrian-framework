@@ -22,12 +22,11 @@ function encoder(value: number): number {
   return value
 }
 
-function decoder(value: unknown): decoding.Result<number> {
-  if (typeof value === 'number') {
-    return decoding.succeed(value)
-  } else {
-    return decoding.fail('Expected a longitude number', value)
-  }
+function decoder(value: unknown, options: Required<decoding.Options>): decoding.Result<number> {
+  return model
+    .number()
+    .decodeWithoutValidation(value, options)
+    .mapError(() => decoding.fail('Expected a longitude number', value).error)
 }
 
 function validator(value: number): validation.Result {

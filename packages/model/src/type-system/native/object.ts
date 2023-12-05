@@ -1,6 +1,6 @@
 import { decoding, path, model, validation, encoding } from '../..'
 import { assertSafeObjectFields } from '../../utils'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -48,15 +48,16 @@ export function mutableObject<Ts extends model.Types>(
 }
 
 class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
-  extends DefaultMethods<model.ObjectType<M, Ts>>
+  extends BaseType<model.ObjectType<M, Ts>>
   implements model.ObjectType<M, Ts>
 {
   readonly kind = model.Kind.Object
   readonly mutability: M
   readonly fields: Ts
 
-  getThis = () => this
-  fromOptions = (options: model.ObjectTypeOptions) => new ObjectTypeImpl(this.mutability, this.fields, options)
+  protected getThis = () => this
+  protected fromOptions = (options: model.ObjectTypeOptions) =>
+    new ObjectTypeImpl(this.mutability, this.fields, options)
 
   immutable = () => object(this.fields, this.options)
   mutable = () => mutableObject(this.fields, this.options)
@@ -68,7 +69,7 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     this.fields = fields
   }
 
-  encodeWithoutValidationInternal(
+  protected encodeWithoutValidationInternal(
     value: model.Infer<model.ObjectType<M, Ts>>,
     options: Required<encoding.Options>,
   ): JSONType {
@@ -83,7 +84,7 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     })
   }
 
-  validateInternal(
+  protected validateInternal(
     value: model.Infer<model.ObjectType<M, Ts>>,
     options: Required<validation.Options>,
   ): validation.Result {
@@ -106,7 +107,7 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     }
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.ObjectType<M, Ts>>> {

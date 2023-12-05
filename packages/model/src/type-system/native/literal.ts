@@ -1,5 +1,5 @@
 import { model, decoding, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -29,29 +29,29 @@ export function literal<const L extends number | string | boolean | null>(
 }
 
 class LiteralTypeImpl<L extends number | string | boolean | null>
-  extends DefaultMethods<model.LiteralType<L>>
+  extends BaseType<model.LiteralType<L>>
   implements model.LiteralType<L>
 {
   readonly kind = model.Kind.Literal
   readonly literalValue: L
 
-  fromOptions = (options: model.LiteralTypeOptions) => literal(this.literalValue, options)
-  getThis = () => this
+  protected fromOptions = (options: model.LiteralTypeOptions) => literal(this.literalValue, options)
+  protected getThis = () => this
 
   constructor(literalValue: L, options?: model.LiteralTypeOptions) {
     super(options)
     this.literalValue = literalValue
   }
 
-  encodeWithoutValidationInternal(value: model.Infer<model.LiteralType<L>>): JSONType {
+  protected encodeWithoutValidationInternal(value: model.Infer<model.LiteralType<L>>): JSONType {
     return value
   }
 
-  validateInternal(_value: L): validation.Result {
+  protected validateInternal(_value: L): validation.Result {
     return validation.succeed()
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.LiteralType<L>>> {

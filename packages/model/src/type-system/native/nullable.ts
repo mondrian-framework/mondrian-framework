@@ -1,5 +1,5 @@
 import { decoding, encoding, model, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -22,30 +22,30 @@ export function nullable<T extends model.Type>(
   return new NullableTypeImpl(wrappedType, options)
 }
 
-class NullableTypeImpl<T extends model.Type>
-  extends DefaultMethods<model.NullableType<T>>
-  implements model.NullableType<T>
-{
+class NullableTypeImpl<T extends model.Type> extends BaseType<model.NullableType<T>> implements model.NullableType<T> {
   readonly kind = model.Kind.Nullable
   readonly wrappedType: T
 
-  fromOptions = (options: model.NullableTypeOptions) => nullable(this.wrappedType, options)
-  getThis = () => this
+  protected fromOptions = (options: model.NullableTypeOptions) => nullable(this.wrappedType, options)
+  protected getThis = () => this
 
   constructor(wrappedType: T, options?: model.NullableTypeOptions) {
     super(options)
     this.wrappedType = wrappedType
   }
 
-  encodeWithoutValidationInternal(value: null | model.Infer<T>, options: Required<encoding.Options>): JSONType {
+  protected encodeWithoutValidationInternal(
+    value: null | model.Infer<T>,
+    options: Required<encoding.Options>,
+  ): JSONType {
     return value === null ? null : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
-  validateInternal(value: null | model.Infer<T>, options: Required<validation.Options>): validation.Result {
+  protected validateInternal(value: null | model.Infer<T>, options: Required<validation.Options>): validation.Result {
     return value === null ? validation.succeed() : model.concretise(this.wrappedType).validate(value as never, options)
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<null | model.Infer<T>> {

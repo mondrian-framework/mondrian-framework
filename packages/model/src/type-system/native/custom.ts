@@ -1,5 +1,5 @@
 import { decoding, encoding, model, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -62,7 +62,7 @@ export function custom<Name extends string, Options extends Record<string, unkno
 }
 
 class CustomTypeImpl<Name extends string, Options extends Record<string, any>, InferredAs>
-  extends DefaultMethods<model.CustomType<Name, Options, InferredAs>>
+  extends BaseType<model.CustomType<Name, Options, InferredAs>>
   implements model.CustomType<Name, Options, InferredAs>
 {
   readonly kind = model.Kind.Custom
@@ -72,8 +72,8 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
   readonly validator: CustomValidator<Options, InferredAs>
   readonly arbitraryFromOptions: CustomArbitrary<Options, InferredAs>
 
-  getThis = () => this
-  fromOptions = (options: model.CustomTypeOptions<Options>) =>
+  protected getThis = () => this
+  protected fromOptions = (options: model.CustomTypeOptions<Options>) =>
     custom({
       typeName: this.typeName,
       encoder: this.encoder,
@@ -106,21 +106,24 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     this.arbitraryFromOptions = arbitrary
   }
 
-  encodeWithoutValidationInternal(
+  protected encodeWithoutValidationInternal(
     value: model.Infer<model.CustomType<Name, Options, InferredAs>>,
     options: Required<encoding.Options>,
   ): JSONType {
     return this.encoder(value, options, this.options)
   }
 
-  validateInternal(
+  protected validateInternal(
     value: model.Infer<model.CustomType<Name, Options, InferredAs>>,
     options: Required<validation.Options>,
   ): validation.Result {
     return this.validator(value, options, this.options)
   }
 
-  decodeWithoutValidationInternal(value: unknown, options: Required<decoding.Options>): decoding.Result<InferredAs> {
+  protected decodeWithoutValidationInternal(
+    value: unknown,
+    options: Required<decoding.Options>,
+  ): decoding.Result<InferredAs> {
     return this.decoder(value, options, this.options)
   }
 

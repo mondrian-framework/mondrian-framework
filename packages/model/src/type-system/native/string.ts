@@ -1,5 +1,5 @@
 import { decoding, model, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -24,12 +24,12 @@ export function string(options?: model.StringTypeOptions): model.StringType {
   return new StringTypeImpl(options)
 }
 
-class StringTypeImpl extends DefaultMethods<model.StringType> implements model.StringType {
+class StringTypeImpl extends BaseType<model.StringType> implements model.StringType {
   readonly kind = model.Kind.String
   private readonly validator: validation.Validator<string>
 
-  fromOptions = string
-  getThis = () => this
+  protected fromOptions = string
+  protected getThis = () => this
 
   constructor(options?: model.StringTypeOptions) {
     super(options)
@@ -58,15 +58,18 @@ class StringTypeImpl extends DefaultMethods<model.StringType> implements model.S
     )
   }
 
-  encodeWithoutValidationInternal(value: model.Infer<model.StringType>): JSONType {
+  protected encodeWithoutValidationInternal(value: model.Infer<model.StringType>): JSONType {
     return value
   }
 
-  validateInternal(value: model.Infer<model.StringType>, options: Required<validation.Options>): validation.Result {
+  protected validateInternal(
+    value: model.Infer<model.StringType>,
+    options: Required<validation.Options>,
+  ): validation.Result {
     return this.validator.apply(value, options)
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.StringType>> {

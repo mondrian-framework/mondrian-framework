@@ -3,21 +3,24 @@ import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 import prand from 'pure-rand'
 
-export abstract class DefaultMethods<T extends model.Type> {
+export abstract class BaseType<T extends model.Type> {
   readonly options?: model.OptionsOf<T>
 
   constructor(options: model.OptionsOf<T> | undefined) {
     this.options = options
   }
 
-  abstract getThis(): T
-  abstract fromOptions(options?: model.OptionsOf<T>): T
-  abstract encodeWithoutValidationInternal(value: model.Infer<T>, options: Required<encoding.Options>): JSONType
-  abstract decodeWithoutValidationInternal(
+  protected abstract getThis(): T
+  protected abstract fromOptions(options?: model.OptionsOf<T>): T
+  protected abstract encodeWithoutValidationInternal(
+    value: model.Infer<T>,
+    options: Required<encoding.Options>,
+  ): JSONType
+  protected abstract decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<T>>
-  abstract validateInternal(value: model.Infer<T>, options: Required<validation.Options>): validation.Result
+  protected abstract validateInternal(value: model.Infer<T>, options: Required<validation.Options>): validation.Result
   abstract arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<T>>
 
   encodeWithoutValidation(value: model.Infer<T>, options?: encoding.Options): JSONType {

@@ -1,5 +1,5 @@
 import { decoding, model, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -28,15 +28,15 @@ export function enumeration<const Vs extends readonly [string, ...string[]]>(
 }
 
 class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
-  extends DefaultMethods<model.EnumType<Vs>>
+  extends BaseType<model.EnumType<Vs>>
   implements model.EnumType<Vs>
 {
   readonly kind = model.Kind.Enum
   readonly variants: Vs
   private variantSet: Set<string>
 
-  fromOptions = (options: model.EnumTypeOptions) => enumeration(this.variants, options)
-  getThis = () => this
+  protected fromOptions = (options: model.EnumTypeOptions) => enumeration(this.variants, options)
+  protected getThis = () => this
 
   constructor(variants: Vs, options?: model.EnumTypeOptions) {
     super(options)
@@ -44,15 +44,15 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
     this.variantSet = new Set(variants)
   }
 
-  encodeWithoutValidationInternal(value: model.Infer<model.EnumType<Vs>>): JSONType {
+  protected encodeWithoutValidationInternal(value: model.Infer<model.EnumType<Vs>>): JSONType {
     return value
   }
 
-  validateInternal(_value: model.Infer<model.EnumType<Vs>>): validation.Result {
+  protected validateInternal(_value: model.Infer<model.EnumType<Vs>>): validation.Result {
     return validation.succeed()
   }
 
-  decodeWithoutValidationInternal(value: unknown): decoding.Result<Vs[number]> {
+  protected decodeWithoutValidationInternal(value: unknown): decoding.Result<Vs[number]> {
     return typeof value === 'string' && this.variantSet.has(value)
       ? decoding.succeed(value)
       : decoding.fail(`enum (${this.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)

@@ -1,5 +1,5 @@
 import { decoding, model, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -23,25 +23,28 @@ export function boolean(options?: model.BooleanTypeOptions): model.BooleanType {
   return new BooleanTypeImpl(options)
 }
 
-class BooleanTypeImpl extends DefaultMethods<model.BooleanType> implements model.BooleanType {
+class BooleanTypeImpl extends BaseType<model.BooleanType> implements model.BooleanType {
   readonly kind = model.Kind.Boolean
 
-  getThis = () => this
-  fromOptions = boolean
+  protected getThis = () => this
+  protected fromOptions = boolean
 
   constructor(options?: model.BooleanTypeOptions) {
     super(options)
   }
 
-  encodeWithoutValidationInternal(value: model.Infer<model.BooleanType>): JSONType {
+  protected encodeWithoutValidationInternal(value: model.Infer<model.BooleanType>): JSONType {
     return value
   }
 
-  validateInternal(_value: model.Infer<model.BooleanType>): validation.Result {
+  protected validateInternal(_value: model.Infer<model.BooleanType>): validation.Result {
     return validation.succeed()
   }
 
-  decodeWithoutValidationInternal(value: unknown, options: Required<decoding.Options>): decoding.Result<boolean> {
+  protected decodeWithoutValidationInternal(
+    value: unknown,
+    options: Required<decoding.Options>,
+  ): decoding.Result<boolean> {
     if (typeof value === 'boolean') {
       return decoding.succeed(value)
     } else if (options.typeCastingStrategy === 'tryCasting') {

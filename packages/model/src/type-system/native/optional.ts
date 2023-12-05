@@ -1,5 +1,5 @@
 import { decoding, encoding, model, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -22,34 +22,37 @@ export function optional<const T extends model.Type>(
   return new OptionalTypeImpl(wrappedType, options)
 }
 
-class OptionalTypeImpl<T extends model.Type>
-  extends DefaultMethods<model.OptionalType<T>>
-  implements model.OptionalType<T>
-{
+class OptionalTypeImpl<T extends model.Type> extends BaseType<model.OptionalType<T>> implements model.OptionalType<T> {
   readonly kind = model.Kind.Optional
   readonly wrappedType: T
 
-  fromOptions = (options: model.OptionalTypeOptions) => optional(this.wrappedType, options)
-  getThis = () => this
+  protected fromOptions = (options: model.OptionalTypeOptions) => optional(this.wrappedType, options)
+  protected getThis = () => this
 
   constructor(wrappedType: T, options?: model.OptionalTypeOptions) {
     super(options)
     this.wrappedType = wrappedType
   }
 
-  encodeWithoutValidationInternal(value: undefined | model.Infer<T>, options: Required<encoding.Options>): JSONType {
+  protected encodeWithoutValidationInternal(
+    value: undefined | model.Infer<T>,
+    options: Required<encoding.Options>,
+  ): JSONType {
     return value === undefined
       ? null
       : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
-  validateInternal(value: undefined | model.Infer<T>, options: Required<validation.Options>): validation.Result {
+  protected validateInternal(
+    value: undefined | model.Infer<T>,
+    options: Required<validation.Options>,
+  ): validation.Result {
     return value === undefined
       ? validation.succeed()
       : model.concretise(this.wrappedType).validate(value as never, options)
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<undefined | model.Infer<T>> {

@@ -1,5 +1,5 @@
 import { decoding, encoding, model, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType, failWithInternalError } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -31,19 +31,19 @@ export function union<Ts extends model.Types>(variants: Ts, options?: model.Unio
   return new UnionTypeImpl(variants, options)
 }
 
-class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionType<Ts>> implements model.UnionType<Ts> {
+class UnionTypeImpl<Ts extends model.Types> extends BaseType<model.UnionType<Ts>> implements model.UnionType<Ts> {
   readonly kind = model.Kind.Union
   readonly variants: Ts
 
-  fromOptions = (options: model.UnionTypeOptions) => union(this.variants, options)
-  getThis = () => this
+  protected fromOptions = (options: model.UnionTypeOptions) => union(this.variants, options)
+  protected getThis = () => this
 
   constructor(variants: Ts, options?: model.UnionTypeOptions) {
     super(options)
     this.variants = variants
   }
 
-  encodeWithoutValidationInternal(
+  protected encodeWithoutValidationInternal(
     value: model.Infer<model.UnionType<Ts>>,
     options: Required<encoding.Options>,
   ): JSONType {
@@ -60,7 +60,10 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
     }
   }
 
-  validateInternal(value: model.Infer<model.UnionType<Ts>>, options: Required<validation.Options>): validation.Result {
+  protected validateInternal(
+    value: model.Infer<model.UnionType<Ts>>,
+    options: Required<validation.Options>,
+  ): validation.Result {
     const decoded = this.decodeAndTryToValidate(value, undefined, options)
     if (decoded.isFailure) {
       failWithInternalError(
@@ -75,7 +78,7 @@ class UnionTypeImpl<Ts extends model.Types> extends DefaultMethods<model.UnionTy
     }
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.UnionType<Ts>>> {

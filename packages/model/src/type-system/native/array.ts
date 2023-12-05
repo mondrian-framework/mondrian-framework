@@ -1,5 +1,5 @@
 import { decoding, path, model, validation, encoding } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -39,17 +39,18 @@ export function mutableArray<T extends model.Type>(
 }
 
 class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
-  extends DefaultMethods<model.ArrayType<M, T>>
+  extends BaseType<model.ArrayType<M, T>>
   implements model.ArrayType<M, T>
 {
   readonly kind = model.Kind.Array
   readonly wrappedType: T
   readonly mutability: M
 
-  getThis = () => this
+  protected getThis = () => this
   immutable = () => array(this.wrappedType, this.options)
   mutable = () => mutableArray(this.wrappedType, this.options)
-  fromOptions = (options: model.ArrayTypeOptions) => new ArrayTypeImpl(this.mutability, this.wrappedType, options)
+  protected fromOptions = (options: model.ArrayTypeOptions) =>
+    new ArrayTypeImpl(this.mutability, this.wrappedType, options)
 
   constructor(mutability: M, wrappedType: T, options?: model.ArrayTypeOptions) {
     super(options)
@@ -57,7 +58,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     this.mutability = mutability
   }
 
-  encodeWithoutValidationInternal(
+  protected encodeWithoutValidationInternal(
     value: model.Infer<model.ArrayType<M, T>>,
     options: Required<encoding.Options>,
   ): JSONType {
@@ -65,7 +66,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     return value.map((item) => concreteItemType.encodeWithoutValidation(item as never, options))
   }
 
-  validateInternal(
+  protected validateInternal(
     value: model.Infer<model.ArrayType<M, T>>,
     options: Required<validation.Options>,
   ): validation.Result {
@@ -129,7 +130,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     }
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {

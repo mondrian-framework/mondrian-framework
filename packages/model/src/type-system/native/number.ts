@@ -1,5 +1,5 @@
 import { model, decoding, validation } from '../..'
-import { DefaultMethods } from './base'
+import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -45,12 +45,12 @@ export function integer(options?: model.NumberTypeOptions): model.NumberType {
   return number({ ...options, isInteger: true })
 }
 
-class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.NumberType {
+class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberType {
   readonly kind = model.Kind.Number
   private readonly validator: validation.Validator<number>
 
-  getThis = () => this
-  fromOptions = number
+  protected getThis = () => this
+  protected fromOptions = number
 
   constructor(options?: model.NumberTypeOptions) {
     super(options)
@@ -106,15 +106,18 @@ class NumberTypeImpl extends DefaultMethods<model.NumberType> implements model.N
     )
   }
 
-  encodeWithoutValidationInternal(value: model.Infer<model.NumberType>): JSONType {
+  protected encodeWithoutValidationInternal(value: model.Infer<model.NumberType>): JSONType {
     return value
   }
 
-  validateInternal(value: model.Infer<model.NumberType>, options: Required<validation.Options>): validation.Result {
+  protected validateInternal(
+    value: model.Infer<model.NumberType>,
+    options: Required<validation.Options>,
+  ): validation.Result {
     return this.validator.apply(value, options)
   }
 
-  decodeWithoutValidationInternal(
+  protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.NumberType>> {

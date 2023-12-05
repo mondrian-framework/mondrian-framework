@@ -42,17 +42,18 @@ class BooleanTypeImpl extends DefaultMethods<model.BooleanType> implements model
   }
 
   decodeWithoutValidationInternal(value: unknown, options: Required<decoding.Options>): decoding.Result<boolean> {
-    if (value === true || value === false) {
+    if (typeof value === 'boolean') {
       return decoding.succeed(value)
-    } else if (options.typeCastingStrategy === 'tryCasting' && value === 'true') {
-      return decoding.succeed(true)
-    } else if (options.typeCastingStrategy === 'tryCasting' && value === 'false') {
-      return decoding.succeed(false)
-    } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {
-      return decoding.succeed(value !== 0)
-    } else {
-      return decoding.fail('boolean', value)
+    } else if (options.typeCastingStrategy === 'tryCasting') {
+      if (value === 'true') {
+        return decoding.succeed(true)
+      } else if (value === 'false') {
+        return decoding.succeed(false)
+      } else if (typeof value === 'number') {
+        return decoding.succeed(value !== 0)
+      }
     }
+    return decoding.fail('boolean', value)
   }
 
   arbitrary(): gen.Arbitrary<boolean> {

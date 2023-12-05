@@ -106,21 +106,18 @@ class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberT
     )
   }
 
-  protected encodeWithoutValidationInternal(value: model.Infer<model.NumberType>): JSONType {
+  protected encodeWithoutValidationInternal(value: number): JSONType {
     return value
   }
 
-  protected validateInternal(
-    value: model.Infer<model.NumberType>,
-    options: Required<validation.Options>,
-  ): validation.Result {
+  protected validateInternal(value: number, options: Required<validation.Options>): validation.Result {
     return this.validator.apply(value, options)
   }
 
   protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
-  ): decoding.Result<model.Infer<model.NumberType>> {
+  ): decoding.Result<number> {
     if (typeof value === 'number') {
       return decoding.succeed(value)
     } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'string') {

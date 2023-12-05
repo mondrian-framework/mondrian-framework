@@ -106,17 +106,11 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     this.arbitraryFromOptions = arbitrary
   }
 
-  protected encodeWithoutValidationInternal(
-    value: model.Infer<model.CustomType<Name, Options, InferredAs>>,
-    options: Required<encoding.Options>,
-  ): JSONType {
+  protected encodeWithoutValidationInternal(value: InferredAs, options: Required<encoding.Options>): JSONType {
     return this.encoder(value, options, this.options)
   }
 
-  protected validateInternal(
-    value: model.Infer<model.CustomType<Name, Options, InferredAs>>,
-    options: Required<validation.Options>,
-  ): validation.Result {
+  protected validateInternal(value: InferredAs, options: Required<validation.Options>): validation.Result {
     return this.validator(value, options, this.options)
   }
 

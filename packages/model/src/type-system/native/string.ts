@@ -58,21 +58,18 @@ class StringTypeImpl extends BaseType<model.StringType> implements model.StringT
     )
   }
 
-  protected encodeWithoutValidationInternal(value: model.Infer<model.StringType>): JSONType {
+  protected encodeWithoutValidationInternal(value: string): JSONType {
     return value
   }
 
-  protected validateInternal(
-    value: model.Infer<model.StringType>,
-    options: Required<validation.Options>,
-  ): validation.Result {
+  protected validateInternal(value: string, options: Required<validation.Options>): validation.Result {
     return this.validator.apply(value, options)
   }
 
   protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
-  ): decoding.Result<model.Infer<model.StringType>> {
+  ): decoding.Result<string> {
     if (typeof value === 'string') {
       return decoding.succeed(value)
     } else if (options.typeCastingStrategy === 'tryCasting' && typeof value === 'number') {

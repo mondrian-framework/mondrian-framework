@@ -43,7 +43,7 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
     this.literalValue = literalValue
   }
 
-  protected encodeWithoutValidationInternal(value: model.Infer<model.LiteralType<L>>): JSONType {
+  protected encodeWithoutValidationInternal(value: L): JSONType {
     return value
   }
 
@@ -51,10 +51,7 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
     return validation.succeed()
   }
 
-  protected decodeWithoutValidationInternal(
-    value: unknown,
-    options: Required<decoding.Options>,
-  ): decoding.Result<model.Infer<model.LiteralType<L>>> {
+  protected decodeWithoutValidationInternal(value: unknown, options: Required<decoding.Options>): decoding.Result<L> {
     if (value === this.literalValue) {
       return decoding.succeed(this.literalValue)
     } else if (options.typeCastingStrategy === 'tryCasting' && this.literalValue === null && value === 'null') {

@@ -33,11 +33,11 @@ class BooleanTypeImpl extends BaseType<model.BooleanType> implements model.Boole
     super(options)
   }
 
-  protected encodeWithoutValidationInternal(value: model.Infer<model.BooleanType>): JSONType {
+  protected encodeWithoutValidationInternal(value: boolean): JSONType {
     return value
   }
 
-  protected validateInternal(_value: model.Infer<model.BooleanType>): validation.Result {
+  protected validateInternal(_value: boolean): validation.Result {
     return validation.succeed()
   }
 

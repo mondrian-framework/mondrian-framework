@@ -36,6 +36,7 @@ import {
 } from 'graphql'
 
 const IGNORE_ON_GRAPHQL_GENERATION = 'ignore_on_graphql_generation'
+const UNION_WRAP_FIELD_NAME = 'value'
 
 /**
  * Generates a name for the given type with the following algorithm:
@@ -639,7 +640,6 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
   const output = isOutputNullable ? plainOutput : new GraphQLNonNull(plainOutput)
 
   const capabilities = functionBody.retrieve ?? {}
-  delete functionBody.retrieve?.select
   const retrieveType = retrieve.fromType(functionBody.output, capabilities)
   const completeRetrieveType = retrieve.fromType(functionBody.output, { ...capabilities, select: true })
 
@@ -669,7 +669,9 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
         const input = model.isNever(functionBody.input)
           ? undefined
           : decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger, tracer)
-        const retrieveValue = completeRetrieveType.isOk ? decodeRetrieve(info, completeRetrieveType.value, tracer) : {}
+        const retrieveValue = completeRetrieveType.isOk
+          ? decodeRetrieve(info, completeRetrieveType.value, isOutputTypeWrapped, tracer)
+          : {}
 
         let moduleContext
         try {
@@ -795,7 +797,7 @@ function getFunctionOutputTypeWithErrors(
   }
   const isOutputTypeWrapped = !model.isEntity(fun.output) && !model.isObject(fun.output)
   const success = isOutputTypeWrapped
-    ? model.object({ value: fun.output }).setName(`${capitalise(functionName)}Success`)
+    ? model.object({ [UNION_WRAP_FIELD_NAME]: fun.output }).setName(`${capitalise(functionName)}Success`)
     : fun.output
   if (Object.keys(fun.errors).includes('code')) {
     throw new Error("[GraphQL generation] 'code' is reserved as error code")
@@ -887,7 +889,12 @@ function mapInputTypeInternal(inputType: model.Type): model.Type {
  * Extracts the retrieve value by traversing the {@link GraphQLResolveInfo} and then decode it with the
  * respective retrieveType.
  */
-function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: model.Type, tracer: functions.Tracer): GenericRetrieve {
+function decodeRetrieve(
+  info: GraphQLResolveInfo,
+  retrieveType: model.Type,
+  isOutputTypeWrapped: boolean,
+  tracer: functions.Tracer,
+): GenericRetrieve {
   if (info.fieldNodes.length !== 1) {
     throw createGraphQLError(
       'Invalid field nodes count. Probably you are requesting the same query or mutation multiple times.',
@@ -897,7 +904,18 @@ function decodeRetrieve(info: GraphQLResolveInfo, retrieveType: model.Type, trac
     const node = info.fieldNodes[0]
     const retrieve = selectionNodeToRetrieve(node)
     const rawRetrieve = retrieve[node.name.value]
-    const result = model.concretise(retrieveType).decode(rawRetrieve === true ? {} : rawRetrieve)
+    let finalRetrieve = rawRetrieve
+    if (
+      isOutputTypeWrapped &&
+      typeof rawRetrieve === 'object' &&
+      rawRetrieve.select &&
+      typeof rawRetrieve.select[UNION_WRAP_FIELD_NAME] === 'object'
+    ) {
+      //unwrap the selection
+      const unwrappedSelect = rawRetrieve.select[UNION_WRAP_FIELD_NAME].select
+      finalRetrieve = { ...rawRetrieve, select: unwrappedSelect }
+    }
+    const result = model.concretise(retrieveType).decode(finalRetrieve === true ? {} : finalRetrieve)
     return endSpanWithResult(result, span)
   })
   if (result.isOk) {

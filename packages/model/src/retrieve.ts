@@ -12,11 +12,11 @@ import { randomUUID } from 'crypto'
  *  - skip: can skip first results
  */
 export type Capabilities = {
-  where?: true
-  select?: true
-  orderBy?: true
-  take?: true
-  skip?: true
+  readonly where?: true
+  readonly select?: true
+  readonly orderBy?: true
+  readonly take?: true
+  readonly skip?: true
 }
 
 /**
@@ -24,11 +24,11 @@ export type Capabilities = {
  * It should be equals to prisma args.
  */
 export type GenericRetrieve = {
-  where?: GenericWhere
-  select?: GenericSelect
-  orderBy?: GenericOrderBy
-  take?: number
-  skip?: number
+  readonly where?: GenericWhere
+  readonly select?: GenericSelect
+  readonly orderBy?: GenericOrderBy
+  readonly take?: number
+  readonly skip?: number
 }
 export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere[] } & { readonly [K in string]: any }
 export type GenericSelect = null | { readonly [K in string]?: GenericRetrieve | boolean }
@@ -105,13 +105,12 @@ type WhereFields<Ts extends model.Types> = { readonly [K in keyof Ts]?: WhereFie
 type WhereField<T extends model.Type> 
   = [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
   : [T] extends [model.ArrayType<any, infer T1>] ? WhereFieldArray<T1>
-  : [T] extends [model.StringType] ? { readonly equals?: string }
   : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: model.Infer<T> }
   : [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
   : [T] extends [model.OptionalType<infer T1>] ? WhereField<T1>
   : [T] extends [model.NullableType<infer T1>] ? WhereField<T1>
   : [T] extends [(() => infer T1 extends model.Type)] ? WhereField<T1>
-  : undefined
+  : { readonly equals?: model.Infer<T> } | undefined
 
 // prettier-ignore
 type WhereFieldArray<T extends model.Type> 

@@ -495,10 +495,29 @@ const User = () =>
     name: model.string(),
     bestFriend: model.optional(User),
   })
-//same as type User = { id: string, name: string, bestFriend?: { id: string, name: string, bestFriend?: { ... } } }
+//same as type User = { id: string, name: string, bestFriend?: User }
 
 type DeepArray = model.Infer<typeof DeepArray>
 const DeepArray = () => model.array(model.union({ value: model.number(), array: DeepArray }))
 //same as
 //type DeepArray = (number | DeepArray)[]
+```
+
+Another aspect of lazy types is that the type name are inferred from the function name.
+
+```ts showLineNumbers
+const User = () =>
+  model.object({
+    id: model.string(),
+    name: model.string(),
+  })
+
+// same of
+
+const User = model
+  .object({
+    id: model.string(),
+    name: model.string(),
+  })
+  .setName('User')
 ```

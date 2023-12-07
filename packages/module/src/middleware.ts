@@ -15,9 +15,7 @@ export function checkMaxSelectionDepth(
     apply: (args, next, thisFunction) => {
       const depth = retrieve.selectionDepth(thisFunction.output, args.retrieve ?? {})
       if (depth > maxDepth) {
-        throw new Error(
-          `Max selection depth reached: requested selection have a depth of ${depth}. The maximum is ${maxDepth}.`,
-        )
+        throw new errors.MaxSelectionDepthReached(depth, maxDepth)
       }
       return next(args)
     },
@@ -103,20 +101,15 @@ function handleFailure({
       },
     )
   } else {
-    throw new Error(
-      `Invalid output on function ${functionName}. Errors: ${result.error
-        .map((v, i) => `(${i + 1}) ${JSON.stringify(v)}`)
-        .join('; ')}`,
-    )
+    throw new errors.InvalidOutputValue(functionName, result.error)
   }
 }
 
 /**
- * This middleware checks if the requested selection does not exceed the maximum given depth.
- * @param maxDepth the maximum depth.
+ * TODO
  */
 export function checkPolicies(
-  policies: (context: any) => security.Policy[],
+  policies: (context: any) => readonly security.Policy[],
 ): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check policies',

@@ -27,7 +27,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
   name: string
   version: string
   functions: Fs
-  policies?: (context: ContextType<Fs>) => security.Policy[]
+  policies?: (context: ContextType<Fs>) => readonly security.Policy[]
   context: (
     input: ContextInput,
     args: {
@@ -67,7 +67,7 @@ export type ModuleOptions<Fs extends functions.Functions, ContextInput> = {
 /**
  * Intersection of all function's Contexts.
  */
-type ContextType<F extends functions.Functions> = UnionToIntersection<
+export type ContextType<F extends functions.Functions> = UnionToIntersection<
   {
     [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, any, any, infer Context> ? Context : never
   }[keyof F]

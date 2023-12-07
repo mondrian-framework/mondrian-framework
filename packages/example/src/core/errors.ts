@@ -7,5 +7,3 @@ export class InvalidJwtError extends Error {
     this.jwt = jwt
   }
 }
-
-//TODO: other 2 middleware

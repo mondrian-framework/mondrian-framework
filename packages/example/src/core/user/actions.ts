@@ -143,9 +143,6 @@ export const getUsers = functions.withContext<LoggedUserContext>().build({
   errors: { notLoggedIn: model.string() },
   retrieve: retrieve.allCapabilities,
   body: async ({ context, retrieve: thisRetrieve }) => {
-    if (!context.userId) {
-      return result.fail({ notLoggedIn: 'Invalid authentication' })
-    }
     const users = await context.prisma.user.findMany(thisRetrieve)
     return result.ok(users)
   },

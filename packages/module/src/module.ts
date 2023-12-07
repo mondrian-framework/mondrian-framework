@@ -4,7 +4,7 @@ import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
-import { retrieve, model } from '@mondrian-framework/model'
+import { retrieve, model, security } from '@mondrian-framework/model'
 import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
@@ -27,6 +27,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
   name: string
   version: string
   functions: Fs
+  policies?: (context: ContextType<Fs>) => security.Policy[]
   context: (
     input: ContextInput,
     args: {
@@ -120,6 +121,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
     module.options?.maxSelectionDepth != null
       ? [middleware.checkMaxSelectionDepth(module.options.maxSelectionDepth)]
       : []
+  const checkPoliciesMiddleware = module.policies != null ? [middleware.checkPolicies(module.policies)] : []
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
@@ -133,6 +135,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         middlewares: [
           ...maxProjectionDepthMiddleware,
           ...(functionBody.middlewares ?? []),
+          ...checkPoliciesMiddleware,
           ...checkOutputTypeMiddleware,
         ],
       }

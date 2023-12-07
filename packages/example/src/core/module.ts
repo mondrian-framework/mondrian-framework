@@ -1,5 +1,5 @@
 import { Context, LoggedUserContext, posts, users } from '.'
-import { InvalidJwtError, UnauthorizedAccess } from './errors'
+import { InvalidJwtError } from './errors'
 import { Post } from './post'
 import { User } from './user'
 import { model, path, security } from '@mondrian-framework/model'
@@ -42,22 +42,15 @@ export const instance = module.build({
       } catch {
         throw new InvalidJwtError(rawJwt)
       }
-      if (userId) {
-        const policies = buildUserPolicies(userId)
-        const f = functions[functionName as keyof typeof functions]
-        const res = security.checkPolicies({
-          outputType: f.output,
-          retrieve,
-          policies,
-          capabilities: f.retrieve,
-          path: path.root,
-        })
-        if (!res.isOk) {
-          throw new UnauthorizedAccess(res.error)
-        }
-      }
     }
     return context
+  },
+  policies(context) {
+    if (context.userId != null) {
+      return buildUserPolicies(context.userId)
+    } else {
+      return []
+    }
   },
 })
 

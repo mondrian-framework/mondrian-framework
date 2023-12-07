@@ -37,24 +37,8 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
   input: model.never(),
   output: model.array(Post),
   retrieve: retrieve.allCapabilities,
-  body: async ({ context, retrieve: thisRetrieve }) => {
-    const baseFilter: Prisma.PostWhereInput = {
-      OR: [
-        { visibility: 'PUBLIC' },
-        ...(context.userId
-          ? ([
-              { visibility: 'FOLLOWERS', author: { followers: { some: { followerId: context.userId } } } },
-              { visibility: 'PRIVATE', authorId: context.userId },
-            ] as const)
-          : []),
-      ],
-    }
-    const args = retrieve.merge<Prisma.PostFindManyArgs>(
-      Post,
-      { where: baseFilter, select: { id: true }, },
-      thisRetrieve,
-    )
-    const posts = await context.prisma.post.findMany(args)
+  body: async ({ context, retrieve }) => {
+    const posts = await context.prisma.post.findMany(retrieve)
     return posts
   },
   options: {

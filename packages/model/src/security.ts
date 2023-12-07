@@ -2,7 +2,7 @@ import { model, path, result, retrieve } from '.'
 import { flatMapObject } from '@mondrian-framework/utils'
 import { isDeepStrictEqual } from 'util'
 
-export type Policy<T extends model.Type> = {
+export type Policy<T extends model.Type = model.Type> = {
   entity: T
   selection: true | Exclude<retrieve.FromType<T, { select: true }>['select'], null | undefined>
   domain?: (retrieve.FromType<T, { where: true }>['where'] & { AND?: never; OR?: never; NOT?: never }) | null
@@ -21,7 +21,7 @@ export type PolicyError = model.Infer<typeof PolicyError>
 
 export type PolicyCheckInput = {
   outputType: model.Type
-  policies: Policy<model.Type>[]
+  policies: Policy[]
   retrieve: retrieve.GenericRetrieve | undefined
   capabilities: retrieve.Capabilities | undefined
   path: path.Path
@@ -32,10 +32,10 @@ export function checkPolicies({ outputType, policies, retrieve, capabilities, pa
     return result.ok(retrieve)
   }
 
-  const foundPolicies: Policy<model.Type>[] = []
-  const appliedPolicies: Policy<model.Type>[] = []
-  const potentiallyPolicies: Policy<model.Type>[] = []
-  const notSatisfiedPolicies: Policy<model.Type>[] = []
+  const foundPolicies: Policy[] = []
+  const appliedPolicies: Policy[] = []
+  const potentiallyPolicies: Policy[] = []
+  const notSatisfiedPolicies: Policy[] = []
   for (const p of policies) {
     if (!model.areEqual(p.entity, model.unwrap(outputType))) {
       continue
@@ -76,7 +76,7 @@ export function checkPolicies({ outputType, policies, retrieve, capabilities, pa
  * Checks if selection is included in policy's selection
  */
 export function isSelectionIncluded(
-  policy: Policy<model.Type>,
+  policy: Policy,
   selection: retrieve.GenericSelect | undefined,
 ): boolean {
   if (policy.selection === true) {
@@ -144,7 +144,7 @@ function buildSelectForEntity(fields: model.Types): retrieve.GenericSelect {
 /**
  * Checks if policy's where is included in where filter in order to check if the operation is inside the domain
  */
-export function isInsideDomain(policy: Policy<model.Type>, where: retrieve.GenericWhere | undefined): boolean {
+export function isInsideDomain(policy: Policy, where: retrieve.GenericWhere | undefined): boolean {
   if (!policy.domain || Object.keys(policy.domain).length === 0) {
     return true
   }
@@ -168,8 +168,8 @@ export function of<T extends model.Type>(entity: T): Builder<T> {
 
 class Builder<T extends model.Type> {
   private readonly entity: T
-  private readonly policies: Policy<model.Type>[]
-  constructor(entity: T, policies: Policy<model.Type>[]) {
+  private readonly policies: Policy[]
+  constructor(entity: T, policies: Policy[]) {
     this.policies = policies
     this.entity = entity
   }
@@ -194,7 +194,7 @@ class Builder<T extends model.Type> {
     return this
   }
 
-  build(): Policy<model.Type>[] {
+  build(): Policy[] {
     return [...this.policies]
   }
 

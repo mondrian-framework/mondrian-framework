@@ -1,5 +1,5 @@
-import { functions, logger, utils } from '.'
-import { result, retrieve, model, decoding, validation } from '@mondrian-framework/model'
+import { errors, functions, logger, utils } from '.'
+import { result, retrieve, model, decoding, validation, security, path } from '@mondrian-framework/model'
 import { buildErrorMessage } from '@mondrian-framework/utils'
 import { SeverityNumber } from '@opentelemetry/api-logs'
 
@@ -108,5 +108,30 @@ function handleFailure({
         .map((v, i) => `(${i + 1}) ${JSON.stringify(v)}`)
         .join('; ')}`,
     )
+  }
+}
+
+/**
+ * This middleware checks if the requested selection does not exceed the maximum given depth.
+ * @param maxDepth the maximum depth.
+ */
+export function checkPolicies(
+  policies: (context: any) => security.Policy[],
+): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
+  return {
+    name: 'Check policies',
+    apply: (args, next, thisFunction) => {
+      const res = security.checkPolicies({
+        outputType: thisFunction.output,
+        retrieve: args.retrieve,
+        policies: policies(args.context),
+        capabilities: thisFunction.retrieve,
+        path: path.root,
+      })
+      if (!res.isOk) {
+        throw new errors.UnauthorizedAccess(res.error)
+      }
+      return next({ ...args, retrieve: res.value ?? {} })
+    },
   }
 }

@@ -54,13 +54,17 @@ export class OpentelemetryFunction<
           span.end()
           return result.ok(applyResult)
         } catch (error) {
-          const concreteInputType = model.concretise(this.input)
-          span.setAttribute(
-            'input.json',
-            JSON.stringify(
-              concreteInputType.encodeWithoutValidation(args.input as never, { sensitiveInformationStrategy: 'hide' }),
-            ),
-          )
+          if (!model.isNever(this.input)) {
+            const concreteInputType = model.concretise(this.input)
+            span.setAttribute(
+              'input.json',
+              JSON.stringify(
+                concreteInputType.encodeWithoutValidation(args.input as never, {
+                  sensitiveInformationStrategy: 'hide',
+                }),
+              ),
+            )
+          }
           if (error instanceof Error) {
             span.recordException(error)
           }

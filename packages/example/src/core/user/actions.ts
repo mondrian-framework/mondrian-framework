@@ -4,7 +4,7 @@ import { Context, LoggedUserContext } from '../context'
 import { User } from './model'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { Rate, RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
+import { RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
@@ -134,5 +134,23 @@ export const follow = functions.withContext<LoggedUserContext>().build({
   options: {
     namespace: 'user',
     description: 'Adds a follower to your user. Available only for logged user.',
+  },
+})
+
+export const getUsers = functions.withContext<LoggedUserContext>().build({
+  input: model.never(),
+  output: model.array(User),
+  errors: { notLoggedIn: model.string() },
+  retrieve: retrieve.allCapabilities,
+  body: async ({ context, retrieve: thisRetrieve }) => {
+    if (!context.userId) {
+      return result.fail({ notLoggedIn: 'Invalid authentication' })
+    }
+    const users = await context.prisma.user.findMany(thisRetrieve)
+    return result.ok(users)
+  },
+  options: {
+    namespace: 'user',
+    description: 'Gets some users.',
   },
 })

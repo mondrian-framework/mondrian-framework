@@ -30,7 +30,11 @@ export type GenericRetrieve = {
   readonly take?: number
   readonly skip?: number
 }
-export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere[] } & { readonly [K in string]: any }
+export type GenericWhere = {
+  readonly AND?: GenericWhere | readonly GenericWhere[]
+  readonly OR?: GenericWhere | readonly GenericWhere[]
+  readonly NOT?: GenericWhere | readonly GenericWhere[]
+} & { readonly [K in string]: any }
 export type GenericSelect = null | { readonly [K in string]?: GenericRetrieve | boolean }
 export type GenericOrderBy = {} | {}[]
 

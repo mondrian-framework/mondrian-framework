@@ -1,7 +1,7 @@
 import { slotProvider } from '../../rate-limiter'
 import { idType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
-import { User } from './model'
+import { User, MyUser } from './model'
 import { result, retrieve, model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
@@ -74,7 +74,7 @@ export const register = functions.withContext<Context>().build({
       name: 'RegisterInput',
     },
   ),
-  output: User,
+  output: MyUser,
   errors: { emailAlreadyTaken: model.literal('Email already taken') },
   retrieve: { select: true },
   body: async ({ input, context, retrieve }) => {

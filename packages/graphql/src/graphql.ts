@@ -921,6 +921,6 @@ function decodeRetrieve(
   if (result.isOk) {
     return result.value
   } else {
-    throw createGraphQLError('Failed to decode retrieve')
+    throw createGraphQLError('Failed to decode query parameters', { extensions: result.error })
   }
 }

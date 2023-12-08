@@ -1,8 +1,8 @@
 import { decoding, security, validation } from '@mondrian-framework/model'
 
 export class UnauthorizedAccess extends Error {
-  public readonly error: security.Error
-  constructor(error: security.Error) {
+  public readonly error: security.PolicyViolation
+  constructor(error: security.PolicyViolation) {
     super(`Unauthorized access.`)
     this.error = error
   }

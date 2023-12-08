@@ -44,7 +44,7 @@ export const instance = module.build({
   },
   policies(context) {
     if (context.userId != null) {
-      return policies.user(context.userId)
+      return policies.loggedUser(context.userId)
     } else {
       return policies.guest
     }

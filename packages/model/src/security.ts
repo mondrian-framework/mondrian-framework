@@ -11,9 +11,9 @@ export type Policy<T extends model.Type = model.Type> = {
   readonly filter?: retrieve.FromType<T, { where: true }>['where'] & { AND?: never; OR?: never; NOT?: never }
 }
 
-export type Result = result.Result<retrieve.GenericRetrieve | undefined, Error>
+export type Result = result.Result<retrieve.GenericRetrieve | undefined, PolicyViolation>
 
-export const Error = () =>
+export const PolicyViolation = () =>
   model.union({
     noApplicablePolicies: model.object({
       reason: model.literal('NO_APPLICABLE_POLICIES'),
@@ -22,13 +22,13 @@ export const Error = () =>
       otherPolicies: model.object({ when: model.json(), selection: model.json() }).array(),
     }),
     forbiddenWhereClausole: model.object({
-      reason: model.literal('FORBIDDEN_WHERE_CLAUSOLE'),
+      reason: model.enumeration(['FORBIDDEN_WHERE_CLAUSOLE', 'FORBIDDEN_ORDERBY_CLAUSOLE']),
       path: model.string(),
       forbiddenField: model.string(),
     }),
   })
 
-export type Error = model.Infer<typeof Error>
+export type PolicyViolation = model.Infer<typeof PolicyViolation>
 
 export type PolicyCheckInput = {
   readonly outputType: model.Type
@@ -71,9 +71,18 @@ export function checkPolicies({ outputType, policies, retrieve, capabilities, pa
   if (whereResult.isFailure) {
     return whereResult
   }
-  //TODO: check order by
+  const orderByResult = isOrderByAllowed({ appliedPolicies, retrieve, path })
+  if (orderByResult.isFailure) {
+    return orderByResult
+  }
 
   const filters = { OR: appliedPolicies.flatMap((p) => (p.filter ? [p.filter] : [])) }
+  if (filters.OR.length > 0 && !capabilities.where) {
+    const typeName = model.concretise(outputType).options?.name
+    throw new Error(
+      `You are trying to use a policy with filter on a function without where capability. Output type: ${typeName}`,
+    )
+  }
   const newRetrieve =
     filters.OR.length === 0
       ? retrieve
@@ -179,7 +188,7 @@ export function isWhereAllowed({
   appliedPolicies: Policy[]
   retrieve: retrieve.GenericRetrieve | undefined
   path: path.Path
-}): result.Result<null, Error> {
+}): result.Result<null, PolicyViolation> {
   if (!retrieve?.where) {
     return result.ok(null)
   }
@@ -212,47 +221,83 @@ function isWhereAllowedInternal({
   delete internalWhere.OR
   delete internalWhere.NOT
 
-  //TODO: finish this logic implementation
-  function isOk(key: string): boolean {
-    if (appliedPolicies.some((p) => p.selection === true)) {
-      return true
-    }
-    if (appliedPolicies.some((p) => p.selection !== true && p.selection[key] === true)) {
-      return true
-    }
-    return false
-  }
-  for (const [key] of Object.entries(internalWhere)) {
-    if (!isOk(key)) {
-      return result.fail(key)
+  for (const [field] of Object.entries(internalWhere)) {
+    if (!canAccessField(appliedPolicies, field)) {
+      return result.fail(field)
     }
   }
 
   return result.ok(null)
 }
 
-export function of<T extends model.Type>(entity: T): Builder<T> {
+//TODO: finish this logic implementation
+function canAccessField(appliedPolicies: Policy[], field: string): boolean {
+  if (appliedPolicies.some((p) => p.selection === true)) {
+    return true
+  }
+  if (appliedPolicies.some((p) => p.selection !== true && p.selection[field] === true)) {
+    return true
+  }
+  return false
+}
+
+export function isOrderByAllowed({
+  appliedPolicies,
+  retrieve,
+  path,
+}: {
+  appliedPolicies: Policy[]
+  retrieve: retrieve.GenericRetrieve | undefined
+  path: path.Path
+}): result.Result<null, PolicyViolation> {
+  if (!retrieve?.orderBy) {
+    return result.ok(null)
+  }
+  for (const order of isArray(retrieve.orderBy) ? retrieve.orderBy : [retrieve.orderBy]) {
+    for (const [field] of Object.entries(order)) {
+      if (!canAccessField(appliedPolicies, field)) {
+        return result.fail({
+          reason: 'FORBIDDEN_ORDERBY_CLAUSOLE',
+          path,
+          forbiddenField: field,
+        })
+      }
+    }
+  }
+  return result.ok(null)
+}
+
+export function on<T extends model.Type>(entity: T): Builder<T> {
   return new Builder(entity, [])
 }
 
 class Builder<T extends model.Type> {
   private readonly entity: T
-  private readonly policies: Policy[]
+  private readonly _policies: Policy[]
   constructor(entity: T, policies: Policy[]) {
-    this.policies = policies
+    this._policies = policies
     this.entity = entity
   }
 
   read(policy: Omit<Policy<T>, 'entity'>): this {
-    this.policies.push({ ...policy, entity: this.entity })
+    this._policies.push({ ...policy, entity: this.entity })
     return this
   }
 
-  build(): readonly Policy[] {
-    return [...this.policies]
+  allows(policies: Omit<Policy<T>, 'entity'>[] | Omit<Policy<T>, 'entity'>): this {
+    if (isArray(policies)) {
+      this._policies.push(...policies.map((p) => ({ ...p, entity: this.entity })))
+    } else {
+      this._policies.push({ ...policies, entity: this.entity })
+    }
+    return this
   }
 
-  of<T extends model.Type>(entity: T): Builder<T> {
-    return new Builder(entity, this.policies)
+  get policies(): readonly Policy[] {
+    return [...this._policies]
+  }
+
+  on<T extends model.Type>(entity: T): Builder<T> {
+    return new Builder(entity, this._policies)
   }
 }

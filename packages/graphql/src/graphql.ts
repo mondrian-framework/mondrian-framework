@@ -1,8 +1,7 @@
 import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
-import { result, retrieve, model, decoding, utils as modelUtils } from '@mondrian-framework/model'
-import { GenericRetrieve } from '@mondrian-framework/model/src/retrieve'
-import { functions, logger as logging, module, utils } from '@mondrian-framework/module'
+import { result, model, decoding, utils as modelUtils } from '@mondrian-framework/model'
+import { functions, logger as logging, module, utils, retrieve } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { flatMapObject, groupBy, uncapitalise } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
@@ -894,7 +893,7 @@ function decodeRetrieve(
   retrieveType: model.Type,
   isOutputTypeWrapped: boolean,
   tracer: functions.Tracer,
-): GenericRetrieve {
+): retrieve.GenericRetrieve {
   if (info.fieldNodes.length !== 1) {
     throw createGraphQLError(
       'Invalid field nodes count. Probably you are requesting the same query or mutation multiple times.',

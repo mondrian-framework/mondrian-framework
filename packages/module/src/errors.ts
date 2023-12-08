@@ -1,4 +1,5 @@
-import { decoding, security, validation } from '@mondrian-framework/model'
+import { security } from '.'
+import { decoding, validation } from '@mondrian-framework/model'
 
 export class UnauthorizedAccess extends Error {
   public readonly error: security.PolicyViolation

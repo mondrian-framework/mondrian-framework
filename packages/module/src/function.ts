@@ -1,6 +1,6 @@
-import { logger } from '.'
+import { logger, retrieve } from '.'
 import { BaseFunction } from './function/base'
-import { result, retrieve, model } from '@mondrian-framework/model'
+import { result, model } from '@mondrian-framework/model'
 import { Span, SpanOptions } from '@opentelemetry/api'
 
 /**

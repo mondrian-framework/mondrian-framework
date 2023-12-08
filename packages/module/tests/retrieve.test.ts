@@ -1,6 +1,6 @@
-import { retrieve, model } from '../src/index'
+import { retrieve } from '../src/index'
 import { test } from '@fast-check/vitest'
-import { JSONType, mapObject } from '@mondrian-framework/utils'
+import { model } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf } from 'vitest'
 
 const user = () =>

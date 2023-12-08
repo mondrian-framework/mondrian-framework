@@ -1,10 +1,10 @@
-import { functions, logger } from '.'
+import { functions, logger, retrieve, security } from '.'
 import { ErrorType, OutputRetrieveCapabilities } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
-import { retrieve, model, security } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 

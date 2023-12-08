@@ -1,8 +1,8 @@
 import { ApiSpecification, ErrorHandler, FunctionSpecifications, Request, Response } from './api'
 import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
-import { result, retrieve, model } from '@mondrian-framework/model'
-import { functions, logger, module, utils } from '@mondrian-framework/module'
+import { result, model } from '@mondrian-framework/model'
+import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 

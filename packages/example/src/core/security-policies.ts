@@ -1,6 +1,6 @@
 import { Like, Post } from './post'
 import { Follower, MyUser, User } from './user'
-import { security } from '@mondrian-framework/model'
+import { security } from '@mondrian-framework/module'
 
 export const loggedUser = (userId: number) =>
   security

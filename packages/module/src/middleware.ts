@@ -1,7 +1,6 @@
-import { errors, functions, logger, utils } from '.'
-import { result, retrieve, model, decoding, validation, security, path } from '@mondrian-framework/model'
+import { errors, functions, logger, retrieve, security, utils } from '.'
+import { result, model, decoding, validation, path } from '@mondrian-framework/model'
 import { buildErrorMessage } from '@mondrian-framework/utils'
-import { SeverityNumber } from '@opentelemetry/api-logs'
 
 /**
  * This middleware checks if the requested selection does not exceed the maximum given depth.

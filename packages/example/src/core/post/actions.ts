@@ -1,8 +1,8 @@
 import { LoggedUserContext } from '..'
 import { idType } from '../common/model'
 import { Post, PostVisibility } from './model'
-import { result, retrieve, model } from '@mondrian-framework/model'
-import { functions } from '@mondrian-framework/module'
+import { result, model } from '@mondrian-framework/model'
+import { functions, retrieve } from '@mondrian-framework/module'
 import { Prisma } from '@prisma/client'
 
 export const writePost = functions.withContext<LoggedUserContext>().build({

@@ -1,4 +1,5 @@
-import { model, path, result, retrieve } from '.'
+import { retrieve } from '.'
+import { model, path, result } from '@mondrian-framework/model'
 import { flatMapObject, isArray } from '@mondrian-framework/utils'
 import { isDeepStrictEqual } from 'util'
 

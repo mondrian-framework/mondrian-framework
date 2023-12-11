@@ -2469,7 +2469,7 @@ type RecordKeys<T extends LazyRecord>
   : never
 
 /**
- * Picks specific field of an object or entity. It works like the {@link Pick} of Typescript but with Mondrian types.
+ * Picks specific field of an object or entity. It works like the {@link Pick} of TypeScript but with Mondrian types.
  *
  * @example
  * const User = () =>

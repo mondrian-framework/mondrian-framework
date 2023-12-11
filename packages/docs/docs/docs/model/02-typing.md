@@ -1,6 +1,6 @@
 # Typing
 
-In the [previous chapter](./01-definition.md) you learned about the Mondrian
+In the [definition chapter](./01-definition.md) you learned about the Mondrian
 types and how they can be defined. Consider this example type we've shown before:
 
 ```ts showLineNumbers
@@ -15,19 +15,18 @@ that conforms to `User` should have an integer `id` field and a string `username
 field.
 
 However, this description wouldn't be too useful if there wasn't a way to actually
-create values conforming to the types we define.
-That's why the Mondrian framework also exposes many utility methods and types to
-bridge the gap between Typescript's and Mondrian's type systems.
+create values conforming to the types we define. That's why the Mondrian framework 
+also exposes many utility methods and types to bridge the gap between TypeScript's 
+and Mondrian's type systems.
 
 ## Type inference
 
-You may have noticed that all the Mondrian types are closely related to Typescript
-ones: Mondrian primitives can easily be mapped to Typescript's
-(`model.number()` is `number`, `model.string()` is `string`, and so on); the
-same applies for complex types like objects, arrays and optional values.
+You may have noticed that all the Mondrian types are closely related to TypeScript
+ones. `model.number()` is related to `number`, `model.string()` to `string` and so on.
+The same applies for complex types like objects, arrays and optional values.
 
 Thanks to this resemblance, every Mondrian type can be turned into a corresponding
-Typescript type thanks to the `model.Infer` type:
+TypesScript type using the `model.Infer` utility type:
 
 ```ts showLineNumbers
 const Model = model.number()
@@ -38,10 +37,10 @@ const value: Model = 10
 
 ### Inference of primitives
 
-All Mondrian primitive types are turned into the corresponding Typescript's
+All Mondrian primitive types are turned into the corresponding TypeScript's
 primitive type:
 
-| Mondrian type                       | Inferred Typescript type        |
+| Mondrian type                       | Inferred TypeScript type        |
 | ----------------------------------- | ------------------------------- |
 | `model.number()`                    | `number`                        |
 | `model.string()`                    | `string`                        |
@@ -54,9 +53,9 @@ primitive type:
 
 Inference for wrapper types works as one may expect: optional and nullable types
 are turned into an untagged union with `undefined` and `null` respectively.
-Arrays are inferred as Typescript's arrays.
+Arrays are inferred as TypeScript's arrays.
 
-| Mondrian Type       | Inferred Typescript type                                  |
+| Mondrian Type       | Inferred TypeScript type                                  |
 | ------------------- | --------------------------------------------------------- |
 | `model.optional(t)` | <code>undefined &#124; model.Infer&lt;typeof t&gt;</code> |
 | `model.nullable(t)` | <code>null &#124; model.Infer&lt;typeof t&gt;</code>      |
@@ -81,7 +80,7 @@ const value: OptionalNumber = 10
 
 ### Inference of objects
 
-Mondrian objects can be turned into Typescript's object types. Let's work through an
+Mondrian objects can be turned into TypeScript's object types. Let's work through an
 example and see how it works:
 
 ```ts showLineNumbers
@@ -169,14 +168,16 @@ type Response = model.Infer<typeof Response>
 ### Why bother with Mondrian types?
 
 After working through these examples you may wonder why do we need to jump
-through all these extra hoops to get a Typescript's type? In the end each of the
-Mondrian models gets inferred as a Typescript's type so why not write that
+through all these extra hoops to get a TypeScript's type? In the end each of the
+Mondrian models gets inferred as a TypeScript's type so why not write that
 directly?
 
-The point is that, thanks to these definitions, Mondrian can automatically
-generate a lot of boilerplate code for you: for example
-[encoders](./03-encode.md) and [decoders](./04-decode.md). Moreover can a Modnrian 
-model can be navigated in order to automatically generate documentation.
+First of all, TypeScript types are only at compile time and they totally desappear
+at runtime. This means that they cannot be used, for example, to validate a piece 
+of data or to provide documentation.
+
+Moreover, having a schema you can navigate it to automatically generate any kind of 
+present or future artifact directly inferred by your domain model. 
 
 ## Utility functions
 
@@ -243,7 +244,7 @@ model.assertType(Error, { code: 418, message: "I'm a teapot" })
 // does not throw
 ```
 
-Once again, this plays nicely with Typescript's type narrowing: if the assertion
+Once again, this plays nicely with TypeScript's type narrowing: if the assertion
 does not fail, from that point on you can treat the value as if it were of the
 expected type:
 

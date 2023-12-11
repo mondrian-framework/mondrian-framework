@@ -35,7 +35,7 @@ Mondrian Framework promotes the decoupling of the parts of an application by wel
 which is why creating an API requires defining a function, a module that contains it and a runtime that 
 executes the latter.
 
-```ts
+```ts showLineNumbers
 import { model } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { serve as serveREST, rest } from '@mondrian-framework/rest-fastify'

@@ -33,11 +33,11 @@ inferred type respect those invariants: it is the encoder's job to make sure an
 invalid value never gets encoded.
 
 In the previous example, `NonNegativeNumber` is inferred as a simple
-Typescript `number`, so the `encode` method has to check that it is a
+TypeScript `number`, so the `encode` method has to check that it is a
 non-negative number. When given a negative number the encoding process fails
 with an error describing what went wrong.
 
-## A small introduction on the `Result` type
+## The `Result` type
 
 Since `encode`'s return type is a `Result`, it may be useful to take a
 moment and get a feeling of how you can work with this kind of values.
@@ -102,7 +102,7 @@ printResult(safeDivide(10, 0)) // -> error: "Division by 0"
 The `Result` interface also has a lot of utility methods to make it easier to
 work with those, you can have a look at their documentation and examples.
 
-## Working with sensitive data
+## Sensitive data
 
 Encoding can be useful if you need to share data in JSON format, or if you need
 to turn the JSON into any other kind of data structure. However, sometimes you

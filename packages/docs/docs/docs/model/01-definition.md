@@ -1,11 +1,11 @@
 # Definition
 
 The `@mondrian-framework/model` package contains a wide range of useful
-functions for defining a data model schema, from primitive types to complex
-objects, arrays, and unions. It does so by providing a series of builders that
+functions for defining a domain model schema, from primitive types to complex
+objects, arrays and unions. It does so by providing a series of builders that
 can help make development straightforward and the schema as readable as possible.
 
-Everything you may need to define a new schema is defined inside the `types`
+Everything you may need to define a new schema is enclosed inside the `types`
 namespace of the `@mondrian-framework/model` package, so to get things started
 you should import it:
 
@@ -50,28 +50,7 @@ const positiveNumber = model.number({
 })
 ```
 
-### Enums
-
-Enums allow to define a set of named constants. Using enums can make it easier
-to document intent, or create a set of distinct cases. Mondrian provides only
-string-based enums:
-
-```ts showLineNumbers
-const userKind = model.enumeration(['customer', 'admin'])
-```
-
-### Literals
-
-Literals represent _specific_ strings, numbers or booleans in type positions.
-They are a common construct in the TypeScript language and they are supported by
-the Mondrian Framework as well:
-
-```ts showLineNumbers
-const zero = model.literal(0)
-const greeting = model.literal('Hello, World!')
-```
-
-### Additional Types
+## Additional Types
 
 Besides the primitive types you can find in `@mondrian-framework/model`, there's
 also a wide range of utility types that are already implemented and ready to use.
@@ -115,12 +94,33 @@ model.unknown() // any value
 model.record([type]) // Record<string, [type]>
 ```
 
+## Enums
+
+Enums allow to define a set of named constants. Using enums can make it easier
+to document intent, or create a set of distinct cases. Mondrian provides only
+string-based enums:
+
+```ts showLineNumbers
+const userKind = model.enumeration(['customer', 'admin'])
+```
+
+## Literals
+
+Literals represent _specific_ strings, numbers or booleans in type positions.
+They are a common construct in the TypeScript language and they are supported by
+the Mondrian Framework as well:
+
+```ts showLineNumbers
+const zero = model.literal(0)
+const greeting = model.literal('Hello, World!')
+```
+
 ## Wrapper types
 
 Only primitive types wouldn't get us far in defining complex business domains.
 That's why Mondrian also supports the definition of wrapper types like arrays,
 optional, and nullable values that can wrap and enrich the definition of any
-other Mondrian type.
+other type.
 
 ### Optional
 
@@ -193,7 +193,7 @@ const arrayOfNullableStrings = model.string().nullable().array()
 
 Being immutable is a sensitive default that should be good for almost all cases;
 however, sometimes it could be necessary to define a mutable array.
-In order to do so, one can use the `.mutable()` method:
+In order to do so, one can explicitly use the `.mutable()` method:
 
 ```ts showLineNumbers
 const myMutableArray = model.number().array().mutable()
@@ -288,18 +288,26 @@ const user = model.object({
 
 ### Entities
 
-Entities are structured types with a set of fields exactly as [objects](#objects).
+Entities are structured types with a set of fields, exactly as previously seen [objects](#objects). The main difference in their semantic: an entity represents a formal specification of a root domain concept, while an object represent a specific structured value without an identity.
+
+Take as an example two different structured data as the followings: 
 
 ```ts showLineNumbers
-const myObject = model.entity({
-  field1: model.number(),
-  field2: model.string(),
+const User = model.entity({
+  id: model.string(),
+  name: model.string(),
+  surname: model.string(),
 })
-// same as { readonly field1: number, readonly field2: string }
+
+const RegistrationInput = model.object({
+  name: model.string(),
+  surname: model.string(),
+})
 ```
 
-The difference is in the semantic. As we'll se in TODO an entity represent a "root" entity, meanwhile an object
-represent an "embedded" value. We'll discuss more on this difference later but it's speculat to [Prisma model vs type difference](https://www.prisma.io/docs/concepts/components/prisma-client/composite-types).
+The first represent a well difeined concept in the domain of an application, a user, which typically has its counterpart in the data model. The second, on the other hand, represents an utility, operational data structure that is generally built at runtime for convenience but does not refer to a domain concept.
+
+In addition to being very important from a conceptual point of view, this difference finds its importance in all those parts of the framework that offer additional functionalities for processing domain entities. 
 
 ### Unions
 
@@ -384,78 +392,6 @@ async function loginUser(auth: AuthenticationData) {
 Types definitions can help us define clear and expressive models that are
 faithful to the modeled domain.
 
-## Custom types
-
-Sometimes the types offered by the Mondrian framework may not be enough for
-your needs. That's why you can also define custom types that implement
-completely arbitrary logic. The mentioned [additional types](#additional-types)
-are built exactly in this way.
-
-A custom type can be defined using the `custom` function:
-
-```ts showLineNumbers
-const MyCustomType = model.custom<"name", {}, number>(...)
-```
-
-As you may have noticed, the `custom` function has three generic types:
-
-- the literal string with the name of the custom type
-- the type of additional options that may be needed by the custom type,
-  besides the basic options shared by all the Mondrian types
-- the inferred type for the custom type ([here's](./02-typing.md)
-  a more thorough explanation of Mondrian's type inference)
-
-Then, the arguments you need to pass to the custom builder are:
-
-- the name of the custom type
-- a decoder that can turn unknown values into that custom type's inferred type
-- an encoder that can turn custom types into JSON values
-- a validator that may perform additional validation logic to ensure that values are correct
-- an arbitraty that generates values semantically valid for the given options
-- additional options for that custom type
-
-Below is an example implementation of the `port` type that represents a TCP port.
-It could also be defined as a simple integer, however, defining it as a custom
-type can prove to be more expressive and it would also allow you to define custom
-arbitrary decoding, encoding, and validation logic:
-
-```ts showLineNumbers
-import { validation, decoding, model } from '@mondrian-framework/model'
-import gen from 'fast-check'
-
-const MIN_PORT_NUMBER = 0
-const MAX_PORT_NUMBER = 65535
-
-export function port(options: model.BaseOptions): model.CustomType<'port', {}, number> {
-  return model.custom<'port', {}, number>('port', encodePort, decodePort, validatePort, portArbitrary, options)
-}
-
-// Since a port is a number it is already a JSONType and encoding is a no-op
-function encodePort(port: number): JSONType {
-  return port
-}
-
-// A value is of type port if it is a number between MAX_PORT_NUMBER and MIN_PORT_NUMBER
-function decodePort(value: unknown): decoding.Result<number> {
-  if (typeof value !== 'number') {
-    return decoding.fail('a port number', value)
-  } else if (value < MIN_PORT_NUMBER || value > MAX_PORT_NUMBER) {
-    return decoding.fail('a port number between 0 and 65535', value)
-  } else {
-    return decoding.succeed(value)
-  }
-}
-
-// There's no additional validation to perform, so always return a succeeding result
-function validatePort(port: number): validation.Result {
-  return validation.succeed()
-}
-
-function portArbitrary(): gen.Arbitrary<number> {
-  return gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER })
-}
-```
-
 ## Lazy types
 
 In order to model complex relations Mondrian offer an easy way to express recursive types.
@@ -521,3 +457,355 @@ const User = model
   })
   .setName('User')
 ```
+
+
+## Custom types
+
+Mondrian type system is already flexible enough to express a wide variety of
+useful types. However, sometimes you might find yourself needing even more: 
+maybe because you want to change the default inference rules or the way a value 
+gets encoded and decoded. In this case, you'll need to reach out for custom types: 
+a powerful way to extend Mondrian's capabilities. 
+
+As an example, the mentioned [additional types](#additional-types) are built exactly 
+in this way.
+
+A custom type can be defined using the `custom` function from the `@mondrian-framework/model` 
+package:
+
+```ts showLineNumbers
+const MyCustomType = model.custom<"port", {}, number>(...)
+```
+
+As you may have noticed, the `custom` function has three generic types:
+
+- the literal string with the name of the custom type
+- the type of additional options that may be needed by the custom type,
+  besides the basic options shared by all the Mondrian types
+- the inferred type for the custom type ([here's](./02-typing.md)
+  a more thorough explanation of Mondrian's type inference)
+
+Then, the arguments you need to pass to the custom builder are:
+
+- the name of the custom type
+- a decoder that can turn unknown values into that custom type's inferred type
+- an encoder that can turn custom types into JSON values
+- a validator that may perform additional validation logic to ensure that values are correct
+- an arbitraty that generates values semantically valid for the given options
+- additional options for that custom type
+
+### Name
+
+Every custom type has a name that can be useful when referring to it, this is
+the first argument of the `model.custom` builder function:
+
+```ts showLineNumbers
+const port = model.custom<"port", ...>("port", ...)
+```
+
+As you may have noticed, the literal string for the name must also be the first
+_type argument_ of the `model.custom` function.
+
+You can choose whatever name you feel is appropriate for your needs, the
+Mondrian framework defines some custom types like `"datetime"`, `"timezone"`,
+`"RGB"`, and so on.
+
+### Additional options
+
+Every custom type can also accept additional options, besides the default ones
+shared by all Mondrian model. This is kept track of on the type level thanks to
+an additional argument:
+
+```ts showLineNumbers
+type PortOptions = { allowWellKnownPorts: boolean }
+
+const Port = model.custom<"port", PortOptions, ...>("port", ...)
+const nonWellKnownPort = Port.setOptions({ allowWellKnownPorts: false })
+```
+
+As we'll see later, custom options can be useful for tweaking the behavior of
+the decoding and validation functions.
+
+### Inferred type
+
+When defining a custom type, you also have the freedom of choosing the type it
+will get inferred as by Mondrian.
+The inferred type is what a decoder should return, and the starting point for an
+encoder:
+
+```ts showLineNumbers
+const Port = model.custom<"port", PortOptions, number>("port", ...)
+const InferredType = model.Infer<typeof Port> // -> number
+
+Port.encode(...) // encode will only accept a `number` input
+Port.decode(...) // decode will return a `number` when successful
+```
+
+Here it makes sense for ports to correspond to simple `number`s, but you may
+choose any type, no matter how complex. The only thing you have to pay attention
+to is that you must be able to turn it into a JSON, and build it from a JSON.
+
+### Encoding
+
+When defining a new custom type, you have to provide a function that can be used
+to encode any value of its inferred type into a JSON.
+
+This encoding function _does not perform any kind of validation_, which is in
+turn performed by a custom validator you're going to provide later. Let's keep
+ourselves focused on encoding and have a look at the example of ports:
+
+```ts showLineNumbers
+function encodePort(port: number): JSONType {
+    return port
+}
+
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, ...)
+```
+
+Once again, the encoder function has to take as input a value of the inferred
+type and transform it into a `JSONType`. In this case, a number is already a
+valid JSON so there's no need to perform any kind of further transformation.
+
+If the inferred type were more complex, say a `Date` object, you'd need to think
+of a way to turn it into a JSON; you could, for example, turn the `Date` object
+into a string (and later decode the string with a `Date.parse`):
+
+```ts showLineNumbers
+function encodeDate(date: Date): JSONType {
+  return date.toJSON() // This turns a Date object into a serializable string
+}
+```
+
+### Decoding
+
+In order to build a custom type you also need to provide a custom decoding
+function. You may think of decoding as the process that can turn an `unknown`
+value into a value of the inferred type.
+
+The decoding function will take as input not only a `decoding.Options` object,
+but also the options of the optional type that may be used to change the
+decoding behavior.
+
+```ts showLineNumbers
+function decodePort(
+    value: unknown,
+    _decodingOptions?: decoding.Options,
+    _customOptions?: PortOptions & model.BaseOptions,
+): decoding.Result<number> {
+    // Here we can ignore both the decodingOptions and the customOptions
+    // since we don't need those
+    if (typeof value !== "number") {
+        return decoding.fail("a number (for a port)", value)
+    } else {
+        return decoding.succeed(value)
+    }
+}
+
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, ...)
+```
+
+As you may have noticed, the decoding function has to return a
+`decoding.Result` since the process may fail. The `decoding` module has two
+useful functions you can use for this:
+
+- `decoding.succeed` is returned to signal a success, it takes as input the
+  correctly decoded value
+- `decoding.fail` is returned to signal a failure, it takes as first argument a
+  string describing the expected value, and as second argument the actual value
+  it run into
+
+As you can see, a decoder function _should not be concerned with the validation_
+_logic_: its only purpose is to return a value of the given inferred type, any
+kind of further validation _must be performed_ by the validator function.
+
+For example, here we didn't check that the number is actually in the range
+0-65535 because that will be done by the validator.
+
+### Validation
+
+It's now time to finally get to the validation part. A validation function is
+the last bit of code we need to provide the `model.custom` builder to get a new
+Mondrian type.
+
+The validator should take as input a decoded value (of the specified inferred
+type) and return a validation result: either a success or an error describing
+what went wrong.
+
+```ts showLineNumbers
+function validatePort(
+    port: number,
+    _validationOptions?: validation.Options,
+    customOptions?: PortOptions & model.BaseOptions,
+): validation.Result {
+    const wellKnownPortsAllowed = customOptions?.allowWellKnownPorts ?? true
+    if (port < 0 || port > 65535) {
+        return validation.fail("not a port number", port)
+    } else if (!wellKnownPortsAllowed && port <= 1023) {
+        // Here the customOptions can change how validation works out!
+        return validation.fail("well known ports are not allowed", port)
+    } else {
+        return validation.succeed()
+    }
+}
+
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort, ...)
+```
+
+Similarly to the decoding function, a validation function needs to return a
+`validation.Result` since the process may fail. In order to do so, the
+`validation` module provides two useful functions:
+
+- `validation.succeed`, which takes no arguments and is returned when the
+  validation is successful
+- `validation.fail` is returned to signal a failure, it takes as its first
+  argument a string describing the assertion that failed, and as its second
+  argument the actual value that failed the assertion
+
+This function will be used under the hood in pair with the provided
+encoder/decoder to implement the `encode` and `decode` methods of the new type:
+
+```ts showLineNumbers
+type Port = model.Infer<typeof Port>
+const Port = model.custom<"port", PortOptions, number>("port", encodePort, decodePort, validatePort, ...)
+
+Port.decode(1024) // -> ok(1024)
+Port.decode("foo") // -> error([{ expected: "a number (for a port)", got: "foo", path: "$" }])
+Port.decode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }])
+
+Port.encode(1024) // -> ok(1024)
+Port.encode(-1) // -> error([{ assertion: "not a port number", got: -1, path: "$" }])
+```
+
+### Test value generator
+
+The last bit needed to instantiate a custom type is the generator function. It enables
+to generate values for automated tests and to provide examples.
+
+In order to provide a generator function we use the library `fast-check` that provides very
+useful construct to define a generator.
+
+```ts showLineNumbers
+import gen from 'fast-check'
+
+function portArbitrary(_maxDepth: number, customOptions?: PortOptions & model.BaseOptions): gen.Arbitrary<number> {
+  const wellKnownPortsAllowed = customOptions?.allowWellKnownPorts ?? true
+  if (wellKnownPortsAllowed) {
+    return gen.integer({ min: 0, max: 65535 })
+  } else {
+    return gen.integer({ min: 1024, max: 65535 })
+  }
+}
+```
+
+This is the final definition of a new `Port` custom type.
+
+```ts showLineNumbers
+type Port = model.Infer<typeof Port>
+const Port = model.custom<'port', PortOptions, number>('port', encodePort, decodePort, validatePort, portArbitrary)
+
+const p = Port.example() //80
+```
+
+### Utility builder
+
+In order to provide a simplier usage for the user you can defined an utility builder for every
+custom type as follow:
+
+```ts showLineNumbers
+export type PortOptions = { allowWellKnownPorts: boolean }
+export type PortType = model.CustomType<'port', PortOptions, number>
+
+export function port(options?: PortOptions & model.BaseOptions): PortType {
+  return model.custom({
+    typeName: 'port',
+    encoder: encodePort,
+    decoder: decodePort,
+    validator: validatePort,
+    arbitrary: portArbitrary,
+    options,
+  })
+}
+```
+
+So it can be used in as simple as other types.
+
+```ts showLineNumbers
+// Example: Using the custom `Port` type in an object definition
+const serverAddress = model.object({
+  address: model.string(),
+  // highlight-start
+  port: port({ allowWellKnownPorts: false }),
+  // highlight-end
+})
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Below is an example implementation of the `port` type that represents a TCP port.
+It could also be defined as a simple integer, however, defining it as a custom
+type can prove to be more expressive and it would also allow you to define custom
+arbitrary decoding, encoding, and validation logic:
+
+```ts showLineNumbers
+import { validation, decoding, model } from '@mondrian-framework/model'
+import gen from 'fast-check'
+
+const MIN_PORT_NUMBER = 0
+const MAX_PORT_NUMBER = 65535
+
+export function port(options: model.BaseOptions): model.CustomType<'port', {}, number> {
+  return model.custom<'port', {}, number>('port', encodePort, decodePort, validatePort, portArbitrary, options)
+}
+
+// Since a port is a number it is already a JSONType and encoding is a no-op
+function encodePort(port: number): JSONType {
+  return port
+}
+
+// A value is of type port if it is a number between MAX_PORT_NUMBER and MIN_PORT_NUMBER
+function decodePort(value: unknown): decoding.Result<number> {
+  if (typeof value !== 'number') {
+    return decoding.fail('a port number', value)
+  } else if (value < MIN_PORT_NUMBER || value > MAX_PORT_NUMBER) {
+    return decoding.fail('a port number between 0 and 65535', value)
+  } else {
+    return decoding.succeed(value)
+  }
+}
+
+// There's no additional validation to perform, so always return a succeeding result
+function validatePort(port: number): validation.Result {
+  return validation.succeed()
+}
+
+function portArbitrary(): gen.Arbitrary<number> {
+  return gen.integer({ min: MIN_PORT_NUMBER, max: MAX_PORT_NUMBER })
+}
+```
+

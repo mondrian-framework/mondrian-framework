@@ -5,13 +5,13 @@ sidebar_position: 2.1
 # Model
 
 The first and fundamental feature of the Mondrian Framework is the ability to
-define the **schema** of a data model. This definition is a requirement to
+define the **schema** of a domain model. This definition is a requirement to
 enable data translation into any current and future representations.
-Having a detailed data model in a formal language is a powerful tool in
+Having a detailed domain model in a formal language is a powerful tool in
 itself to ensure interoperability and longevity.
 
 The approach through schema definition entails that the developer does not
-directly write the types representing their data model, but instead starts with
+directly write the types representing their domain model, but instead starts with
 defining the schema, which can contain additional information beyond what is
 supported by the target programming language, such as validation rules as an
 example.
@@ -79,6 +79,4 @@ type Post = model.Infer<typeof Post>
 
 Mondrian Framework is entirely written in TypeScript. The use of typing greatly reduces the error rate and allows for increased productivity thanks to seamless integration with modern IDEs that provide powerful autocomplete features.
 
-As shown in the previous example, by importing the `@mondrian-framework/model` module, we have access to a wide range of functions suggested by the IDE, enabling us to describe a model.
-
-Furthermore, through the use of constructs such as conditional types and mapped types, it is possible to automatically generate the TypeScript type of a model based on its schema. As demonstrated in the example, it is sufficient to use the `Infer` utility type.
+As shown in the previous example, by importing the `@mondrian-framework/model` module, we have access to a wide range of functions enabling us to describe a model. Furthermore it is possible to automatically generate the TypeScript type of a model based on its schema. As demonstrated in the example, it is sufficient to use the `Infer` utility type.

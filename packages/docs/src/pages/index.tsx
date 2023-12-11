@@ -157,7 +157,7 @@ const userModule = module.build({
                   Multiple <em>runtimes</em> with zero effort
                 </div>
                 <div className={styles.featureDescription}>
-                  Provide your own functions in any way you like, as an API (REST, GraphQL or gRPC), as a queue consumer (SQS, Kafka, etc.) or a scheduler job. Every runtime provided by the framework also support all best practices, from observability via Open Telemetry to automated documentation.
+                  Provide your own functions in any way you like, as an API (REST, GraphQL or gRPC), as a queue consumer (SQS, Kafka, etc.) or a scheduled job. Every runtime provided by the framework also support all best practices, from observability via Open Telemetry to automated documentation.
                   <br/><br/>
                   You can also develop your own runtime based on your needs to execute a module using a server of your choice and a dedicated infrastructure. This will allow you to embrace technological evolution without rewriting your code.
                 </div>

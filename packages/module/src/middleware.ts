@@ -1,4 +1,5 @@
 import { errors, functions, logger, retrieve, security, utils } from '.'
+import { checkPolicies as checkPolicyInternal } from './security'
 import { result, model, decoding, validation, path } from '@mondrian-framework/model'
 import { buildErrorMessage } from '@mondrian-framework/utils'
 
@@ -113,7 +114,7 @@ export function checkPolicies(
   return {
     name: 'Check policies',
     apply: (args, next, thisFunction) => {
-      const res = security.checkPolicies({
+      const res = checkPolicyInternal({
         outputType: thisFunction.output,
         retrieve: args.retrieve,
         policies: policies(args.context),

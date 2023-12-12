@@ -24,23 +24,21 @@ export const instance = module.build({
     checkOutputType: 'throw',
     opentelemetryInstrumentation: true,
   },
-  context: async ({ authorization, ip }: { authorization?: string; ip: string }, { functionName, retrieve }) => {
-    let context: Context | LoggedUserContext = { prisma, ip }
+  async context({ authorization, ip }: { authorization?: string; ip: string }): Promise<Context | LoggedUserContext> {
     if (authorization) {
       const secret = process.env.JWT_SECRET ?? 'secret'
       const rawJwt = authorization.replace('Bearer ', '')
-      let userId: number | null = null
       try {
         const jwt = jsonwebtoken.verify(rawJwt, secret, { complete: true })
         if (typeof jwt.payload === 'object' && jwt.payload.sub) {
-          userId = Number(jwt.payload.sub)
-          context = { ...context, userId }
+          const userId = Number(jwt.payload.sub)
+          return { prisma, ip, userId }
         }
       } catch {
         throw new InvalidJwtError(rawJwt)
       }
     }
-    return context
+    return { prisma, ip }
   },
   policies(context) {
     if (context.userId != null) {

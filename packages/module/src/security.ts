@@ -17,13 +17,18 @@ export type Result = result.Result<retrieve.GenericRetrieve | undefined, PolicyV
 export const PolicyViolation = () =>
   model.union({
     noApplicablePolicies: model.object({
-      reason: model.literal('NO_APPLICABLE_POLICIES'),
+      code: model.literal('NO_APPLICABLE_POLICIES'),
       path: model.string(),
-      allowedSelections: model.json().array(),
-      otherPolicies: model.object({ when: model.json(), selection: model.json() }).array(),
+      reasons: model
+        .object({
+          applicable: model.boolean(),
+          policy: model.json(),
+          forbiddenSelection: model.string().array().optional(),
+        })
+        .array(),
     }),
     forbiddenWhereClausole: model.object({
-      reason: model.enumeration(['FORBIDDEN_WHERE_CLAUSOLE', 'FORBIDDEN_ORDERBY_CLAUSOLE']),
+      code: model.enumeration(['FORBIDDEN_WHERE_CLAUSOLE', 'FORBIDDEN_ORDERBY_CLAUSOLE']),
       path: model.string(),
       forbiddenField: model.string(),
     }),
@@ -45,26 +50,38 @@ export function checkPolicies({ outputType, policies, retrieve, capabilities, pa
   }
 
   const appliedPolicies: Policy[] = []
-  const potentiallyPolicies: Policy[] = []
+  const potentiallyPolicies: { policy: Policy; forbiddenSelection: path.Path[] }[] = []
   const notSatisfiedPolicies: Policy[] = []
-  for (const p of policies.filter((p) => model.areEqual(p.entity, model.unwrap(outputType)))) {
-    if (!isWithinRestriction(p, retrieve?.where)) {
-      notSatisfiedPolicies.push(p)
-    } else if (!isSelectionIncluded(p, retrieve?.select)) {
-      potentiallyPolicies.push(p)
+  const thisPolicies = policies.filter((p) => model.areEqual(p.entity, model.unwrap(outputType)))
+  for (const policy of thisPolicies) {
+    if (!isWithinRestriction(policy, retrieve?.where)) {
+      notSatisfiedPolicies.push(policy)
+      continue
+    }
+    const selectionCheck = isSelectionIncluded(policy, retrieve?.select)
+    if (selectionCheck.isFailure) {
+      potentiallyPolicies.push({ policy: policy, forbiddenSelection: selectionCheck.error })
     } else {
-      appliedPolicies.push(p)
+      appliedPolicies.push(policy)
     }
   }
 
   if (appliedPolicies.length === 0) {
     return result.fail({
-      reason: 'NO_APPLICABLE_POLICIES',
+      code: 'NO_APPLICABLE_POLICIES',
       path,
-      allowedSelections: potentiallyPolicies.map((p) => p.selection),
-      otherPolicies: notSatisfiedPolicies.flatMap((p) =>
-        p.restriction ? [{ when: p.restriction, selection: p.selection }] : [],
-      ),
+      reasons: [
+        ...potentiallyPolicies.map(({ policy, forbiddenSelection }) => ({
+          applicable: true,
+          policy: { ...policy, entity: undefined },
+          forbiddenSelection: forbiddenSelection,
+        })),
+        ...notSatisfiedPolicies.map((policy) => ({
+          applicable: false,
+          policy: { ...policy, entity: undefined },
+          forbiddenSelection: undefined,
+        })),
+      ],
     })
   }
 
@@ -95,32 +112,19 @@ export function checkPolicies({ outputType, policies, retrieve, capabilities, pa
 /**
  * Checks if selection is included in policy's selection
  */
-export function isSelectionIncluded(policy: Policy, selection: retrieve.GenericSelect | undefined): boolean {
-  if (policy.selection === true) {
-    return true
-  }
-  if (!selection) {
-    return false
-  }
-  const concreteType = model.concretise(policy.entity)
-  if (concreteType.kind !== model.Kind.Object && concreteType.kind !== model.Kind.Entity) {
-    return true
-  }
-
-  //TODO: finish this logic
-  for (const key of Object.entries(selection)
-    .filter((v) => v[1])
-    .map((v) => v[0])) {
-    const unwrappedField = model.unwrap(concreteType.fields[key])
-    if (model.isEntity(unwrappedField)) {
-      continue
-    }
-    if (!policy.selection[key]) {
-      return false
+export function isSelectionIncluded(
+  policy: Policy,
+  selection: retrieve.GenericSelect | undefined,
+): result.Result<null, path.Path[]> {
+  const allowedPaths = selectionToPaths(policy.entity, policy.selection)
+  const requestedPaths = selectionToPaths(policy.entity, selection)
+  const forbiddenPaths: path.Path[] = []
+  for (const requestedPath of requestedPaths) {
+    if (!allowedPaths.has(requestedPath)) {
+      forbiddenPaths.push(requestedPath)
     }
   }
-
-  return true
+  return forbiddenPaths.length === 0 ? result.ok(null) : result.fail(forbiddenPaths)
 }
 
 /**
@@ -194,7 +198,7 @@ export function isWhereAllowed({
     return result.ok(null)
   }
   return isWhereAllowedInternal({ appliedPolicies, where: retrieve.where }).mapError((forbiddenField) => ({
-    reason: 'FORBIDDEN_WHERE_CLAUSOLE',
+    code: 'FORBIDDEN_WHERE_CLAUSOLE',
     path,
     forbiddenField,
   }))
@@ -258,7 +262,7 @@ export function isOrderByAllowed({
     for (const [field] of Object.entries(order)) {
       if (!canAccessField(appliedPolicies, field)) {
         return result.fail({
-          reason: 'FORBIDDEN_ORDERBY_CLAUSOLE',
+          code: 'FORBIDDEN_ORDERBY_CLAUSOLE',
           path,
           forbiddenField: field,
         })
@@ -301,4 +305,78 @@ class Builder<T extends model.Type> {
   on<T extends model.Type>(entity: T): Builder<T> {
     return new Builder(entity, this._policies)
   }
+}
+
+//selection -> set of path
+// then -> reasoning about the set for (selectionIsIncluded, where, orderBy)
+export function selectionToPaths(
+  type: model.Type,
+  selection: retrieve.GenericSelect | undefined | boolean,
+  prefix: path.Path = path.root,
+): ReadonlySet<path.Path> {
+  const emptySet = new Set<path.Path>()
+  if (!selection) {
+    return emptySet
+  }
+  return model.match(type, {
+    scalar: () => new Set([prefix]),
+    wrapper: ({ wrappedType }) => selectionToPaths(wrappedType, selection, prefix),
+    record: ({ fields, kind }) => {
+      if (kind === model.Kind.Entity && selection === true && prefix !== '$') {
+        return emptySet
+      }
+      const paths = Object.entries(fields)
+        .map(([fieldName, fieldType]) => {
+          const subSelection =
+            typeof selection === 'object' && selection[fieldName]
+              ? selection[fieldName]
+              : selection === true
+                ? true
+                : null
+          if (subSelection) {
+            return selectionToPaths(fieldType, subSelection as any, path.appendField(prefix, fieldName))
+          } else {
+            return emptySet
+          }
+        })
+        .flatMap((set) => [...set.values()])
+      return new Set(paths)
+    },
+    union: () => emptySet,
+  })
+}
+
+export function whereToPaths(
+  type: model.Type,
+  where: retrieve.GenericWhere | undefined,
+  prefix: path.Path = path.root,
+): ReadonlySet<path.Path> {
+  const emptySet = new Set<path.Path>()
+  if (!where) {
+    return emptySet
+  }
+  return model.match(type, {
+    scalar: () => new Set([prefix]),
+    wrapper: ({ wrappedType }) => whereToPaths(wrappedType, where, prefix),
+    array: ({ wrappedType }) => {
+      return emptySet
+    },
+    record: ({ fields, kind }) => {
+      if (kind === model.Kind.Entity && prefix !== '$') {
+        return emptySet
+      }
+      const paths = Object.entries(fields)
+        .map(([fieldName, fieldType]) => {
+          const subWhere = typeof where === 'object' && where[fieldName] ? where[fieldName] : null
+          if (subWhere) {
+            return whereToPaths(fieldType, subWhere as any, path.appendField(prefix, fieldName))
+          } else {
+            return emptySet
+          }
+        })
+        .flatMap((set) => [...set.values()])
+      return new Set(paths)
+    },
+    union: () => emptySet,
+  })
 }

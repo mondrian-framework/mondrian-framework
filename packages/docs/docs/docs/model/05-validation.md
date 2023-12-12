@@ -47,7 +47,7 @@ The array type allows to specofy some options to perform validation:
 
 All other types do not have additional options to allow for additional validation
 rules (there's an exception for custom types, you can read more about those
-[here](./06-custom-types.md)). However, composed types like objects, unions,
+[here](./01-definition.md#custom-types)). However, composed types like objects, unions,
 optionals, and nullables behave like you would expect: for such a type to be valid
 all of their wrapped items must themselves be valid:
 

@@ -51,10 +51,9 @@ describe('check guest policies', () => {
       retrieve: { select: { age: true } },
     })
     expect(res.isFailure && res.error).toEqual({
-      allowedSelections: [],
-      otherPolicies: [],
+      reasons: [],
       path: '$',
-      reason: 'NO_APPLICABLE_POLICIES',
+      code: 'NO_APPLICABLE_POLICIES',
     })
   })
 
@@ -67,17 +66,19 @@ describe('check guest policies', () => {
       retrieve: { select: { age: true } },
     })
     expect(r1.isFailure && r1.error).toEqual({
-      allowedSelections: [
+      reasons: [
         {
-          forbiddenRequestedFields: ['$.age'],
-          selection: {
-            name: true,
+          applicable: true,
+          forbiddenSelection: ['$.age'],
+          policy: {
+            selection: {
+              name: true,
+            },
           },
         },
       ],
-      otherPolicies: [],
       path: '$',
-      reason: 'NO_APPLICABLE_POLICIES',
+      code: 'NO_APPLICABLE_POLICIES',
     })
   })
 
@@ -90,17 +91,19 @@ describe('check guest policies', () => {
       retrieve: { select: { posts: { select: { content: true } } } },
     })
     expect(r1.isFailure && r1.error).toEqual({
-      allowedSelections: [
+      reasons: [
         {
-          forbiddenRequestedFields: ['$.content'],
-          selection: {
-            title: true,
+          applicable: true,
+          forbiddenSelection: ['$.content'],
+          policy: {
+            selection: {
+              title: true,
+            },
           },
         },
       ],
-      otherPolicies: [],
       path: '$.posts',
-      reason: 'NO_APPLICABLE_POLICIES',
+      code: 'NO_APPLICABLE_POLICIES',
     })
   })
 })

@@ -27,7 +27,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
   name: string
   version: string
   functions: Fs
-  policies?: (context: ContextType<Fs>) => readonly security.Policy[]
+  policies?: (context: ContextType<Fs>) => security.Policies
   context: (
     input: ContextInput,
     args: {

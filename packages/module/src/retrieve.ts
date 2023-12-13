@@ -405,7 +405,7 @@ export function merge<const T extends GenericRetrieve>(
   } as unknown as T
 }
 
-function mergeSelect(
+export function mergeSelect(
   type: model.Type,
   left?: GenericSelect,
   right?: GenericSelect,

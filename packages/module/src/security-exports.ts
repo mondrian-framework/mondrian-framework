@@ -1,1 +1,1 @@
-export { Policy, Result, on, PolicyViolation } from './security'
+export { Policy, Policies, Result, on, PolicyViolation } from './security'

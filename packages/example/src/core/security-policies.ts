@@ -2,7 +2,7 @@ import { Like, Post } from './post'
 import { Follower, MyUser, User } from './user'
 import { security } from '@mondrian-framework/module'
 
-export const loggedUser = (userId: number) =>
+export const loggedUser: (userId: number) => readonly security.Policy[] = (userId) =>
   security
 
     .on(User)
@@ -39,12 +39,12 @@ export const loggedUser = (userId: number) =>
     .allows({ selection: true })
 
     .on(Follower)
-    .allows({ selection: true }).policies
+    .allows({ selection: true })
 
-export const guest = security
+export const guest: readonly security.Policy[] = security
 
   .on(MyUser)
   .allows({ selection: true })
 
   .on(User)
-  .allows({ selection: { firstName: true } }).policies
+  .allows({ selection: { firstName: true } })

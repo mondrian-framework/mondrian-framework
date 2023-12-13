@@ -1,6 +1,6 @@
 import { retrieve } from '.'
 import { model, path, result } from '@mondrian-framework/model'
-import { flatMapObject, isArray } from '@mondrian-framework/utils'
+import { Mutable, flatMapObject, isArray } from '@mondrian-framework/utils'
 import { isDeepStrictEqual } from 'util'
 
 export type Policy<T extends model.Type = model.Type> = {
@@ -15,52 +15,96 @@ export type Policy<T extends model.Type = model.Type> = {
 export type Result = result.Result<retrieve.GenericRetrieve | undefined, PolicyViolation>
 
 export const PolicyViolation = () =>
-  model.union({
-    noApplicablePolicies: model.object({
-      code: model.literal('NO_APPLICABLE_POLICIES'),
-      path: model.string(),
-      reasons: model
-        .object({
-          applicable: model.boolean(),
-          policy: model.json(),
-          forbiddenSelection: model.string().array().optional(),
-        })
-        .array(),
-    }),
-    forbiddenWhereClausole: model.object({
-      code: model.enumeration(['FORBIDDEN_WHERE_CLAUSOLE', 'FORBIDDEN_ORDERBY_CLAUSOLE']),
-      path: model.string(),
-      forbiddenField: model.string(),
-    }),
+  model.object({
+    path: model.string(),
+    reasons: model
+      .object({
+        applicable: model.boolean(),
+        policy: model.json(),
+        forbiddenAccess: model.string().array().optional(),
+      })
+      .array(),
   })
 
 export type PolicyViolation = model.Infer<typeof PolicyViolation>
 
 export type PolicyCheckInput = {
   readonly outputType: model.Type
-  readonly policies: readonly Policy[]
+  readonly policies: Policies
   readonly retrieve: retrieve.GenericRetrieve | undefined
   readonly capabilities: retrieve.Capabilities | undefined
   readonly path: path.Path
 }
 
-export function checkPolicies({ outputType, policies, retrieve, capabilities, path }: PolicyCheckInput): Result {
+export function checkPolicies(args: PolicyCheckInput): Result {
+  return checkPoliciesInternal(args).map((mappedRetrieve) => {
+    return intersectRetrieveSelection(args.outputType, args.retrieve, mappedRetrieve)
+  })
+}
+
+function intersectRetrieveSelection(
+  type: model.Type,
+  originalRetrieve: retrieve.GenericRetrieve | undefined,
+  currenctRetrieve: retrieve.GenericRetrieve | undefined,
+) {
+  const originalSelect = originalRetrieve?.select
+  const currentSelect = currenctRetrieve?.select
+  if (!originalSelect || !currentSelect) {
+    return currenctRetrieve
+  }
+
+  const unwrapped = model.unwrap(type)
+  return model.match(unwrapped, {
+    entity: ({ fields }) => {
+      const selection: Mutable<retrieve.GenericSelect> = {}
+      for (const [fieldName, fieldType] of Object.entries(fields)) {
+        if (originalSelect[fieldName] && currentSelect[fieldName] && model.isEntity(model.unwrap(fieldType))) {
+          selection[fieldName] = intersectRetrieveSelection(
+            fieldType,
+            originalSelect[fieldName] as any,
+            currentSelect[fieldName] as any,
+          )
+        } else {
+          selection[fieldName] = originalSelect[fieldName]
+        }
+      }
+      return { ...currenctRetrieve, select: selection }
+    },
+    otherwise: () => {
+      throw new Error('Unexpected type in intersectRetrieveSelection')
+    },
+  })
+}
+
+export function checkPoliciesInternal({
+  outputType,
+  policies,
+  retrieve,
+  capabilities,
+  path,
+}: PolicyCheckInput): Result {
   if (!capabilities || !capabilities.select) {
     return result.ok(retrieve)
   }
 
+  const unwrapped = model.concretise(model.unwrap(outputType))
+  if (unwrapped.kind !== model.Kind.Entity) {
+    throw new Error('Should be an entity') //TODO: better message
+  }
+  const mappedRetrieve = spreadWhereAndOrderByIntoSelection(unwrapped, retrieve)
+
   const appliedPolicies: Policy[] = []
-  const potentiallyPolicies: { policy: Policy; forbiddenSelection: path.Path[] }[] = []
+  const potentiallyPolicies: { policy: Policy; forbiddenAccess: path.Path[] }[] = []
   const notSatisfiedPolicies: Policy[] = []
-  const thisPolicies = policies.filter((p) => model.areEqual(p.entity, model.unwrap(outputType)))
+  const thisPolicies = policies.list.filter((p) => model.areEqual(p.entity, model.unwrap(outputType))) //TODO: unwrap?
   for (const policy of thisPolicies) {
     if (!isWithinRestriction(policy, retrieve?.where)) {
       notSatisfiedPolicies.push(policy)
       continue
     }
-    const selectionCheck = isSelectionIncluded(policy, retrieve?.select)
+    const selectionCheck = isSelectionIncluded(policy, mappedRetrieve?.select)
     if (selectionCheck.isFailure) {
-      potentiallyPolicies.push({ policy: policy, forbiddenSelection: selectionCheck.error })
+      potentiallyPolicies.push({ policy: policy, forbiddenAccess: selectionCheck.error })
     } else {
       appliedPolicies.push(policy)
     }
@@ -68,30 +112,20 @@ export function checkPolicies({ outputType, policies, retrieve, capabilities, pa
 
   if (appliedPolicies.length === 0) {
     return result.fail({
-      code: 'NO_APPLICABLE_POLICIES',
       path,
       reasons: [
-        ...potentiallyPolicies.map(({ policy, forbiddenSelection }) => ({
+        ...potentiallyPolicies.map(({ policy, forbiddenAccess }) => ({
           applicable: true,
           policy: { ...policy, entity: undefined },
-          forbiddenSelection: forbiddenSelection,
+          forbiddenAccess,
         })),
         ...notSatisfiedPolicies.map((policy) => ({
           applicable: false,
           policy: { ...policy, entity: undefined },
-          forbiddenSelection: undefined,
+          forbiddenAccess: undefined,
         })),
       ],
     })
-  }
-
-  const whereResult = isWhereAllowed({ appliedPolicies, retrieve, path })
-  if (whereResult.isFailure) {
-    return whereResult
-  }
-  const orderByResult = isOrderByAllowed({ appliedPolicies, retrieve, path })
-  if (orderByResult.isFailure) {
-    return orderByResult
   }
 
   const filters = { OR: appliedPolicies.flatMap((p) => (p.filter ? [p.filter] : [])) }
@@ -103,10 +137,94 @@ export function checkPolicies({ outputType, policies, retrieve, capabilities, pa
   }
   const newRetrieve =
     filters.OR.length === 0
-      ? retrieve
-      : { ...retrieve, where: retrieve?.where ? { AND: [retrieve.where, filters] } : filters }
+      ? mappedRetrieve
+      : {
+          ...mappedRetrieve,
+          where: retrieve?.where
+            ? { AND: [retrieve.where, filters.OR.length === 1 ? filters.OR[0] : filters] }
+            : filters,
+        }
 
   return checkForRelations({ outputType, policies, retrieve: newRetrieve, capabilities, path })
+}
+
+function spreadWhereAndOrderByIntoSelection(
+  type: model.EntityType<any, model.Types>,
+  retr: retrieve.GenericRetrieve | undefined,
+): retrieve.GenericRetrieve | undefined {
+  let selection: retrieve.GenericSelect | undefined = retr?.select
+  if (retr?.orderBy) {
+    const orderBySelection = orderByToSelection(type, retr.orderBy)
+    selection = retrieve.mergeSelect(type, selection, orderBySelection)
+  }
+  if (retr?.where) {
+    const orderBySelection = whereToSelection(type, retr.where)
+    selection = retrieve.mergeSelect(type, selection, orderBySelection)
+  }
+  return { ...retr, select: selection }
+}
+
+function orderByToSelection(type: model.Type, orderBy: retrieve.GenericOrderBy): retrieve.GenericSelect {
+  //TODO
+  return {}
+}
+
+export function whereToSelection(
+  type: model.Type,
+  where: retrieve.GenericWhere | undefined,
+): retrieve.GenericSelect | undefined {
+  const logicalConditions = [
+    ...(isArray(where?.AND) ? where?.AND : where?.AND ? [where.AND] : []),
+    ...(isArray(where?.OR) ? where.OR : where?.OR ? [where.OR] : []),
+    ...(isArray(where?.NOT) ? where.NOT : where?.NOT ? [where.NOT] : []),
+  ]
+
+  const selectionFromLogical = logicalConditions
+    .map((where: retrieve.GenericWhere) => whereToSelection(type, where))
+    .reduce((p, c) => retrieve.mergeSelect(type, p, c), {})
+
+  const internalWhere = { ...where }
+  delete internalWhere.AND
+  delete internalWhere.OR
+  delete internalWhere.NOT
+
+  const selection = whereToSelectionInternal(type, internalWhere)
+  return retrieve.mergeSelect(type, selection, selectionFromLogical)
+}
+
+function whereToSelectionInternal(type: model.Type, where: any): any {
+  return model.match(type, {
+    record: ({ fields }) => {
+      const selection: Mutable<retrieve.GenericSelect> = {}
+      for (const [fieldName, fieldType] of Object.entries(fields)) {
+        const wherePart = where[fieldName]
+        if (fieldName in where) {
+          if (model.isEntity(model.unwrap(fieldType))) {
+            selection[fieldName] = { select: whereToSelection(fieldType, wherePart) }
+          } else if ('equals' in wherePart) {
+            selection[fieldName] = true
+          } else {
+            selection[fieldName] = whereToSelection(fieldType, wherePart) as any
+          }
+        }
+      }
+      return selection
+    },
+    array: ({ wrappedType }) =>
+      retrieve.mergeSelect(
+        wrappedType,
+        whereToSelection(wrappedType, where?.some),
+        retrieve.mergeSelect(
+          wrappedType,
+          whereToSelection(wrappedType, where?.none),
+          whereToSelection(wrappedType, where?.every),
+        ),
+      ),
+    wrapper: ({ wrappedType }) => whereToSelectionInternal(wrappedType, where),
+    otherwise: () => {
+      throw new Error('Unreachable')
+    },
+  })
 }
 
 /**
@@ -142,7 +260,7 @@ export function checkForRelations({ outputType, policies, capabilities, ...input
   for (const [key, value] of Object.entries(input.retrieve.select).filter((v) => v[1])) {
     const unwrappedField = model.unwrap(concreteType.fields[key])
     if (model.isEntity(unwrappedField)) {
-      const result = checkPolicies({
+      const result = checkPoliciesInternal({
         outputType: concreteType.fields[key],
         capabilities: retrieve.allCapabilities,
         policies,
@@ -160,162 +278,20 @@ export function checkForRelations({ outputType, policies, capabilities, ...input
 }
 
 function buildSelectForEntity(fields: model.Types): retrieve.GenericSelect {
+  //TODO: what if entity inside of object?
   return flatMapObject(fields, (name, type) => (model.isEntity(model.unwrap(type)) ? [] : [[name, true]]))
 }
 
 /**
- * Checks if policy's where is included in where filter in order to check if the operation is inside the domain
+ * Gets a set of path that match the sum of selected fields.
  */
-export function isWithinRestriction(policy: Policy, where: retrieve.GenericWhere | undefined): boolean {
-  if (!policy.restriction || Object.keys(policy.restriction).length === 0) {
-    return true
-  }
-  if (!where) {
-    return false
-  }
-
-  //TODO: finish this logic
-  for (const [key, filter] of Object.entries(policy.restriction).filter((v) => v[1] !== undefined)) {
-    const whereFilter = where[key]
-    if (!whereFilter || !isDeepStrictEqual(whereFilter, filter)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-export function isWhereAllowed({
-  appliedPolicies,
-  retrieve,
-  path,
-}: {
-  appliedPolicies: Policy[]
-  retrieve: retrieve.GenericRetrieve | undefined
-  path: path.Path
-}): result.Result<null, PolicyViolation> {
-  if (!retrieve?.where) {
-    return result.ok(null)
-  }
-  return isWhereAllowedInternal({ appliedPolicies, where: retrieve.where }).mapError((forbiddenField) => ({
-    code: 'FORBIDDEN_WHERE_CLAUSOLE',
-    path,
-    forbiddenField,
-  }))
-}
-function isWhereAllowedInternal({
-  appliedPolicies,
-  where,
-}: {
-  appliedPolicies: Policy[]
-  where: retrieve.GenericWhere
-}): result.Result<null, string> {
-  const internalWhere = { ...where }
-  const logical = [
-    ...(isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-    ...(isArray(where.OR) ? where.OR : where.OR ? [where.OR] : []),
-    ...(isArray(where.NOT) ? where.NOT : where.NOT ? [where.NOT] : []),
-  ]
-  for (const subWhere of logical) {
-    const subResult = isWhereAllowedInternal({ appliedPolicies, where: subWhere })
-    if (subResult.isFailure) {
-      return subResult
-    }
-  }
-  delete internalWhere.AND
-  delete internalWhere.OR
-  delete internalWhere.NOT
-
-  for (const [field] of Object.entries(internalWhere)) {
-    if (!canAccessField(appliedPolicies, field)) {
-      return result.fail(field)
-    }
-  }
-
-  return result.ok(null)
-}
-
-//TODO: finish this logic implementation
-function canAccessField(appliedPolicies: Policy[], field: string): boolean {
-  if (appliedPolicies.some((p) => p.selection === true)) {
-    return true
-  }
-  if (appliedPolicies.some((p) => p.selection !== true && p.selection[field] === true)) {
-    return true
-  }
-  return false
-}
-
-export function isOrderByAllowed({
-  appliedPolicies,
-  retrieve,
-  path,
-}: {
-  appliedPolicies: Policy[]
-  retrieve: retrieve.GenericRetrieve | undefined
-  path: path.Path
-}): result.Result<null, PolicyViolation> {
-  if (!retrieve?.orderBy) {
-    return result.ok(null)
-  }
-  for (const order of isArray(retrieve.orderBy) ? retrieve.orderBy : [retrieve.orderBy]) {
-    for (const [field] of Object.entries(order)) {
-      if (!canAccessField(appliedPolicies, field)) {
-        return result.fail({
-          code: 'FORBIDDEN_ORDERBY_CLAUSOLE',
-          path,
-          forbiddenField: field,
-        })
-      }
-    }
-  }
-  return result.ok(null)
-}
-
-export function on<T extends model.Type>(entity: T): Builder<T> {
-  return new Builder(entity, [])
-}
-
-class Builder<T extends model.Type> {
-  private readonly entity: T
-  private readonly _policies: Policy[]
-  constructor(entity: T, policies: Policy[]) {
-    this._policies = policies
-    this.entity = entity
-  }
-
-  read(policy: Omit<Policy<T>, 'entity'>): this {
-    this._policies.push({ ...policy, entity: this.entity })
-    return this
-  }
-
-  allows(policies: Omit<Policy<T>, 'entity'>[] | Omit<Policy<T>, 'entity'>): this {
-    if (isArray(policies)) {
-      this._policies.push(...policies.map((p) => ({ ...p, entity: this.entity })))
-    } else {
-      this._policies.push({ ...policies, entity: this.entity })
-    }
-    return this
-  }
-
-  get policies(): readonly Policy[] {
-    return [...this._policies]
-  }
-
-  on<T extends model.Type>(entity: T): Builder<T> {
-    return new Builder(entity, this._policies)
-  }
-}
-
-//selection -> set of path
-// then -> reasoning about the set for (selectionIsIncluded, where, orderBy)
 export function selectionToPaths(
   type: model.Type,
   selection: retrieve.GenericSelect | undefined | boolean,
   prefix: path.Path = path.root,
 ): ReadonlySet<path.Path> {
   const emptySet = new Set<path.Path>()
-  if (!selection) {
+  if (selection == null) {
     return emptySet
   }
   return model.match(type, {
@@ -346,37 +322,68 @@ export function selectionToPaths(
   })
 }
 
-export function whereToPaths(
-  type: model.Type,
-  where: retrieve.GenericWhere | undefined,
-  prefix: path.Path = path.root,
-): ReadonlySet<path.Path> {
-  const emptySet = new Set<path.Path>()
-  if (!where) {
-    return emptySet
+/**
+ * Checks if policy's where is included in where filter in order to check if the operation is inside the domain
+ */
+export function isWithinRestriction(policy: Policy, where: retrieve.GenericWhere | undefined): boolean {
+  if (!policy.restriction || Object.keys(policy.restriction).length === 0) {
+    return true
   }
-  return model.match(type, {
-    scalar: () => new Set([prefix]),
-    wrapper: ({ wrappedType }) => whereToPaths(wrappedType, where, prefix),
-    array: ({ wrappedType }) => {
-      return emptySet
-    },
-    record: ({ fields, kind }) => {
-      if (kind === model.Kind.Entity && prefix !== '$') {
-        return emptySet
-      }
-      const paths = Object.entries(fields)
-        .map(([fieldName, fieldType]) => {
-          const subWhere = typeof where === 'object' && where[fieldName] ? where[fieldName] : null
-          if (subWhere) {
-            return whereToPaths(fieldType, subWhere as any, path.appendField(prefix, fieldName))
-          } else {
-            return emptySet
-          }
-        })
-        .flatMap((set) => [...set.values()])
-      return new Set(paths)
-    },
-    union: () => emptySet,
-  })
+  if (!where) {
+    return false
+  }
+
+  //TODO: finish this logic
+  for (const [key, filter] of Object.entries(policy.restriction).filter((v) => v[1] !== undefined)) {
+    const whereFilter = where[key]
+    if (!whereFilter || !isDeepStrictEqual(whereFilter, filter)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/**
+ * Gets a policies builder for the given type.
+ */
+export function on<T extends model.Type>(entity: T): PoliciesBuilder<T> {
+  return new PoliciesBuilder(entity, [])
+}
+
+export interface Policies {
+  list: readonly Policy[]
+}
+
+class PoliciesBuilder<T extends model.Type> implements Policies {
+  private readonly entity: T
+  private policies: Policy[]
+
+  constructor(entity: T, policies: Policy[]) {
+    this.policies = policies
+    this.entity = entity
+  }
+
+  get list(): Policy<model.Type>[] {
+    return [...this.policies]
+  }
+
+  /**
+   * Create a security policy
+   */
+  allows(policies: Omit<Policy<T>, 'entity'>[] | Omit<Policy<T>, 'entity'>): this {
+    if (isArray(policies)) {
+      this.policies.push(...policies.map((p) => ({ ...p, entity: this.entity })))
+    } else {
+      this.policies.push({ ...policies, entity: this.entity })
+    }
+    return this
+  }
+
+  /**
+   * Gets a policies builder for the given type.
+   */
+  on<T extends model.Type>(entity: T): PoliciesBuilder<T> {
+    return new PoliciesBuilder(entity, this.policies)
+  }
 }

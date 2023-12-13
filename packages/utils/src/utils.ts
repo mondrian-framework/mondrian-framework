@@ -12,6 +12,10 @@ export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never
 
 export type KeysOfUnion<T> = T extends T ? keyof T : never
 
+export type Mutable<Type> = {
+  -readonly [Key in keyof Type]: Type[Key]
+}
+
 /**
  * @param message the message to display in the error
  * @throws an Error with the `[internal error]` header and an additional message

@@ -1,16 +1,23 @@
 import { retrieve, security } from '../src'
-import { Project } from '../src/sdk'
-import { checkPolicies, isSelectionIncluded, selectionToPaths, whereToPaths } from '../src/security'
-import { model, path } from '@mondrian-framework/model'
-import { describe, expect, expectTypeOf, test } from 'vitest'
+import {
+  PolicyViolation,
+  checkPolicies,
+  isSelectionIncluded,
+  selectionToPaths,
+  whereToSelection,
+} from '../src/security'
+import { model } from '@mondrian-framework/model'
+import { describe, expect, test } from 'vitest'
 
 const user = () =>
   model.entity({
+    id: model.number(),
     name: model.string(),
     age: model.number(),
     metadata: model
       .object({
         registeredAt: model.datetime(),
+        loggedInAt: model.datetime().optional(),
       })
       .optional(),
     friends: model.array(user),
@@ -19,57 +26,57 @@ const user = () =>
 
 const post = () =>
   model.entity({
+    id: model.number(),
     title: model.string(),
     content: model.string(),
     author: user,
   })
 
 describe('check guest policies', () => {
-  const guestPolicies = security
+  const policies = security
     .on(user)
     .allows({ selection: { name: true } })
     .on(post)
-    .allows({ selection: { title: true } }).policies
+    .allows({ selection: { title: true } })
 
-  test('ok without capabilities', () => {
+  test('without capabilities should pass', () => {
     const res = checkPolicies({
       capabilities: {},
       outputType: user,
       path: '$',
-      policies: guestPolicies,
+      policies,
       retrieve: { select: { age: true } },
     })
     expect(res.isOk).toBe(true)
   })
 
-  test('error without policies', () => {
+  test('without policies should fail', () => {
     const res = checkPolicies({
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies: [],
+      policies: { list: [] },
       retrieve: { select: { age: true } },
     })
     expect(res.isFailure && res.error).toEqual({
       reasons: [],
       path: '$',
-      code: 'NO_APPLICABLE_POLICIES',
     })
   })
 
-  test('error selecting forbidden field (level 1)', () => {
+  test('selecting forbidden field (level 1) should fail', () => {
     const r1 = checkPolicies({
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies: guestPolicies,
+      policies,
       retrieve: { select: { age: true } },
     })
     expect(r1.isFailure && r1.error).toEqual({
       reasons: [
         {
           applicable: true,
-          forbiddenSelection: ['$.age'],
+          forbiddenAccess: ['$.age'],
           policy: {
             selection: {
               name: true,
@@ -78,23 +85,22 @@ describe('check guest policies', () => {
         },
       ],
       path: '$',
-      code: 'NO_APPLICABLE_POLICIES',
     })
   })
 
-  test('error selecting forbidden field (level 2)', () => {
+  test('selecting forbidden field (level 2) should fail', () => {
     const r1 = checkPolicies({
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies: guestPolicies,
+      policies,
       retrieve: { select: { posts: { select: { content: true } } } },
     })
     expect(r1.isFailure && r1.error).toEqual({
       reasons: [
         {
           applicable: true,
-          forbiddenSelection: ['$.content'],
+          forbiddenAccess: ['$.content'],
           policy: {
             selection: {
               title: true,
@@ -103,13 +109,148 @@ describe('check guest policies', () => {
         },
       ],
       path: '$.posts',
-      code: 'NO_APPLICABLE_POLICIES',
+    })
+  })
+
+  test('allowed selection should pass', () => {
+    const r1 = checkPolicies({
+      capabilities: retrieve.allCapabilities,
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: { select: { name: true, posts: { select: { title: true } } } },
+    })
+    expect(r1.isOk).toBe(true)
+  })
+})
+
+describe('check logged user policies', () => {
+  const policies = security
+    .on(user)
+    .allows([{ selection: true, restriction: { id: { equals: 1 } } }, { selection: { name: true, age: true } }])
+    .on(post)
+    .allows({ selection: true, filter: { author: { id: { equals: 1 } } } })
+
+  test('pass with empty selection', () => {
+    const res = checkPolicies({
+      capabilities: retrieve.allCapabilities,
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: { select: {} },
+    })
+    expect(res.isOk).toEqual(true)
+  })
+
+  test('selection forbidden field should fail', () => {
+    const r1 = checkPolicies({
+      capabilities: retrieve.allCapabilities,
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: { select: { id: true } },
+    })
+    expect(r1.isFailure && r1.error).toEqual({
+      reasons: [
+        {
+          applicable: true,
+          forbiddenAccess: ['$.id'],
+          policy: {
+            selection: { name: true, age: true },
+          },
+        },
+        {
+          applicable: false,
+          policy: {
+            selection: true,
+            restriction: { id: { equals: 1 } },
+          },
+        },
+      ],
+      path: '$',
+    })
+  })
+
+  test('using restriction should be possible to retrieve any field', () => {
+    const r1 = checkPolicies({
+      capabilities: retrieve.allCapabilities,
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: { select: { id: true }, where: { id: { equals: 1 } } },
+    })
+    expect(r1.isOk).toEqual(true)
+  })
+
+  test('should add filter to where condition', () => {
+    const r1 = checkPolicies({
+      capabilities: { select: true },
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: {
+        select: { id: true, posts: { select: { content: true }, where: { title: { equals: '...' } } } },
+        where: { id: { equals: 1 } },
+      },
+    })
+    expect(r1.isOk && r1.value).toEqual({
+      select: {
+        id: true,
+        posts: {
+          select: { content: true },
+          where: { AND: [{ title: { equals: '...' } }, { author: { id: { equals: 1 } } }] },
+        },
+      },
+      where: { id: { equals: 1 } },
+    })
+  })
+
+  test('adding filter to where condition if where capability is not enabled should throws', () => {
+    const result = () =>
+      checkPolicies({
+        capabilities: { select: true },
+        outputType: post,
+        path: '$',
+        policies,
+        retrieve: {
+          select: { content: true },
+        },
+      })
+    expect(result).toThrowError(
+      'You are trying to use a policy with filter on a function without where capability. Output type: post',
+    )
+  })
+
+  test('access to forbidden fields in where clausole should fail', () => {
+    const r1 = checkPolicies({
+      capabilities: retrieve.allCapabilities,
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: {
+        select: { name: true },
+        where: { metadata: { registeredAt: { equals: new Date() } }, posts: { some: { title: { equals: '...' } } } },
+      },
+    })
+    expect(r1.isFailure && r1.error).toEqual({
+      path: '$',
+      reasons: [
+        {
+          applicable: true,
+          policy: { selection: { name: true, age: true } },
+          forbiddenAccess: ['$.metadata.registeredAt'],
+        },
+        {
+          applicable: false,
+          policy: { selection: true, restriction: { id: { equals: 1 } } },
+        },
+      ],
     })
   })
 })
 
 test('isSelectionIncluded', () => {
-  const [p] = security.on(user).allows({ selection: { name: true } }).policies
+  const [p] = security.on(user).allows({ selection: { name: true } }).list
   const r1 = isSelectionIncluded(p, { name: true })
   expect(r1.isOk).toBe(true)
   const r2 = isSelectionIncluded(p, { name: true, friends: true })
@@ -120,10 +261,10 @@ test('isSelectionIncluded', () => {
 
 test('selectionToPaths', () => {
   const set1 = [...selectionToPaths(user, { name: true, age: false, metadata: true, friends: true }).values()]
-  expect(set1).toEqual(['$.name', '$.metadata.registeredAt'])
+  expect(set1).toEqual(['$.name', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
 
   const set2 = [...selectionToPaths(user, true).values()]
-  expect(set2).toEqual(['$.name', '$.age', '$.metadata.registeredAt'])
+  expect(set2).toEqual(['$.id', '$.name', '$.age', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
 
   const set3 = [...selectionToPaths(user, undefined).values()]
   expect(set3).toEqual([])
@@ -138,21 +279,41 @@ test('selectionToPaths', () => {
   expect(set6).toEqual([])
 })
 
-test('whereToPaths', () => {
-  const user = () =>
-    model.entity({
-      name: model.string(),
-      age: model.number(),
-      metadata: model
-        .object({
-          registeredAt: model.datetime(),
-        })
-        .optional(),
-      friends: model.array(user),
-    })
-  const set1 = [...whereToPaths(user, { name: { equals: '...' } }).values()]
-  expect(set1).toEqual(['$.name'])
+test('whereToSelection', () => {
+  const selection = whereToSelection(model.concretise(user), {
+    name: { equals: '...' },
+    metadata: { equals: {} },
+    posts: {
+      some: {
+        title: { equals: '...' },
+        author: { id: { equals: 1 }, metadata: { AND: [{ loggedInAt: { equals: new Date() } }] } },
+        AND: { content: { equals: '' } },
+      },
+      every: undefined,
+    },
+  })
+  expect(selection).toEqual({
+    metadata: true,
+    name: true,
+    posts: {
+      select: {
+        title: true,
+        content: true,
+        author: {
+          select: {
+            id: true,
+            metadata: { loggedInAt: true },
+          },
+        },
+      },
+    },
+  })
+})
 
-  const set2 = [...whereToPaths(user, { name: { equals: '...' } }).values()]
-  expect(set2).toEqual(['$.name'])
+test('PolicyViolation type', () => {
+  const v: PolicyViolation = {
+    path: '$',
+    reasons: [],
+  }
+  expect(model.concretise(PolicyViolation).decode(v).isOk).toBe(true)
 })

@@ -109,7 +109,7 @@ function handleFailure({
  * TODO
  */
 export function checkPolicies(
-  policies: (context: any) => readonly security.Policy[],
+  policies: (context: any) => security.Policies,
 ): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
   return {
     name: 'Check policies',

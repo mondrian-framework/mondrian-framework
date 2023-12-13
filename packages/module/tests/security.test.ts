@@ -127,7 +127,8 @@ describe('check guest policies', () => {
 describe('check logged user policies', () => {
   const policies = security
     .on(user)
-    .allows([{ selection: true, restriction: { id: { equals: 1 } } }, { selection: { name: true, age: true } }])
+    .allows({ selection: true, restriction: { id: { equals: 1 } } })
+    .allows({ selection: { name: true, age: true } })
     .on(post)
     .allows({ selection: true, filter: { author: { id: { equals: 1 } } } })
 
@@ -261,10 +262,13 @@ test('isSelectionIncluded', () => {
 
 test('selectionToPaths', () => {
   const set1 = [...selectionToPaths(user, { name: true, age: false, metadata: true, friends: true }).values()]
-  expect(set1).toEqual(['$.name', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
+  expect(set1).toEqual(['$', '$.name', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
 
   const set2 = [...selectionToPaths(user, true).values()]
-  expect(set2).toEqual(['$.id', '$.name', '$.age', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
+  expect(set2).toEqual(['$', '$.id', '$.name', '$.age', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
+
+  const set7 = [...selectionToPaths(user, {}).values()]
+  expect(set7).toEqual(['$']) //first field selection
 
   const set3 = [...selectionToPaths(user, undefined).values()]
   expect(set3).toEqual([])
@@ -316,4 +320,8 @@ test('PolicyViolation type', () => {
     reasons: [],
   }
   expect(model.concretise(PolicyViolation).decode(v).isOk).toBe(true)
+})
+
+test('policy builder errors', () => {
+  expect(() => security.on(model.array(user))).toThrowError('Policies could be defined only on entity types. Got array')
 })

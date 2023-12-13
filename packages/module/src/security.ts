@@ -12,6 +12,10 @@ export type Policy<T extends model.Type = model.Type> = {
   readonly filter?: retrieve.FromType<T, { where: true }>['where'] & { AND?: never; OR?: never; NOT?: never }
 }
 
+export type Policies = {
+  readonly list: readonly Policy[]
+}
+
 export type Result = result.Result<retrieve.GenericRetrieve | undefined, PolicyViolation>
 
 export const PolicyViolation = () =>
@@ -284,6 +288,7 @@ function buildSelectForEntity(fields: model.Types): retrieve.GenericSelect {
 
 /**
  * Gets a set of path that match the sum of selected fields.
+ * It does not follow sub-entities
  */
 export function selectionToPaths(
   type: model.Type,
@@ -298,7 +303,7 @@ export function selectionToPaths(
     scalar: () => new Set([prefix]),
     wrapper: ({ wrappedType }) => selectionToPaths(wrappedType, selection, prefix),
     record: ({ fields, kind }) => {
-      if (kind === model.Kind.Entity && selection === true && prefix !== '$') {
+      if (kind === model.Kind.Entity && prefix !== '$') {
         return emptySet
       }
       const paths = Object.entries(fields)
@@ -316,7 +321,11 @@ export function selectionToPaths(
           }
         })
         .flatMap((set) => [...set.values()])
-      return new Set(paths)
+      if (kind === model.Kind.Entity) {
+        return new Set([prefix, ...paths])
+      } else {
+        return new Set(paths)
+      }
     },
     union: () => emptySet,
   })
@@ -348,11 +357,7 @@ export function isWithinRestriction(policy: Policy, where: retrieve.GenericWhere
  * Gets a policies builder for the given type.
  */
 export function on<T extends model.Type>(entity: T): PoliciesBuilder<T> {
-  return new PoliciesBuilder(entity, [])
-}
-
-export interface Policies {
-  list: readonly Policy[]
+  return new PoliciesBuilder(entity, []).on(entity)
 }
 
 class PoliciesBuilder<T extends model.Type> implements Policies {
@@ -364,19 +369,15 @@ class PoliciesBuilder<T extends model.Type> implements Policies {
     this.entity = entity
   }
 
-  get list(): Policy<model.Type>[] {
+  get list(): Policy[] {
     return [...this.policies]
   }
 
   /**
    * Create a security policy
    */
-  allows(policies: Omit<Policy<T>, 'entity'>[] | Omit<Policy<T>, 'entity'>): this {
-    if (isArray(policies)) {
-      this.policies.push(...policies.map((p) => ({ ...p, entity: this.entity })))
-    } else {
-      this.policies.push({ ...policies, entity: this.entity })
-    }
+  allows(policies: Omit<Policy<T>, 'entity'>): this {
+    this.policies.push({ ...policies, entity: this.entity })
     return this
   }
 
@@ -384,6 +385,10 @@ class PoliciesBuilder<T extends model.Type> implements Policies {
    * Gets a policies builder for the given type.
    */
   on<T extends model.Type>(entity: T): PoliciesBuilder<T> {
+    const typeKind = model.concretise(entity).kind
+    if (typeKind !== model.Kind.Entity) {
+      throw new Error(`Policies could be defined only on entity types. Got ${typeKind}`)
+    }
     return new PoliciesBuilder(entity, this.policies)
   }
 }

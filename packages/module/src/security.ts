@@ -214,7 +214,7 @@ function spreadWhereAndOrderByIntoSelection(
  */
 export function orderByToSelection(type: model.Type, orderBy: retrieve.GenericOrderBy): retrieve.GenericSelect {
   const unwrapped = model.unwrap(type)
-  return orderBy
+  return (isArray(orderBy) ? orderBy : [orderBy])
     .map((order) => orderByToSelectionInternal(unwrapped, order))
     .reduce((p, c) => retrieve.mergeSelect(unwrapped, p, c)!, {})
 }

@@ -3,6 +3,7 @@ import {
   PolicyViolation,
   checkPolicies,
   isSelectionIncluded,
+  orderByToSelection,
   selectionToPaths,
   whereToSelection,
 } from '../src/security'
@@ -206,6 +207,29 @@ describe('check logged user policies', () => {
     })
   })
 
+  test('should add filter to where condition also if selecting all', () => {
+    const r1 = checkPolicies({
+      capabilities: { select: true },
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: {
+        select: { id: true, posts: true },
+        where: { id: { equals: 1 } },
+      },
+    })
+    expect(r1.isOk && r1.value).toEqual({
+      select: {
+        id: true,
+        posts: {
+          select: { content: true },
+          where: { AND: [{ title: { equals: '...' } }, { author: { id: { equals: 1 } } }] },
+        },
+      },
+      where: { id: { equals: 1 } },
+    })
+  })
+
   test('adding filter to where condition if where capability is not enabled should throws', () => {
     const result = () =>
       checkPolicies({
@@ -248,6 +272,33 @@ describe('check logged user policies', () => {
       ],
     })
   })
+
+  test('access to forbidden fields in orderBy clausole should fail', () => {
+    const r1 = checkPolicies({
+      capabilities: retrieve.allCapabilities,
+      outputType: user,
+      path: '$',
+      policies,
+      retrieve: {
+        select: { name: true },
+        orderBy: [{ metadata: { registeredAt: 'asc' } }],
+      },
+    })
+    expect(r1.isFailure && r1.error).toEqual({
+      path: '$',
+      reasons: [
+        {
+          applicable: true,
+          policy: { selection: { name: true, age: true } },
+          forbiddenAccess: ['$.metadata.registeredAt'],
+        },
+        {
+          applicable: false,
+          policy: { selection: true, restriction: { id: { equals: 1 } } },
+        },
+      ],
+    })
+  })
 })
 
 test('isSelectionIncluded', () => {
@@ -263,6 +314,16 @@ test('isSelectionIncluded', () => {
 test('selectionToPaths', () => {
   const set1 = [...selectionToPaths(user, { name: true, age: false, metadata: true, friends: true }).values()]
   expect(set1).toEqual(['$', '$.name', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
+
+  const set8 = [
+    ...selectionToPaths(user, {
+      name: true,
+      age: false,
+      metadata: { select: { loggedInAt: true } },
+      friends: true,
+    }).values(),
+  ]
+  expect(set8).toEqual(['$', '$.name', '$.metadata.loggedInAt'])
 
   const set2 = [...selectionToPaths(user, true).values()]
   expect(set2).toEqual(['$', '$.id', '$.name', '$.age', '$.metadata.registeredAt', '$.metadata.loggedInAt'])
@@ -306,10 +367,36 @@ test('whereToSelection', () => {
         author: {
           select: {
             id: true,
-            metadata: { loggedInAt: true },
+            metadata: { select: { loggedInAt: true } },
           },
         },
       },
+    },
+  })
+})
+
+test('orderByToSelection', () => {
+  const selection1 = orderByToSelection(model.concretise(user), [
+    { name: 'asc', posts: { _count: 'asc' } },
+    { metadata: { loggedInAt: 'asc' } },
+  ])
+  expect(selection1).toEqual({
+    name: true,
+    metadata: {
+      select: {
+        loggedInAt: true,
+      },
+    },
+    posts: {
+      select: {},
+    },
+  })
+
+  const selection2 = orderByToSelection(model.concretise(post), [{ content: 'asc', author: { age: 'asc' } }])
+  expect(selection2).toEqual({
+    content: true,
+    author: {
+      select: { age: true },
     },
   })
 })

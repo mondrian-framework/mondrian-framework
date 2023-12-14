@@ -35,8 +35,8 @@ export type PolicyViolation = model.Infer<typeof PolicyViolation>
 export type PolicyCheckInput = {
   readonly outputType: model.Type
   readonly policies: Policies
-  readonly retrieve: retrieve.GenericRetrieve | undefined
-  readonly capabilities: retrieve.Capabilities | undefined
+  readonly retrieve?: retrieve.GenericRetrieve
+  readonly capabilities?: retrieve.Capabilities
   readonly path: path.Path
 }
 
@@ -87,20 +87,20 @@ export function checkPoliciesInternal({
   capabilities,
   path,
 }: PolicyCheckInput): Result {
-  if (!capabilities || !capabilities.select) {
+  if (!capabilities || !capabilities.select || !retrieve) {
     return result.ok(retrieve)
   }
 
   const unwrapped = model.concretise(model.unwrap(outputType))
   if (unwrapped.kind !== model.Kind.Entity) {
-    throw new Error('Should be an entity') //TODO: better message
+    throw new Error('Should be an entity')
   }
   const mappedRetrieve = spreadWhereAndOrderByIntoSelection(unwrapped, retrieve)
 
   const appliedPolicies: Policy[] = []
   const potentiallyPolicies: { policy: Policy; forbiddenAccess: path.Path[] }[] = []
   const notSatisfiedPolicies: Policy[] = []
-  const thisPolicies = policies.list.filter((p) => model.areEqual(p.entity, model.unwrap(outputType))) //TODO: unwrap?
+  const thisPolicies = policies.list.filter((p) => model.areEqual(p.entity, model.unwrap(outputType)))
   for (const policy of thisPolicies) {
     if (!isWithinRestriction(policy, retrieve?.where)) {
       notSatisfiedPolicies.push(policy)
@@ -154,8 +154,8 @@ export function checkPoliciesInternal({
 
 function spreadWhereAndOrderByIntoSelection(
   type: model.EntityType<any, model.Types>,
-  retr: retrieve.GenericRetrieve | undefined,
-): retrieve.GenericRetrieve | undefined {
+  retr: retrieve.GenericRetrieve,
+): retrieve.GenericRetrieve {
   let selection: retrieve.GenericSelect | undefined = retr?.select
   if (retr?.orderBy) {
     const orderBySelection = orderByToSelection(type, retr.orderBy)
@@ -168,15 +168,39 @@ function spreadWhereAndOrderByIntoSelection(
   return { ...retr, select: selection }
 }
 
-function orderByToSelection(type: model.Type, orderBy: retrieve.GenericOrderBy): retrieve.GenericSelect {
-  //TODO
-  return {}
+export function orderByToSelection(type: model.Type, orderBy: retrieve.GenericOrderBy): retrieve.GenericSelect {
+  const unwrapped = model.unwrap(type)
+  return orderBy
+    .map((order) => orderByToSelectionInternal(unwrapped, order))
+    .reduce((p, c) => retrieve.mergeSelect(unwrapped, p, c)!, {})
 }
 
-export function whereToSelection(
-  type: model.Type,
-  where: retrieve.GenericWhere | undefined,
-): retrieve.GenericSelect | undefined {
+function orderByToSelectionInternal(type: model.Type, order: any): any {
+  return model.match(type, {
+    record: ({ fields }) => {
+      if (isDeepStrictEqual({ _count: 'asc' }, order) || isDeepStrictEqual({ _count: 'desc' }, order)) {
+        return {}
+      }
+      const selection: Mutable<retrieve.GenericSelect> = {}
+      for (const [fieldName, fieldType] of Object.entries(fields)) {
+        const orderPart = order[fieldName]
+        if (fieldName in order) {
+          if (orderPart === 'asc' || orderPart === 'desc') {
+            selection[fieldName] = true
+          } else {
+            selection[fieldName] = { select: orderByToSelection(fieldType, [orderPart]) }
+          }
+        }
+      }
+      return selection
+    },
+    otherwise: () => {
+      throw new Error('Unreachable')
+    },
+  })
+}
+
+export function whereToSelection(type: model.Type, where: retrieve.GenericWhere): retrieve.GenericSelect {
   const logicalConditions = [
     ...(isArray(where?.AND) ? where?.AND : where?.AND ? [where.AND] : []),
     ...(isArray(where?.OR) ? where.OR : where?.OR ? [where.OR] : []),
@@ -185,7 +209,7 @@ export function whereToSelection(
 
   const selectionFromLogical = logicalConditions
     .map((where: retrieve.GenericWhere) => whereToSelection(type, where))
-    .reduce((p, c) => retrieve.mergeSelect(type, p, c), {})
+    .reduce((p, c) => retrieve.mergeSelect(type, p, c)!, {})
 
   const internalWhere = { ...where }
   delete internalWhere.AND
@@ -193,7 +217,7 @@ export function whereToSelection(
   delete internalWhere.NOT
 
   const selection = whereToSelectionInternal(type, internalWhere)
-  return retrieve.mergeSelect(type, selection, selectionFromLogical)
+  return retrieve.mergeSelect(type, selection, selectionFromLogical)!
 }
 
 function whereToSelectionInternal(type: model.Type, where: any): any {
@@ -203,12 +227,10 @@ function whereToSelectionInternal(type: model.Type, where: any): any {
       for (const [fieldName, fieldType] of Object.entries(fields)) {
         const wherePart = where[fieldName]
         if (fieldName in where) {
-          if (model.isEntity(model.unwrap(fieldType))) {
-            selection[fieldName] = { select: whereToSelection(fieldType, wherePart) }
-          } else if ('equals' in wherePart) {
+          if ('equals' in wherePart) {
             selection[fieldName] = true
           } else {
-            selection[fieldName] = whereToSelection(fieldType, wherePart) as any
+            selection[fieldName] = { select: whereToSelection(fieldType, wherePart) }
           }
         }
       }
@@ -252,16 +274,18 @@ export function isSelectionIncluded(
 /**
  * Checks for relations
  */
-export function checkForRelations({ outputType, policies, capabilities, ...input }: PolicyCheckInput): Result {
-  if (!input.retrieve?.select) {
-    return result.ok(input.retrieve)
-  }
+export function checkForRelations({
+  outputType,
+  policies,
+  capabilities,
+  ...input
+}: Required<PolicyCheckInput>): Result {
   const concreteType = model.concretise(model.unwrap(outputType))
   if (concreteType.kind !== model.Kind.Object && concreteType.kind !== model.Kind.Entity) {
     return result.ok(input.retrieve)
   }
   const newRetrieve = { ...input.retrieve, select: { ...input.retrieve.select } }
-  for (const [key, value] of Object.entries(input.retrieve.select).filter((v) => v[1])) {
+  for (const [key, value] of Object.entries(input.retrieve.select ?? {}).filter((v) => v[1])) {
     const unwrappedField = model.unwrap(concreteType.fields[key])
     if (model.isEntity(unwrappedField)) {
       const result = checkPoliciesInternal({
@@ -314,8 +338,10 @@ export function selectionToPaths(
               : selection === true
                 ? true
                 : null
-          if (subSelection) {
+          if (subSelection === true) {
             return selectionToPaths(fieldType, subSelection as any, path.appendField(prefix, fieldName))
+          } else if (subSelection) {
+            return selectionToPaths(fieldType, subSelection.select, path.appendField(prefix, fieldName))
           } else {
             return emptySet
           }

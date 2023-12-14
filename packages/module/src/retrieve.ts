@@ -35,7 +35,8 @@ export type GenericWhere = {
   readonly NOT?: GenericWhere | readonly GenericWhere[]
 } & { readonly [K in string]: any }
 export type GenericSelect = null | { readonly [K in string]?: GenericRetrieve | boolean }
-export type GenericOrderBy = {} | {}[]
+type GenericOrderByInternal = { [K in string]: SortDirection | GenericOrderByInternal }
+export type GenericOrderBy = GenericOrderByInternal[]
 
 /**
  * Builds a retrieve type of a known mondrian type.

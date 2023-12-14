@@ -350,7 +350,7 @@ function checkForRelations({ outputType, policies, capabilities, ...input }: Req
 }
 
 function buildSelectForEntity(fields: model.Types): retrieve.GenericSelect {
-  //TODO: what if entity inside of object?
+  //pain point: what if entity inside of object?
   return flatMapObject(fields, (name, type) => (model.isEntity(model.unwrap(type)) ? [] : [[name, true]]))
 }
 
@@ -413,15 +413,49 @@ export function isWithinRestriction(policy: Policy, where: retrieve.GenericWhere
     return false
   }
 
-  //TODO: finish this logic
-  for (const [key, filter] of Object.entries(policy.restriction).filter((v) => v[1] !== undefined)) {
-    const whereFilter = where[key]
-    if (!whereFilter || !isDeepStrictEqual(whereFilter, filter)) {
+  const [restrictionField] = Object.keys(policy.restriction)
+  const restrictionFilter = policy.restriction[restrictionField]
+  const restrictionValues =
+    'in' in restrictionFilter ? restrictionFilter.in : 'equals' in restrictionFilter ? [restrictionFilter.equals] : []
+
+  if (!isValuesIncluded(restrictionField, restrictionValues, where)) {
+    return false
+  }
+  if (where.OR) {
+    if (
+      !where.OR.every((where: retrieve.GenericWhere) => isValuesIncluded(restrictionField, restrictionValues, where))
+    ) {
       return false
     }
   }
-
   return true
+}
+
+function isValuesIncluded(restrictionField: string, restrictionValues: any[], where: retrieve.GenericWhere): boolean {
+  if (restrictionField in where) {
+    const filterBy =
+      'equals' in where[restrictionField]
+        ? [where[restrictionField].equals]
+        : 'in' in where[restrictionField]
+          ? (where[restrictionField].in as any[])
+          : false
+    if (filterBy === false) {
+      return false
+    }
+    if (restrictionValues.some((v) => filterBy.find((f) => isDeepStrictEqual(f, v)))) {
+      return true
+    } else {
+      if (where.AND) {
+        if (
+          where.AND.some((where: retrieve.GenericWhere) => isValuesIncluded(restrictionField, restrictionValues, where))
+        ) {
+          return true
+        }
+      }
+      return false
+    }
+  }
+  return false
 }
 
 /**
@@ -447,8 +481,20 @@ class PoliciesBuilder<T extends model.Type> implements Policies {
   /**
    * Create a new security {@link Policy} for this entity.
    */
-  allows(policies: Omit<Policy<T>, 'entity'>): this {
-    this.policies.push({ ...policies, entity: this.entity })
+  allows(policy: Omit<Policy<T>, 'entity'>): this {
+    if (policy.restriction) {
+      const keys = Object.keys(policy.restriction)
+      const fields = (model.concretise(this.entity) as model.EntityType<any, model.Types>).fields
+      if (
+        keys.length !== 1 ||
+        !(keys[0] in fields) ||
+        model.isArray(fields[keys[0]]) ||
+        !model.isScalar(model.unwrap(fields[keys[0]]))
+      ) {
+        throw new Error('Currently on policy restriction it is supported only one (non array) scalar field.')
+      }
+    }
+    this.policies.push({ ...policy, entity: this.entity })
     return this
   }
 

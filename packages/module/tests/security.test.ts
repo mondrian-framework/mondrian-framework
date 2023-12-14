@@ -3,6 +3,7 @@ import {
   PolicyViolation,
   checkPolicies,
   isSelectionIncluded,
+  isWithinRestriction,
   orderByToSelection,
   selectionToPaths,
   whereToSelection,
@@ -411,4 +412,53 @@ test('PolicyViolation type', () => {
 
 test('policy builder errors', () => {
   expect(() => security.on(model.array(user))).toThrowError('Policies could be defined only on entity types. Got array')
+
+  expect(() => security.on(user).allows({ selection: true, restriction: {} })).toThrowError(
+    'Currently on policy restriction it is supported only one (non array) scalar field.',
+  )
+
+  expect(() => security.on(user).allows({ selection: true, restriction: { posts: {} } })).toThrowError(
+    'Currently on policy restriction it is supported only one (non array) scalar field.',
+  )
+
+  expect(() => security.on(user).allows({ selection: true, restriction: { metadata: {} } })).toThrowError(
+    'Currently on policy restriction it is supported only one (non array) scalar field.',
+  )
+
+  expect(() => security.on(user).allows({ selection: true, restriction: { asd: {} } as any })).toThrowError(
+    'Currently on policy restriction it is supported only one (non array) scalar field.',
+  )
+})
+
+test('isWithinRestriction', () => {
+  const policies = security
+    .on(user)
+    .allows({
+      selection: true,
+    })
+    .allows({
+      selection: true,
+      restriction: { id: { equals: 1 } },
+    })
+    .allows({
+      selection: true,
+      restriction: { id: { in: [1, 2, 3] } },
+    })
+  expect(isWithinRestriction(policies.list[0], {})).toBe(true)
+  expect(isWithinRestriction(policies.list[0], undefined)).toBe(true)
+  expect(isWithinRestriction(policies.list[1], { id: { equals: 1 } })).toBe(true)
+  expect(isWithinRestriction(policies.list[1], { id: { equals: 2 } })).toBe(false)
+  expect(isWithinRestriction(policies.list[1], {})).toBe(false)
+  expect(isWithinRestriction(policies.list[1], undefined)).toBe(false)
+  expect(isWithinRestriction(policies.list[1], { id: {} })).toBe(false)
+  expect(isWithinRestriction(policies.list[2], { id: { equals: 1 } })).toBe(true)
+  expect(isWithinRestriction(policies.list[2], { id: { equals: 2 } })).toBe(true)
+  expect(isWithinRestriction(policies.list[2], { id: { in: [1, 2] } })).toBe(true)
+  expect(isWithinRestriction(policies.list[2], { id: { in: [1, 2] }, OR: [{ id: { equals: 3 } }] })).toBe(true)
+  expect(isWithinRestriction(policies.list[2], { id: { in: [1, 2] }, OR: [{ id: { equals: 4 } }] })).toBe(false)
+  expect(isWithinRestriction(policies.list[2], { id: { equals: 4 } })).toBe(false)
+  expect(isWithinRestriction(policies.list[2], { id: { equals: 1 }, age: { equals: 2 } })).toBe(true)
+  expect(
+    isWithinRestriction(policies.list[2], { id: { equals: 4 }, age: { equals: 2 }, AND: [{ id: { equals: 3 } }] }),
+  ).toBe(true)
 })

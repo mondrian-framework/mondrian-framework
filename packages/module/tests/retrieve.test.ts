@@ -354,7 +354,9 @@ describe('fromType', () => {
     const userWhere = () =>
       model.object(
         {
-          name: model.object({ equals: model.string().optional() }).optional(),
+          name: model
+            .object({ equals: model.string().optional(), in: model.string().array().mutable().optional() })
+            .optional(),
           bestFriend: model.optional(userWhere),
           posts: model
             .object({
@@ -383,8 +385,12 @@ describe('fromType', () => {
     const postWhere = () =>
       model.object(
         {
-          title: model.object({ equals: model.string().optional() }).optional(),
-          content: model.object({ equals: model.string().optional() }).optional(),
+          title: model
+            .object({ equals: model.string().optional(), in: model.string().array().mutable().optional() })
+            .optional(),
+          content: model
+            .object({ equals: model.string().optional(), in: model.string().array().mutable().optional() })
+            .optional(),
           author: model.optional(userWhere),
           tags: model
             .object({

@@ -114,17 +114,16 @@ type WhereField<T extends model.Type>
   : [T] extends [model.OptionalType<infer T1>] ? WhereField<T1>
   : [T] extends [model.NullableType<infer T1>] ? WhereField<T1>
   : [T] extends [(() => infer T1 extends model.Type)] ? WhereField<T1>
-  : { readonly equals?: model.Infer<T> } | undefined
+  : { readonly equals?: model.Infer<T>, readonly in?: model.Infer<T>[] } | undefined
 
 // prettier-ignore
 type WhereFieldArray<T extends model.Type> 
   = [T] extends [model.EntityType<any, infer Ts>] ? { readonly some?: WhereFields<Ts>; readonly every?: WhereFields<Ts>, readonly none?: WhereFields<Ts> }
   : [T] extends [model.OptionalType<infer T1>] ? WhereFieldArray<T1>
   : [T] extends [model.NullableType<infer T1>] ? WhereFieldArray<T1>
-  : [T] extends [model.StringType] ? { readonly equals?: readonly string[], readonly isEmpty?: boolean }
   : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
   : [T] extends [(() => infer T1 extends model.Type)] ? WhereFieldArray<T1>
-  : undefined
+  : { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
 
 /**
  * Gets the depth of the selection.
@@ -348,7 +347,7 @@ function where(type: model.Type): model.Type {
       throw new Error('Unsupported union in where')
     },
     entity: (_, entity) => entityWhere(entity),
-    scalar: (_, t) => model.object({ equals: model.optional(t) }),
+    scalar: (_, t) => model.object({ equals: model.optional(t), in: model.mutableArray(t).optional() }),
   })
 }
 

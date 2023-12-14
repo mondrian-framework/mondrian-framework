@@ -7,9 +7,10 @@
 
 ## 1 minute spinup example
 
-Prerequisite: 
- - Node >= 20
- 
+Prerequisite:
+
+- Node >= 20
+
 ```
 git clone https://github.com/mondrian-framework/mondrian-framework.git
 cd mondrian-framework
@@ -42,6 +43,7 @@ In this section, we’ll walk through an example of how to use the Mondrian fram
     - [Serve module REST](#serve-module-rest)
     - [Serve module GRAPHQL](#serve-module-graphql)
     - [Prisma integration](#prisma-integration)
+    - [Apply graph security](#graph-security)
 
 For this example we'll need to install this packages:
 
@@ -243,3 +245,61 @@ const getUsers = functions.build({
 By exposing the function as GraphQL endpoint we can navigate the relation between User and Post.
 
 <img width="589" alt="image" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/76308ec0-bca1-459f-8696-a9f296bf072f">
+
+### Graph security
+
+In this configuration, we have created a data breach. In fact, by retrieving users with the `getUsers` query, we are exposing the entire graph to every caller. To resolve this problem, we can (and in some cases should) implement a first level of security on the function that checks if the caller is an authenticated user. We can do this as follows:
+
+```typescript
+const getUsers = functions.withContext<{ userId?: string }>().build({
+  input: model.never(),
+  output: model.array(User),
+  retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
+  body: async ({ retrieve, context: { userId } }) => {
+    if (!userId) {
+      throw new Error('Not authenticated!') //this can be a first level of security
+    }
+    return await prismaClient.user.findMany(retrieve)
+  },
+})
+```
+
+A problem remains... What if a logged-in user selects all user passwords?! Or maybe traverses the graph and selects some private fields? Mondrian-Framework natively supports a layer of security that can be used to secure the graph. This mechanism is applied every time we call a function with some retrieve capabilities and for the protected types (defined by you). In the following example, we show how to define such a level of security:
+
+```typescript
+import { module, security } from '@mondrian-framework/module'
+
+const moduleInstance = module.build({
+  name: 'my-module',
+  version: '0.0.0',
+  functions: myFunctions,
+  context: async ({ authHeader }: { authHeader: string }) => ({
+    //maybe do something with authHeader
+    userId: authHeader ? '123...123' : undefiend,
+  }),
+  policies({ userId }) {
+    if (userId != null) {
+      return (
+        security
+          //On entity "User" a logged user can read anything if it's selecting it's user
+          //otherwise can read the "id" and the "email"
+          .on(User)
+          .allows({ selection: true, restriction: { id: { equals: userId } } })
+          .allows({ selection: { id: true, email: true }, restriction: { id: { equals: userId } } })
+          //On entity "Post" a logged user can read anything on every post
+          .on(Post)
+          .allows({ selection: true })
+      )
+    } else {
+      // On unauthenticated caller we left visible only id of both "User" and "Post" entities
+      return security
+        .on(User)
+        .allows({ selection: { id: true } })
+        .on(Post)
+        .allows({ selection: { id: true } })
+    }
+  },
+})
+```
+
+This feature offers some more functionality that you can read about in the official documentation, or you can take a peek inside the example package where we define some more complex security policies (packages/example/src/core/security-policies.ts).

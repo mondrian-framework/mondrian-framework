@@ -3,21 +3,46 @@ import { model, path, result } from '@mondrian-framework/model'
 import { Mutable, flatMapObject, isArray } from '@mondrian-framework/utils'
 import { isDeepStrictEqual } from 'util'
 
+/**
+ * A policy express what can be accessed for a specifi entity.
+ *  - entity: the specific entity
+ *  - selection: the fields that can be accessed
+ *  - restriction: this policy is available only if this entity is retrieved with this restriction as where clausole
+ *  - filter: if this policy is applied this filter will be added to the where clausole of the retrieve operation
+ * In order to define some policies you can use the utility builder inside security module
+ * ```ts
+ * import { security } from '@mondrian-framework/module'
+ *
+ * const policies = security
+ *   .on(YourEntity)
+ *   .allows({ ... })
+ *   .allows({ ... })
+ * ```
+ */
 export type Policy<T extends model.Type = model.Type> = {
   readonly entity: T
-  readonly selection: true | Exclude<retrieve.FromType<T, { select: true }>['select'], null | undefined>
+  readonly selection: true | Exclude<retrieve.FromType<T, { select: true }>['select'], null | undefined> //TODO: excluding connected entities?
   readonly restriction?:
     | (retrieve.FromType<T, { where: true }>['where'] & { AND?: never; OR?: never; NOT?: never })
     | null
   readonly filter?: retrieve.FromType<T, { where: true }>['where'] & { AND?: never; OR?: never; NOT?: never }
 }
 
+/**
+ * Represent a set of {@link Policy}
+ */
 export type Policies = {
   readonly list: readonly Policy[]
 }
 
+/**
+ * The result type for {@link checkPolicies} operation.
+ */
 export type Result = result.Result<retrieve.GenericRetrieve | undefined, PolicyViolation>
 
+/**
+ * The mondrian type of a PolicyViolation error.
+ */
 export const PolicyViolation = () =>
   model.object({
     path: model.string(),
@@ -29,9 +54,11 @@ export const PolicyViolation = () =>
       })
       .array(),
   })
-
 export type PolicyViolation = model.Infer<typeof PolicyViolation>
 
+/**
+ * Information needed to perform a policy check.
+ */
 export type PolicyCheckInput = {
   readonly outputType: model.Type
   readonly policies: Policies
@@ -40,43 +67,12 @@ export type PolicyCheckInput = {
   readonly path: path.Path
 }
 
+/**
+ * Entry point of the check policies logic.
+ */
 export function checkPolicies(args: PolicyCheckInput): Result {
   return checkPoliciesInternal(args).map((mappedRetrieve) => {
     return intersectRetrieveSelection(args.outputType, args.retrieve, mappedRetrieve)
-  })
-}
-
-function intersectRetrieveSelection(
-  type: model.Type,
-  originalRetrieve: retrieve.GenericRetrieve | undefined,
-  currenctRetrieve: retrieve.GenericRetrieve | undefined,
-) {
-  const originalSelect = originalRetrieve?.select
-  const currentSelect = currenctRetrieve?.select
-  if (!originalSelect || !currentSelect) {
-    return currenctRetrieve
-  }
-
-  const unwrapped = model.unwrap(type)
-  return model.match(unwrapped, {
-    entity: ({ fields }) => {
-      const selection: Mutable<retrieve.GenericSelect> = {}
-      for (const [fieldName, fieldType] of Object.entries(fields)) {
-        if (originalSelect[fieldName] && currentSelect[fieldName] && model.isEntity(model.unwrap(fieldType))) {
-          selection[fieldName] = intersectRetrieveSelection(
-            fieldType,
-            originalSelect[fieldName] as any,
-            currentSelect[fieldName] as any,
-          )
-        } else {
-          selection[fieldName] = originalSelect[fieldName]
-        }
-      }
-      return { ...currenctRetrieve, select: selection }
-    },
-    otherwise: () => {
-      throw new Error('Unexpected type in intersectRetrieveSelection')
-    },
   })
 }
 
@@ -139,19 +135,61 @@ export function checkPoliciesInternal({
       `You are trying to use a policy with filter on a function without where capability. Output type: ${typeName}`,
     )
   }
+  const filterToUse = filters.OR.length === 1 ? filters.OR[0] : filters
   const newRetrieve =
     filters.OR.length === 0
       ? mappedRetrieve
       : {
           ...mappedRetrieve,
-          where: retrieve?.where
-            ? { AND: [retrieve.where, filters.OR.length === 1 ? filters.OR[0] : filters] }
-            : filters,
+          where: retrieve?.where ? { AND: [retrieve.where, filterToUse] } : filterToUse,
         }
 
   return checkForRelations({ outputType, policies, retrieve: newRetrieve, capabilities, path })
 }
 
+/**
+ * The {@link checkPoliciesInternal} operation will alter the select by adding
+ * fields used by where and orderBy clausole. This function will restore the
+ * original select.
+ */
+function intersectRetrieveSelection(
+  type: model.Type,
+  originalRetrieve: retrieve.GenericRetrieve | undefined,
+  currenctRetrieve: retrieve.GenericRetrieve | undefined,
+) {
+  const originalSelect = originalRetrieve?.select
+  const currentSelect = currenctRetrieve?.select
+  if (!originalSelect || !currentSelect) {
+    return currenctRetrieve
+  }
+
+  const unwrapped = model.unwrap(type)
+  return model.match(unwrapped, {
+    entity: ({ fields }) => {
+      const selection: Mutable<retrieve.GenericSelect> = {}
+      for (const [fieldName, fieldType] of Object.entries(fields)) {
+        if (originalSelect[fieldName] && currentSelect[fieldName] && model.isEntity(model.unwrap(fieldType))) {
+          selection[fieldName] = intersectRetrieveSelection(
+            fieldType,
+            originalSelect[fieldName] as any,
+            currentSelect[fieldName] as any,
+          )
+        } else {
+          selection[fieldName] = originalSelect[fieldName]
+        }
+      }
+      return { ...currenctRetrieve, select: selection }
+    },
+    otherwise: () => {
+      throw new Error('Unexpected type in intersectRetrieveSelection')
+    },
+  })
+}
+
+/**
+ * This function will generate a new retrieve where the select will include
+ * all fields used by where and orderBy
+ */
 function spreadWhereAndOrderByIntoSelection(
   type: model.EntityType<any, model.Types>,
   retr: retrieve.GenericRetrieve,
@@ -165,9 +203,15 @@ function spreadWhereAndOrderByIntoSelection(
     const orderBySelection = whereToSelection(type, retr.where)
     selection = retrieve.mergeSelect(type, selection, orderBySelection)
   }
+  if (selection === undefined) {
+    return retr
+  }
   return { ...retr, select: selection }
 }
 
+/**
+ * This function creates a select with all fields used by the orderBy
+ */
 export function orderByToSelection(type: model.Type, orderBy: retrieve.GenericOrderBy): retrieve.GenericSelect {
   const unwrapped = model.unwrap(type)
   return orderBy
@@ -200,6 +244,9 @@ function orderByToSelectionInternal(type: model.Type, order: any): any {
   })
 }
 
+/**
+ * This function creates a select with all fields used by the where clausole
+ */
 export function whereToSelection(type: model.Type, where: retrieve.GenericWhere): retrieve.GenericSelect {
   const logicalConditions = [
     ...(isArray(where?.AND) ? where?.AND : where?.AND ? [where.AND] : []),
@@ -272,28 +319,25 @@ export function isSelectionIncluded(
 }
 
 /**
- * Checks for relations
+ * Checks policies recursively for each relations (entity) that is included in the original retrieve.
  */
-export function checkForRelations({
-  outputType,
-  policies,
-  capabilities,
-  ...input
-}: Required<PolicyCheckInput>): Result {
+function checkForRelations({ outputType, policies, capabilities, ...input }: Required<PolicyCheckInput>): Result {
   const concreteType = model.concretise(model.unwrap(outputType))
-  if (concreteType.kind !== model.Kind.Object && concreteType.kind !== model.Kind.Entity) {
+  if (!input.retrieve.select || (concreteType.kind !== model.Kind.Object && concreteType.kind !== model.Kind.Entity)) {
     return result.ok(input.retrieve)
   }
   const newRetrieve = { ...input.retrieve, select: { ...input.retrieve.select } }
-  for (const [key, value] of Object.entries(input.retrieve.select ?? {}).filter((v) => v[1])) {
+  for (const [key, value] of Object.entries(input.retrieve.select).filter((v) => v[1])) {
     const unwrappedField = model.unwrap(concreteType.fields[key])
-    if (model.isEntity(unwrappedField)) {
+    if (unwrappedField.kind === model.Kind.Entity) {
       const result = checkPoliciesInternal({
         outputType: concreteType.fields[key],
         capabilities: retrieve.allCapabilities,
         policies,
         retrieve:
-          value === true ? { select: buildSelectForEntity(concreteType.fields) } : (value as retrieve.GenericRetrieve),
+          value === true
+            ? { select: buildSelectForEntity(unwrappedField.fields) }
+            : (value as retrieve.GenericRetrieve),
         path: path.appendField(input.path, key),
       })
       if (result.isFailure) {
@@ -358,7 +402,8 @@ export function selectionToPaths(
 }
 
 /**
- * Checks if policy's where is included in where filter in order to check if the operation is inside the domain
+ * Checks if policy's where is included in where filter in order to check if the operation is inside the restriction
+ * where <= policy.restriction (the where clausole will filter more or equals "value domain" than policy.restriction?)
  */
 export function isWithinRestriction(policy: Policy, where: retrieve.GenericWhere | undefined): boolean {
   if (!policy.restriction || Object.keys(policy.restriction).length === 0) {
@@ -380,7 +425,7 @@ export function isWithinRestriction(policy: Policy, where: retrieve.GenericWhere
 }
 
 /**
- * Gets a policies builder for the given type.
+ * Gets a policies builder for the given entity.
  */
 export function on<T extends model.Type>(entity: T): PoliciesBuilder<T> {
   return new PoliciesBuilder(entity, []).on(entity)
@@ -400,7 +445,7 @@ class PoliciesBuilder<T extends model.Type> implements Policies {
   }
 
   /**
-   * Create a security policy
+   * Create a new security {@link Policy} for this entity.
    */
   allows(policies: Omit<Policy<T>, 'entity'>): this {
     this.policies.push({ ...policies, entity: this.entity })
@@ -408,7 +453,7 @@ class PoliciesBuilder<T extends model.Type> implements Policies {
   }
 
   /**
-   * Gets a policies builder for the given type.
+   * Gets a policies builder for the given entity.
    */
   on<T extends model.Type>(entity: T): PoliciesBuilder<T> {
     const typeKind = model.concretise(entity).kind

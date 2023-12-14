@@ -222,8 +222,8 @@ describe('check logged user policies', () => {
       select: {
         id: true,
         posts: {
-          select: { content: true },
-          where: { AND: [{ title: { equals: '...' } }, { author: { id: { equals: 1 } } }] },
+          select: { id: true, title: true, content: true },
+          where: { author: { id: { equals: 1 } } },
         },
       },
       where: { id: { equals: 1 } },

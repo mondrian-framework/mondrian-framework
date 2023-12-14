@@ -106,7 +106,8 @@ function handleFailure({
 }
 
 /**
- * TODO
+ * This middleware applies the given security policies for a retrieve operation.
+ * In case the checks fails and {@link errors.UnauthorizedAccess} is thrown
  */
 export function checkPolicies(
   policies: (context: any) => security.Policies,

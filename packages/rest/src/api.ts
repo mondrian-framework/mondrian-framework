@@ -1,6 +1,6 @@
 import { assertApiValidity } from './utils'
-import { retrieve, model } from '@mondrian-framework/model'
-import { functions, logger, module } from '@mondrian-framework/module'
+import { model } from '@mondrian-framework/model'
+import { functions, logger, module, retrieve } from '@mondrian-framework/module'
 import { KeysOfUnion } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 

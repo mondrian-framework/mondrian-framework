@@ -1,14 +1,14 @@
 import { Api, FunctionSpecifications } from './api'
-import { retrieve, model } from '@mondrian-framework/model'
-import { functions } from '@mondrian-framework/module'
-import { JSONType, isArray, setTraversingValue, mapObject, flatMapObject } from '@mondrian-framework/utils'
+import { model } from '@mondrian-framework/model'
+import { functions, retrieve } from '@mondrian-framework/module'
+import { JSONType, isArray, setTraversingValue, mapObject } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
   return internalEncodeQueryObject(input, prefix).join('&')
 }
 
 function internalEncodeQueryObject(input: JSONType, prefix: string): string[] {
-  if (input && Array.isArray(input)) {
+  if (input && isArray(input)) {
     const params = []
     for (let i = 0; i < input.length; i++) {
       for (const v of internalEncodeQueryObject(input[i], '')) {
@@ -81,7 +81,7 @@ export function assertApiValidity<Fs extends functions.Functions, ContextInput>(
     throw new Error(`Invalid api version. Must be between 1 and 100 and be an integer. Got ${api.version}`)
   }
   for (const [functionName, specifications] of Object.entries(api.functions)) {
-    for (const specification of Array.isArray(specifications) ? specifications : [specifications]) {
+    for (const specification of isArray(specifications) ? specifications : [specifications]) {
       //TODO [Good first issue]: Check path syntax, other checks?
       if (
         specification?.version?.max != null &&

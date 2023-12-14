@@ -10,18 +10,18 @@ import gen from 'fast-check'
  * @see {@link Type}
  */
 export enum Kind {
-  Number,
-  String,
-  Boolean,
-  Enum,
-  Literal,
-  Union,
-  Object,
-  Entity,
-  Array,
-  Optional,
-  Nullable,
-  Custom,
+  Number = 'number',
+  String = 'string',
+  Boolean = 'boolean',
+  Enum = 'enum',
+  Literal = 'literal',
+  Union = 'union',
+  Object = 'object',
+  Entity = 'entity',
+  Array = 'array',
+  Optional = 'optional',
+  Nullable = 'nullable',
+  Custom = 'custom',
 }
 
 /**

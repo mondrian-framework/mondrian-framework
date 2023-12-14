@@ -1,10 +1,10 @@
 import { slotProvider } from '../../rate-limiter'
 import { idType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
-import { User } from './model'
-import { result, retrieve, model } from '@mondrian-framework/model'
-import { functions } from '@mondrian-framework/module'
-import { Rate, RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
+import { User, MyUser } from './model'
+import { result, model } from '@mondrian-framework/model'
+import { functions, retrieve } from '@mondrian-framework/module'
+import { RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
@@ -74,7 +74,7 @@ export const register = functions.withContext<Context>().build({
       name: 'RegisterInput',
     },
   ),
-  output: User,
+  output: MyUser,
   errors: { emailAlreadyTaken: model.literal('Email already taken') },
   retrieve: { select: true },
   body: async ({ input, context, retrieve }) => {
@@ -134,5 +134,20 @@ export const follow = functions.withContext<LoggedUserContext>().build({
   options: {
     namespace: 'user',
     description: 'Adds a follower to your user. Available only for logged user.',
+  },
+})
+
+export const getUsers = functions.withContext<LoggedUserContext>().build({
+  input: model.never(),
+  output: model.array(User),
+  errors: { notLoggedIn: model.string() },
+  retrieve: retrieve.allCapabilities,
+  body: async ({ context, retrieve: thisRetrieve }) => {
+    const users = await context.prisma.user.findMany(thisRetrieve)
+    return result.ok(users)
+  },
+  options: {
+    namespace: 'user',
+    description: 'Gets some users.',
   },
 })

@@ -1,7 +1,7 @@
 import { ApiSpecification, FunctionSpecifications } from './api'
 import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
-import { retrieve, result, model } from '@mondrian-framework/model'
-import { functions, module, sdk, utils } from '@mondrian-framework/module'
+import { result, model } from '@mondrian-framework/model'
+import { functions, module, sdk, utils, retrieve } from '@mondrian-framework/module'
 
 export type Sdk<Fs extends functions.FunctionsInterfaces> = {
   functions: SdkFunctions<Fs>

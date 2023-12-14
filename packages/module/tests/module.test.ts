@@ -1,5 +1,5 @@
-import { module, functions, sdk } from '../src'
-import { result, model, retrieve } from '@mondrian-framework/model'
+import { module, functions, sdk, security } from '../src'
+import { result, model } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf, test } from 'vitest'
 
 test('Real example', async () => {
@@ -39,7 +39,6 @@ test('Real example', async () => {
     input: LoginInput,
     output: LoginOutput,
     errors: { invalidEmailOrPassword: model.literal('Invalid email or password') },
-    retrieve: undefined,
     body: async ({ input, context: { db }, logger }) => {
       const user = db.findUser({ email: input.email })
       if (!user || user.password !== input.password) {
@@ -98,7 +97,6 @@ test('Real example', async () => {
     input: model.object({ firstname: model.string(), lastname: model.string() }),
     output: User,
     errors: { unauthorized: model.literal('unauthorized') },
-    retrieve: undefined,
     body: async ({ input, context: { db, authenticatedUser } }) => {
       if (!authenticatedUser) {
         return result.fail({ unauthorized: 'unauthorized' })
@@ -203,8 +201,6 @@ describe('Unique type name', () => {
     const f = functions.build({
       input,
       output,
-      errors: undefined,
-      retrieve: undefined,
       body: () => {
         throw 'Unreachable'
       },
@@ -226,7 +222,6 @@ describe('Default middlewares', () => {
     const dummy = functions.build({
       input: type,
       output: type,
-      errors: undefined,
       retrieve: { select: true },
       body: async ({ input }) => {
         if (input?.value === 'wrong') {
@@ -244,6 +239,7 @@ describe('Default middlewares', () => {
         maxSelectionDepth: 2,
       },
       context: async () => ({}),
+      policies: () => security.on(type).allows({ selection: true }),
     })
 
     const client = sdk.build({

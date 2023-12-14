@@ -2,6 +2,7 @@ import { module } from '../core'
 import { InvalidJwtError } from '../core/errors'
 import { graphql } from '@mondrian-framework/graphql'
 import { serveWithFastify as serve } from '@mondrian-framework/graphql-yoga'
+import { errors } from '@mondrian-framework/module'
 import { FastifyInstance } from 'fastify'
 
 const api = graphql.build({
@@ -9,6 +10,7 @@ const api = graphql.build({
   functions: {
     register: { type: 'mutation' },
     login: { type: 'query' },
+    getUsers: { type: 'query' },
     follow: { type: 'mutation' },
     writePost: { type: 'mutation', name: 'write' },
     readPosts: { type: 'query', name: 'posts' },
@@ -28,6 +30,9 @@ export function serveGraphql(server: FastifyInstance) {
     errorHandler: async ({ error, logger }) => {
       if (error instanceof InvalidJwtError) {
         return { message: 'Invalid JWT' }
+      }
+      if (error instanceof errors.UnauthorizedAccess) {
+        return { message: 'Unauthorized access', options: { extensions: { info: error.error } } }
       }
       if (error instanceof Error && process.env.ENVIRONMENT !== 'development') {
         logger.logError(error.message)

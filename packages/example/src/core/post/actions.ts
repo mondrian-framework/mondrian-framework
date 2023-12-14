@@ -1,8 +1,8 @@
 import { LoggedUserContext } from '..'
 import { idType } from '../common/model'
-import { Post } from './model'
-import { result, retrieve, model } from '@mondrian-framework/model'
-import { functions } from '@mondrian-framework/module'
+import { Post, PostVisibility } from './model'
+import { result, model } from '@mondrian-framework/model'
+import { functions, retrieve } from '@mondrian-framework/module'
 import { Prisma } from '@prisma/client'
 
 export const writePost = functions.withContext<LoggedUserContext>().build({
@@ -11,6 +11,9 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
   errors: { notLoggedIn: model.string() },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
+    if (PostVisibility.decode(input.visibility).isFailure) {
+      throw new Error(`Invalid post visibility. Use one of ${PostVisibility.variants}`)
+    }
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' })
     }
@@ -31,28 +34,11 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
 })
 
 export const readPosts = functions.withContext<LoggedUserContext>().build({
-  input: model.object({ userId: idType }),
+  input: model.never(),
   output: model.array(Post),
   retrieve: retrieve.allCapabilities,
-  body: async ({ context, input, retrieve: thisRetrieve }) => {
-    const baseFilter: Prisma.PostWhereInput = {
-      authorId: input.userId,
-      OR: [
-        { visibility: 'PUBLIC' },
-        ...(context.userId
-          ? ([
-              { visibility: 'FOLLOWERS', author: { followers: { some: { followerId: context.userId } } } },
-              { visibility: 'PRIVATE', authorId: context.userId },
-            ] as const)
-          : []),
-      ],
-    }
-    const args = retrieve.merge<Prisma.PostFindManyArgs>(
-      Post,
-      { where: baseFilter, select: { id: true } },
-      thisRetrieve,
-    )
-    const posts = await context.prisma.post.findMany(args)
+  body: async ({ context, retrieve }) => {
+    const posts = await context.prisma.post.findMany(retrieve)
     return posts
   },
   options: {

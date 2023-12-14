@@ -1,7 +1,7 @@
-import { functions, module, utils } from '.'
+import { functions, module, retrieve, utils } from '.'
 import { logger as mondrianLogger } from '.'
 import { ErrorType } from './function'
-import { retrieve, result, model } from '@mondrian-framework/model'
+import { result, model } from '@mondrian-framework/model'
 
 export type Sdk<F extends functions.Functions, Metadata> = {
   functions: SdkFunctions<F, Metadata>

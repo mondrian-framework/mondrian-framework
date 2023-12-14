@@ -1,5 +1,4 @@
-import { result, model } from '.'
-import { memoizeTypeTransformation } from './utils'
+import { result, model, utils } from '@mondrian-framework/model'
 import { flatMapObject, mapObject } from '@mondrian-framework/utils'
 import { randomUUID } from 'crypto'
 
@@ -30,9 +29,14 @@ export type GenericRetrieve = {
   readonly take?: number
   readonly skip?: number
 }
-export type GenericWhere = { readonly AND?: GenericWhere | readonly GenericWhere[] } & { readonly [K in string]: any }
+export type GenericWhere = {
+  readonly AND?: GenericWhere | readonly GenericWhere[]
+  readonly OR?: GenericWhere | readonly GenericWhere[]
+  readonly NOT?: GenericWhere | readonly GenericWhere[]
+} & { readonly [K in string]: any }
 export type GenericSelect = null | { readonly [K in string]?: GenericRetrieve | boolean }
-export type GenericOrderBy = {} | {}[]
+type GenericOrderByInternal = { [K in string]: SortDirection | GenericOrderByInternal }
+export type GenericOrderBy = GenericOrderByInternal | GenericOrderByInternal[]
 
 /**
  * Builds a retrieve type of a known mondrian type.
@@ -243,14 +247,16 @@ function retrieve(
   })
 }
 
-const entitySelect = memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((type) => {
-  const entity = model.concretise(type)
-  return () =>
-    model.object(
-      mapObject(entity.fields, (_, fieldType) => model.optional(select(fieldType))),
-      { name: `${entity.options?.name ?? randomUUID()}Select` },
-    )
-})
+const entitySelect = utils.memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>(
+  (type) => {
+    const entity = model.concretise(type)
+    return () =>
+      model.object(
+        mapObject(entity.fields, (_, fieldType) => model.optional(select(fieldType))),
+        { name: `${entity.options?.name ?? randomUUID()}Select` },
+      )
+  },
+)
 
 function select(type: model.Type): model.Type {
   return model.match(type, {
@@ -287,7 +293,7 @@ function select(type: model.Type): model.Type {
 }
 
 const entityWhere: (type: model.Lazy<model.EntityType<model.Mutability, model.Types>>) => model.Type =
-  memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((_, type) => {
+  utils.memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((_, type) => {
     const entity = model.concretise(type)
     return () =>
       model.object(
@@ -346,13 +352,15 @@ function where(type: model.Type): model.Type {
   })
 }
 
-const entityOrderBy = memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((type) => {
-  const entity = model.concretise(type)
-  return model.object(
-    mapObject(entity.fields, (_, fieldType) => model.optional(orderBy(fieldType))),
-    { name: `${entity.options?.name ?? randomUUID()}OrderBy` },
-  )
-})
+const entityOrderBy = utils.memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>(
+  (type) => {
+    const entity = model.concretise(type)
+    return model.object(
+      mapObject(entity.fields, (_, fieldType) => model.optional(orderBy(fieldType))),
+      { name: `${entity.options?.name ?? randomUUID()}OrderBy` },
+    )
+  },
+)
 
 export const sortDirection = () => model.enumeration(['asc', 'desc'], { name: 'SortDirection' })
 export type SortDirection = model.Infer<typeof sortDirection>
@@ -398,7 +406,7 @@ export function merge<const T extends GenericRetrieve>(
   } as unknown as T
 }
 
-function mergeSelect(
+export function mergeSelect(
   type: model.Type,
   left?: GenericSelect,
   right?: GenericSelect,

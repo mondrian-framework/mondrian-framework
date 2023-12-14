@@ -1,4 +1,4 @@
-import { Context, posts, users } from '.'
+import { Context, LoggedUserContext, policies, posts, users } from '.'
 import { InvalidJwtError } from './errors'
 import { module } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
@@ -17,26 +17,34 @@ const prisma = new PrismaClient()
 //Instance of this module
 export const instance = module.build({
   name: process.env.MODULE_NAME ?? '???',
-  version: process.env.MODULE_NAME ?? '0.0.0',
+  version: process.env.MODULE_VERSION ?? '0.0.0',
   functions,
   options: {
     maxSelectionDepth: 4,
     checkOutputType: 'throw',
     opentelemetryInstrumentation: true,
   },
-  context: async ({ authorization, ip }: { authorization?: string; ip: string }) => {
-    const context: Context = { prisma, ip }
+  async context({ authorization, ip }: { authorization?: string; ip: string }): Promise<Context | LoggedUserContext> {
     if (authorization) {
       const secret = process.env.JWT_SECRET ?? 'secret'
+      const rawJwt = authorization.replace('Bearer ', '')
       try {
-        const jwt = jsonwebtoken.verify(authorization.replace('Bearer ', ''), secret, { complete: true })
+        const jwt = jsonwebtoken.verify(rawJwt, secret, { complete: true })
         if (typeof jwt.payload === 'object' && jwt.payload.sub) {
-          return { ...context, userId: Number(jwt.payload.sub) }
+          const userId = Number(jwt.payload.sub)
+          return { prisma, ip, userId }
         }
       } catch {
-        throw new InvalidJwtError('Invalid jwt')
+        throw new InvalidJwtError(rawJwt)
       }
     }
-    return context
+    return { prisma, ip }
+  },
+  policies(context) {
+    if (context.userId != null) {
+      return policies.loggedUser(context.userId)
+    } else {
+      return policies.guest
+    }
   },
 })

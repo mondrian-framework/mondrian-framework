@@ -1,5 +1,13 @@
 # @mondrian-framework/model
 
+## 2.0.11
+
+### Patch Changes
+
+- Security policies
+- Updated dependencies
+  - @mondrian-framework/utils@2.0.11
+
 ## 2.0.10
 
 ### Patch Changes

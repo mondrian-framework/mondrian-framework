@@ -3,7 +3,6 @@ import { idType } from '../common/model'
 import { Post, PostVisibility } from './model'
 import { result, model } from '@mondrian-framework/model'
 import { functions, retrieve } from '@mondrian-framework/module'
-import { Prisma } from '@prisma/client'
 
 export const writePost = functions.withContext<LoggedUserContext>().build({
   input: model.pick(Post, { title: true, content: true, visibility: true }, { name: 'WritePostInput' }),

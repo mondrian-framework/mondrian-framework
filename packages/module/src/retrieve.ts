@@ -61,7 +61,7 @@ export const allCapabilities = { orderBy: true, select: true, skip: true, take: 
 // prettier-ignore
 type SelectType<T extends model.Type, C extends Capabilities>
   = [C] extends [{ readonly select: true }]
-  ? [T] extends [model.EntityType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C>
+  ? [T] extends [model.EntityType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } } & WhereType<T, C> & OrderByType<T, C> & TakeType<C> & SkipType<C>
   : [T] extends [model.ObjectType<any, infer Ts>] ? { readonly select?: { readonly [K in keyof Ts]?: boolean | SelectType<Ts[K], { select: true }> } }
   : [T] extends [model.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
   : [T] extends [model.OptionalType<infer T1>] ? SelectType<T1, C>
@@ -110,6 +110,7 @@ type WhereField<T extends model.Type>
   = [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
   : [T] extends [model.ArrayType<any, infer T1>] ? WhereFieldArray<T1>
   : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: model.Infer<T> }
+  : [T] extends [model.CustomType<any, any, any>] ? { readonly equals?: model.Infer<T> }
   : [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
   : [T] extends [model.OptionalType<infer T1>] ? WhereField<T1>
   : [T] extends [model.NullableType<infer T1>] ? WhereField<T1>
@@ -123,7 +124,7 @@ type WhereFieldArray<T extends model.Type>
   : [T] extends [model.NullableType<infer T1>] ? WhereFieldArray<T1>
   : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
   : [T] extends [(() => infer T1 extends model.Type)] ? WhereFieldArray<T1>
-  : { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
+  : { readonly equals?:  model.Infer<T>[], readonly isEmpty?: boolean }
 
 /**
  * Gets the depth of the selection.
@@ -315,7 +316,7 @@ function where(type: model.Type): model.Type {
     array: ({ wrappedType }) => {
       const matcher: (type: model.Type) => model.Type = model.matcher({
         wrapper: ({ wrappedType }) => matcher(wrappedType), //isSet
-        scalar: (_, t) => model.object({ equals: model.optional(model.array(t)) }),
+        scalar: (_, t) => model.object({ equals: model.optional(model.array(t)), isEmpty: model.boolean().optional() }),
         array: () => {
           throw new Error('Array of array not supported in where')
         },
@@ -343,6 +344,7 @@ function where(type: model.Type): model.Type {
       return matcher(wrappedType)
     },
     object: ({ fields }) => model.object({ equals: model.object(fields).optional() }),
+    custom: (_, t) => model.object({ equals: model.optional(t) }),
     union: () => {
       throw new Error('Unsupported union in where')
     },

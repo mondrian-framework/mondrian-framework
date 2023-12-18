@@ -285,7 +285,7 @@ const moduleInstance = module.build({
           //otherwise can read the "id" and the "email"
           .on(User)
           .allows({ selection: true, restriction: { id: { equals: userId } } })
-          .allows({ selection: { id: true, email: true }, restriction: { id: { equals: userId } } })
+          .allows({ selection: { id: true, email: true } })
           //On entity "Post" a logged user can read anything on every post
           .on(Post)
           .allows({ selection: true })

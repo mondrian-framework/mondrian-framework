@@ -5,7 +5,7 @@ functions for defining a domain model schema, from primitive types to complex
 objects, arrays and unions. It does so by providing a series of builders that
 can help make development straightforward and the schema as readable as possible.
 
-Everything you may need to define a new schema is enclosed inside the `types`
+Everything you may need to define a new schema is enclosed inside the `model`
 namespace of the `@mondrian-framework/model` package, so to get things started
 you should import it:
 

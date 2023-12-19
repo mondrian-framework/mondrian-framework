@@ -26,11 +26,13 @@ export type FunctionSpecifications<InputType extends model.Type> = {
   cron: string
   runAtStart?: boolean
   timezone?: string
-} & (model.IsNever<InputType> extends true
-  ? {}
-  : model.IsOptional<InputType> extends true
-    ? { input?: () => Promise<model.Infer<InputType>> }
-    : { input: () => Promise<model.Infer<InputType>> })
+} & InputGenerator<InputType>
+
+//prettier-ignore
+type InputGenerator<InputType extends model.Type> 
+  = model.IsNever<InputType> extends true ? {}
+  : model.IsOptional<InputType> extends true ? { input?: () => Promise<model.Infer<InputType>> }
+  : { input: () => Promise<model.Infer<InputType>> }
 
 /**
  * Builds a cron API in order to schedule function execution.

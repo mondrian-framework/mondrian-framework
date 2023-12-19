@@ -7,7 +7,7 @@ const config: Config = {
   tagline: 'The Node.js framework for building modular server-side applications ready to evolve',
   favicon: 'img/favicon.ico',
   url: 'https://mondrianframework.io',
-  baseUrl: '/documentation/',
+  baseUrl: '/mondrian-framework/',
   organizationName: 'mondrian-framework',
   projectName: 'mondrian-framework',
   deploymentBranch: 'docs',

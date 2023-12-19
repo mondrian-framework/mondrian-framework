@@ -38,19 +38,17 @@ function getRequestBuilder(args: { specification: FunctionSpecifications; functi
   return result
 }
 
-export function build<const Fs extends functions.FunctionsInterfaces, const API extends ApiSpecification<Fs>>({
-  module,
+export function build<const Fs extends functions.FunctionsInterfaces>({
   api,
   endpoint,
   headers,
 }: {
-  module: module.ModuleInterface<Fs>
-  api: API
+  api: ApiSpecification<Fs>
   endpoint: string
   headers?: Record<string, string | string[] | undefined>
-}): Sdk<Pick<Fs, keyof API['functions'] & keyof Fs>> {
+}): Sdk<Fs> {
   const functions = Object.fromEntries(
-    Object.entries(module.functions).flatMap(([functionName, functionBody]) => {
+    Object.entries(api.module.functions).flatMap(([functionName, functionBody]) => {
       const specs = api.functions[functionName]
       const specification = Array.isArray(specs) ? specs[specs.length - 1] : specs
       if (!specification) {
@@ -121,7 +119,7 @@ export function build<const Fs extends functions.FunctionsInterfaces, const API 
 
   return {
     functions: functions as unknown as SdkFunctions<Fs>,
-    withHeaders: (headers: Record<string, string | string[] | undefined>) => build({ api, endpoint, module, headers }),
+    withHeaders: (headers: Record<string, string | string[] | undefined>) => build({ api, endpoint, headers }),
   }
 }
 

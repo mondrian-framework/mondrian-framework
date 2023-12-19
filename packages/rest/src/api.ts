@@ -41,6 +41,10 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
       }[keyof Fs]
     >]?: number
   }
+  /**
+   * Interface of the module
+   */
+  module: module.ModuleInterface<Fs>
 }
 
 export type Api<Fs extends functions.Functions, ContextInput> = ApiSpecification<Fs> & {
@@ -50,9 +54,23 @@ export type Api<Fs extends functions.Functions, ContextInput> = ApiSpecification
   module: module.Module<Fs, ContextInput>
 }
 
+/**
+ * Builds the rest API in order to expose the module.
+ */
 export function build<const Fs extends functions.Functions, ContextInput>(
   api: Api<Fs, ContextInput>,
 ): Api<Fs, ContextInput> {
+  assertApiValidity(api)
+  return api
+}
+
+/**
+ * Defines the rest API with just the module interface.
+ * The return can be used to build a rest sdk.
+ */
+export function define<const Fs extends functions.FunctionsInterfaces>(
+  api: ApiSpecification<Fs>,
+): ApiSpecification<Fs> {
   assertApiValidity(api)
   return api
 }

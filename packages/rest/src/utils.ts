@@ -1,4 +1,4 @@
-import { Api, FunctionSpecifications } from './api'
+import { Api, ApiSpecification, FunctionSpecifications } from './api'
 import { model } from '@mondrian-framework/model'
 import { functions, retrieve } from '@mondrian-framework/module'
 import { JSONType, isArray, setTraversingValue, mapObject } from '@mondrian-framework/utils'
@@ -76,7 +76,7 @@ export function getPathsFromSpecification({
  *  - paths syntax
  * @param api the api configuration
  */
-export function assertApiValidity<Fs extends functions.Functions, ContextInput>(api: Api<Fs, ContextInput>) {
+export function assertApiValidity(api: ApiSpecification<functions.FunctionsInterfaces>) {
   if (api.version < 1 || !Number.isInteger(api.version) || api.version > 100) {
     throw new Error(`Invalid api version. Must be between 1 and 100 and be an integer. Got ${api.version}`)
   }

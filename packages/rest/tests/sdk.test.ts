@@ -200,7 +200,7 @@ describe('rest sdk', async () => {
     maxBodySize: 1024,
   })
   server.listen(50123)
-  const client = sdk.build({ api, endpoint: 'http://127.0.0.1:50123', module: m })
+  const client = sdk.build({ api, endpoint: 'http://127.0.0.1:50123' })
 
   afterAll(() => {
     server.close()

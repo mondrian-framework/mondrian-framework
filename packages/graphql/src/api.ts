@@ -15,6 +15,7 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
     introspection?: boolean
     pathPrefix?: string
   }
+  module: module.ModuleInterface<Fs>
 }
 
 export type Api<Fs extends functions.Functions, ContextInput> = ApiSpecification<Fs> & {
@@ -25,6 +26,11 @@ export type Api<Fs extends functions.Functions, ContextInput> = ApiSpecification
 }
 
 export function build<Fs extends functions.Functions, ContextInput>(api: Api<Fs, ContextInput>): Api<Fs, ContextInput> {
+  //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
+  return api
+}
+
+export function define<Fs extends functions.FunctionsInterfaces>(api: ApiSpecification<Fs>): ApiSpecification<Fs> {
   //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
   return api
 }

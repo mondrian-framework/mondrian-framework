@@ -1,7 +1,11 @@
 import * as AWS from '@aws-sdk/client-sqs'
 import { functions, module } from '@mondrian-framework/module'
 
-export type ApiSpecifications<Fs extends functions.FunctionsInterfaces> = {
+/**
+ * The SQS API specification of a mondrian {@link module.ModuleInterface Module Interface}
+ * It does not contains the implementation. In order to instantiate this you should use {@link define}.
+ */
+export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
   functions: {
     [K in keyof Fs]?: FunctionSpecifications
   }
@@ -12,7 +16,13 @@ export type ApiSpecifications<Fs extends functions.FunctionsInterfaces> = {
   module: module.ModuleInterface<Fs>
 }
 
-export type Api<Fs extends functions.Functions, CI> = ApiSpecifications<Fs> & {
+/**
+ * The same of {@link ApiSpecification} but this contains the {@link module.Module Module} so
+ * this contains also the function implementations. With an instance of {@link Api} it is possible
+ * attach SQS to any functions and consuming it's messages.
+ * In order to instantiate this you should use {@link build}.
+ */
+export type Api<Fs extends functions.Functions, CI> = ApiSpecification<Fs> & {
   module: module.Module<Fs, CI>
 }
 
@@ -23,16 +33,19 @@ export type FunctionSpecifications = {
 }
 
 /**
- * TODO: doc
+ * Builds a SQS API in order to attach the module to the queues.
  */
 export function build<const Fs extends functions.Functions, CI>(api: Api<Fs, CI>): Api<Fs, CI> {
   //TODO [Good first issue]: check validity of api as rest.build
   return api
 }
 
+/**
+ * Defines the SQS API with just the module interface.
+ */
 export function define<const Fs extends functions.FunctionsInterfaces>(
-  api: ApiSpecifications<Fs>,
-): ApiSpecifications<Fs> {
+  api: ApiSpecification<Fs>,
+): ApiSpecification<Fs> {
   //TODO [Good first issue]: check validity of api as rest.define
   return api
 }

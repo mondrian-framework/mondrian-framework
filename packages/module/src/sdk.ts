@@ -18,7 +18,7 @@ type SdkFunction<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   Metadata,
-> = IsNever<InputType> extends true
+> = model.IsNever<InputType> extends true
   ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(options?: {
       retrieve?: P
       metadata?: Metadata
@@ -156,14 +156,6 @@ type IsEntity<T extends model.Type>
   : [T] extends [model.NullableType<infer T1>] ? IsEntity<T1>
   : [T] extends [model.ArrayType<any, infer T1>] ? IsEntity<T1>
   : [T] extends [(() => infer T1 extends model.Type)] ? IsEntity<T1>
-  : false
-
-//prettier-ignore
-type IsNever<T extends model.Type> 
-  = [T] extends [model.CustomType<'never'>] ? true
-  : [T] extends [model.OptionalType<any>] ? IsNever<T>
-  : [T] extends [model.NullableType<infer T1>] ? IsNever<T1>
-  : [T] extends [(() => infer T1 extends model.Type)] ? IsNever<T1>
   : false
 
 class SdkBuilder<const Metadata> {

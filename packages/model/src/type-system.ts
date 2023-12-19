@@ -197,6 +197,33 @@ export type IsOptional<T extends Type>
   : false
 
 /**
+ * Returns the literal type `true` for any {@link Type} that is optional. That is, if the type has a top-level
+ * {@link OptionalType optional wrapper}
+ *
+ * @example ```ts
+ *          const Model = model.never().optional().nullable()
+ *          IsOptional<typeof Model> // true
+ *          ```
+ *          The top-level decorators are `OptionalType` and `ReferenceType` so the type is optional
+ * @example ```ts
+ *          const Model = model.never().optional()
+ *          IsOptional<typeof Model> // true
+ *          ```
+ *          The top-level decorator is `OptionalType` so the type is optional
+ * @example ```ts
+ *          const Model = model.never().optional().array()
+ *          IsOptional<typeof Model> // false
+ *          ```
+ *          The top-level decorator is `ArrayType` so the type is not optional
+ */
+//prettier-ignore
+export type IsNever<T extends model.Type> 
+  = [T] extends [model.CustomType<'never'>] ? true
+  : [T] extends [model.OptionalType<infer T1>] ? IsNever<T1>
+  : [T] extends [model.NullableType<infer T1>] ? IsNever<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? IsNever<T1>
+  : false
+/**
  * Given a {@link Type}, returns the type of the options it can accept when it is defined
  *
  * @example ```ts

@@ -7,7 +7,7 @@ const config: Config = {
   tagline: 'The Node.js framework for building modular server-side applications ready to evolve',
   favicon: 'img/favicon.ico',
   url: 'https://mondrianframework.io',
-  baseUrl: '/mondrian-framework/',
+  baseUrl: '/',
   organizationName: 'mondrian-framework',
   projectName: 'mondrian-framework',
   deploymentBranch: 'docs',
@@ -38,7 +38,7 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: '/img/docusaurus-social-card.jpg',
     navbar: {
       style: 'primary',
       logo: {
@@ -76,7 +76,7 @@ const config: Config = {
       logo: {
         alt: 'Mondrian Framework Logo',
         height: '25px',
-        src: 'img/logo-white.png',
+        src: '/img/logo-white.png',
       },
       copyright: `Copyright © ${new Date().getFullYear()} Mondrian Framework.`,
     },

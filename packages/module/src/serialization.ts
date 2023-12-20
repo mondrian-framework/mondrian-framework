@@ -178,7 +178,7 @@ function serializeType(
     case model.Kind.Union:
       return {
         type: 'union',
-        variants: mapObject(concreteType.variants, (_, variantType: model.Type) => ({ type: resolve(variantType) })),
+        variants: mapObject(concreteType.variants, (_, variantType: model.Type) => resolve(variantType)),
         options: concreteType.options,
         lazy: typeof type === 'function' ? true : undefined,
       }
@@ -309,7 +309,7 @@ const entityTypeSchema = model.object({
 })
 const unionTypeSchema = model.object({
   type: model.literal('union'),
-  variants: model.record(model.object({ type: model.string() })),
+  variants: model.record(model.string()),
   lazy: model.boolean().optional(),
   options: model.object(baseOptionsFields).optional(),
 })
@@ -319,7 +319,7 @@ const customTypeSchema = model.object({
   options: model.object(baseOptionsFields).optional(),
   custom: model.json().optional(),
 })
-const TypeSchema = model
+export const TypeSchema = model
   .union({
     string: stringTypeSchema,
     number: numberTypeSchema,
@@ -335,7 +335,7 @@ const TypeSchema = model
     custom: customTypeSchema,
   })
   .setName('TypeSchema')
-type TypeSchema = model.Infer<typeof TypeSchema>
+export type TypeSchema = model.Infer<typeof TypeSchema>
 
 const FunctionSchema = model
   .object({

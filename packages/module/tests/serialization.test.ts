@@ -201,7 +201,7 @@ describe('Module interface to schema', () => {
         ANONYMOUS_TYPE_4: { type: 'number' },
         union: {
           type: 'union',
-          variants: { u1: { type: 'ANONYMOUS_TYPE_0' }, u2: { type: 'ANONYMOUS_TYPE_4' } },
+          variants: { u1: 'ANONYMOUS_TYPE_0', u2: 'ANONYMOUS_TYPE_4' },
           options: { name: 'union' },
           lazy: true,
         },

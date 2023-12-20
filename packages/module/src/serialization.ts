@@ -1,4 +1,4 @@
-import { module, utils } from '.'
+import { functions, module, utils } from '.'
 import { model } from '@mondrian-framework/model'
 import { JSONType, areJsonsEquals, assertNever, mapObject } from '@mondrian-framework/utils'
 
@@ -319,7 +319,7 @@ const customTypeSchema = model.object({
   options: model.object(baseOptionsFields).optional(),
   custom: model.json().optional(),
 })
-export const TypeSchema = model
+const TypeSchema = model
   .union({
     string: stringTypeSchema,
     number: numberTypeSchema,
@@ -335,7 +335,7 @@ export const TypeSchema = model
     custom: customTypeSchema,
   })
   .setName('TypeSchema')
-export type TypeSchema = model.Infer<typeof TypeSchema>
+type TypeSchema = model.Infer<typeof TypeSchema>
 
 const FunctionSchema = model
   .object({
@@ -379,3 +379,110 @@ export const ModuleSchema = model
  * The type of a {@link module.ModuleInterface ModuleInterface} schema.
  */
 export type ModuleSchema = model.Infer<typeof ModuleSchema>
+
+// PARSING
+type CustomParser = (
+  options: model.BaseOptions | undefined,
+  custom: any,
+  types: Record<string, model.Type>,
+) => model.Type
+export type CustomParsers = { readonly [key in string]: CustomParser }
+
+const customParsers: CustomParsers = {
+  record: (options, custom, types) => model.record(types[custom.wrappedType], options),
+  datetime: (options, custom) =>
+    model.datetime({
+      ...options,
+      minimum: custom.customOptions?.minimum != null ? new Date(custom.customOptions.minimum) : undefined,
+      maximum: custom.customOptions?.maximum != null ? new Date(custom.customOptions.maximum) : undefined,
+    }),
+  timestamp: (options, custom) =>
+    model.timestamp({
+      ...options,
+      minimum: custom.customOptions?.minimum != null ? new Date(custom.customOptions.minimum) : undefined,
+      maximum: custom.customOptions?.maximum != null ? new Date(custom.customOptions.maximum) : undefined,
+    }),
+}
+
+export function parse({ name, version, types, functions }: ModuleSchema): module.ModuleInterface {
+  const parsedTypes = parseTypes(types)
+  const parsedFunctions = parseFunctions(functions, parsedTypes)
+  return module.define({
+    name,
+    version,
+    functions: parsedFunctions,
+  })
+}
+
+function parseFunctions(
+  funcs: Record<string, FunctionSchema>,
+  types: Record<string, model.Type>,
+): Record<string, functions.FunctionInterface> {
+  const results: Record<string, functions.FunctionInterface> = {}
+  for (const [functionName, functionSchema] of Object.entries(funcs)) {
+    results[functionName] = functions.define({
+      input: types[functionSchema.input],
+      output: types[functionSchema.output],
+      errors: functionSchema.errors ? mapObject(functionSchema.errors, (_, errorName) => types[errorName]) : undefined,
+      options: functionSchema.options,
+      retrieve: functionSchema.retrieve,
+    })
+  }
+  return results
+}
+
+function parseTypes(types: Record<string, TypeSchema>): Record<string, model.Type> {
+  const results: Record<string, model.Type> = {}
+  for (const [typeName, typeSchema] of Object.entries(types)) {
+    results[typeName] = () => parseType(typeName, typeSchema, results)
+  }
+  return results
+}
+
+function parseType(name: string, type: TypeSchema, types: Record<string, model.Type>): model.Type {
+  if (type.type === 'string') {
+    return model.string({
+      ...type.options,
+      regex: type.options?.regex ? new RegExp(type.options.regex) : undefined,
+      name,
+    })
+  } else if (type.type === 'number') {
+    return model.number({ ...type.options, name })
+  } else if (type.type === 'boolean') {
+    return model.boolean({ ...type.options, name })
+  } else if (type.type === 'literal') {
+    return model.literal(type.literalValue, { ...type.options, name })
+  } else if (type.type === 'enumeration') {
+    return model.enumeration(type.variants as [string, ...string[]], { ...type.options, name })
+  } else if (type.type === 'optional') {
+    return model.optional(types[type.wrappedType], { ...type.options, name })
+  } else if (type.type === 'nullable') {
+    return model.nullable(types[type.wrappedType], { ...type.options, name })
+  } else if (type.type === 'array') {
+    return model.array(types[type.wrappedType], { ...type.options, name })
+  } else if (type.type === 'object') {
+    return model.object(
+      mapObject(type.fields, (_, fieldType) => types[fieldType]),
+      { ...type.options, name },
+    )
+  } else if (type.type === 'entity') {
+    return model.entity(
+      mapObject(type.fields, (_, fieldType) => types[fieldType]),
+      { ...type.options, name },
+    )
+  } else if (type.type === 'union') {
+    return model.union(
+      mapObject(type.variants, (_, fieldType) => types[fieldType]),
+      { ...type.options, name },
+    )
+  } else if (type.type === 'custom') {
+    const parser = customParsers[type.typeName]
+    if (!parser) {
+      throw new Error(`Unknown custom type ${type.typeName}. Cannot parse.`)
+    } else {
+      return parser({ ...type.options, name }, type.custom, types)
+    }
+  } else {
+    assertNever(type, `Unexpected type ${type} on deserialization`)
+  }
+}

@@ -62,7 +62,7 @@ export type ConcreteType =
 export type Lazy<T extends ConcreteType> = T | (() => Lazy<T>)
 
 /**
- * Concretizes a type by removing the lazyness part.
+ * Concretises a type by removing the lazyness part.
  * It's oftend used to turn a {@link Type} to {@link ConcreteType}.
  */
 export type Concrete<T extends Type> = Exclude<T, () => any>

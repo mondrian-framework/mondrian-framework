@@ -70,7 +70,7 @@ export default function Home(): JSX.Element {
                   automatic translation features to major standards: JSONSchema (OpenAPI), GraphQL and Protobuf.
                 </div>
                 <div className={styles.featureButton}>
-                  <Link className={`button button--primary button--lg`} to="/docs/docs/model">
+                  <Link className={`button button--primary button--lg`} to="/docs/docs/foundamentals/model">
                     Learn more about data model
                   </Link>
                 </div>
@@ -115,7 +115,7 @@ export type User = model.Infer<typeof User>
                   The design-first approach allows you to have a specification always aligned with the code and automatically generate tools and artifacts for the clients of your software.
                 </div>
                 <div className={styles.featureButton}>
-                  <Link className={`button button--primary button--lg`} to="/docs/docs/module">
+                  <Link className={`button button--primary button--lg`} to="/docs/docs/foundamentals/function">
                     Learn more about modules and functions
                   </Link>
                 </div>
@@ -162,7 +162,7 @@ const userModule = module.build({
                   You can also develop your own runtime based on your needs to execute a module using a server of your choice and a dedicated infrastructure. This will allow you to embrace technological evolution without rewriting your code.
                 </div>
                 <div className={styles.featureButton}>
-                  <Link className={`button button--primary button--lg`} to="/docs/docs/runtime">
+                  <Link className={`button button--primary button--lg`} to="/docs/docs/foundamentals/runtime">
                     Learn more about runtimes
                   </Link>
                 </div>

@@ -1,7 +1,6 @@
 import { module, utils } from '.'
-import { result, model, validation } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { JSONType, areJsonsEquals, assertNever, mapObject } from '@mondrian-framework/utils'
-import gen from 'fast-check'
 
 /**
  * Specify how a custom type should be serialized.

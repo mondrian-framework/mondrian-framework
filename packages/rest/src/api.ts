@@ -1,7 +1,7 @@
 import { assertApiValidity } from './utils'
 import { model } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve } from '@mondrian-framework/module'
-import { KeysOfUnion } from '@mondrian-framework/utils'
+import { KeysOfUnion, http } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
 /**
@@ -86,23 +86,6 @@ export function define<const Fs extends functions.FunctionsInterfaces>(
   return api
 }
 
-export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch'
-
-export type Request = {
-  body: unknown
-  params: Record<string, string | undefined>
-  query: Record<string, string | undefined>
-  headers: Record<string, string | string[] | undefined>
-  method: Method
-  route: string
-}
-
-export type Response = {
-  readonly status: number
-  readonly body: unknown
-  readonly headers?: Readonly<Record<string, string>>
-}
-
 export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
   args: {
     error: unknown
@@ -115,16 +98,16 @@ export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
       input?: unknown
     }
   } & RestContext,
-) => Promise<Response | void>
+) => Promise<http.Response | void>
 
 export type FunctionSpecifications<F extends functions.FunctionInterface = functions.FunctionInterface> = {
-  method: Method
+  method: http.Method
   path?: string
   inputName?: string
   version?: { min?: number; max?: number }
   openapi?: {
     specification: NullableOperationObject
-    input: (request: Request) => unknown
+    input: (request: http.Request) => unknown
     request: (input: model.Infer<F['input']>) => {
       body?: unknown
       params?: Record<string, string>

@@ -1,8 +1,8 @@
-import { ApiSpecification, FunctionSpecifications, Request } from './api'
+import { ApiSpecification, FunctionSpecifications } from './api'
 import { decodeQueryObject, encodeQueryObject } from './utils'
 import { model } from '@mondrian-framework/model'
 import { functions, module, retrieve } from '@mondrian-framework/module'
-import { isArray } from '@mondrian-framework/utils'
+import { isArray, http } from '@mondrian-framework/utils'
 import BigNumber from 'bignumber.js'
 import { OpenAPIV3_1 } from 'openapi-types'
 
@@ -149,7 +149,7 @@ export function generateOpenapiInput({
 }): {
   parameters?: (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.ParameterObject)[]
   requestBody?: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.RequestBodyObject
-  input: (request: Request) => unknown
+  input: (request: http.Request) => unknown
   request: (input: never) => { body?: unknown; params?: Record<string, string>; query?: string }
 } {
   if (specification.openapi) {
@@ -284,7 +284,7 @@ export function generateOpenapiInput({
             schema: schema as any,
           },
         ],
-        input: (request: Request) => {
+        input: (request: http.Request) => {
           return decodeQueryObject(request.query, specification.inputName ?? 'input')
         },
         request: (input) => {

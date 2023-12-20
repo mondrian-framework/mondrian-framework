@@ -1,7 +1,7 @@
 import { ServerContext } from './server'
 import { functions } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
-import { isArray } from '@mondrian-framework/utils'
+import { http, isArray } from '@mondrian-framework/utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 export function attachRestMethods<Fs extends functions.Functions, ContextInput>({
@@ -41,7 +41,7 @@ export function attachRestMethods<Fs extends functions.Functions, ContextInput>(
           request: {
             body: request.body as string,
             headers: request.headers,
-            method: request.method.toLowerCase() as rest.Method,
+            method: request.method.toLowerCase() as http.Method,
             params: request.params as Record<string, string>,
             query: request.query as Record<string, string>,
             route: request.routeOptions.url,

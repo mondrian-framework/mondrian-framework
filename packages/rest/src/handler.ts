@@ -1,8 +1,9 @@
-import { ApiSpecification, ErrorHandler, FunctionSpecifications, Request, Response } from './api'
+import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
 import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
 import { result, model } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
+import { http } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
@@ -22,7 +23,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   context: (serverContext: ServerContext) => Promise<ContextInput>
   error?: ErrorHandler<functions.Functions, ServerContext>
   api: Pick<ApiSpecification<functions.FunctionsInterfaces>, 'errorCodes'>
-}): (args: { request: Request; serverContext: ServerContext }) => Promise<Response> {
+}): (args: { request: http.Request; serverContext: ServerContext }) => Promise<http.Response> {
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
     : generateGetInputFromRequest({ functionBody, specification })
@@ -35,7 +36,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
     server: 'REST',
   })
 
-  const handler = ({ request, serverContext }: { request: Request; serverContext: ServerContext }) =>
+  const handler = ({ request, serverContext }: { request: http.Request; serverContext: ServerContext }) =>
     functionBody.tracer.startActiveSpanWithOptions(
       `mondrian:rest-handler:${functionName}`,
       {
@@ -94,13 +95,13 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
               const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
               const key = Object.keys(applyOutput.error)[0]
               const status = key ? codes[key] ?? 400 : 400
-              const response: Response = { status, body: applyOutput.error }
+              const response: http.Response = { status, body: applyOutput.error }
               endSpanWithResponse({ span, response })
               return response
             } else {
               const value = functionBody.errors ? applyOutput.value : applyOutput //unwrap output
               const encoded = partialOutputType.encodeWithoutValidation(value as never)
-              const response: Response = { status: 200, body: encoded }
+              const response: http.Response = { status: 200, body: encoded }
               endSpanWithResponse({ span, response })
               return response
             }
@@ -139,11 +140,11 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
 function decodeInput(
   inputType: model.Type,
-  request: Request,
-  getInputFromRequest: (request: Request) => unknown,
+  request: http.Request,
+  getInputFromRequest: (request: http.Request) => unknown,
   logger: logger.MondrianLogger,
   tracer: functions.Tracer,
-): result.Result<unknown, Response> {
+): result.Result<unknown, http.Response> {
   return tracer.startActiveSpan('decode-input', (span) => {
     if (model.isNever(inputType)) {
       return result.ok(undefined)
@@ -152,7 +153,7 @@ function decodeInput(
     try {
       rawInput = getInputFromRequest(request)
     } catch {
-      const failure = result.fail<Response>({ body: 'Error while extracting input from request', status: 500 })
+      const failure = result.fail<http.Response>({ body: 'Error while extracting input from request', status: 500 })
       endSpanWithError({ span, failure })
       return failure
     }
@@ -173,10 +174,10 @@ function decodeInput(
 function decodeRetrieve(
   retrieveType: result.Result<model.Type, unknown>,
   outputType: model.Type,
-  request: Request,
+  request: http.Request,
   logger: logger.MondrianLogger,
   tracer: functions.Tracer,
-): result.Result<retrieve.GenericRetrieve | undefined, Response> {
+): result.Result<retrieve.GenericRetrieve | undefined, http.Response> {
   if (retrieveType.isFailure) {
     return result.ok(undefined)
   }
@@ -187,7 +188,7 @@ function decodeRetrieve(
       try {
         jsonRawRetrieve = JSON.parse(rawRetrieve)
       } catch {
-        const failure = result.fail<Response>({ body: 'Invalid JSON on "retrieve" header', status: 500 })
+        const failure = result.fail<http.Response>({ body: 'Invalid JSON on "retrieve" header', status: 500 })
         endSpanWithError({ span, failure })
         return failure
       }
@@ -209,20 +210,20 @@ function decodeRetrieve(
 function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
-}): (request: Request) => unknown {
+}): (request: http.Request) => unknown {
   const internalData = emptyInternalData()
   const result = generateOpenapiInput({ ...args, internalData }).input
   clearInternalData(internalData)
   return result
 }
 
-function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<Response> }): void {
+function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<http.Response> }): void {
   span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, failure.error.status)
   span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(failure.error.body) })
   span?.end()
 }
 
-function endSpanWithResponse({ span, response }: { span?: Span; response: Response }): void {
+function endSpanWithResponse({ span, response }: { span?: Span; response: http.Response }): void {
   span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, response.status)
   const responseHasSuccessStatusCode = 200 <= response.status && response.status <= 299
   const spanStatusCode = responseHasSuccessStatusCode ? SpanStatusCode.OK : SpanStatusCode.ERROR

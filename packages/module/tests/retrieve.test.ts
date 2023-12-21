@@ -16,10 +16,13 @@ const user = () =>
     },
   )
 const metadata = () =>
-  model.object({
-    registeredAt: model.datetime(),
-    loggedInAt: model.datetime(),
-  })
+  model.object(
+    {
+      registeredAt: model.datetime(),
+      loggedInAt: model.datetime(),
+    },
+    { name: 'Metadata' },
+  )
 const post = () =>
   model.entity(
     {
@@ -414,14 +417,17 @@ describe('fromType', () => {
     const userOrderBy = () =>
       model.object(
         {
-          name: model.optional(retrieve.sortDirection),
+          name: model.optional(retrieve.SortDirection),
           bestFriend: model.optional(userOrderBy),
-          posts: model.object({ _count: model.optional(retrieve.sortDirection) }).optional(),
+          posts: model.object({ _count: model.optional(retrieve.SortDirection) }).optional(),
           metadata: model
-            .object({
-              registeredAt: model.optional(retrieve.sortDirection),
-              loggedInAt: model.optional(retrieve.sortDirection),
-            })
+            .object(
+              {
+                registeredAt: model.optional(retrieve.SortDirection),
+                loggedInAt: model.optional(retrieve.SortDirection),
+              },
+              { name: 'MetadataOrderBy' },
+            )
             .optional(),
         },
         { name: 'UserOrderBy' },
@@ -430,10 +436,10 @@ describe('fromType', () => {
     const postOrderBy = () =>
       model.object(
         {
-          title: model.optional(retrieve.sortDirection),
-          content: model.optional(retrieve.sortDirection),
+          title: model.optional(retrieve.SortDirection),
+          content: model.optional(retrieve.SortDirection),
           author: model.optional(userOrderBy),
-          tags: model.object({ _count: model.optional(retrieve.sortDirection) }).optional(),
+          tags: model.optional(retrieve.SortDirection),
         },
         { name: 'PostOrderBy' },
       )

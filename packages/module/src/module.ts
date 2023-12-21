@@ -68,10 +68,21 @@ export type ModuleOptions<Fs extends functions.Functions, ContextInput> = {
  * Intersection of all function's Contexts.
  */
 export type ContextType<F extends functions.Functions> = UnionToIntersection<
-  {
-    [K in keyof F]: F[K] extends functions.FunctionImplementation<any, any, any, any, infer Context> ? Context : never
-  }[keyof F]
+  { [K in keyof F]: FunctionContext<F[K]> }[keyof F]
 >
+
+/**
+ * Gets the Context type of a function.
+ */
+type FunctionContext<F extends functions.FunctionImplementation> = F extends functions.FunctionImplementation<
+  any,
+  any,
+  any,
+  any,
+  infer Context
+>
+  ? Context
+  : never
 
 /**
  * Checks for name collisions in the types that appear in the given function's signature.
@@ -167,7 +178,16 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
  */
 export function define<const Fs extends functions.FunctionsInterfaces>(
   module: ModuleInterface<Fs>,
-): ModuleInterface<Fs> {
+): ModuleInterface<Fs> & {
+  implements: <
+    FsI extends {
+      [K in keyof Fs]: functions.FunctionImplementation<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], any, any>
+    },
+    ContextInput,
+  >(
+    module: Pick<Module<FsI, ContextInput>, 'functions' | 'context' | 'policies' | 'options'>,
+  ) => Module<FsI, ContextInput>
+} {
   assertUniqueNames(module.functions)
-  return module
+  return { ...module, implements: (moduleImpl) => build({ ...module, ...moduleImpl }) }
 }

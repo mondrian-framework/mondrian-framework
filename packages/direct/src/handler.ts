@@ -2,13 +2,13 @@ import { model, result } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
 
-const FailureResponse = model.object({
+export const FailureResponse = model.object({
   success: model.literal(false),
   reason: model.string(),
   additionalInfo: model.unknown(),
 })
 
-const SuccessResponse = (functionBody: functions.FunctionInterface) =>
+export const SuccessResponse = (functionBody: functions.FunctionInterface) =>
   model.object({
     success: model.literal(true),
     operationId: model.string(),
@@ -26,6 +26,9 @@ const SuccessResponse = (functionBody: functions.FunctionInterface) =>
     }),
   })
 
+export const Response = (functionBody: functions.FunctionInterface) =>
+  model.union({ success: SuccessResponse(functionBody), failire: FailureResponse })
+
 export function fromModule<Fs extends functions.Functions, ContextInput>({
   module,
   context: contextBuilder,
@@ -37,29 +40,35 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
     throw new Error('No function available')
   }
 
-  type RequestInput = model.Infer<typeof RequestInput>
-  const RequestInput = model.union(
-    mapObject(module.functions, (functionName, functionBody) => {
-      const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-      return model.object({
-        functionName: model.literal(functionName),
-        ...(model.isNever(functionBody.input) ? {} : { input: functionBody.input as model.UnknownType }),
-        ...(retrieveType.isOk ? { retrieve: retrieveType.value as unknown as model.UnknownType } : {}),
-        metadata: model.record(model.string()).optional(),
-      })
-    }),
-  )
+  const requestInputTypeMap = mapObject(module.functions, (functionName, functionBody) => {
+    const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
+    return model.object({
+      functionName: model.literal(functionName),
+      ...(model.isNever(functionBody.input) ? {} : { input: functionBody.input as model.UnknownType }),
+      ...(retrieveType.isOk ? { retrieve: retrieveType.value as unknown as model.UnknownType } : {}),
+      metadata: model.record(model.string()).optional(),
+    })
+  })
   const successResponse = mapObject(module.functions, (_, functionBody) => SuccessResponse(functionBody))
 
   const handler: (request: http.Request) => Promise<http.Response> = async (request) => {
-    const decodedRequest = RequestInput.decode(request.body, {
+    const functionName =
+      typeof request.body === 'object' && request.body && 'functionName' in request.body
+        ? request.body.functionName
+        : null
+
+    if (typeof functionName !== 'string' || !(functionName in requestInputTypeMap)) {
+      throw new Error('10')
+    }
+
+    const decodedRequest = requestInputTypeMap[functionName].decode(request.body, {
       errorReportingStrategy: 'stopAtFirstError',
       fieldStrictness: 'expectExactFields',
       typeCastingStrategy: 'expectExactTypes',
     })
 
     if (decodedRequest.isFailure) {
-      const response = FailureResponse.encode({
+      const response = FailureResponse.encodeWithoutValidation({
         success: false,
         reason: 'Error while decoding request',
         additionalInfo: decodedRequest.error,
@@ -69,7 +78,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
 
     const operationId = utils.randomOperationId()
     const baseLogger = logger.build({ moduleName: module.name, server: 'DIRECT' })
-    const { functionName, input, metadata, retrieve: thisRetrieve } = decodedRequest.value
+    const { input, metadata, retrieve: thisRetrieve } = decodedRequest.value
     const functionBody = module.functions[functionName]
     const SuccessResponse = successResponse[functionName]
 
@@ -105,9 +114,13 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
               errors: functionResult.error as never,
             },
       })
-      return { body: response, status: 200 }
+      if (response.isOk) {
+        return { body: response.value, status: 200 }
+      } else {
+        throw response.error
+      }
     } catch (error) {
-      const response = FailureResponse.encode({
+      const response = FailureResponse.encodeWithoutValidation({
         success: false,
         reason: 'Function call failed',
         additionalInfo: error instanceof Error ? error.message : error,

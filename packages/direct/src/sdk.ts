@@ -1,12 +1,11 @@
-import { ApiSpecification, FunctionSpecifications } from './api'
-import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
+import { Response } from './handler'
 import { result, model } from '@mondrian-framework/model'
-import { functions, module, sdk, utils, retrieve } from '@mondrian-framework/module'
-
+import { functions, module, sdk, retrieve } from '@mondrian-framework/module'
+import { http, mapObject } from '@mondrian-framework/utils'
 
 export type Sdk<Fs extends functions.FunctionsInterfaces> = {
   functions: SdkFunctions<Fs>
-  withHeaders: (headers: Record<string, string | string[] | undefined>) => Sdk<Fs>
+  withMetadata: (metadata: Record<string, string>) => Sdk<Fs>
 }
 
 type SdkFunctions<Fs extends functions.FunctionsInterfaces> = {
@@ -19,8 +18,10 @@ type SdkFunction<
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
 > = <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
-  input: model.Infer<InputType>,
-  options?: { retrieve?: P; headers?: Record<string, string | string[] | undefined> },
+  input: model.IsNever<InputType> extends true ? null : model.Infer<InputType>,
+  options?: [P] extends [never]
+    ? { metadata?: Record<string, string> }
+    : { retrieve?: P; metadata?: Record<string, string> },
 ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
@@ -34,18 +35,84 @@ type SdkFunctionResult<
 
 export function build<const Fs extends functions.FunctionsInterfaces>({
   endpoint,
+  module,
   metadata,
 }: {
-  endpoint: string
+  endpoint: string | http.Handler
+  module: module.ModuleInterface<Fs>
   metadata?: Record<string, string>
 }): Sdk<Fs> {
-  const proxy = new Proxy({} as SdkFunctions<Fs>, {
-    get(_obj, name) {
-      return name.toString() + '1'
-    },
+  const funcs = mapObject(module.functions, (functionName, functionBody) => {
+    const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
+    const responseType = Response(functionBody)
+
+    return async (input: never, options?: { retrieve?: never; metadata?: Record<string, string> }) => {
+      const inputJson = model.isNever(functionBody.input)
+        ? undefined
+        : model.concretise(functionBody.input).encodeWithoutValidation(input)
+      const retrieveJson =
+        retrieveType.isOk && options?.retrieve
+          ? model.concretise(retrieveType.value).encodeWithoutValidation(options.retrieve)
+          : undefined
+
+      const payload = {
+        functionName,
+        input: inputJson,
+        retrieve: retrieveJson,
+        metadata: options?.metadata ?? metadata,
+      }
+
+      let jsonResult
+      if (typeof endpoint === 'string') {
+        const fetchResult = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        jsonResult = await fetchResult.json()
+      } else {
+        const response = await endpoint({
+          body: JSON.parse(JSON.stringify(payload)),
+          method: 'post',
+          route: '/',
+          headers: {},
+          params: {},
+          query: {},
+        })
+        jsonResult = response.body
+        if (response.status > 299 || response.status < 200) {
+          throw new Error('0')
+        }
+      }
+      const decoded = responseType.decode(jsonResult, {
+        errorReportingStrategy: 'stopAtFirstError',
+        fieldStrictness: 'expectExactFields',
+        typeCastingStrategy: 'expectExactTypes',
+      })
+      if (decoded.isFailure) {
+        throw new Error('1')
+      }
+      if (!decoded.value.success) {
+        throw new Error(decoded.value.reason, { cause: decoded.value.additionalInfo })
+      }
+      if (functionBody.errors) {
+        if (decoded.value.result.isOk) {
+          return result.ok(decoded.value.result.value)
+        } else {
+          return result.ok(decoded.value.result.errors)
+        }
+      } else {
+        if (decoded.value.result.isOk) {
+          return decoded.value.result.value
+        } else {
+          throw new Error('3')
+        }
+      }
+    }
   })
+
   return {
-    functions: proxy,
-    withHeaders: (headers: Record<string, string | string[] | undefined>) => build({ api, endpoint, headers }),
+    functions: funcs as unknown as Sdk<Fs>['functions'],
+    withMetadata: (metadata) => build({ endpoint, module, metadata }),
   }
 }

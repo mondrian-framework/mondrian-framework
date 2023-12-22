@@ -318,6 +318,19 @@ export function define<
   const O extends model.Type,
   const E extends ErrorType = undefined,
   R extends OutputRetrieveCapabilities = undefined,
->(func: FunctionInterface<I, O, E, R>): FunctionInterface<I, O, E, R> {
-  return func
+>(
+  func: FunctionInterface<I, O, E, R>,
+): FunctionInterface<I, O, E, R> & {
+  implements: <Context extends Record<string, unknown> = {}>(
+    implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
+  ) => FunctionImplementation<I, O, E, R, Context>
+} {
+  return {
+    ...func,
+    implements<Context extends Record<string, unknown> = {}>(
+      implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
+    ) {
+      return withContext<Context>().build({ ...func, ...implementation })
+    },
+  }
 }

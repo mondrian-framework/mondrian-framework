@@ -69,26 +69,56 @@ type SelectType<T extends model.Type, C extends Capabilities>
   : [T] extends [(() => infer T1 extends model.Type)] ? SelectType<T1, C>
   : never : {}
 
-// prettier-ignore
-type OrderByType<T extends model.Type, C extends Capabilities>
-  = [C] extends [{ readonly orderBy: true }]
-  ? [T] extends [model.EntityType<any, infer Ts>] ? { readonly orderBy?: OrderByFields<Ts>[] } 
-  : [T] extends [model.ArrayType<any, infer T1>] ? SelectType<T1, AllCapabilities>
-  : [T] extends [model.OptionalType<infer T1>] ? SelectType<T1, C>
-  : [T] extends [model.NullableType<infer T1>] ? SelectType<T1, C>
-  : [T] extends [(() => infer T1 extends model.Type)] ? SelectType<T1, C>
-  : never : {}
+type OrderByType<T extends model.Type, C extends Capabilities> = [C] extends [{ readonly orderBy: true }]
+  ? { readonly orderBy?: OrderBy<T>[] }
+  : {}
 
-type OrderByFields<Ts extends model.Types> = { readonly [K in keyof Ts]?: OrderByField<Ts[K]> }
 // prettier-ignore
-type OrderByField<T extends model.Type> 
+type OrderBy<T extends model.Type>
   = [T] extends [model.EntityType<any, infer Ts>] ? OrderByFields<Ts>
   : [T] extends [model.ObjectType<any, infer Ts>] ? OrderByFields<Ts>
-  : [T] extends [model.ArrayType<any, any>] ? { readonly _count?: SortDirection }
-  : [T] extends [model.OptionalType<infer T1>] ? OrderByField<T1>
-  : [T] extends [model.NullableType<infer T1>] ? OrderByField<T1>
-  : [T] extends [(() => infer T1 extends model.Type)] ? OrderByField<T1>
+  : [T] extends [model.ArrayType<any, infer T1>] ? OrderByArray<T1>
+  : [T] extends [model.OptionalType<infer T1>] ? OrderBy<T1>
+  : [T] extends [model.NullableType<infer T1>] ? OrderBy<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? OrderBy<T1>
   : SortDirection
+const orderBy = utils.memoizeTypeTransformation(orderByInternal)
+function orderByInternal(type: model.Type): model.Type {
+  return model.match(type, {
+    entity: ({ fields, options }) => orderByFields(fields, `${options?.name ?? randomUUID()}OrderBy`),
+    object: ({ fields, options }) => orderByFields(fields, `${options?.name ?? randomUUID()}OrderBy`),
+    array: ({ wrappedType }) => orderByArray(wrappedType),
+    wrapper: ({ wrappedType }) => orderBy(wrappedType),
+    otherwise: () => SortDirection,
+  })
+}
+
+type OrderByFields<Ts extends model.Types> = { readonly [K in keyof Ts]?: OrderBy<Ts[K]> }
+function orderByFields(fields: model.Types, name?: string): model.ObjectType<any, any> {
+  return model.object(
+    mapObject(fields, (_, fieldType) => model.optional(orderBy(fieldType))),
+    { name },
+  )
+}
+
+// prettier-ignore
+type OrderByArray<T extends model.Type>
+  = [T] extends [model.OptionalType<infer T1>] ? OrderByArray<T1>
+  : [T] extends [model.NullableType<infer T1>] ? OrderByArray<T1>
+  : [T] extends [model.EntityType<any, any>] ? { readonly _count?: SortDirection } 
+  : [T] extends [(() => infer T1 extends model.Type)] ? OrderByArray<T1>
+  : SortDirection
+function orderByArray(type: model.Type): model.Type {
+  return model.match(type, {
+    optional: ({ wrappedType }) => orderByArray(wrappedType),
+    nullable: ({ wrappedType }) => orderByArray(wrappedType),
+    entity: () => model.object({ _count: model.optional(SortDirection) }),
+    otherwise: () => SortDirection,
+  })
+}
+
+export const SortDirection = () => model.enumeration(['asc', 'desc'], { name: 'SortDirection' })
+export type SortDirection = model.Infer<typeof SortDirection>
 
 // prettier-ignore
 type WhereType<T extends model.Type, C extends Capabilities> 
@@ -240,7 +270,7 @@ function retrieve(
   return model.object({
     ...(capabilities.select ? { select: model.optional(entitySelect(entity)) } : {}),
     ...(capabilities.where ? { where: model.optional(entityWhere(entity)) } : {}),
-    ...(capabilities.orderBy ? { orderBy: model.array(entityOrderBy(entity)).optional() } : {}),
+    ...(capabilities.orderBy ? { orderBy: model.array(orderBy(entity)).optional() } : {}),
     ...(capabilities.skip ? { skip: model.integer({ minimum: 0 }).optional() } : {}),
     ...(capabilities.take ? { take: model.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
     //distinct: model.unknown(),
@@ -350,29 +380,6 @@ function where(type: model.Type): model.Type {
     },
     entity: (_, entity) => entityWhere(entity),
     scalar: (_, t) => model.object({ equals: model.optional(t), in: model.mutableArray(t).optional() }),
-  })
-}
-
-const entityOrderBy = utils.memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>(
-  (type) => {
-    const entity = model.concretise(type)
-    return model.object(
-      mapObject(entity.fields, (_, fieldType) => model.optional(orderBy(fieldType))),
-      { name: `${entity.options?.name ?? randomUUID()}OrderBy` },
-    )
-  },
-)
-
-export const sortDirection = () => model.enumeration(['asc', 'desc'], { name: 'SortDirection' })
-export type SortDirection = model.Infer<typeof sortDirection>
-
-function orderBy(type: model.Type): model.Type {
-  return model.match(type, {
-    wrapper: ({ wrappedType }) => orderBy(wrappedType),
-    array: () => model.object({ _count: model.optional(sortDirection) }),
-    entity: (_, entity) => entityOrderBy(entity),
-    object: ({ fields }) => model.object(mapObject(fields, (_, fieldType) => model.optional(orderBy(fieldType)))),
-    otherwise: () => sortDirection,
   })
 }
 

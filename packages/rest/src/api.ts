@@ -7,7 +7,7 @@ import { OpenAPIV3_1 } from 'openapi-types'
 /**
  * The REST API specification of a mondrian {@link module.ModuleInterface Module Interface}
  * This contains all information needed to generate an openapi specification document.
- * It does not contains the implementation.  In order to instantiate this you should use {@link define}.
+ * It does not contains the implementation. In order to instantiate this you should use {@link define}.
  *
  * It's also the minimum information needed to instantiate a rest sdk.
  */

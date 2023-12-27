@@ -23,7 +23,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   context: (serverContext: ServerContext) => Promise<ContextInput>
   error?: ErrorHandler<functions.Functions, ServerContext>
   api: Pick<ApiSpecification<functions.FunctionsInterfaces>, 'errorCodes'>
-}): (args: { request: http.Request; serverContext: ServerContext }) => Promise<http.Response> {
+}): http.Handler<ServerContext> {
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
     : generateGetInputFromRequest({ functionBody, specification })

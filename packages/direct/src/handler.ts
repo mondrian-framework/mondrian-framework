@@ -1,6 +1,6 @@
 import { model, result } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
-import { http, mapObject } from '@mondrian-framework/utils'
+import { JSONType, http, mapObject } from '@mondrian-framework/utils'
 
 export const FailureResponse = model.object({
   success: model.literal(false),
@@ -32,13 +32,13 @@ export const SuccessResponse = (
 export const Response = (functionBody: functions.FunctionInterface, retr: retrieve.GenericRetrieve | undefined) =>
   model.union({ success: SuccessResponse(functionBody, retr), failire: FailureResponse })
 
-export function fromModule<Fs extends functions.Functions, ContextInput>({
+export function fromModule<Fs extends functions.Functions, ServerContext, ContextInput>({
   module,
-  context: contextBuilder,
+  context,
 }: {
   module: module.Module<Fs, ContextInput>
-  context: (metadata: Record<string, string> | undefined, request: http.Request) => Promise<ContextInput>
-}): http.Handler {
+  context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
+}): http.Handler<ServerContext> {
   const exposedFunctions = Object.keys(module.functions)
 
   const requestInputTypeMap = mapObject(module.functions, (functionName, functionBody) => {
@@ -50,15 +50,14 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
       metadata: model.record(model.string()).optional(),
     })
   })
-
-  const handler: (request: http.Request) => Promise<http.Response> = async (request) => {
+  const handler: http.Handler<ServerContext> = async ({ request, serverContext }) => {
     if (exposedFunctions.length === 0) {
       const response = FailureResponse.encodeWithoutValidation({
         success: false,
         reason: 'No function available',
         additionalInfo: 'This module does not expose any function',
       })
-      return { body: response, status: 200 }
+      return wrapResponse(response)
     }
 
     const functionName =
@@ -76,7 +75,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
           expected: `One of [${exposedFunctions.map((v) => `'${v}'`).join(', ')}]`,
         },
       })
-      return { body: response, status: 200 }
+      return wrapResponse(response)
     }
 
     const decodedRequest = requestInputTypeMap[functionName].decode(request.body, {
@@ -91,7 +90,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
         reason: 'Error while decoding request',
         additionalInfo: decodedRequest.error,
       })
-      return { body: response, status: 200 }
+      return wrapResponse(response)
     }
 
     const operationId = utils.randomOperationId()
@@ -101,8 +100,8 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
     const successResponse = SuccessResponse(functionBody, thisRetrieve)
 
     try {
-      const contextInput = await contextBuilder(metadata, request)
-      const context = await module.context(contextInput, {
+      const contextInput = await context(serverContext, metadata)
+      const contextValue = await module.context(contextInput, {
         functionName,
         input,
         operationId,
@@ -110,7 +109,7 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
         logger: baseLogger,
       })
       const functionReturn = await functionBody.apply({
-        context,
+        context: contextValue,
         input,
         operationId,
         retrieve: thisRetrieve,
@@ -132,15 +131,19 @@ export function fromModule<Fs extends functions.Functions, ContextInput>({
               errors: functionResult.error as never,
             },
       })
-      return { body: response, status: 200 }
+      return wrapResponse(response)
     } catch (error) {
       const response = FailureResponse.encodeWithoutValidation({
         success: false,
         reason: error instanceof Error ? 'Function throws error' : 'Function throws',
         additionalInfo: error instanceof Error ? error.message : error,
       })
-      return { body: response, status: 200 }
+      return wrapResponse(response)
     }
   }
   return handler
+}
+
+function wrapResponse(value: JSONType): http.Response {
+  return { body: value, status: 200, headers: { 'Content-Type': 'application/json' } }
 }

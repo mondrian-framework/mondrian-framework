@@ -79,16 +79,20 @@ export function build<const Fs extends functions.FunctionsInterfaces>({
           body: JSON.stringify(payload),
         })
         status = fetchResult.status
-        jsonBody = fetchResult.json
-        stringBody = fetchResult.text
+        jsonBody = () => fetchResult.json()
+        stringBody = () => fetchResult.text()
       } else {
-        const response = await endpoint({
+        const request: http.Request = {
           body: JSON.parse(JSON.stringify(payload)),
           method: 'post',
           route: '/',
           headers: {},
           params: {},
           query: {},
+        }
+        const response = await endpoint({
+          request,
+          serverContext: { request },
         })
         status = response.status
         jsonBody = () => Promise.resolve(response.body)

@@ -15,4 +15,7 @@ export type Response = {
   readonly headers?: Readonly<Record<string, string>>
 }
 
-export type Handler = (request: Request) => Promise<Response>
+export type Handler<ServerContext = unknown> = (args: {
+  request: Request
+  serverContext: ServerContext
+}) => Promise<Response>

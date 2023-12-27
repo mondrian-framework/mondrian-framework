@@ -1,64 +1,20 @@
 import { fromModule } from '../src/handler'
 import { build } from '../src/sdk'
-import { model, result } from '@mondrian-framework/model'
-import { functions, module } from '@mondrian-framework/module'
+import { m as module } from './module.util'
+import { module as mModule } from '@mondrian-framework/module'
 import http from 'node:http'
 import { expect, test, describe } from 'vitest'
 
-const ping = functions.build({
-  input: model.number(),
-  output: model.number(),
-  async body(args) {
-    if (args.input < 0 && !Number.isInteger(args.input)) {
-      throw 'Not integer ping'
-    }
-    if (args.input < 0) {
-      throw new Error('Negative ping')
-    }
-    return args.input
-  },
-})
-
-const divideBy = functions.build({
-  input: model.object({ dividend: model.number(), divisor: model.number() }),
-  output: model.number(),
-  errors: { dividingByZero: model.string() },
-  async body({ input: { dividend, divisor } }) {
-    if (divisor === 0) {
-      return result.fail({ dividingByZero: 'divisor is 0' })
-    }
-    return result.ok(dividend / divisor)
-  },
-})
-
-const getUsers = functions.build({
-  input: model.never(),
-  output: model.entity({ name: model.string() }).array(),
-  retrieve: { select: true },
-  async body() {
-    return [{ name: 'John' }]
-  },
-})
-
-const m = module.build({
-  name: 'test',
-  version: '0.0.1',
-  async context() {
-    return {}
-  },
-  functions: { ping, getUsers, divideBy },
-})
-
 const handler = fromModule({
-  module: m,
-  async context(metadata, request) {
+  module,
+  async context(context, metadata) {
     if (metadata?.auth !== 'ok') {
       throw new Error('Unauthorized')
     }
     return {}
   },
 })
-const client = build({ endpoint: handler, module: m }).withMetadata({ auth: 'ok' })
+const client = build({ endpoint: handler, module }).withMetadata({ auth: 'ok' })
 
 describe('direct sdk', () => {
   test('callign a function with no errors, no retrieve, should work', async () => {
@@ -98,7 +54,7 @@ describe('direct sdk', () => {
 describe('edge cases', () => {
   test('module without functions should throw exception', async () => {
     const r1 = await fromModule({
-      module: module.build({
+      module: mModule.build({
         async context(input, args) {
           return {}
         },
@@ -109,7 +65,7 @@ describe('edge cases', () => {
       async context(metadata, request) {
         return {}
       },
-    })({ body: {}, headers: {}, method: 'post', params: {}, query: {}, route: '/' })
+    })({ request: { body: {}, headers: {}, method: 'post', params: {}, query: {}, route: '/' }, serverContext: null })
     expect(r1).toEqual({
       body: {
         additionalInfo: 'This module does not expose any function',
@@ -117,11 +73,17 @@ describe('edge cases', () => {
         success: false,
       },
       status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
   })
 
   test('request without function name should throw exception', async () => {
-    const r1 = await handler({ body: {}, headers: {}, method: 'post', params: {}, query: {}, route: '/' })
+    const r1 = await handler({
+      request: { body: {}, headers: {}, method: 'post', params: {}, query: {}, route: '/' },
+      serverContext: null,
+    })
     expect(r1).toEqual({
       body: {
         additionalInfo: {
@@ -133,6 +95,9 @@ describe('edge cases', () => {
         success: false,
       },
       status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
   })
 
@@ -144,7 +109,7 @@ describe('edge cases', () => {
     })
     server.listen(50125)
 
-    const client = build({ endpoint: 'http://localhost:50125', module: m })
+    const client = build({ endpoint: 'http://localhost:50125', module })
 
     await expect(client.functions.ping(1)).rejects.toThrow('Unexpected status code: 500. ')
 
@@ -159,7 +124,7 @@ describe('edge cases', () => {
           status: 500,
         }
       },
-      module: m,
+      module,
     })
     await expect(client.functions.ping(1)).rejects.toThrow('Unexpected status code: 500. error')
 
@@ -170,7 +135,7 @@ describe('edge cases', () => {
           status: 500,
         }
       },
-      module: m,
+      module,
     })
     await expect(client2.functions.ping(1)).rejects.toThrow('Unexpected status code: 500. {"message":"error"}')
   })
@@ -183,7 +148,7 @@ describe('edge cases', () => {
           status: 200,
         }
       },
-      module: m,
+      module,
     })
     await expect(client.functions.ping(1)).rejects.toThrow('Error while decoding response')
   })
@@ -196,7 +161,7 @@ describe('edge cases', () => {
           status: 200,
         }
       },
-      module: m,
+      module,
     })
     await expect(client.functions.ping(1)).rejects.toThrow(
       'Failure should not be present because the function does not declare errors',

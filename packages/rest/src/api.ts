@@ -108,11 +108,6 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   openapi?: {
     specification: NullableOperationObject
     input: (request: http.Request) => unknown
-    request: (input: model.Infer<F['input']>) => {
-      body?: unknown
-      params?: Record<string, string>
-      query?: string
-    }
   }
   errorCodes?: { [K in keyof Exclude<F['errors'], undefined>]?: number }
   namespace?: string | null

@@ -150,7 +150,6 @@ export function generateOpenapiInput({
   parameters?: (OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.ParameterObject)[]
   requestBody?: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.RequestBodyObject
   input: (request: http.Request) => unknown
-  request: (input: never) => { body?: unknown; params?: Record<string, string>; query?: string }
 } {
   if (specification.openapi) {
     return {
@@ -163,7 +162,6 @@ export function generateOpenapiInput({
           ? undefined
           : specification.openapi.specification.requestBody,
       input: specification.openapi.input,
-      request: specification.openapi.request,
     }
   }
   const parametersInPath = specification.path
@@ -174,7 +172,6 @@ export function generateOpenapiInput({
     return {
       parameters: [],
       input: () => null,
-      request: () => ({}),
     }
   }
   const concreteInputType = model.concretise(inputType)
@@ -206,10 +203,6 @@ export function generateOpenapiInput({
       parameters: [{ in: 'path', name: parametersInPath[0], schema: schema as any, required: true }],
       input: (request) => {
         return request.params[parametersInPath[0]]
-      },
-      request: (input) => {
-        const encoded = concreteInputType.encodeWithoutValidation(input)
-        return { params: { [parametersInPath[0]]: `${encoded}` } }
       },
     }
   }
@@ -246,29 +239,6 @@ export function generateOpenapiInput({
           }
           return object
         },
-        request: (input) => {
-          const params = Object.fromEntries(
-            Object.entries(concreteInputType.fields as model.Types)
-              .filter(([fieldName]) => parametersInPath.includes(fieldName))
-              .map(([fieldName, field]) => {
-                const fieldType = model.concretise(field)
-                const encoded = fieldType.encodeWithoutValidation(input[fieldName])
-                return [fieldName, `${encoded}`] as const
-              }),
-          )
-          const queries = Object.entries(concreteInputType.fields as model.Types)
-            .filter(([fieldName]) => !parametersInPath.includes(fieldName))
-            .map(([fieldName, field]) => {
-              const fieldType = model.concretise(field)
-              const encoded = fieldType.encodeWithoutValidation(input[fieldName])
-              if (model.isScalar(field)) {
-                return [fieldName, encoded]
-              } else {
-                return [null, encodeQueryObject(encoded, fieldName)]
-              }
-            })
-          return { query: queries.map(([k, v]) => (k !== null ? `${k}=${v}` : v)).join('&'), params }
-        },
       }
     }
     if (parametersInPath.length === 0) {
@@ -287,11 +257,6 @@ export function generateOpenapiInput({
         input: (request: http.Request) => {
           return decodeQueryObject(request.query, specification.inputName ?? 'input')
         },
-        request: (input) => {
-          const encoded = concreteInputType.encodeWithoutValidation(input)
-          const query = encodeQueryObject(encoded, specification.inputName ?? 'input')
-          return { query }
-        },
       }
     }
   } else {
@@ -307,10 +272,6 @@ export function generateOpenapiInput({
           },
         },
         input: (request) => request.body,
-        request: (input) => {
-          const body = concreteInputType.encodeWithoutValidation(input)
-          return { body }
-        },
       }
     }
     if (concreteInputType.kind === model.Kind.Object || concreteInputType.kind === model.Kind.Entity) {
@@ -329,19 +290,6 @@ export function generateOpenapiInput({
             return { ...result, ...request.body }
           }
           return result
-        },
-        request: (input) => {
-          const params = Object.fromEntries(
-            Object.entries(concreteInputType.fields as model.Types)
-              .filter(([fieldName]) => parametersInPath.includes(fieldName))
-              .map(([fieldName, field]) => {
-                const fieldType = model.concretise(field)
-                const encoded = fieldType.encodeWithoutValidation(input[fieldName])
-                return [fieldName, `${encoded}`] as const
-              }),
-          )
-          const body = remainingObject.encodeWithoutValidation(input)
-          return { body, params }
         },
       }
     }

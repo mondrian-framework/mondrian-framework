@@ -1,4 +1,4 @@
-import { Like, Post } from './post'
+import { Like, OwnPost, Post } from './post'
 import { Follower, MyUser, User } from './user'
 import { security } from '@mondrian-framework/module'
 
@@ -41,6 +41,8 @@ export const loggedUser: (userId: number) => security.Policies = (userId) =>
     .on(Like)
     .allows({ selection: true })
     .on(Follower)
+    .allows({ selection: true })
+    .on(OwnPost)
     .allows({ selection: true })
 
 export const guest: security.Policies = security

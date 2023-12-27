@@ -1,12 +1,12 @@
 import { LoggedUserContext } from '..'
 import { idType } from '../common/model'
-import { Post, PostVisibility } from './model'
+import { Post, PostVisibility, OwnPost } from './model'
 import { result, model } from '@mondrian-framework/model'
 import { functions, retrieve } from '@mondrian-framework/module'
 
 export const writePost = functions.withContext<LoggedUserContext>().build({
   input: model.pick(Post, { title: true, content: true, visibility: true }, { name: 'WritePostInput' }),
-  output: Post,
+  output: OwnPost,
   errors: { notLoggedIn: model.string() },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {
@@ -48,7 +48,7 @@ export const readPosts = functions.withContext<LoggedUserContext>().build({
 
 export const likePost = functions.withContext<LoggedUserContext>().build({
   input: model.object({ postId: idType }, { name: 'LikePostInput' }),
-  output: Post,
+  output: OwnPost,
   errors: { notLoggedIn: model.string(), postNotFound: model.string() },
   retrieve: { select: true },
   body: async ({ input, retrieve, context }) => {

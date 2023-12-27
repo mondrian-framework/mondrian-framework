@@ -19,6 +19,7 @@ export const Post = () =>
     },
     { description: 'Post of a user.' },
   )
+export const OwnPost = () => Post
 
 export type Like = model.Infer<typeof Like>
 export const Like = () =>

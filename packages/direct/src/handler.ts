@@ -12,20 +12,18 @@ export const SuccessResponse = (
   functionBody: functions.FunctionInterface,
   retr: retrieve.GenericRetrieve | undefined,
 ) =>
-  model.object({
-    success: model.literal(true),
-    operationId: model.string(),
-    result: model.union({
-      ok: model.object({
-        isOk: model.literal(true),
-        value: functionBody.retrieve ? retrieve.selectedType(functionBody.output, retr) : functionBody.output,
-      }),
-      failure: model.object({
-        isOk: model.literal(false),
-        errors: functionBody.errors
-          ? model.object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
-          : model.unknown(),
-      }),
+  model.union({
+    result: model.object({
+      success: model.literal(true),
+      operationId: model.string(),
+      result: functionBody.retrieve ? retrieve.selectedType(functionBody.output, retr) : functionBody.output,
+    }),
+    failure: model.object({
+      success: model.literal(true),
+      operationId: model.string(),
+      failure: functionBody.errors
+        ? model.object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
+        : model.unknown(),
     }),
   })
 
@@ -44,9 +42,9 @@ export function fromModule<Fs extends functions.Functions, ServerContext, Contex
   const requestInputTypeMap = mapObject(module.functions, (functionName, functionBody) => {
     const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
     return model.object({
-      functionName: model.literal(functionName),
+      function: model.literal(functionName),
       ...(model.isNever(functionBody.input) ? {} : { input: functionBody.input as model.UnknownType }),
-      ...(retrieveType.isOk ? { retrieve: retrieveType.value as unknown as model.UnknownType } : {}),
+      ...(retrieveType.isOk ? { retrieve: model.optional(retrieveType.value) as unknown as model.UnknownType } : {}),
       metadata: model.record(model.string()).optional(),
     })
   })
@@ -61,16 +59,14 @@ export function fromModule<Fs extends functions.Functions, ServerContext, Contex
     }
 
     const functionName =
-      typeof request.body === 'object' && request.body && 'functionName' in request.body
-        ? request.body.functionName
-        : null
+      typeof request.body === 'object' && request.body && 'function' in request.body ? request.body.function : undefined
 
     if (typeof functionName !== 'string' || !(functionName in requestInputTypeMap)) {
       const response = FailureResponse.encodeWithoutValidation({
         success: false,
         reason: 'Error while decoding request',
         additionalInfo: {
-          path: '$.functionName',
+          path: '$.function',
           got: functionName,
           expected: `One of [${exposedFunctions.map((v) => `'${v}'`).join(', ')}]`,
         },
@@ -121,15 +117,9 @@ export function fromModule<Fs extends functions.Functions, ServerContext, Contex
       const response = successResponse.encodeWithoutValidation({
         success: true,
         operationId,
-        result: functionResult.isOk
-          ? {
-              isOk: true,
-              value: functionResult.value as never,
-            }
-          : {
-              isOk: false,
-              errors: functionResult.error as never,
-            },
+        ...(functionResult.isOk
+          ? { result: functionResult.value as never }
+          : { failure: functionResult.error as never }),
       })
       return wrapResponse(response)
     } catch (error) {

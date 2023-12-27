@@ -9,7 +9,7 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
   server,
   module,
   context,
-  path,
+  ...args
 }: {
   module: module.Module<Fs, ContextInput>
   server: FastifyInstance
@@ -17,7 +17,8 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
   path?: string
 }): void {
   const handler = fromModule<Fs, ServerContext, ContextInput>({ module, context })
-  server.post(path ?? '/mondrian', async (request, reply) => {
+  const path = args.path ?? '/mondrian'
+  server.post(path, async (request, reply) => {
     const response = await handler({
       request: {
         body: request.body as string,
@@ -37,5 +38,9 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
       reply.headers(response.headers)
     }
     return response.body
+  })
+  server.get(path, (_, reply) => {
+    //TODO: set correct link to the documentation
+    reply.redirect('https://mondrian-framework.github.io/mondrian-framework/docs/docs/foundamentals/module')
   })
 }

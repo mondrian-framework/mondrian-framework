@@ -19,5 +19,7 @@ test('fastify server', async () => {
   const r1 = await client.functions.ping(123)
   expect(r1).toBe(123)
 
+  const r2 = await fetch(`${address}/mondrian`, { redirect: 'manual' })
+  expect(r2.status).toBe(302)
   await server.close()
 })

@@ -63,7 +63,7 @@ export function build<const Fs extends functions.FunctionsInterfaces>({
         : undefined
 
       const payload = {
-        functionName,
+        function: functionName,
         input: inputJson,
         retrieve: retrieveJson,
         metadata: options?.metadata ?? metadata,
@@ -120,17 +120,17 @@ export function build<const Fs extends functions.FunctionsInterfaces>({
         }
       }
       if (functionBody.errors) {
-        if (decoded.value.result.isOk) {
-          return result.ok(decoded.value.result.value)
+        if ('result' in decoded.value) {
+          return result.ok(decoded.value.result)
         } else {
-          return result.fail(decoded.value.result.errors)
+          return result.fail(decoded.value.failure)
         }
       } else {
-        if (decoded.value.result.isOk) {
-          return decoded.value.result.value
+        if ('result' in decoded.value) {
+          return decoded.value.result
         } else {
           throw new Error('Failure should not be present because the function does not declare errors', {
-            cause: decoded.value.result.errors,
+            cause: decoded.value.failure,
           })
         }
       }

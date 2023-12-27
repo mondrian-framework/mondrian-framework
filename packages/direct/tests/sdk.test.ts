@@ -88,8 +88,7 @@ describe('edge cases', () => {
       body: {
         additionalInfo: {
           expected: "One of ['ping', 'getUsers', 'divideBy']",
-          got: null,
-          path: '$.functionName',
+          path: '$.function',
         },
         reason: 'Error while decoding request',
         success: false,
@@ -157,7 +156,7 @@ describe('edge cases', () => {
     const client = build({
       endpoint: async () => {
         return {
-          body: { success: true, operationId: '123', result: { isOk: false, errors: {} } },
+          body: { success: true, operationId: '123', failure: {} },
           status: 200,
         }
       },

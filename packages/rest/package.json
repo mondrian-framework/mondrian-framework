@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "openapi-types": "^12.1.3",
-    "swagger-ui-dist": "^5.9.2"
+    "swagger-ui-dist": "^5.10.5"
   },
   "peerDependencies": {
     "@mondrian-framework/model": "^2.0.12",

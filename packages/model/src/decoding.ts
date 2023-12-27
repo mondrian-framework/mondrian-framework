@@ -69,7 +69,7 @@ export type Error = {
 export function addExpected(otherExpected: string): (error: Error) => Error {
   return (error: Error) => ({
     ...error,
-    expected: `${error.expected} or ${otherExpected}`,
+    expected: error.expected.includes(otherExpected) ? error.expected : `${error.expected} or ${otherExpected}`,
   })
 }
 

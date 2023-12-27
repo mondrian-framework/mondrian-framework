@@ -14,6 +14,7 @@
       "./packages/arbitrary/tsconfig.json",
       "./packages/module/tsconfig.json",
       "./packages/utils/tsconfig.json",
+      "./packages/direct/tsconfig.json",
       "./packages/rest/tsconfig.json",
       "./packages/rest-fastify/tsconfig.json",
       "./packages/graphql/tsconfig.json",

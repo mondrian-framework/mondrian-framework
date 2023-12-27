@@ -23,6 +23,7 @@
       "@mondrian-framework/arbitrary": ["./packages/arbitrary"],
       "@mondrian-framework/module": ["./packages/module"],
       "@mondrian-framework/middleware/rate-limiter": ["./packages/middleware/rate-limiter"],
+      "@mondrian-framework/direct": ["./packages/direct"],
       "@mondrian-framework/rest": ["./packages/rest"],
       "@mondrian-framework/rest-fastify": ["./packages/rest-fastify"],
       "@mondrian-framework/graphql": ["./packages/graphql"],
@@ -49,6 +50,9 @@
     },
     {
       "path": "packages/rest"
+    },
+    {
+      "path": "packages/direct"
     },
     {
       "path": "packages/rest-fastify"

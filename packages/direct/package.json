@@ -1,0 +1,30 @@
+{
+  "name": "@mondrian-framework/direct",
+  "version": "2.0.12",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "openapi-types": "^12.1.3",
+    "swagger-ui-dist": "^5.9.2"
+  },
+  "peerDependencies": {
+    "fastify": "^4.24.3",
+    "@mondrian-framework/model": "^2.0.12",
+    "@mondrian-framework/module": "^2.0.12",
+    "@mondrian-framework/utils": "^2.0.12",
+    "@opentelemetry/sdk-node": "^0.45.1"
+  },
+  "peerDependenciesMeta": {
+    "fastify": {
+      "optional": true
+    }
+  }
+}

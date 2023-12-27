@@ -1,7 +1,7 @@
 import { Context } from './handler'
 import { functions } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
-import { isArray } from '@mondrian-framework/utils'
+import { http, isArray } from '@mondrian-framework/utils'
 import { API, HandlerFunction, METHODS } from 'lambda-api'
 
 export function attachRestMethods<const Fs extends functions.Functions, const ContextInput>({
@@ -42,7 +42,7 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
           request: {
             body: request.body as string,
             headers: request.headers,
-            method: request.method.toLowerCase() as rest.Method,
+            method: request.method.toLowerCase() as http.Method,
             params: request.params as Record<string, string>,
             query: request.query as Record<string, string>,
             route: request.route,

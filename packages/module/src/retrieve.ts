@@ -85,8 +85,10 @@ type OrderBy<T extends model.Type>
 const orderBy = utils.memoizeTypeTransformation(orderByInternal)
 function orderByInternal(type: model.Type): model.Type {
   return model.match(type, {
-    entity: ({ fields, options }) => orderByFields(fields, `${options?.name ?? randomUUID()}OrderBy`),
-    object: ({ fields, options }) => orderByFields(fields, `${options?.name ?? randomUUID()}OrderBy`),
+    entity: ({ fields, options }) =>
+      orderByFields(fields, `${options?.name ?? `_${randomUUID().split('-').join('')}`}OrderBy`),
+    object: ({ fields, options }) =>
+      orderByFields(fields, `${options?.name ?? `_${randomUUID().split('-').join('')}`}OrderBy`),
     array: ({ wrappedType }) => orderByArray(wrappedType),
     wrapper: ({ wrappedType }) => orderBy(wrappedType),
     otherwise: () => SortDirection,

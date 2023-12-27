@@ -17,12 +17,19 @@ type SdkFunction<
   OutputType extends model.Type,
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
-> = <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
-  input: model.IsNever<InputType> extends true ? null : model.Infer<InputType>,
-  options?: [P] extends [never]
-    ? { metadata?: Record<string, string> }
-    : { retrieve?: P; metadata?: Record<string, string> },
-) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+> = model.IsNever<InputType> extends true
+  ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
+      input?: undefined,
+      options?: [P] extends [never]
+        ? { metadata?: Record<string, string> }
+        : { retrieve?: P; metadata?: Record<string, string> },
+    ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+  : <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
+      input: model.Infer<InputType>,
+      options?: [P] extends [never]
+        ? { metadata?: Record<string, string> }
+        : { retrieve?: P; metadata?: Record<string, string> },
+    ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
   O extends model.Type,
@@ -44,16 +51,16 @@ export function build<const Fs extends functions.FunctionsInterfaces>({
 }): Sdk<Fs> {
   const funcs = mapObject(module.functions, (functionName, functionBody) => {
     const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-    const responseType = Response(functionBody)
 
     return async (input: never, options?: { retrieve?: never; metadata?: Record<string, string> }) => {
+      const responseType = Response(functionBody, options?.retrieve)
+
       const inputJson = model.isNever(functionBody.input)
         ? undefined
         : model.concretise(functionBody.input).encodeWithoutValidation(input)
-      const retrieveJson =
-        retrieveType.isOk && options?.retrieve
-          ? model.concretise(retrieveType.value).encodeWithoutValidation(options.retrieve)
-          : undefined
+      const retrieveJson = retrieveType.isOk
+        ? model.concretise(retrieveType.value).encodeWithoutValidation(options?.retrieve ?? {})
+        : undefined
 
       const payload = {
         functionName,
@@ -62,14 +69,18 @@ export function build<const Fs extends functions.FunctionsInterfaces>({
         metadata: options?.metadata ?? metadata,
       }
 
-      let jsonResult
+      let jsonBody: () => Promise<unknown>
+      let stringBody: () => Promise<string>
+      let status: number
       if (typeof endpoint === 'string') {
         const fetchResult = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        jsonResult = await fetchResult.json()
+        status = fetchResult.status
+        jsonBody = fetchResult.json
+        stringBody = fetchResult.text
       } else {
         const response = await endpoint({
           body: JSON.parse(JSON.stringify(payload)),
@@ -79,33 +90,44 @@ export function build<const Fs extends functions.FunctionsInterfaces>({
           params: {},
           query: {},
         })
-        jsonResult = response.body
-        if (response.status > 299 || response.status < 200) {
-          throw new Error('0')
-        }
+        status = response.status
+        jsonBody = () => Promise.resolve(response.body)
+        stringBody = () =>
+          Promise.resolve(typeof response.body === 'string' ? response.body : JSON.stringify(response.body))
       }
-      const decoded = responseType.decode(jsonResult, {
+      if (status > 299 || status < 200) {
+        const errorString = await stringBody().catch(() => '')
+        throw new Error(`Unexpected status code: ${status}. ${errorString}`)
+      }
+      const json = await jsonBody()
+      const decoded = responseType.decode(json, {
         errorReportingStrategy: 'stopAtFirstError',
         fieldStrictness: 'expectExactFields',
         typeCastingStrategy: 'expectExactTypes',
       })
       if (decoded.isFailure) {
-        throw new Error('1')
+        throw new Error('Error while decoding response', { cause: decoded.error })
       }
       if (!decoded.value.success) {
-        throw new Error(decoded.value.reason, { cause: decoded.value.additionalInfo })
+        if (decoded.value.reason === 'Function throws error') {
+          throw new Error(decoded.value.additionalInfo as string)
+        } else {
+          throw new Error(decoded.value.reason, { cause: decoded.value.additionalInfo })
+        }
       }
       if (functionBody.errors) {
         if (decoded.value.result.isOk) {
           return result.ok(decoded.value.result.value)
         } else {
-          return result.ok(decoded.value.result.errors)
+          return result.fail(decoded.value.result.errors)
         }
       } else {
         if (decoded.value.result.isOk) {
           return decoded.value.result.value
         } else {
-          throw new Error('3')
+          throw new Error('Failure should not be present because the function does not declare errors', {
+            cause: decoded.value.result.errors,
+          })
         }
       }
     }

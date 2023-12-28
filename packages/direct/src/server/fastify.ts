@@ -22,7 +22,8 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
 }): void {
   const options = { ...DEFAULT_SERVE_OPTIONS, ...args.options }
   const handler = fromModule<Fs, ServerContext, ContextInput>({ api, context, options })
-  server.post(options.path, async (request, reply) => {
+  const path = api.options?.path ?? '/mondrian'
+  server.post(path, async (request, reply) => {
     const response = await handler({
       request: {
         body: request.body as string,
@@ -40,9 +41,10 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
     }
     return response.body
   })
-  if (options.introspection) {
-    server.get(options.path, () => {
-      return serialization.serialize(api.module)
+  if (api.options?.introspection) {
+    const moduleSerialized = serialization.serialize(api.module)
+    server.get(path, () => {
+      return moduleSerialized
     })
   }
 }

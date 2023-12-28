@@ -4,6 +4,9 @@ import { FastifyInstance } from 'fastify'
 
 const api = direct.build({
   module: module.instance,
+  options: {
+    introspection: true,
+  },
   exclusions: {},
 })
 
@@ -21,7 +24,6 @@ export function serveDirect(server: FastifyInstance) {
         fieldStrictness: 'expectExactFields',
         typeCastingStrategy: 'expectExactTypes',
       },
-      introspection: true,
     },
   })
 }

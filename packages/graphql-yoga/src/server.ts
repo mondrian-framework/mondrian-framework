@@ -33,7 +33,7 @@ export function createServer<const Fs extends functions.Functions, const Context
     ...options,
     schema,
     plugins: api.options?.introspection ? options?.plugins : [disableIntrospection, ...(options?.plugins ?? [])],
-    graphqlEndpoint: api.options?.pathPrefix,
+    graphqlEndpoint: api.options?.path,
   })
   return http.createServer(yoga)
 }

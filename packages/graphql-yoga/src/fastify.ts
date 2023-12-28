@@ -37,10 +37,10 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
     ...options,
     schema,
     plugins: api.options?.introspection ? options?.plugins : [disableIntrospection, ...(options?.plugins ?? [])],
-    graphqlEndpoint: api.options?.pathPrefix,
+    graphqlEndpoint: api.options?.path,
   })
   server.route({
-    url: api.options?.pathPrefix ?? `/graphql`,
+    url: api.options?.path ?? `/graphql`,
     method: ['GET', 'POST', 'OPTIONS'],
     handler: async (request, reply) => {
       const ctx = { request, reply }

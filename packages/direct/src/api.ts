@@ -12,6 +12,10 @@ export type ApiSpecification<
   Exclusions extends { [K in keyof Fs]?: true },
 > = {
   exclusions: Exclusions
+  options?: {
+    introspection?: boolean
+    path?: string
+  }
   module: module.ModuleInterface<Fs>
 }
 
@@ -53,8 +57,6 @@ export function define<Fs extends functions.FunctionsInterfaces, Exclusions exte
  */
 export type ServeOptions = {
   readonly decodeOptions: Required<decoding.Options>
-  readonly path: string
-  readonly introspection: boolean
 }
 
 /**
@@ -66,6 +68,4 @@ export const DEFAULT_SERVE_OPTIONS: ServeOptions = {
     fieldStrictness: 'expectExactFields',
     typeCastingStrategy: 'expectExactTypes',
   },
-  path: '/mondrian',
-  introspection: false,
 }

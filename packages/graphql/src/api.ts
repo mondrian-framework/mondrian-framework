@@ -12,7 +12,7 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
   }
   options?: {
     introspection?: boolean
-    pathPrefix?: string
+    path?: string
   }
   module: module.ModuleInterface<Fs>
 }

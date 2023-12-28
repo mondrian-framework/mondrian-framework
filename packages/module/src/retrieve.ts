@@ -83,8 +83,10 @@ export function fromType(
 /**
  * The retrieve type of an entity
  */
-type Retrieve<T extends model.Lazy<model.EntityType<any, any>>, C extends Capabilities> = WhereType<T, C> &
+//prettier-ignore
+type Retrieve<T extends model.Lazy<model.EntityType<any, any>>, C extends Capabilities> = 
   SelectType<T, C> &
+  WhereType<T, C> &
   OrderByType<T, C> &
   TakeType<C> &
   SkipType<C>
@@ -98,7 +100,7 @@ function retrieve(
 ): model.ObjectType<model.Mutability.Immutable, model.Types> {
   return model.object({
     ...(capabilities.select ? { select: model.optional(select(entity)) } : {}),
-    ...(capabilities.where ? { where: model.optional(entityWhere(entity)) } : {}),
+    ...(capabilities.where ? { where: model.optional(where(entity)) } : {}),
     ...(capabilities.orderBy ? { orderBy: model.array(orderBy(entity)).optional() } : {}),
     ...(capabilities.skip ? { skip: model.integer({ minimum: 0 }).optional() } : {}),
     ...(capabilities.take ? { take: model.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
@@ -109,11 +111,14 @@ function retrieve(
 type SelectType<T extends model.Type, C extends Capabilities> = [C] extends [{ readonly select: true }]
   ? { readonly select?: Select<T> }
   : {}
-type TakeType<C extends Capabilities> = [C] extends [{ readonly take: true }] ? { readonly take?: number } : {}
-type SkipType<C extends Capabilities> = [C] extends [{ readonly skip: true }] ? { readonly skip?: number } : {}
+type WhereType<T extends model.Type, C extends Capabilities> = [C] extends [{ readonly where: true }]
+  ? { readonly where?: Where<T> }
+  : {}
 type OrderByType<T extends model.Type, C extends Capabilities> = [C] extends [{ readonly orderBy: true }]
   ? { readonly orderBy?: OrderBy<T>[] }
   : {}
+type TakeType<C extends Capabilities> = [C] extends [{ readonly take: true }] ? { readonly take?: number } : {}
+type SkipType<C extends Capabilities> = [C] extends [{ readonly skip: true }] ? { readonly skip?: number } : {}
 
 ///////////////////
 ////////// SELECT
@@ -204,8 +209,7 @@ type OrderBy<T extends model.Type>
 const orderBy = utils.memoizeTypeTransformation(orderByInternal)
 function orderByInternal(type: model.Type): model.Type {
   return model.match(type, {
-    entity: ({ fields, options }) => orderByFields(fields, `${options?.name ?? randomName()}OrderBy`),
-    object: ({ fields, options }) => orderByFields(fields, `${options?.name ?? randomName()}OrderBy`),
+    record: ({ fields, options }) => orderByFields(fields, `${options?.name ?? randomName()}OrderBy`),
     array: ({ wrappedType }) => orderByArray(wrappedType),
     wrapper: ({ wrappedType }) => orderBy(wrappedType),
     otherwise: () => SortDirection,
@@ -241,125 +245,105 @@ function orderByArray(type: model.Type): model.Type {
 export const SortDirection = () => model.enumeration(['asc', 'desc'], { name: 'SortDirection' })
 export type SortDirection = model.Infer<typeof SortDirection>
 
-// prettier-ignore
-type WhereType<T extends model.Type, C extends Capabilities> 
-  = [C] extends [{ readonly where: true }]
-  ? [T] extends [model.EntityType<any, infer Ts>] ? { readonly where?: WhereFields<Ts> }
-  : [T] extends [model.ArrayType<any, infer T1>] ? WhereType<T1, AllCapabilities>
-  : [T] extends [model.OptionalType<infer T1>] ? WhereType<T1, C>
-  : [T] extends [model.NullableType<infer T1>] ? WhereType<T1, C>
-  : [T] extends [(() => infer T1 extends model.Type)] ? WhereType<T1, C>
-  : never : {}
+///////////////////
+////////// WHERE
+///////////////////
 
-type WhereFields<Ts extends model.Types> = { readonly [K in keyof Ts]?: WhereField<Ts[K]> } & {
-  readonly AND?: WhereFields<Ts>[]
-  readonly OR?: WhereFields<Ts>[]
-  readonly NOT?: WhereFields<Ts>
+// prettier-ignore
+type Where<T extends model.Type> 
+  = [T] extends [model.EntityType<any, any>] ? { readonly [K in keyof T['fields']]?: WhereField<T['fields'][K]> } & LogicWhereOperators<T>
+  : [T] extends [model.OptionalType<infer T1>] ? Where<T1>
+  : [T] extends [model.NullableType<infer T1>] ? Where<T1>
+  : [T] extends [(() => infer T1 extends model.Type)] ? Where<T1>
+  : never
+
+const where = utils.memoizeTypeTransformation(whereInternal)
+function whereInternal(type: model.Type): model.Type {
+  return model.match(type, {
+    entity:
+      ({ fields, options }, entity) =>
+      () =>
+        model.object(
+          {
+            ...mapObject(fields, (_, fieldType) => model.optional(whereField(fieldType))),
+            ...logicWhereOperators(entity),
+          },
+          { name: `${options?.name ?? randomName()}Where` },
+        ),
+    optional: ({ wrappedType }) => where(wrappedType),
+    nullable: ({ wrappedType }) => where(wrappedType),
+    otherwise: () => model.never(),
+  })
 }
+
+type LogicWhereOperators<T extends model.Type> = {
+  readonly AND?: Where<T>[]
+  readonly OR?: Where<T>[]
+  readonly NOT?: Where<T>
+}
+
+function logicWhereOperators(type: model.Type): model.Types {
+  return {
+    AND: model.optional(model.array(where(type))),
+    OR: model.optional(model.array(where(type))),
+    NOT: model.optional(where(type)),
+  }
+}
+
 // prettier-ignore
 type WhereField<T extends model.Type> 
-  = [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
-  : [T] extends [model.ArrayType<any, infer T1>] ? WhereFieldArray<T1>
+  = [T] extends [model.EntityType<any, any>] ? Where<T>
   : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: model.Infer<T> }
+  : [T] extends [model.ArrayType<any, infer T1>] ? WhereFieldArray<T1>
   : [T] extends [model.CustomType<any, any, any>] ? { readonly equals?: model.Infer<T> }
-  : [T] extends [model.EntityType<any, infer Ts>] ? WhereFields<Ts>
   : [T] extends [model.OptionalType<infer T1>] ? WhereField<T1>
   : [T] extends [model.NullableType<infer T1>] ? WhereField<T1>
+  : [T] extends [model.UnionType<any>] ? never
   : [T] extends [(() => infer T1 extends model.Type)] ? WhereField<T1>
   : { readonly equals?: model.Infer<T>, readonly in?: model.Infer<T>[] } | undefined
 
+function whereField(type: model.Type): model.Type {
+  return model.match(type, {
+    entity: (_, entity) => where(entity),
+    object: (_, object) => model.object({ equals: model.optional(object) }),
+    array: ({ wrappedType }) => whereFieldArray(wrappedType),
+    custom: (_, custom) => model.object({ equals: model.optional(custom) }),
+    wrapper: ({ wrappedType }) => whereField(wrappedType),
+    union: () => model.never(),
+    otherwise: (_, t) => model.object({ equals: model.optional(t), in: model.mutableArray(t).optional() }),
+  })
+}
+
 // prettier-ignore
 type WhereFieldArray<T extends model.Type> 
-  = [T] extends [model.EntityType<any, infer Ts>] ? { readonly some?: WhereFields<Ts>; readonly every?: WhereFields<Ts>, readonly none?: WhereFields<Ts> }
+  = [T] extends [model.EntityType<any, any>] ? { readonly some?: Where<T>; readonly every?: Where<T>, readonly none?: Where<T> }
+  : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
   : [T] extends [model.OptionalType<infer T1>] ? WhereFieldArray<T1>
   : [T] extends [model.NullableType<infer T1>] ? WhereFieldArray<T1>
-  : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
+  : [T] extends [model.UnionType<any>] ? never
   : [T] extends [(() => infer T1 extends model.Type)] ? WhereFieldArray<T1>
   : { readonly equals?:  model.Infer<T>[], readonly isEmpty?: boolean }
 
-/**
- * Makes optionals all fields that are entity type.
- */
-function optionalizeEmbeddedEntities(type: model.Type): model.Type {
-  function optionalizeEntityFields(fields: model.Types): model.Types {
-    return flatMapObject(fields, (fieldName, fieldType) =>
-      model.unwrap(fieldType).kind === model.Kind.Entity
-        ? [[fieldName, model.optional(fieldType)]]
-        : [[fieldName, fieldType]],
-    )
-  }
+function whereFieldArray(type: model.Type): model.Type {
   return model.match(type, {
-    optional: ({ wrappedType }) => model.optional(optionalizeEmbeddedEntities(wrappedType)),
-    nullable: ({ wrappedType }) => model.nullable(optionalizeEmbeddedEntities(wrappedType)),
-    array: ({ wrappedType }) => model.array(optionalizeEmbeddedEntities(wrappedType)),
-    entity: ({ fields }) => model.entity(optionalizeEntityFields(fields)),
-    object: ({ fields }) => model.object(optionalizeEntityFields(fields)),
-    union: ({ variants }) =>
-      model.union(mapObject(variants, (_, variantType) => optionalizeEmbeddedEntities(variantType))),
-    otherwise: (_, t) => t,
+    entity: (_, entity) =>
+      model.object({
+        some: model.optional(where(entity)),
+        every: model.optional(where(entity)),
+        none: model.optional(where(entity)),
+      }),
+    object: (_, object) =>
+      model.object({ equals: model.optional(model.array(object)), isEmpty: model.boolean().optional() }),
+    optional: ({ wrappedType }) => whereFieldArray(wrappedType),
+    nullable: ({ wrappedType }) => whereFieldArray(wrappedType),
+    union: () => model.never(),
+    otherwise: (_, t) => model.object({ equals: model.optional(model.array(t)), isEmpty: model.boolean().optional() }),
   })
 }
 
-const entityWhere: (type: model.Lazy<model.EntityType<model.Mutability, model.Types>>) => model.Type =
-  utils.memoizeTypeTransformation<model.Lazy<model.EntityType<model.Mutability, model.Types>>>((_, type) => {
-    const entity = model.concretise(type)
-    return () =>
-      model.object(
-        {
-          ...flatMapObject(entity.fields, (fieldName, fieldType) => {
-            const result = model.optional(where(fieldType))
-            return result ? [[fieldName, result]] : []
-          }),
-          AND: model.array(entityWhere(type)).optional(),
-          OR: model.array(entityWhere(type)).optional(),
-          NOT: model.optional(entityWhere(type)),
-        },
-        { name: `${entity.options?.name ?? randomUUID()}Where` },
-      )
-  })
-
-function where(type: model.Type): model.Type {
-  return model.match(type, {
-    wrapper: ({ wrappedType }) => where(wrappedType),
-    array: ({ wrappedType }) => {
-      const matcher: (type: model.Type) => model.Type = model.matcher({
-        wrapper: ({ wrappedType }) => matcher(wrappedType), //isSet
-        scalar: (_, t) => model.object({ equals: model.optional(model.array(t)), isEmpty: model.boolean().optional() }),
-        array: () => {
-          throw new Error('Array of array not supported in where')
-        },
-        entity: (_, t) => {
-          const fieldWhereType = entityWhere(t)
-          return model.object({
-            some: model.optional(fieldWhereType),
-            every: model.optional(fieldWhereType),
-            none: model.optional(fieldWhereType),
-          })
-        },
-        object: ({ fields }) => {
-          return model.object({
-            equals: model.optional(model.object(fields).array()),
-            isEmpty: model.boolean().optional(),
-          })
-        },
-        union: () => {
-          throw new Error('Unsupported array of union in where')
-        },
-        otherwise: () => {
-          throw new Error('Unsupported where field')
-        },
-      })
-      return matcher(wrappedType)
-    },
-    object: ({ fields }) => model.object({ equals: model.object(fields).optional() }),
-    custom: (_, t) => model.object({ equals: model.optional(t) }),
-    union: () => {
-      throw new Error('Unsupported union in where')
-    },
-    entity: (_, entity) => entityWhere(entity),
-    scalar: (_, t) => model.object({ equals: model.optional(t), in: model.mutableArray(t).optional() }),
-  })
-}
+///////////////////
+////////// UTILS
+///////////////////
 
 export type MergeOptions = {
   orderByOrder?: 'left-before' | 'right-before'
@@ -491,6 +475,29 @@ export function selectedType<T extends model.Type>(type: T, retrieve: GenericRet
       })
       return model.object(selectedFields)
     },
+    otherwise: (_, t) => t,
+  })
+}
+
+/**
+ * Makes optionals all fields that are entity type.
+ */
+function optionalizeEmbeddedEntities(type: model.Type): model.Type {
+  function optionalizeEntityFields(fields: model.Types): model.Types {
+    return flatMapObject(fields, (fieldName, fieldType) =>
+      model.unwrap(fieldType).kind === model.Kind.Entity
+        ? [[fieldName, model.optional(fieldType)]]
+        : [[fieldName, fieldType]],
+    )
+  }
+  return model.match(type, {
+    optional: ({ wrappedType }) => model.optional(optionalizeEmbeddedEntities(wrappedType)),
+    nullable: ({ wrappedType }) => model.nullable(optionalizeEmbeddedEntities(wrappedType)),
+    array: ({ wrappedType }) => model.array(optionalizeEmbeddedEntities(wrappedType)),
+    entity: ({ fields }) => model.entity(optionalizeEntityFields(fields)),
+    object: ({ fields }) => model.object(optionalizeEntityFields(fields)),
+    union: ({ variants }) =>
+      model.union(mapObject(variants, (_, variantType) => optionalizeEmbeddedEntities(variantType))),
     otherwise: (_, t) => t,
   })
 }

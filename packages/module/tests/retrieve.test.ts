@@ -29,7 +29,7 @@ const post = () =>
       title: model.string(),
       content: model.string(),
       author: user,
-      tags: model.array(model.object({ type: model.string(), value: model.string().nullable() })),
+      tags: model.array(model.object({ type: model.string(), value: model.string().nullable() })).setName('Tags'),
     },
     { name: 'Post' },
   )
@@ -370,12 +370,7 @@ describe('fromType', () => {
             .optional(),
           metadata: model
             .object({
-              equals: model
-                .object({
-                  registeredAt: model.datetime(),
-                  loggedInAt: model.datetime(),
-                })
-                .optional(),
+              equals: model.optional(metadata),
             })
             .optional(),
           AND: model.mutableArray(userWhere).optional(),
@@ -459,8 +454,8 @@ describe('fromType', () => {
     expectTypeOf<GeneratedUserRetrieve>().toMatchTypeOf<ExpectedUserRetrieveType>()
     expectTypeOf<ExpectedUserRetrieveType>().toMatchTypeOf<GeneratedUserRetrieve>()
 
-    const g: GeneratedUserRetrieve = { select: { posts: { select: { tags: { select: {} } } } } }
-    const e: ExpectedUserRetrieveType = { select: { posts: { select: { tags: { select: {} } } } } }
+    const g: GeneratedUserRetrieve = { where: { posts: {} } }
+    const e: ExpectedUserRetrieveType = { where: { bestFriend: {} } }
 
     const f: ExpectedUserRetrieveType = g
     const expectedPostRetrieve = model.object({

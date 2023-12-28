@@ -12,7 +12,6 @@ test('fastify server', async () => {
     async context(serverContext, metadata) {
       return {}
     },
-    options: { introspection: true },
   })
   const address = await server.listen({ port: 1234 })
 

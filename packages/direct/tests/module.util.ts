@@ -58,5 +58,6 @@ export const api = buildApi({
   exclusions: {
     omitted: true,
   },
+  options: { introspection: true },
   module: m,
 })

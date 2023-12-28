@@ -459,6 +459,10 @@ describe('fromType', () => {
     expectTypeOf<GeneratedUserRetrieve>().toMatchTypeOf<ExpectedUserRetrieveType>()
     expectTypeOf<ExpectedUserRetrieveType>().toMatchTypeOf<GeneratedUserRetrieve>()
 
+    const g: GeneratedUserRetrieve = { select: { posts: { select: { tags: { select: {} } } } } }
+    const e: ExpectedUserRetrieveType = { select: { posts: { select: { tags: { select: {} } } } } }
+
+    const f: ExpectedUserRetrieveType = g
     const expectedPostRetrieve = model.object({
       select: model.optional(postSelect),
       where: model.optional(postWhere),

@@ -21,7 +21,7 @@ import { isDeepStrictEqual } from 'util'
  */
 export type Policy<T extends model.Type = model.Type> = {
   readonly entity: T
-  readonly selection: true | Exclude<retrieve.FromType<T, { select: true }>['select'], null | undefined> //TODO: excluding connected entities?
+  readonly selection: boolean | Exclude<retrieve.FromType<T, { select: true }>['select'], null | undefined> //TODO: excluding connected entities?
   readonly restriction?:
     | (retrieve.FromType<T, { where: true }>['where'] & { AND?: never; OR?: never; NOT?: never })
     | null

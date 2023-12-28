@@ -1,2 +1,3 @@
-export { build, Sdk } from './sdk'
+export * as sdk from './sdk'
 export { serveWithFastify } from './server/fastify'
+export * as direct from './api'

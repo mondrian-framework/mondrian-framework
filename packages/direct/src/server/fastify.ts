@@ -1,24 +1,28 @@
+import { ServeOptions, DEFAULT_SERVE_OPTIONS, Api } from '../api'
 import { fromModule } from '../handler'
-import { functions, module } from '@mondrian-framework/module'
+import { functions, serialization } from '@mondrian-framework/module'
 import { http } from '@mondrian-framework/utils'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 
+/**
+ * Attachs a Direct server to a fastify instace.
+ */
 export function serveWithFastify<const Fs extends functions.Functions, const ContextInput>({
   server,
-  module,
+  api,
   context,
   ...args
 }: {
-  module: module.Module<Fs, ContextInput>
+  api: Api<Fs, any, ContextInput>
   server: FastifyInstance
   context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
-  path?: string
+  options?: Partial<ServeOptions>
 }): void {
-  const handler = fromModule<Fs, ServerContext, ContextInput>({ module, context })
-  const path = args.path ?? '/mondrian'
-  server.post(path, async (request, reply) => {
+  const options = { ...DEFAULT_SERVE_OPTIONS, ...args.options }
+  const handler = fromModule<Fs, ServerContext, ContextInput>({ api, context, options })
+  server.post(options.path, async (request, reply) => {
     const response = await handler({
       request: {
         body: request.body as string,
@@ -28,10 +32,7 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
         query: request.query as Record<string, string>,
         route: request.routeOptions.url,
       },
-      serverContext: {
-        request,
-        reply,
-      },
+      serverContext: { request, reply },
     })
     reply.status(response.status)
     if (response.headers) {
@@ -39,8 +40,9 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
     }
     return response.body
   })
-  server.get(path, (_, reply) => {
-    //TODO: set correct link to the documentation
-    reply.redirect('https://mondrian-framework.github.io/mondrian-framework/docs/docs/foundamentals/module')
-  })
+  if (options.introspection) {
+    server.get(options.path, () => {
+      return serialization.serialize(api.module)
+    })
+  }
 }

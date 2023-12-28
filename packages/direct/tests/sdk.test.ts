@@ -1,20 +1,23 @@
+import { DEFAULT_SERVE_OPTIONS } from '../src/api'
+import { build as buildApi } from '../src/api'
 import { fromModule } from '../src/handler'
 import { build } from '../src/sdk'
-import { m as module } from './module.util'
-import { module as mModule } from '@mondrian-framework/module'
+import { api } from './module.util'
+import { module } from '@mondrian-framework/module'
 import http from 'node:http'
 import { expect, test, describe } from 'vitest'
 
 const handler = fromModule({
-  module,
+  api,
   async context(context, metadata) {
     if (metadata?.auth !== 'ok') {
       throw new Error('Unauthorized')
     }
     return {}
   },
+  options: { ...DEFAULT_SERVE_OPTIONS, introspection: true },
 })
-const client = build({ endpoint: handler, module }).withMetadata({ auth: 'ok' })
+const client = build({ endpoint: handler, api }).withMetadata({ auth: 'ok' })
 
 describe('direct sdk', () => {
   test('callign a function with no errors, no retrieve, should work', async () => {
@@ -49,22 +52,31 @@ describe('direct sdk', () => {
     const r2 = await client.functions.divideBy({ dividend: 4, divisor: 0 })
     expect(r2.isFailure && r2.error).toEqual({ dividingByZero: 'divisor is 0' })
   })
+
+  test('omitted function should have no handler', async () => {
+    expect((client.functions as any).omitted).toBe(undefined)
+  })
 })
 
 describe('edge cases', () => {
   test('module without functions should throw exception', async () => {
     const r1 = await fromModule({
-      module: mModule.build({
-        async context(input, args) {
-          return {}
-        },
-        functions: {},
-        name: '',
-        version: '0.0.1',
+      api: buildApi({
+        module: module.build({
+          async context(input, args) {
+            return {}
+          },
+          functions: {},
+          name: '',
+          version: '0.0.1',
+        }),
+
+        exclusions: {},
       }),
       async context(metadata, request) {
         return {}
       },
+      options: { ...DEFAULT_SERVE_OPTIONS, introspection: true },
     })({ request: { body: {}, headers: {}, method: 'post', params: {}, query: {}, route: '/' }, serverContext: null })
     expect(r1).toEqual({
       body: {
@@ -108,7 +120,7 @@ describe('edge cases', () => {
     })
     server.listen(50125)
 
-    const client = build({ endpoint: 'http://localhost:50125', module })
+    const client = build({ endpoint: 'http://localhost:50125', api })
 
     await expect(client.functions.ping(1)).rejects.toThrow('Unexpected status code: 500. ')
 
@@ -123,7 +135,7 @@ describe('edge cases', () => {
           status: 500,
         }
       },
-      module,
+      api,
     })
     await expect(client.functions.ping(1)).rejects.toThrow('Unexpected status code: 500. error')
 
@@ -134,7 +146,7 @@ describe('edge cases', () => {
           status: 500,
         }
       },
-      module,
+      api,
     })
     await expect(client2.functions.ping(1)).rejects.toThrow('Unexpected status code: 500. {"message":"error"}')
   })
@@ -147,7 +159,7 @@ describe('edge cases', () => {
           status: 200,
         }
       },
-      module,
+      api,
     })
     await expect(client.functions.ping(1)).rejects.toThrow('Error while decoding response')
   })
@@ -160,7 +172,7 @@ describe('edge cases', () => {
           status: 200,
         }
       },
-      module,
+      api,
     })
     await expect(client.functions.ping(1)).rejects.toThrow(
       'Failure should not be present because the function does not declare errors',

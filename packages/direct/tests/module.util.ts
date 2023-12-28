@@ -1,3 +1,4 @@
+import { build as buildApi } from '../src/api'
 import { model, result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 
@@ -36,11 +37,26 @@ const getUsers = functions.build({
   },
 })
 
-export const m = module.build({
+const omitted = functions.build({
+  input: model.unknown(),
+  output: model.unknown(),
+  async body() {
+    return 1
+  },
+})
+
+const m = module.build({
   name: 'test',
   version: '0.0.1',
   async context() {
     return {}
   },
-  functions: { ping, getUsers, divideBy },
+  functions: { ping, getUsers, divideBy, omitted },
+})
+
+export const api = buildApi({
+  exclusions: {
+    omitted: true,
+  },
+  module: m,
 })

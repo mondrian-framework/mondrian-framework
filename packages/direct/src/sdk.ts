@@ -1,11 +1,12 @@
+import { ApiSpecification } from './api'
 import { Response } from './handler'
 import { result, model } from '@mondrian-framework/model'
-import { functions, module, sdk, retrieve } from '@mondrian-framework/module'
-import { http, mapObject } from '@mondrian-framework/utils'
+import { functions, sdk, retrieve } from '@mondrian-framework/module'
+import { flatMapObject, http } from '@mondrian-framework/utils'
 
-export type Sdk<Fs extends functions.FunctionsInterfaces> = {
-  functions: SdkFunctions<Fs>
-  withMetadata: (metadata: Record<string, string>) => Sdk<Fs>
+export type Sdk<Fs extends functions.FunctionsInterfaces, Exclusions extends { [K in keyof Fs]?: true }> = {
+  functions: SdkFunctions<Omit<Fs, keyof Exclusions & keyof Fs>>
+  withMetadata: (metadata: Record<string, string>) => Sdk<Fs, Exclusions>
 }
 
 type SdkFunctions<Fs extends functions.FunctionsInterfaces> = {
@@ -40,19 +41,28 @@ type SdkFunctionResult<
   ? sdk.Project<O, P>
   : result.Result<sdk.Project<O, P>, { [K in keyof Exclude<E, undefined>]: model.Infer<Exclude<E, undefined>[K]> }>
 
-export function build<const Fs extends functions.FunctionsInterfaces>({
+/**
+ * Builds a new client that will connect to a Mondrian Direct endpoint.
+ */
+export function build<
+  const Fs extends functions.FunctionsInterfaces,
+  const Exclusions extends { [K in keyof Fs]?: true },
+>({
   endpoint,
-  module,
+  api,
   metadata,
 }: {
   endpoint: string | http.Handler
-  module: module.ModuleInterface<Fs>
+  api: ApiSpecification<Fs, Exclusions>
   metadata?: Record<string, string>
-}): Sdk<Fs> {
-  const funcs = mapObject(module.functions, (functionName, functionBody) => {
+}): Sdk<Fs, Exclusions> {
+  const funcs = flatMapObject(api.module.functions, (functionName, functionBody) => {
+    if (api.exclusions[functionName]) {
+      return []
+    }
     const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
 
-    return async (input: never, options?: { retrieve?: never; metadata?: Record<string, string> }) => {
+    const handler = async (input: never, options?: { retrieve?: never; metadata?: Record<string, string> }) => {
       const responseType = Response(functionBody, options?.retrieve)
 
       const inputJson = model.isNever(functionBody.input)
@@ -135,10 +145,11 @@ export function build<const Fs extends functions.FunctionsInterfaces>({
         }
       }
     }
+    return [[functionName, handler]]
   })
 
   return {
-    functions: funcs as unknown as Sdk<Fs>['functions'],
-    withMetadata: (metadata) => build({ endpoint, module, metadata }),
+    functions: funcs as unknown as Sdk<Fs, Exclusions>['functions'],
+    withMetadata: (metadata) => build({ endpoint, api, metadata }),
   }
 }

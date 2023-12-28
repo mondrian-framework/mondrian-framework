@@ -1,3 +1,5 @@
+//An abstraction of http Request, Response and request Handler
+
 export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch'
 
 export type Request = {

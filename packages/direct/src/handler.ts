@@ -1,17 +1,15 @@
+import { Api, ServeOptions } from './api'
 import { model, result } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { JSONType, http, mapObject } from '@mondrian-framework/utils'
 
-export const FailureResponse = model.object({
+const FailureResponse = model.object({
   success: model.literal(false),
   reason: model.string(),
   additionalInfo: model.unknown(),
 })
 
-export const SuccessResponse = (
-  functionBody: functions.FunctionInterface,
-  retr: retrieve.GenericRetrieve | undefined,
-) =>
+const SuccessResponse = (functionBody: functions.FunctionInterface, retr: retrieve.GenericRetrieve | undefined) =>
   model.union({
     result: model.object({
       success: model.literal(true),
@@ -27,19 +25,26 @@ export const SuccessResponse = (
     }),
   })
 
+/**
+ * Mondrian type a the body that will be returned for a specific function and with a specific retrieve value.
+ */
 export const Response = (functionBody: functions.FunctionInterface, retr: retrieve.GenericRetrieve | undefined) =>
   model.union({ success: SuccessResponse(functionBody, retr), failire: FailureResponse })
 
+/**
+ * Gets an http handler with the implementation of the Direct transport for a whole Mondrian module.
+ */
 export function fromModule<Fs extends functions.Functions, ServerContext, ContextInput>({
-  module,
+  api,
   context,
+  options,
 }: {
-  module: module.Module<Fs, ContextInput>
+  api: Api<Fs, any, ContextInput>
   context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
+  options: ServeOptions
 }): http.Handler<ServerContext> {
-  const exposedFunctions = Object.keys(module.functions)
-
-  const requestInputTypeMap = mapObject(module.functions, (functionName, functionBody) => {
+  const exposedFunctions = Object.keys(api.module.functions).filter((fn) => !api.exclusions[fn])
+  const requestInputTypeMap = mapObject(api.module.functions, (functionName, functionBody) => {
     const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
     return model.object({
       function: model.literal(functionName),
@@ -74,12 +79,7 @@ export function fromModule<Fs extends functions.Functions, ServerContext, Contex
       return wrapResponse(response)
     }
 
-    const decodedRequest = requestInputTypeMap[functionName].decode(request.body, {
-      errorReportingStrategy: 'stopAtFirstError',
-      fieldStrictness: 'expectExactFields',
-      typeCastingStrategy: 'expectExactTypes',
-    })
-
+    const decodedRequest = requestInputTypeMap[functionName].decode(request.body, options.decodeOptions)
     if (decodedRequest.isFailure) {
       const response = FailureResponse.encodeWithoutValidation({
         success: false,
@@ -90,14 +90,14 @@ export function fromModule<Fs extends functions.Functions, ServerContext, Contex
     }
 
     const operationId = utils.randomOperationId()
-    const baseLogger = logger.build({ moduleName: module.name, server: 'DIRECT' })
+    const baseLogger = logger.build({ moduleName: api.module.name, server: 'DIRECT' })
     const { input, metadata, retrieve: thisRetrieve } = decodedRequest.value
-    const functionBody = module.functions[functionName]
+    const functionBody = api.module.functions[functionName]
     const successResponse = SuccessResponse(functionBody, thisRetrieve)
 
     try {
       const contextInput = await context(serverContext, metadata)
-      const contextValue = await module.context(contextInput, {
+      const contextValue = await api.module.context(contextInput, {
         functionName,
         input,
         operationId,

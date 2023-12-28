@@ -1,6 +1,6 @@
 import { model } from '.'
 
-type TypeTransformer<T extends model.Type> = (type: T, lazyType: T) => model.Type
+type TypeTransformer<T extends model.Type> = (type: T) => model.Type
 export function memoizeTypeTransformation<T extends model.Type>(mapper: TypeTransformer<T>): (type: T) => model.Type {
   const cache = new Map<model.Type, model.Type>()
   return (type: T) => {
@@ -9,11 +9,11 @@ export function memoizeTypeTransformation<T extends model.Type>(mapper: TypeTran
       return cachedResult
     }
     if (typeof type === 'function') {
-      const lazyResult = () => mapper(model.concretise(type) as T, type)
+      const lazyResult = () => mapper(type)
       cache.set(type, lazyResult)
       return lazyResult
     }
-    const result = mapper(type, type)
+    const result = mapper(type)
     cache.set(type, result)
     return result
   }

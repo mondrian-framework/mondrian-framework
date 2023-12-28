@@ -128,7 +128,6 @@ type SkipType<C extends Capabilities> = [C] extends [{ readonly skip: true }] ? 
 type Select<T extends model.Type>
   = [T] extends [model.EntityType<any, infer Ts>] ? { readonly [K in keyof Ts]?: SelectField<Ts[K], { select: true }> }
   : [T] extends [model.ObjectType<any, infer Ts>] ? { readonly [K in keyof Ts]?: SelectField<Ts[K], { select: true }> }
-  : [T] extends [model.ArrayType<any, infer T1>] ? ArraySelect<T1>
   : [T] extends [model.OptionalType<infer T1>] ? Select<T1>
   : [T] extends [model.NullableType<infer T1>] ? Select<T1>
   : [T] extends [(() => infer T1 extends model.Type)] ? Select<T1>
@@ -142,7 +141,6 @@ function selectInternal(type: model.Type): model.Type {
         mapObject(fields, (_, fieldType) => model.optional(selectField(fieldType, { select: true }))),
         { name: `${options?.name ?? randomName()}Select` },
       ),
-    array: ({ wrappedType }) => arraySelect(wrappedType),
     wrapper: ({ wrappedType }) => select(wrappedType),
     otherwise: () => model.boolean(),
   })
@@ -171,24 +169,6 @@ function selectField(type: model.Type, capabilities: Capabilities): model.Type {
     array: ({ wrappedType }) => selectField(wrappedType, allCapabilities),
     wrapper: ({ wrappedType }) => selectField(wrappedType, capabilities),
     otherwise: () => model.boolean(),
-  })
-}
-
-// prettier-ignore
-type ArraySelect<T extends model.Type>
-  = [T] extends [model.EntityType<any, any>] ? boolean | Retrieve<T, AllCapabilities>
-  : [T] extends [model.ArrayType<any, any>] ? never
-  : [T] extends [model.OptionalType<infer T1>] ? ArraySelect<T1>
-  : [T] extends [model.NullableType<infer T1>] ? ArraySelect<T1>
-  : [T] extends [(() => infer T1 extends model.Type)] ? ArraySelect<T1>
-  : Select<T>
-
-function arraySelect(type: model.Type): model.Type {
-  return model.match(type, {
-    entity: (_, entity) => model.union({ all: model.boolean(), retrieve: retrieve(entity, allCapabilities) }),
-    array: () => model.never(),
-    wrapper: ({ wrappedType }) => arraySelect(wrappedType),
-    otherwise: (_, type) => select(type),
   })
 }
 
@@ -259,7 +239,7 @@ type Where<T extends model.Type>
 
 const where = utils.memoizeTypeTransformation(whereInternal)
 function whereInternal(type: model.Type): model.Type {
-  return model.match(type, {
+  const result = model.match(type, {
     entity:
       ({ fields, options }, entity) =>
       () =>
@@ -274,6 +254,7 @@ function whereInternal(type: model.Type): model.Type {
     nullable: ({ wrappedType }) => where(wrappedType),
     otherwise: () => model.never(),
   })
+  return result
 }
 
 type LogicWhereOperators<T extends model.Type> = {
@@ -457,8 +438,7 @@ export function selectedType<T extends model.Type>(type: T, retrieve: GenericRet
     return optionalizeEmbeddedEntities(type)
   }
   return model.match(type, {
-    optional: ({ wrappedType }) => model.optional(selectedType(wrappedType, retrieve)),
-    nullable: ({ wrappedType }) => model.nullable(selectedType(wrappedType, retrieve)),
+    wrapper: ({ wrappedType }) => model.optional(selectedType(wrappedType, retrieve)),
     array: ({ wrappedType }) => model.array(selectedType(wrappedType, retrieve)),
     record: ({ fields }) => {
       const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {

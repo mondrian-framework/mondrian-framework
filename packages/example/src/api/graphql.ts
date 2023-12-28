@@ -16,7 +16,6 @@ const api = graphql.build({
     readPosts: { type: 'query', name: 'posts' },
     likePost: { type: 'mutation', name: 'like' },
   },
-  options: { introspection: true },
 })
 
 export function serveGraphql(server: FastifyInstance) {
@@ -40,5 +39,6 @@ export function serveGraphql(server: FastifyInstance) {
         return { message: 'Internal server error' }
       }
     },
+    options: { introspection: true },
   })
 }

@@ -11,7 +11,6 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
     [K in keyof Fs]?: FunctionSpecifications | readonly FunctionSpecifications[]
   }
   options?: {
-    introspection?: boolean
     path?: string
   }
   module: module.ModuleInterface<Fs>
@@ -65,3 +64,17 @@ export type ErrorHandler<F extends functions.Functions, ServerContext> = (
     }
   } & ServerContext,
 ) => Promise<{ message: string; options?: GraphQLErrorOptions } | void>
+
+/**
+ * Options used by the GraphQL server
+ */
+export type ServeOptions = {
+  readonly introspection?: boolean
+}
+
+/**
+ * Default options used by the GraphQL server
+ */
+export const DEFAULT_SERVE_OPTIONS: ServeOptions = {
+  introspection: false,
+}

@@ -12,13 +12,14 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
   api,
   context,
   errorHandler,
-  options,
+  ...args
 }: {
   api: graphql.Api<Fs, ContextInput>
   server: FastifyInstance
   context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   errorHandler?: graphql.ErrorHandler<Fs, ServerContext>
-  options?: Omit<YogaServerOptions<ServerContext, ContextInput>, 'schema' | 'context' | 'graphqlEndpoint'>
+  options?: Omit<YogaServerOptions<ServerContext, ContextInput>, 'schema' | 'context' | 'graphqlEndpoint'> &
+    Partial<graphql.ServeOptions>
 }): void {
   const schema = graphql.fromModule({
     api,
@@ -33,10 +34,11 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
       addValidationRule(NoSchemaIntrospectionCustomRule)
     },
   }
+  const options = { ...graphql.DEFAULT_SERVE_OPTIONS, ...args.options }
   const yoga = createYoga({
     ...options,
     schema,
-    plugins: api.options?.introspection ? options?.plugins : [disableIntrospection, ...(options?.plugins ?? [])],
+    plugins: options.introspection ? options?.plugins : [disableIntrospection, ...(options?.plugins ?? [])],
     graphqlEndpoint: api.options?.path,
   })
   server.route({

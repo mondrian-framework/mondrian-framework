@@ -22,9 +22,9 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
   }
   options?: {
     /**
-     * Default path is /openapi
+     * Endpoints will be populated without the domain part if not specified
      */
-    introspection?: true | { path?: string; endpoints?: string[] }
+    endpoints?: string[]
     /**
      * Default is /api
      */
@@ -114,4 +114,18 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
 
 type NullableOperationObject = {
   [K in keyof OpenAPIV3_1.OperationObject]: OpenAPIV3_1.OperationObject[K] | null
+}
+
+/**
+ * Options used by the REST server
+ */
+export type ServeOptions = {
+  readonly introspection?: { path: string } | false
+}
+
+/**
+ * Default options used by the REST server
+ */
+export const DEFAULT_SERVE_OPTIONS: ServeOptions = {
+  introspection: false,
 }

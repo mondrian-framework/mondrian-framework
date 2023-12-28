@@ -15,16 +15,18 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
   server,
   context,
   error,
+  ...args
 }: {
   api: rest.Api<Fs, ContextInput>
   server: FastifyInstance
   context: (serverContext: ServerContext) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, ServerContext>
+  options?: Partial<rest.ServeOptions>
 }): void {
+  const options = { ...rest.DEFAULT_SERVE_OPTIONS, ...args.options }
   const pathPrefix = api.options?.pathPrefix ?? '/api'
-  if (api.options?.introspection) {
-    const introspectionPath =
-      (typeof api.options.introspection === 'object' ? api.options.introspection?.path : null) ?? `/openapi`
+  if (options.introspection) {
+    const introspectionPath = options.introspection.path
     server.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
       prefix: introspectionPath,

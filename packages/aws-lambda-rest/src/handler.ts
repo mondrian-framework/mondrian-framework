@@ -1,5 +1,5 @@
 import { attachRestMethods } from './methods'
-import { functions, module } from '@mondrian-framework/module'
+import { functions } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import fs from 'fs'
@@ -13,16 +13,18 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   api,
   context,
   error,
+  ...args
 }: {
   api: rest.Api<Fs, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
+  options: Partial<rest.ServeOptions>
 }): APIGatewayProxyHandlerV2 {
   utils.assertApiValidity(api)
   const server = lambdaApi()
-  if (api.options?.introspection) {
-    const introspectionPath =
-      (typeof api.options.introspection === 'object' ? api.options.introspection?.path : null) ?? `/openapi`
+  const options = { ...rest.DEFAULT_SERVE_OPTIONS, ...args.options }
+  if (options.introspection) {
+    const introspectionPath = options.introspection.path
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()

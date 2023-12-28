@@ -41,7 +41,7 @@ export function serveWithFastify<const Fs extends functions.Functions, const Con
     }
     return response.body
   })
-  if (api.options?.introspection) {
+  if (options?.introspection) {
     const moduleSerialized = serialization.serialize(api.module)
     server.get(path, () => {
       return moduleSerialized

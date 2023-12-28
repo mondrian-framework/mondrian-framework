@@ -118,12 +118,8 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
   clearInternalData(internalData)
 
   //servers
-  const endpoints =
-    api.options?.introspection && typeof api.options.introspection === 'object'
-      ? api.options.introspection.endpoints
-      : undefined
-  const servers = endpoints
-    ? endpoints.map((e) => ({ url: `${e}${api.options?.pathPrefix ?? '/api'}/v${version}` }))
+  const servers = api.options?.endpoints
+    ? api.options.endpoints.map((e) => ({ url: `${e}${api.options?.pathPrefix ?? '/api'}/v${version}` }))
     : [{ url: `${api.options?.pathPrefix ?? '/api'}/v${version}` }]
 
   return {

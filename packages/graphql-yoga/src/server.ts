@@ -11,12 +11,13 @@ export function createServer<const Fs extends functions.Functions, const Context
   api,
   context,
   errorHandler,
-  options,
+  ...args
 }: {
   api: graphql.Api<Fs, ContextInput>
   context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   errorHandler?: graphql.ErrorHandler<Fs, ServerContext>
-  options?: Omit<YogaServerOptions<ServerContext, ContextInput>, 'schema' | 'context' | 'graphqlEndpoint'>
+  options?: Omit<YogaServerOptions<ServerContext, ContextInput>, 'schema' | 'context' | 'graphqlEndpoint'> &
+    Partial<graphql.ServeOptions>
 }): http.Server {
   const schema = graphql.fromModule({
     api,
@@ -29,10 +30,11 @@ export function createServer<const Fs extends functions.Functions, const Context
       addValidationRule(NoSchemaIntrospectionCustomRule)
     },
   }
+  const options = { ...graphql.DEFAULT_SERVE_OPTIONS, ...args.options }
   const yoga = createYoga<ServerContext>({
     ...options,
     schema,
-    plugins: api.options?.introspection ? options?.plugins : [disableIntrospection, ...(options?.plugins ?? [])],
+    plugins: options.introspection ? options?.plugins : [disableIntrospection, ...(options?.plugins ?? [])],
     graphqlEndpoint: api.options?.path,
   })
   return http.createServer(yoga)

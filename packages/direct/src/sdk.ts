@@ -51,10 +51,12 @@ export function build<
   endpoint,
   api,
   metadata,
+  fetchOptions,
 }: {
   endpoint: string | http.Handler
   api: ApiSpecification<Fs, Exclusions>
   metadata?: Record<string, string>
+  fetchOptions?: Omit<RequestInit, 'method' | 'headers' | 'body'> & { headers?: Record<string, string | undefined> }
 }): Sdk<Fs, Exclusions> {
   const funcs = flatMapObject(api.module.functions, (functionName, functionBody) => {
     if (api.exclusions[functionName]) {
@@ -82,24 +84,26 @@ export function build<
       let jsonBody: () => Promise<unknown>
       let stringBody: () => Promise<string>
       let status: number
+      const request = {
+        body: payload,
+        method: 'post',
+        route: '/',
+        headers: { 'Content-Type': 'application/json', ...fetchOptions?.headers },
+        params: {},
+        query: {},
+      } as const satisfies http.Request
+
       if (typeof endpoint === 'string') {
         const fetchResult = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: request.method,
+          headers: request.headers,
           body: JSON.stringify(payload),
+          ...options,
         })
         status = fetchResult.status
         jsonBody = () => fetchResult.json()
         stringBody = () => fetchResult.text()
       } else {
-        const request: http.Request = {
-          body: JSON.parse(JSON.stringify(payload)),
-          method: 'post',
-          route: '/',
-          headers: {},
-          params: {},
-          query: {},
-        }
         const response = await endpoint({
           request,
           serverContext: { request },

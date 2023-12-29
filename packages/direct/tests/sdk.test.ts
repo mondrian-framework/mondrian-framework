@@ -178,4 +178,20 @@ describe('edge cases', () => {
       'Failure should not be present because the function does not declare errors',
     )
   })
+
+  test('additional headers on request should be propagated correctly', async () => {
+    const client = build({
+      endpoint: async ({ request }) => {
+        if (request.headers.additional !== '123') {
+          return { body: 'Internal server error', status: 500 }
+        } else {
+          return { body: { success: true, operationId: '123', result: 1 }, status: 200 }
+        }
+      },
+      api,
+      fetchOptions: { headers: { additional: '123' } },
+    })
+    const r1 = await client.functions.ping(1)
+    expect(r1).toBe(1)
+  })
 })

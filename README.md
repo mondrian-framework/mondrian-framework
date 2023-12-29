@@ -152,12 +152,11 @@ const api = rest.build({
       },
     ],
   },
-  options: { introspection: true },
 })
 
 //Start the server
 const server = fastify()
-serve({ server, api, context: async ({}) => ({}) })
+serve({ server, api, context: async ({}) => ({}), options: { introspection: { path: '/openapi' } } })
 server.listen({ port: 4000 }).then((address) => {
   console.log(`Server started at address ${address}/openapi`)
 })
@@ -180,12 +179,11 @@ const api = graphql.build({
   functions: {
     register: { type: 'mutation' },
   },
-  options: { introspection: true },
 })
 
 //Start the server
 const server = fastify()
-serveWithFastify({ server, api, context: async ({}) => ({}) })
+serveWithFastify({ server, api, context: async ({}) => ({}), options: { introspection: true } })
 server.listen({ port: 4000 }).then((address) => {
   console.log(`Server started at address ${address}/graphql`)
 })

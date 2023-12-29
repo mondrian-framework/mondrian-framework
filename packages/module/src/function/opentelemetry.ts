@@ -50,21 +50,18 @@ export class OpentelemetryFunction<
       async (span) => {
         try {
           const applyResult = await this.executeWithinSpan(0, args, span)
-          span.setStatus({ code: SpanStatusCode.OK })
+          const applyResult2 = applyResult as result.Result<unknown, Record<string, unknown>>
+          if (this.errors && applyResult2.isFailure) {
+            this.addErrorsToSpanAttribute(span, applyResult2.error)
+            this.addInputToSpanAttribute(span, args.input)
+            span.setStatus({ code: SpanStatusCode.ERROR })
+          } else {
+            span.setStatus({ code: SpanStatusCode.OK })
+          }
           span.end()
           return result.ok(applyResult)
         } catch (error) {
-          if (!model.isNever(this.input)) {
-            const concreteInputType = model.concretise(this.input)
-            span.setAttribute(
-              'input.json',
-              JSON.stringify(
-                concreteInputType.encodeWithoutValidation(args.input as never, {
-                  sensitiveInformationStrategy: 'hide',
-                }),
-              ),
-            )
-          }
+          this.addInputToSpanAttribute(span, args.input)
           if (error instanceof Error) {
             span.recordException(error)
           }
@@ -92,6 +89,31 @@ export class OpentelemetryFunction<
     }
     const middleware = this.middlewares[middlewareIndex]
     return middleware.apply(args, (mappedArgs) => this.executeWithinSpan(middlewareIndex + 1, mappedArgs, span), this)
+  }
+
+  private addErrorsToSpanAttribute(span: Span, failure: Record<string, unknown>) {
+    if (!this.errors) {
+      return
+    }
+    const encodedErrors: Record<string, unknown> = {}
+    for (const [errorKey, errorValue] of Object.entries(failure)) {
+      const concreteErrorType = model.concretise(this.errors[errorKey])
+      encodedErrors[errorKey] = concreteErrorType.encodeWithoutValidation(errorValue as never, {
+        sensitiveInformationStrategy: 'hide',
+      })
+    }
+    span.setAttribute(`error.json`, JSON.stringify(encodedErrors))
+  }
+
+  private addInputToSpanAttribute(span: Span, input: unknown) {
+    if (model.isNever(this.input)) {
+      return
+    }
+    const concreteInputType = model.concretise(this.input)
+    const encodedInput = concreteInputType.encodeWithoutValidation(input as never, {
+      sensitiveInformationStrategy: 'hide',
+    })
+    span.setAttribute('input.json', JSON.stringify(encodedInput))
   }
 }
 

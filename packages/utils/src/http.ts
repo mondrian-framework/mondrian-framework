@@ -2,8 +2,8 @@
 
 export type Method = 'get' | 'post' | 'put' | 'delete' | 'patch'
 
-export type Request = {
-  body: unknown
+export type Request<Body = unknown> = {
+  body: Body
   params: Record<string, string | undefined>
   query: Record<string, string | undefined>
   headers: Record<string, string | string[] | undefined>
@@ -11,13 +11,13 @@ export type Request = {
   route: string
 }
 
-export type Response = {
+export type Response<Body = unknown> = {
   readonly status: number
-  readonly body: unknown
+  readonly body: Body
   readonly headers?: Readonly<Record<string, string>>
 }
 
-export type Handler<ServerContext = unknown> = (args: {
-  request: Request
+export type Handler<ServerContext = unknown, RequestBody = unknown, ResponseBody = unknown> = (args: {
+  request: Request<RequestBody>
   serverContext: ServerContext
-}) => Promise<Response>
+}) => Promise<Response<ResponseBody>>

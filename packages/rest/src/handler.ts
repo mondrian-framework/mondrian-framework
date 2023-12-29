@@ -55,7 +55,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
 
         const subHandler = async () => {
           //Decode input
-          const inputResult = decodeInput(functionBody.input, request, getInputFromRequest, logger, tracer)
+          const inputResult = decodeInput(functionBody.input, request, getInputFromRequest, tracer)
           if (inputResult.isFailure) {
             span?.end()
             return inputResult.error
@@ -63,7 +63,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           const input = inputResult.value
 
           //Decode retrieve
-          const retrieveResult = decodeRetrieve(retrieveType, functionBody.output, request, logger, tracer)
+          const retrieveResult = decodeRetrieve(retrieveType, functionBody.output, request, tracer)
           if (retrieveResult.isFailure) {
             span?.end()
             return retrieveResult.error
@@ -142,7 +142,6 @@ function decodeInput(
   inputType: model.Type,
   request: http.Request,
   getInputFromRequest: (request: http.Request) => unknown,
-  logger: logger.MondrianLogger,
   tracer: functions.Tracer,
 ): result.Result<unknown, http.Response> {
   return tracer.startActiveSpan('decode-input', (span) => {
@@ -175,7 +174,6 @@ function decodeRetrieve(
   retrieveType: result.Result<model.Type, unknown>,
   outputType: model.Type,
   request: http.Request,
-  logger: logger.MondrianLogger,
   tracer: functions.Tracer,
 ): result.Result<retrieve.GenericRetrieve | undefined, http.Response> {
   if (retrieveType.isFailure) {

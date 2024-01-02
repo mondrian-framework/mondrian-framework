@@ -583,13 +583,18 @@ function recordToOpenAPIComponent(
   const fields = Object.entries(type.fields).map(([fieldName, fieldType]) => {
     const hasToBeOptional = model.unwrap(fieldType).kind === model.Kind.Entity && !model.isOptional(fieldType)
     const schema = modelToSchema(hasToBeOptional ? model.optional(fieldType) : fieldType, internalData)
-    return [fieldName, schema] as const
+    //here we use the field description, if there is not description then we fallback to the type description
+    const descriptedSchema = {
+      ...schema,
+      description: (type.options?.fields ?? {})[fieldName]?.description ?? schema.description,
+    }
+    return [fieldName, descriptedSchema] as const
   })
   const isOptional: (
     type: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject,
   ) => { optional: true; subtype: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } | false = (type) =>
     'anyOf' in type && type.anyOf && type.anyOf.length === 2 && type.anyOf[1].description === 'optional'
-      ? { optional: true, subtype: type.anyOf[0] }
+      ? { optional: true, subtype: { ...type.anyOf[0], description: type.anyOf[0].description ?? type.description } }
       : false
   const schema: OpenAPIV3_1.SchemaObject = {
     type: 'object',

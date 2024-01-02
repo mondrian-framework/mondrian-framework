@@ -1,4 +1,4 @@
-import { decoding, path, model, validation, encoding } from '../..'
+import { decoding, path, model, validation, encoding, utils } from '../..'
 import { assertSafeObjectFields } from '../../utils'
 import { BaseType } from './base'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
@@ -33,18 +33,28 @@ import gen from 'fast-check'
  *          }
  *          ```
  */
-export function entity<Ts extends model.Types>(
+export function entity<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: model.EntityTypeOptions,
-): model.EntityType<model.Mutability.Immutable, Ts> {
-  return new EntityTypeImpl(model.Mutability.Immutable, fields, options)
+  options?: Omit<model.ObjectTypeOptions, 'fields'>,
+): model.EntityType<model.Mutability.Immutable, utils.RichFieldsToTypes<Ts>> {
+  const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
+  return new EntityTypeImpl(
+    model.Mutability.Immutable,
+    types,
+    fieldsOptions ? { ...options, fields: fieldsOptions } : options,
+  )
 }
 
-export function mutableEntity<Ts extends model.Types>(
+export function mutableEntity<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: model.EntityTypeOptions,
-): model.EntityType<model.Mutability.Mutable, Ts> {
-  return new EntityTypeImpl(model.Mutability.Mutable, fields, options)
+  options?: Omit<model.ObjectTypeOptions, 'fields'>,
+): model.EntityType<model.Mutability.Mutable, utils.RichFieldsToTypes<Ts>> {
+  const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
+  return new EntityTypeImpl(
+    model.Mutability.Mutable,
+    types,
+    fieldsOptions ? { ...options, fields: fieldsOptions } : options,
+  )
 }
 
 class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
@@ -59,8 +69,8 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
   protected fromOptions = (options: model.EntityTypeOptions) =>
     new EntityTypeImpl(this.mutability, this.fields, options)
 
-  immutable = () => entity(this.fields, this.options)
-  mutable = () => mutableEntity(this.fields, this.options)
+  immutable = () => entity(this.fields, this.options) as any
+  mutable = () => mutableEntity(this.fields, this.options) as any
 
   constructor(mutability: M, fields: Ts, options?: model.EntityTypeOptions) {
     super(options)

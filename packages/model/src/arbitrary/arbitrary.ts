@@ -1,4 +1,4 @@
-import { model } from '../index'
+import { model, utils } from '../index'
 import { forbiddenObjectFields } from '../utils'
 import gen from 'fast-check'
 
@@ -304,7 +304,10 @@ export function objectTypeOptions(): gen.Arbitrary<model.ObjectTypeOptions> {
  */
 export function object<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<model.ObjectType<model.Mutability, Ts> | (() => model.ObjectType<model.Mutability, Ts>)> {
+): gen.Arbitrary<
+  | model.ObjectType<model.Mutability, utils.RichFieldsToTypes<Ts>>
+  | (() => model.ObjectType<model.Mutability, utils.RichFieldsToTypes<Ts>>)
+> {
   const objectGenerator = gen.oneof(immutableObject(fieldsGenerators), mutableObject(fieldsGenerators))
   const makeLazy = <A>(value: A) => {
     return () => value
@@ -318,7 +321,10 @@ export function object<Ts extends model.Types>(
  */
 export function entity<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<model.EntityType<model.Mutability, Ts> | (() => model.EntityType<model.Mutability, Ts>)> {
+): gen.Arbitrary<
+  | model.EntityType<model.Mutability, utils.RichFieldsToTypes<Ts>>
+  | (() => model.EntityType<model.Mutability, utils.RichFieldsToTypes<Ts>>)
+> {
   const objectGenerator = gen.oneof(immutableEntity(fieldsGenerators), mutableEntity(fieldsGenerators))
   const makeLazy = <A>(value: A) => {
     return () => value
@@ -332,7 +338,7 @@ export function entity<Ts extends model.Types>(
  */
 export function immutableObject<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<model.ObjectType<model.Mutability.Immutable, Ts>> {
+): gen.Arbitrary<model.ObjectType<model.Mutability.Immutable, utils.RichFieldsToTypes<Ts>>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
       return model.object(fields, options)
@@ -346,7 +352,7 @@ export function immutableObject<Ts extends model.Types>(
  */
 export function mutableObject<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<model.ObjectType<model.Mutability.Mutable, Ts>> {
+): gen.Arbitrary<model.ObjectType<model.Mutability.Mutable, utils.RichFieldsToTypes<Ts>>> {
   return orUndefined(objectTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
       return model.mutableObject(fields, options)
@@ -368,7 +374,7 @@ export function entityTypeOptions(): gen.Arbitrary<model.EntityTypeOptions> {
  */
 export function immutableEntity<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<model.EntityType<model.Mutability.Immutable, Ts>> {
+): gen.Arbitrary<model.EntityType<model.Mutability.Immutable, utils.RichFieldsToTypes<Ts>>> {
   return orUndefined(entityTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
       return model.entity(fields, options)
@@ -382,7 +388,7 @@ export function immutableEntity<Ts extends model.Types>(
  */
 export function mutableEntity<Ts extends model.Types>(
   fieldsGenerators: GeneratorsRecord<Ts>,
-): gen.Arbitrary<model.EntityType<model.Mutability.Mutable, Ts>> {
+): gen.Arbitrary<model.EntityType<model.Mutability.Mutable, utils.RichFieldsToTypes<Ts>>> {
   return orUndefined(entityTypeOptions()).chain((options) => {
     return gen.record(fieldsGenerators).map((fields) => {
       return model.mutableEntity(fields, options)

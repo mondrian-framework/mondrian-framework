@@ -1,4 +1,4 @@
-import { decoding, path, model, validation, encoding } from '../..'
+import { decoding, path, model, validation, encoding, utils } from '../..'
 import { assertSafeObjectFields } from '../../utils'
 import { BaseType } from './base'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
@@ -33,18 +33,28 @@ import gen from 'fast-check'
  *          }
  *          ```
  */
-export function object<Ts extends model.Types>(
+export function object<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: model.ObjectTypeOptions,
-): model.ObjectType<model.Mutability.Immutable, Ts> {
-  return new ObjectTypeImpl(model.Mutability.Immutable, fields, options)
+  options?: Omit<model.ObjectTypeOptions, 'fields'>,
+): model.ObjectType<model.Mutability.Immutable, utils.RichFieldsToTypes<Ts>> {
+  const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
+  return new ObjectTypeImpl(
+    model.Mutability.Immutable,
+    types,
+    fieldsOptions ? { ...options, fields: fieldsOptions } : options,
+  )
 }
 
-export function mutableObject<Ts extends model.Types>(
+export function mutableObject<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: model.ObjectTypeOptions,
-): model.ObjectType<model.Mutability.Mutable, Ts> {
-  return new ObjectTypeImpl(model.Mutability.Mutable, fields, options)
+  options?: Omit<model.ObjectTypeOptions, 'fields'>,
+): model.ObjectType<model.Mutability.Mutable, utils.RichFieldsToTypes<Ts>> {
+  const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
+  return new ObjectTypeImpl(
+    model.Mutability.Mutable,
+    types,
+    fieldsOptions ? { ...options, fields: fieldsOptions } : options,
+  )
 }
 
 class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
@@ -59,8 +69,8 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
   protected fromOptions = (options: model.ObjectTypeOptions) =>
     new ObjectTypeImpl(this.mutability, this.fields, options)
 
-  immutable = () => object(this.fields, this.options)
-  mutable = () => mutableObject(this.fields, this.options)
+  immutable = () => object(this.fields, this.options) as any
+  mutable = () => mutableObject(this.fields, this.options) as any
 
   constructor(mutability: M, fields: Ts, options?: model.ObjectTypeOptions) {
     super(options)

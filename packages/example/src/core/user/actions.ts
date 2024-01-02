@@ -42,10 +42,11 @@ export const login = functions.withContext<Context>().build({
   input: LoginInput,
   output: LoginOutput,
   errors: loginErrorMap,
-  body: async ({ input, context }) => {
+  body: async ({ input, context, logger }) => {
     const { email, password } = input
     const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
     if (!loggedUser) {
+      logger.logWarn(`${input.email} failed login`)
       return result.fail({ invalidLogin: 'invalid username or password' })
     }
     await context.prisma.user.update({

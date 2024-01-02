@@ -1,6 +1,7 @@
 import { model } from '@mondrian-framework/model'
 import { functions, logger, module, utils } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
+import { SpanKind, SpanStatusCode } from '@opentelemetry/api'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
 
 export type Api<Fs extends functions.Functions> = {
@@ -50,56 +51,82 @@ export function build<const Fs extends functions.Functions, CI>({
       if (!specification || !functionName) {
         continue
       }
-      const functionBody = module.functions[functionName]
       spec = specification
-      const operationId = utils.randomOperationId()
-      const operationLogger = baseLogger.updateContext({ operationId, operationType: url, operationName: functionName })
-      try {
-        let body: unknown
-        try {
-          body = m.body === undefined ? undefined : JSON.parse(m.body)
-        } catch {
-          if (specification.malformedMessagePolicy === 'delete') {
-            continue
-          }
-          if (!specification.reportBatchItemFailures) {
-            throw new Error(`Bad message: not a valid json ${m.body}`)
-          }
-          batchItemFailures.push({ itemIdentifier: m.messageId })
-        }
+      const functionBody = module.functions[functionName]
+      await functionBody.tracer.startActiveSpanWithOptions(
+        `mondrian:sqs-handler:${functionName}`,
+        {
+          kind: SpanKind.INTERNAL,
+        },
+        async (span) => {
+          const operationId = utils.randomOperationId()
+          const operationLogger = baseLogger.updateContext({
+            operationId,
+            operationType: url,
+            operationName: functionName,
+          })
+          try {
+            let body: unknown
+            try {
+              body = m.body === undefined ? undefined : JSON.parse(m.body)
+            } catch {
+              const message = `Bad message: not a valid json ${m.body}`
+              if (specification.malformedMessagePolicy === 'delete') {
+                span?.setStatus({ code: SpanStatusCode.ERROR, message })
+                span?.end()
+                return
+              }
+              if (!specification.reportBatchItemFailures) {
+                throw new Error(message)
+              }
+              batchItemFailures.push({ itemIdentifier: m.messageId })
+            }
 
-        const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
-        if (decoded.isFailure) {
-          if (specification.malformedMessagePolicy === 'delete') {
-            continue
+            const decoded = model
+              .concretise(functionBody.input)
+              .decode(body, { typeCastingStrategy: 'expectExactTypes' })
+            if (decoded.isFailure) {
+              const message = `Bad message: ${JSON.stringify(decoded.error)}`
+              if (specification.malformedMessagePolicy === 'delete') {
+                span?.setStatus({ code: SpanStatusCode.ERROR, message })
+                span?.end()
+                return
+              }
+              if (!specification.reportBatchItemFailures) {
+                throw new Error(message)
+              }
+              batchItemFailures.push({ itemIdentifier: m.messageId })
+              return
+            }
+            const contextInput = await context({ context: fContext, event, recordIndex: i })
+            const ctx = await module.context(contextInput, {
+              input: decoded.value,
+              retrieve: undefined,
+              operationId,
+              logger: operationLogger,
+              functionName,
+            })
+            await functionBody.apply({
+              input: decoded.value as never,
+              retrieve: {},
+              operationId,
+              context: ctx,
+              logger: operationLogger,
+            })
+            span?.end()
+          } catch (error) {
+            if (error instanceof Error) {
+              span?.recordException(error)
+            }
+            span?.setStatus({ code: SpanStatusCode.ERROR })
+            span?.end()
+            if (!specification.reportBatchItemFailures) {
+              throw new Error(`Bad message: not a valid json ${m.body}`)
+            }
+            batchItemFailures.push({ itemIdentifier: m.messageId })
           }
-          if (!specification.reportBatchItemFailures) {
-            throw new Error(`Bad message: ${JSON.stringify(decoded.error)}`)
-          }
-          batchItemFailures.push({ itemIdentifier: m.messageId })
-          continue
-        }
-        const contextInput = await context({ context: fContext, event, recordIndex: i })
-        const ctx = await module.context(contextInput, {
-          input: decoded.value,
-          retrieve: undefined,
-          operationId,
-          logger: operationLogger,
-          functionName,
-        })
-        await functionBody.apply({
-          input: decoded.value as never,
-          retrieve: {},
-          operationId,
-          context: ctx,
-          logger: operationLogger,
-        })
-      } catch (error) {
-        if (!specification.reportBatchItemFailures) {
-          throw new Error(`Bad message: not a valid json ${m.body}`)
-        }
-        batchItemFailures.push({ itemIdentifier: m.messageId })
-      }
+        },
+      )
     }
     if (spec?.reportBatchItemFailures) {
       return { batchItemFailures }

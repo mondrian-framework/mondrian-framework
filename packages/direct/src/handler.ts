@@ -140,7 +140,12 @@ async function handleFunctionCall<Fs extends functions.Functions, ServerContext,
     return decodedRequest
   }
   const operationId = utils.randomOperationId()
-  const baseLogger = logger.build({ moduleName: api.module.name, server: 'DIRECT' })
+  const baseLogger = logger.build({
+    moduleName: api.module.name,
+    operationName: functionName,
+    operationId,
+    server: 'DIRECT',
+  })
   const { input, metadata, retrieve: thisRetrieve } = decodedRequest.value
   const successResponse = SuccessResponse(functionBody, thisRetrieve)
 

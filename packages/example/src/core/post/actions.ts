@@ -8,8 +8,9 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
   input: model.pick(Post, { title: true, content: true, visibility: true }, { name: 'WritePostInput' }),
   output: OwnPost,
   errors: { notLoggedIn: model.string() },
-  retrieve: { select: true },
+  retrieve: { where: true, select: true, orderBy: true },
   body: async ({ input, retrieve, context }) => {
+    const { orderBy } = retrieve
     if (PostVisibility.decode(input.visibility).isFailure) {
       throw new Error(`Invalid post visibility. Use one of ${PostVisibility.variants}`)
     }
@@ -28,7 +29,7 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
   },
   options: {
     namespace: 'post',
-    description: 'Inser a new post by provind the title, content and visibility. Available only for logged user.',
+    description: 'Insert a new post by provind the title, content and visibility. Available only for logged user.',
   },
 })
 

@@ -22,8 +22,7 @@ Mondrian Framework provides many features for building modern cloud native appli
   - gRPC, including Protobuf definition
   - others from the community
 - Multiple non-API runtimes
-  - React to messages (AWS SQS, ...)
-  - React to notifications (AWS SNS, ...)
+  - React to messages, events, notifications (AWS SQS, Apache Kafka, AWS SNS)
   - Scheduled cron-like execution
   - others from the community
 - Container support

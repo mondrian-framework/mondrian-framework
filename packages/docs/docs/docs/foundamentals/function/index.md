@@ -8,12 +8,17 @@ that the framework provides.
 The developer's main responsibility should be to produce functions.
 
 Basically a function:
-- has **inputs** and **outputs**, that you can formally define using 
+- has a **definition**, that includes *inputs*, *outputs* and *errors* formally defined using 
   a [domain model schema](../model/index.md).
-- has a **context**, as the function's single point of contact, extensible and customizable, 
-  for external interactions in addition to its own inputs and outputs.
-- has a **body** containing the business logic that receive the inputs and the context 
-  as parameters and must return the outputs.
+- has an **implementation**, containing the business logic that receive the inputs and must 
+  return the defined outputs. The implementation can also optionally take advantage of a 
+  *context*, that is an object containing all necessary references to additional external 
+  interactions managed by the execution system.
+
+The clear division between definition and implementation is critical to allow only the definitions 
+to be published to possible clients while keeping implementation details private. It, in addition 
+to being a good separation practice, allows multiple implementations of the same function 
+to be defined.
 
 ## Example
 
@@ -34,13 +39,15 @@ type PostInput = model.Infer<typeof PostInput>
 
 type Context = { repository: Repository }
 
-const createPost = functions.withContext<Context>().build({
-  input: PostInput,
-  output: model.string(),
-  async body({ input, context }) {    
-    const postId = await context.repository.posts.insertOne(input)
-    return postId
-  },
-})
-
+const createPost = functions
+  .define({
+    input: PostInput,
+    output: model.string(),
+  })
+  .implements<Context>({
+    async body({ input, context }) {    
+      const postId = await context.repository.posts.insertOne(input)
+      return postId
+    },
+  })
 ```

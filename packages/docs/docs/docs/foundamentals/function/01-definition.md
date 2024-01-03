@@ -119,6 +119,7 @@ const User = model.entity({
 const retrieveUsers = functions.define({
   input: model.never(),
   output: model.array(User),
+  // highlight-start
   retrieve: {
     where: true,
     select: true,
@@ -126,6 +127,7 @@ const retrieveUsers = functions.define({
     take: true,
     skip: true,
   },
+  // highlight-end
 })
 ```
 
@@ -201,5 +203,64 @@ possible to build a utility function that translates them to other libraries, ex
 
 
 ## Errors
+We believe that the best way to handle errors is to do so in a way that preserves their 
+structure and typing, just as with any other output. That is why the framework allows you to define, 
+for each function, a map of possible errors and related data structures.
+
+```ts showLineNumbers
+const User = ...
+
+const retrieveUser = functions.define({
+  input: model.object({
+    id: model.string()
+  }),
+  output: User,
+  // highlight-start
+  errors: {
+    userNotFound: model.string(),
+    invalidId: model.string()
+  },
+  // highlight-end
+})
+```
+
+As mentioned, the data structure attached to an error can be as complex as desired to contain 
+additional details related to it.
+
+```ts showLineNumbers
+const User = ...
+
+const retrieveUser = functions.define({
+  input: model.object({
+    id: model.string()
+  }),
+  output: User,
+  errors: {
+    userNotFound: model.string(),
+    invalidId: model.string(),
+    // highlight-start
+    userNoLongerRegistered: model.object({
+      message: model.string(),
+      deregistrationDate: model.timestamp()
+    })
+    // highlight-end
+  },
+})
+```
+
+This definition will then allow you to [implement the behavior](./02-implementation.md) of the function by 
+ensuring type checking on the return of any errors as well.
 
 ## Options
+
+The definition of a function provides a last optional parameter called `options` through which the developer 
+can specify additional metadata that may be useful at some runtime. In any case, these options are intrinsically 
+linked to the nature of the function.
+
+### Namespace
+The `namespace` parameter represent an optional logical subgrouping of a module that can be useful to further subdivide a set of functions.
+
+This option is used by some runtimes, for example [@mondrian-framework/rest](../runtime//API/01-REST-OpenAPI.md) and [@mondrian-framework/graphql](../runtime/API/02-GraphQL-API.md), where there is a concept of API grouping in the respective specifications.
+
+### Description
+The `description` parameter is a simple plain string where you can describe the function business logic and behaviour in natual language. This value is added to API specifications and generally reported on the documentation produced from this definition.

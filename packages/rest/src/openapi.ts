@@ -97,7 +97,8 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
         description:
           specification.openapi?.specification.description === null
             ? undefined
-            : specification.openapi?.specification.description ?? functionBody.options?.description,
+            : specification.openapi?.specification.description ??
+              functionBody.options?.description?.replaceAll('\n', '</br>'),
         tags:
           specification.openapi?.specification.tags === null
             ? undefined

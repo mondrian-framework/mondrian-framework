@@ -21,12 +21,14 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
       continue
     }
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
-      const paths = utils.getPathsFromSpecification({
-        functionName,
-        specification,
-        prefix: api.options?.pathPrefix ?? '/api',
-        maxVersion: api.version,
-      })
+      const paths = utils
+        .getPathsFromSpecification({
+          functionName,
+          specification,
+          prefix: api.options?.pathPrefix ?? '/api',
+          maxVersion: api.version,
+        })
+        .map((p) => p.replace(/{(.*?)}/g, ':$1'))
       const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
         module: api.module,
         context,

@@ -69,7 +69,7 @@ const User = ...
 
 const getAllUsers = functions.define({
   input: model.never(),
-  output: model.array(user),
+  output: model.array(User),
 })
 ```
 
@@ -83,7 +83,7 @@ const setNewPassword = functions.define({
 })
 ```
 
-### Entities 
+## Entities retrieve
 
 Many times the output of a function is an [entity](../model//01-definition.md#entities) or an 
 array of entities. In these cases it is common for one or more inputs to be linked to the expected 
@@ -257,10 +257,25 @@ The definition of a function provides a last optional parameter called `options`
 can specify additional metadata that may be useful at some runtime. In any case, these options are intrinsically 
 linked to the nature of the function.
 
-### Namespace
+```ts showLineNumbers
+const User = ...
+
+const getAllUsers = functions.define({
+  input: model.never(),
+  output: model.array(User),
+  // highlight-start
+  options: {
+    namespace: 'registry',
+    description: 'Returns all the user already registered to the system registry.'
+  }
+  // highlight-end
+})
+```
+
+#### Namespace
 The `namespace` parameter represent an optional logical subgrouping of a module that can be useful to further subdivide a set of functions.
 
 This option is used by some runtimes, for example [@mondrian-framework/rest](../runtime//API/01-REST-OpenAPI.md) and [@mondrian-framework/graphql](../runtime/API/02-GraphQL-API.md), where there is a concept of API grouping in the respective specifications.
 
-### Description
+#### Description
 The `description` parameter is a simple plain string where you can describe the function business logic and behaviour in natual language. This value is added to API specifications and generally reported on the documentation produced from this definition.

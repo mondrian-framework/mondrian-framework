@@ -2,7 +2,7 @@ import { arbitrary, model } from '../../src'
 import { object } from '../../src/types-exports'
 import { assertOk } from '../testing-utils'
 import { test } from '@fast-check/vitest'
-import { describe, expect } from 'vitest'
+import { describe, expect, expectTypeOf } from 'vitest'
 
 describe('Utilities', () => {
   test('isArray', () => {
@@ -190,12 +190,6 @@ test('isType', () => {
   expect(model.assertType(union, 2.2)).toBe(undefined)
 })
 
-test('getFirstDescription', () => {
-  const m = model.string({ description: 'a' }).nullable({ description: 'b' }).optional()
-  expect(model.getFirstDescription(m.array())).toBe(undefined)
-  expect(model.getFirstDescription(m)).toBe('b')
-})
-
 test('isNever', () => {
   expect(model.isNever(model.never().array())).toBe(false)
   expect(model.isNever(model.never().optional())).toBe(true)
@@ -221,4 +215,48 @@ test('failing match', () => {
   expect(() => model.match(model.string() as any, { number: () => 1 })).toThrowError(
     '[Mondrian-Framework internal error] `model.match` with not exhaustive cases occurs\nIf you think this could be a bug in the framework, please report it at https://github.com/mondrian-framework/mondrian-framework/issues',
   )
+})
+
+test('object field descriptions', () => {
+  const f = model.number()
+  const m = model.object({
+    a1: f,
+    a2: model.describe(f, 'integer'),
+  })
+  expect(m.options).toEqual({ fields: { a2: { description: 'integer' } } })
+  expect(m.fields).toEqual({ a1: f, a2: f })
+
+  const m1 = model.mutableObject({
+    a1: f,
+    a2: model.describe(f, 'integer'),
+  })
+  expect(m1.options).toEqual({ fields: { a2: { description: 'integer' } } })
+  expect(m1.fields).toEqual({ a1: f, a2: f })
+
+  const User = () =>
+    model.object({
+      id: model.string(),
+      friends: model.describe(model.array(User), 'List of my friends'),
+    })
+  type User = model.Infer<typeof User>
+
+  type ExpectedUser = { readonly id: string; readonly friends: readonly ExpectedUser[] }
+  expectTypeOf<User>().toEqualTypeOf<ExpectedUser>()
+})
+
+test('entity field descriptions', () => {
+  const f = model.number()
+  const m = model.entity({
+    a1: f,
+    a2: model.describe(f, 'integer'),
+  })
+  expect(m.options).toEqual({ fields: { a2: { description: 'integer' } } })
+  expect(m.fields).toEqual({ a1: f, a2: f })
+
+  const m1 = model.mutableEntity({
+    a1: f,
+    a2: model.describe(f, 'integer'),
+  })
+  expect(m1.options).toEqual({ fields: { a2: { description: 'integer' } } })
+  expect(m1.fields).toEqual({ a1: f, a2: f })
 })

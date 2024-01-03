@@ -1,4 +1,4 @@
-import { decoding, validation, model, result, encoding } from './index'
+import { decoding, validation, model, result, encoding, utils } from './index'
 import { NeverType } from './types-exports'
 import { memoizeTypeTransformation, memoizeTransformation } from './utils'
 import { JSONType, areJsonsEquals, mapObject, failWithInternalError, flatMapObject } from '@mondrian-framework/utils'
@@ -1310,7 +1310,29 @@ export type ObjectType<M extends Mutability, Ts extends Types> = {
 /**
  * The options that can be used to define an {@link ObjectType `ObjectType`}.
  */
-export type ObjectTypeOptions = BaseOptions
+export type ObjectTypeOptions = BaseOptions & {
+  fields?: { [K in string]?: { description?: string } }
+}
+
+/**
+ * Wraps a type inside a {@link utils.RichField RichField}
+ * It can be used to add a description to an object ot entity field
+ * ```
+ * const User = () => model.entity(
+ *   {
+ *     id: model.number(),
+ *     name: model.string(),
+ *     friends: model.describe(model.array(User), "List of my friends")
+ *   },
+ *   {
+ *     description: "A user of the system"
+ *   }
+ * )
+ * ```
+ */
+export function describe<const T extends model.Type>(type: T, description: string): utils.RichField<T> {
+  return { field: type, description }
+}
 
 /**
  * The model of an object in the Mondrian framework.
@@ -1452,7 +1474,9 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
 /**
  * The options that can be used to define an {@link EntityType `EntityType`}.
  */
-export type EntityTypeOptions = BaseOptions
+export type EntityTypeOptions = BaseOptions & {
+  fields?: { [K in string]?: { description?: string } }
+}
 
 /**
  * The model of a sequence of elements in the Mondrian framework.
@@ -2194,18 +2218,6 @@ export function isOptional(type: Type): boolean {
 
 /**
  * @param type the type to check
- * @returns the first description navigating this type.
- */
-export function getFirstDescription(type: Type): string | undefined {
-  return match(type, {
-    array: (t) => t.options?.description,
-    wrapper: (t) => t.options?.description ?? getFirstDescription(t.wrappedType),
-    otherwise: (t) => t.options?.description,
-  })
-}
-
-/**
- * @param type the type to check
  * @returns true if the type is a nullable type
  */
 export function isNullable(type: Type): type is NullableType<Type> {
@@ -2234,8 +2246,8 @@ export function isNever(type: Type): type is NeverType {
 }
 
 /**
- * Unwraps all wrappers around a {@link Type}.
- * The wrappers are: {@link OptionalType}, {@link NullableType}, {@link ReferenceType}, {@link ArrayType}
+ * Unwraps all wrappers around a {@link Type} and concretise the result.
+ * The wrappers are: {@link OptionalType}, {@link NullableType}, {@link ArrayType}
  * @param type the type to unwrap.
  * @returns the unwrapped type.
  */

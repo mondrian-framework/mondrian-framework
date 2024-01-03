@@ -278,7 +278,10 @@ function objectToInputGraphQLType(
 ): GraphQLInputObjectType {
   const objectName = generateInputName(object, internalData)
   const fields = () =>
-    mapObject(object.fields, typeToGraphQLInputObjectField({ ...internalData, defaultName: undefined }, objectName))
+    mapObject(
+      object.fields,
+      typeToGraphQLInputObjectField({ ...internalData, defaultName: undefined }, objectName, object.options),
+    )
   return new GraphQLInputObjectType({
     name: checkNameOccurencies(objectName, internalData),
     fields,
@@ -292,7 +295,10 @@ function entityToGraphQLType(
 ): GraphQLObjectType {
   const entityName = generateName(entity, internalData)
   const fields = () =>
-    flatMapObject(entity.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, entityName))
+    flatMapObject(
+      entity.fields,
+      typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, entityName, entity.options),
+    )
   return new GraphQLObjectType({
     name: checkNameOccurencies(entityName, internalData),
     fields,
@@ -317,6 +323,7 @@ function entityToInputGraphQLType(
 function typeToGraphQLObjectField(
   internalData: InternalData,
   objectName: string,
+  objectOptions?: model.ObjectTypeOptions,
 ): (fieldName: string, fieldType: model.Type) => [string, GraphQLFieldConfig<any, any>][] {
   return (fieldName, fieldType) => {
     const tags = model.concretise(fieldType).options?.tags ?? {}
@@ -353,7 +360,7 @@ function typeToGraphQLObjectField(
         {
           type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType),
           args: graphqlRetrieveArgs,
-          description: model.getFirstDescription(fieldType),
+          description: (objectOptions?.fields ?? {})[fieldName]?.description,
         },
       ],
     ]
@@ -380,6 +387,7 @@ function retrieveTypeToGraphqlArgs(
 function typeToGraphQLInputObjectField(
   internalData: InternalData,
   objectName: string,
+  objectOptions?: model.ObjectTypeOptions,
 ): (fieldName: string, fieldType: model.Type) => GraphQLInputFieldConfig {
   return (fieldName, fieldType) => {
     const fieldDefaultName = generateInputName(fieldType, {
@@ -392,7 +400,10 @@ function typeToGraphQLInputObjectField(
       defaultName: fieldDefaultName,
     })
     const canBeMissing = model.isOptional(fieldType) || model.isNullable(fieldType)
-    return { type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType) }
+    return {
+      type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType),
+      description: (objectOptions?.fields ?? {})[fieldName]?.description,
+    }
   }
 }
 

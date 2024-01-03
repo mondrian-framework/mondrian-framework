@@ -1,4 +1,5 @@
 import { model } from '.'
+import { mapObject } from '@mondrian-framework/utils'
 
 type TypeTransformer<T extends model.Type> = (type: T) => model.Type
 export function memoizeTypeTransformation<T extends model.Type>(mapper: TypeTransformer<T>): (type: T) => model.Type {
@@ -51,4 +52,33 @@ export function assertSafeObjectFields(record: Record<string, unknown>) {
       throw new Error(`Forbidden field name on object: "${field}"`)
     }
   }
+}
+
+export type RichField<T extends model.Type = model.Type> = { field: T; description?: string }
+export type RichFields = { readonly [K in string]: model.Type | RichField }
+
+//prettier-ignore
+export type RichFieldsToTypes<Ts extends RichFields> = {
+  readonly [K in keyof Ts]
+    : Ts[K] extends { field: infer T extends model.Type } ? T
+    : Ts[K] extends model.Type ? Ts[K]
+    : any
+}
+
+export function richFieldsToTypes<Ts extends RichFields>(
+  richTypes: Ts,
+): {
+  types: RichFieldsToTypes<Ts>
+  fields?: model.ObjectTypeOptions['fields']
+} {
+  const fields: model.ObjectTypeOptions['fields'] = {}
+  const types = mapObject(richTypes, (k, t) => {
+    if ('field' in t) {
+      fields[k] = { description: t.description }
+      return t.field
+    } else {
+      return t
+    }
+  })
+  return { types: types as RichFieldsToTypes<Ts>, fields: Object.keys(fields).length === 0 ? undefined : fields }
 }

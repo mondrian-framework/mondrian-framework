@@ -4,7 +4,7 @@ import { rest, utils } from '@mondrian-framework/rest'
 import { replaceLast } from '@mondrian-framework/utils'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import fs from 'fs'
-import lambdaApi, { Request, Response } from 'lambda-api'
+import lambdaApi, { Request, Response, API } from 'lambda-api'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
@@ -14,12 +14,14 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   api,
   context,
   error,
+  customize,
   ...args
 }: {
   api: rest.Api<Fs, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
   options: Partial<rest.ServeOptions>
+  customize?: (server: API) => void
 }): APIGatewayProxyHandlerV2 {
   utils.assertApiValidity(api)
   const server = lambdaApi({ base: '' })
@@ -65,5 +67,8 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
     })
   }
   attachRestMethods({ api, context, server, error })
+  if (customize) {
+    customize(server)
+  }
   return (event, context) => server.run(event, context)
 }

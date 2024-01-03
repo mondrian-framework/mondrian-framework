@@ -42,9 +42,11 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
     server.get(introspectionPath, (_, res) => {
       res.redirect(`${introspectionPath}index.html`)
     })
-    server.get(replaceLast(introspectionPath, '/', ''), (_, res) => {
-      res.redirect(`${introspectionPath}index.html`)
-    })
+    if (introspectionPath !== '/') {
+      server.get(replaceLast(introspectionPath, '/', ''), (_, res) => {
+        res.redirect(`${introspectionPath}index.html`)
+      })
+    }
     const cache: Map<string, unknown> = new Map()
     server.get(`${introspectionPath}:v/schema.json`, (req, reply) => {
       const v = (req.params as Record<string, string>).v

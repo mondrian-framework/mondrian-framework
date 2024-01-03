@@ -22,11 +22,10 @@ type SdkFunction<
   ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(options?: {
       retrieve?: P
       metadata?: Metadata
-      operationId?: string
     }) => Promise<SdkFunctionResult<OutputType, E, C, P>>
   : <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
       input: model.Infer<InputType>,
-      options?: { retrieve?: P; metadata?: Metadata; operationId?: string },
+      options?: { retrieve?: P; metadata?: Metadata },
     ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
@@ -174,31 +173,29 @@ class SdkBuilder<const Metadata> {
   }): Sdk<Fs, Metadata> {
     const presetLogger = mondrianLogger.build({ moduleName: module.name, server: 'LOCAL' })
     const fs = Object.fromEntries(
-      Object.entries(module.functions).map(([functionName, func]) => {
+      Object.entries(module.functions).map(([functionName, functionBody]) => {
         const wrapper = async (
           input: unknown,
           options?: {
             retrieve?: retrieve.GenericRetrieve
             metadata?: Metadata
-            operationId?: string
           },
         ) => {
-          const operationId = options?.operationId ?? utils.randomOperationId()
-          const thisLogger = presetLogger.updateContext({ operationId, operationName: functionName })
+          const thisLogger = presetLogger.updateContext({ operationName: functionName })
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
             const ctx = await module.context(contextInput, {
               input,
               retrieve: options?.retrieve,
-              operationId,
+              tracer: functionBody.tracer,
               logger: thisLogger,
               functionName,
             })
-            const result = await func.apply({
+            const result = await functionBody.apply({
               input: input as never,
               retrieve: options?.retrieve ?? {},
               context: ctx,
-              operationId,
+              tracer: functionBody.tracer,
               logger: thisLogger,
             })
             return result

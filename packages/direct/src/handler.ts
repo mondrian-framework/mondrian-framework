@@ -16,12 +16,10 @@ const SuccessResponse = (functionBody: functions.FunctionInterface, retr: retrie
   model.union({
     result: model.object({
       success: model.literal(true),
-      operationId: model.string(),
       result: functionBody.retrieve ? retrieve.selectedType(functionBody.output, retr) : functionBody.output,
     }),
     failure: model.object({
       success: model.literal(true),
-      operationId: model.string(),
       failure: functionBody.errors
         ? model.object(mapObject(functionBody.errors, (_, errorType) => model.optional(errorType)))
         : model.unknown(),
@@ -29,7 +27,6 @@ const SuccessResponse = (functionBody: functions.FunctionInterface, retr: retrie
   })
 type SuccessResponse = {
   success: true
-  operationId: string
   result: unknown
 }
 
@@ -139,11 +136,9 @@ async function handleFunctionCall<Fs extends functions.Functions, ServerContext,
   if (decodedRequest.isFailure) {
     return decodedRequest
   }
-  const operationId = utils.randomOperationId()
   const baseLogger = logger.build({
     moduleName: api.module.name,
     operationName: functionName,
-    operationId,
     server: 'DIRECT',
   })
   const { input, metadata, retrieve: thisRetrieve } = decodedRequest.value
@@ -154,14 +149,14 @@ async function handleFunctionCall<Fs extends functions.Functions, ServerContext,
     const contextValue = await api.module.context(contextInput, {
       functionName,
       input,
-      operationId,
+      tracer: functionBody.tracer,
       retrieve: thisRetrieve,
       logger: baseLogger,
     })
     const functionReturn = await functionBody.apply({
       context: contextValue,
       input,
-      operationId,
+      tracer: functionBody.tracer,
       retrieve: thisRetrieve,
       logger: baseLogger,
     })
@@ -170,7 +165,6 @@ async function handleFunctionCall<Fs extends functions.Functions, ServerContext,
       : result.ok(functionReturn)
     const response = successResponse.encodeWithoutValidation({
       success: true,
-      operationId,
       ...(functionResult.isOk ? { result: functionResult.value as never } : { failure: functionResult.error as never }),
     }) as SuccessResponse
     return result.ok(response)

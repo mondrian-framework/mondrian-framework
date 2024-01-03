@@ -81,9 +81,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
         continue
       }
       //TODO [Good first issue]: execute in a separate handler (concurrency)
-      const operationId = utils.randomOperationId()
       const m = message.Messages[0]
-      const operationLogger = baseLogger.updateContext({ operationId })
       let body: unknown
       try {
         body = m.Body === undefined ? undefined : JSON.parse(m.Body)
@@ -104,16 +102,16 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
       const ctx = await module.context(contextInput, {
         input: decoded.value,
         retrieve: undefined,
-        operationId,
-        logger: operationLogger,
+        tracer: functionBody.tracer,
+        logger: baseLogger,
         functionName,
       })
       await functionBody.apply({
         input: decoded.value as never,
         retrieve: {},
-        operationId,
+        tracer: functionBody.tracer,
         context: ctx,
-        logger: operationLogger,
+        logger: baseLogger,
       })
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
     } catch (error) {

@@ -90,7 +90,7 @@ export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
     logger: logger.MondrianLogger
     functionName: keyof Fs
     context: unknown
-    operationId: string
+    tracer: functions.Tracer
     functionArgs: {
       retrieve?: retrieve.GenericRetrieve
       input?: unknown

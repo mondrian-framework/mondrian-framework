@@ -1,5 +1,5 @@
 import { functions, logger, retrieve, security } from '.'
-import { ErrorType, OutputRetrieveCapabilities } from './function'
+import { ErrorType, OutputRetrieveCapabilities, Tracer } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
@@ -33,7 +33,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
     args: {
       input: unknown
       retrieve: retrieve.GenericRetrieve | undefined
-      operationId: string
+      tracer: Tracer
       logger: logger.MondrianLogger
       functionName: string
     },

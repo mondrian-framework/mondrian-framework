@@ -122,10 +122,6 @@ export type FunctionArguments<
    */
   readonly retrieve: retrieve.FromType<O, C>
   /**
-   * Operation ID.
-   */
-  readonly operationId: string
-  /**
    * Function context.
    */
   readonly context: Context
@@ -133,6 +129,10 @@ export type FunctionArguments<
    * Function logger.
    */
   readonly logger: logger.MondrianLogger
+  /**
+   * Openteletry {@link Tracer} of this function.
+   */
+  readonly tracer: Tracer
 }
 
 export type ErrorType = model.Types | undefined

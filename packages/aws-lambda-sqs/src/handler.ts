@@ -59,9 +59,7 @@ export function build<const Fs extends functions.Functions, CI>({
           kind: SpanKind.INTERNAL,
         },
         async (span) => {
-          const operationId = utils.randomOperationId()
           const operationLogger = baseLogger.updateContext({
-            operationId,
             operationType: url,
             operationName: functionName,
           })
@@ -102,14 +100,14 @@ export function build<const Fs extends functions.Functions, CI>({
             const ctx = await module.context(contextInput, {
               input: decoded.value,
               retrieve: undefined,
-              operationId,
+              tracer: functionBody.tracer,
               logger: operationLogger,
               functionName,
             })
             await functionBody.apply({
               input: decoded.value as never,
               retrieve: {},
-              operationId,
+              tracer: functionBody.tracer,
               context: ctx,
               logger: operationLogger,
             })

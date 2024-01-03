@@ -669,16 +669,10 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
     functionBody.tracer.startActiveSpan(`mondrian:graphql-resolver:${functionName}`, async (span) => {
       const tracer = functionBody.tracer.withPrefix(`mondrian:graphql-resolver:${functionName}:`)
       try {
-        // Setup logging
-        const operationId = utils.randomOperationId()
-        span?.setAttribute('operationId', operationId)
-        const logger = thisLogger.updateContext({ operationId })
-        fromModuleInput.setHeader(serverContext, 'operation-id', operationId)
-
         // Decode all the needed bits to call the function
         const input = model.isNever(functionBody.input)
           ? undefined
-          : decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], logger, tracer)
+          : decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], thisLogger, tracer)
         const retrieveValue = completeRetrieveType.isOk
           ? decodeRetrieve(info, completeRetrieveType.value, isOutputTypeWrapped, tracer)
           : {}
@@ -690,8 +684,8 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
           moduleContext = await module.context(contextInput, {
             retrieve: retrieveValue,
             input,
-            operationId,
-            logger,
+            tracer: functionBody.tracer,
+            logger: thisLogger,
             functionName,
           })
 
@@ -700,8 +694,8 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
             context: moduleContext as Record<string, unknown>,
             retrieve: retrieveValue,
             input: input as never,
-            operationId,
-            logger,
+            tracer: functionBody.tracer,
+            logger: thisLogger,
           })
 
           //Output processing
@@ -737,8 +731,8 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
               error,
               functionArgs: { retrieve: retrieveValue, input },
               functionName: operationName,
-              logger,
-              operationId,
+              logger: thisLogger,
+              tracer: functionBody.tracer,
               ...serverContext,
             })
             if (result) {

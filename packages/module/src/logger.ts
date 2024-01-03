@@ -42,7 +42,6 @@ export class MondrianLogger implements Logger {
 
 type MondrianLoggerContext = {
   moduleName?: string
-  operationId?: string
   operationType?: string //QUERY, MUTATION, GET, POST, SQS-URL ...
   operationName?: string
   server?: string //REST, GRAPHQL, LOCAL, ...

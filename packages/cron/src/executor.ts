@@ -35,9 +35,7 @@ export function start<const F extends functions.Functions, CI>({
             kind: SpanKind.INTERNAL,
           },
           async (span) => {
-            const operationId = utils.randomOperationId()
             const operationLogger = baseLogger.updateContext({
-              operationId,
               operationType: options.cron,
               operationName: functionName,
             })
@@ -57,14 +55,14 @@ export function start<const F extends functions.Functions, CI>({
               const ctx = await api.module.context(contextInput, {
                 input,
                 retrieve: undefined,
-                operationId,
+                tracer: functionBody.tracer,
                 logger: operationLogger,
                 functionName,
               })
               await functionBody.apply({
                 input: input as never,
                 retrieve: {},
-                operationId,
+                tracer: functionBody.tracer,
                 logger: operationLogger,
                 context: ctx,
               })

@@ -1,5 +1,15 @@
 # @mondrian-framework/cron
 
+## 2.0.15
+
+### Patch Changes
+
+- Minor improvements
+- Updated dependencies
+  - @mondrian-framework/model@2.0.15
+  - @mondrian-framework/module@2.0.15
+  - @mondrian-framework/utils@2.0.15
+
 ## 2.0.14
 
 ### Patch Changes

@@ -24,17 +24,19 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   const server = lambdaApi()
   const options = { ...rest.DEFAULT_SERVE_OPTIONS, ...args.options }
   if (options.introspection) {
-    const introspectionPath = options.introspection.path
+    const introspectionPath = options.introspection.path.endsWith('/')
+      ? options.introspection.path
+      : `${options.introspection.path}/`
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}/v${api.version}/schema.json`)
-    server.get(`${introspectionPath}/swagger-initializer.js`, (req: Request, res: Response) => res.send(indexContent))
+      .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}v${api.version}/schema.json`)
+    server.get(`${introspectionPath}swagger-initializer.js`, (req: Request, res: Response) => res.send(indexContent))
     server.get(`${introspectionPath}`, (req: Request, res: Response) => {
-      res.redirect(`${introspectionPath}/index.html`)
+      res.redirect(`${introspectionPath}index.html`)
     })
     const cache: Map<string, unknown> = new Map()
-    server.get(`${introspectionPath}/:v/schema.json`, (req: Request, res: Response) => {
+    server.get(`${introspectionPath}:v/schema.json`, (req: Request, res: Response) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
       if (Number.isNaN(version) || !Number.isInteger(version) || version < 1 || version > api.version) {
@@ -50,14 +52,14 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
       return schema
     })
     // file deepcode ignore NoRateLimitingForExpensiveWebOperation: could disable this by disabling introspection in production environment
-    server.get(`${introspectionPath}/*`, (req: Request, res: Response) => {
+    server.get(`${introspectionPath}*`, (req: Request, res: Response) => {
       //avoid path traversal
       if (req.path.match(/\.\.\//g) !== null) {
         res.status(404)
         return
       }
       const file = `${getAbsoluteFSPath()}/${req.path}`
-      const path = file.replace(`${introspectionPath}/`, '')
+      const path = file.replace(`${introspectionPath}`, '')
       res.sendFile(path)
     })
   }

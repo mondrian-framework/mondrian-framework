@@ -26,7 +26,9 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
   const options = { ...rest.DEFAULT_SERVE_OPTIONS, ...args.options }
   const pathPrefix = api.options?.pathPrefix ?? '/api'
   if (options.introspection) {
-    const introspectionPath = options.introspection.path
+    const introspectionPath = options.introspection.path.endsWith('/')
+      ? options.introspection.path
+      : `${options.introspection.path}/`
     server.register(fastifyStatic, {
       root: getAbsoluteFSPath(),
       prefix: introspectionPath,
@@ -34,13 +36,13 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
     const indexContent = fs
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}/v${api.version}/schema.json`)
-    server.get(`${introspectionPath}/swagger-initializer.js`, (req, res) => res.send(indexContent))
-    server.get(`${introspectionPath}`, (req, res) => {
-      res.redirect(`${introspectionPath}/index.html`)
+      .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}v${api.version}/schema.json`)
+    server.get(`${introspectionPath}swagger-initializer.js`, (_, res) => res.send(indexContent))
+    server.get(`${introspectionPath}`, (_, res) => {
+      res.redirect(`${introspectionPath}index.html`)
     })
     const cache: Map<string, unknown> = new Map()
-    server.get(`${introspectionPath}/:v/schema.json`, (req, reply) => {
+    server.get(`${introspectionPath}:v/schema.json`, (req, reply) => {
       const v = (req.params as Record<string, string>).v
       const version = Number(v.replace('v', ''))
       if (Number.isNaN(version) || !Number.isInteger(version) || version < 1 || version > api.version) {

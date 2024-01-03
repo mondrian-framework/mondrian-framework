@@ -304,7 +304,7 @@ class FunctionBuilder<const Context extends Record<string, unknown>> {
         throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
       }
     }
-    return new BaseFunction({ options: { namespace: this.namespace, ...func.options }, ...func })
+    return new BaseFunction({ ...func, options: { namespace: this.namespace, ...func.options } })
   }
 }
 

@@ -110,6 +110,7 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   errorCodes?: { [K in keyof Exclude<F['errors'], undefined>]?: number }
   namespace?: string | null
   security?: OpenAPIV3_1.SecurityRequirementObject[]
+  contentType?: string
 }
 
 type NullableOperationObject = {

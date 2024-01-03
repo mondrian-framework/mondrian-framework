@@ -90,7 +90,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
             : specification.openapi?.specification.responses ?? {
                 '200': {
                   description: 'Success',
-                  content: { 'application/json': { schema } },
+                  content: { [specification.contentType ?? 'application/json']: { schema } },
                 },
                 ...errorSchemas,
               },

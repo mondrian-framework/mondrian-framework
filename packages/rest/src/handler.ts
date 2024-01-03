@@ -95,13 +95,21 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
               const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
               const key = Object.keys(applyOutput.error)[0]
               const status = key ? codes[key] ?? 400 : 400
-              const response: http.Response = { status, body: applyOutput.error }
+              const response: http.Response = {
+                status,
+                body: applyOutput.error,
+                headers: { 'Content-Type': 'application/json' },
+              }
               endSpanWithResponse({ span, response })
               return response
             } else {
               const value = functionBody.errors ? applyOutput.value : applyOutput //unwrap output
               const encoded = partialOutputType.encodeWithoutValidation(value as never)
-              const response: http.Response = { status: 200, body: encoded }
+              const response: http.Response = {
+                status: 200,
+                body: encoded,
+                headers: { 'Content-Type': specification.contentType ?? 'application/json' },
+              }
               endSpanWithResponse({ span, response })
               return response
             }

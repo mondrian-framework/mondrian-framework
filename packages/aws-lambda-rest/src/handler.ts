@@ -1,6 +1,7 @@
 import { attachRestMethods } from './methods'
 import { functions } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
+import { replaceLast } from '@mondrian-framework/utils'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
 import fs from 'fs'
 import lambdaApi, { Request, Response } from 'lambda-api'
@@ -21,7 +22,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
   options: Partial<rest.ServeOptions>
 }): APIGatewayProxyHandlerV2 {
   utils.assertApiValidity(api)
-  const server = lambdaApi()
+  const server = lambdaApi({ base: '' })
   const options = { ...rest.DEFAULT_SERVE_OPTIONS, ...args.options }
   if (options.introspection) {
     const introspectionPath = options.introspection.path.endsWith('/')
@@ -31,8 +32,8 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
       .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
       .toString()
       .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}v${api.version}/schema.json`)
-    server.get(`${introspectionPath}swagger-initializer.js`, (req: Request, res: Response) => res.send(indexContent))
-    server.get(`${introspectionPath}`, (req: Request, res: Response) => {
+    server.get(`${introspectionPath}swagger-initializer.js`, (_: Request, res: Response) => res.send(indexContent))
+    server.get(`${introspectionPath}`, (_: Request, res: Response) => {
       res.redirect(`${introspectionPath}index.html`)
     })
     const cache: Map<string, unknown> = new Map()
@@ -59,7 +60,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
         return
       }
       const file = `${getAbsoluteFSPath()}/${req.path}`
-      const path = file.replace(`${introspectionPath}`, '')
+      const path = replaceLast(file, `${introspectionPath}`, '')
       res.sendFile(path)
     })
   }

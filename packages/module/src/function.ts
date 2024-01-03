@@ -321,13 +321,13 @@ export function define<
 >(
   func: FunctionInterface<I, O, E, R>,
 ): FunctionInterface<I, O, E, R> & {
-  implements: <Context extends Record<string, unknown> = {}>(
+  implement: <Context extends Record<string, unknown> = {}>(
     implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
   ) => FunctionImplementation<I, O, E, R, Context>
 } {
   return {
     ...func,
-    implements<Context extends Record<string, unknown> = {}>(
+    implement<Context extends Record<string, unknown> = {}>(
       implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
     ) {
       return withContext<Context>().build({ ...func, ...implementation })

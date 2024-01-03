@@ -2,6 +2,7 @@ import { attachRestMethods } from './methods'
 import { fastifyStatic } from '@fastify/static'
 import { functions } from '@mondrian-framework/module'
 import { rest } from '@mondrian-framework/rest'
+import { replaceLast } from '@mondrian-framework/utils'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { FastifyInstance } from 'fastify'
 import fs from 'fs'
@@ -38,7 +39,10 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
       .toString()
       .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}v${api.version}/schema.json`)
     server.get(`${introspectionPath}swagger-initializer.js`, (_, res) => res.send(indexContent))
-    server.get(`${introspectionPath}`, (_, res) => {
+    server.get(introspectionPath, (_, res) => {
+      res.redirect(`${introspectionPath}index.html`)
+    })
+    server.get(replaceLast(introspectionPath, '/', ''), (_, res) => {
       res.redirect(`${introspectionPath}index.html`)
     })
     const cache: Map<string, unknown> = new Map()

@@ -281,3 +281,11 @@ export function groupBy<O, K extends string>(list: O[], getKey: (item: O) => K):
     {} as Record<K, O[]>,
   )
 }
+
+export function reverseStr(s: string): string {
+  return [...s].reverse().join('')
+}
+
+export function replaceLast(str: string, toFind: string, toReplace: string): string {
+  return reverseStr(reverseStr(str).replace(reverseStr(toFind), reverseStr(toReplace)))
+}

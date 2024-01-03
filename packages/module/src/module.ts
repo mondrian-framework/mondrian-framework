@@ -179,7 +179,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 export function define<const Fs extends functions.FunctionsInterfaces>(
   module: ModuleInterface<Fs>,
 ): ModuleInterface<Fs> & {
-  implements: <
+  implement: <
     FsI extends {
       [K in keyof Fs]: functions.FunctionImplementation<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], any, any>
     },
@@ -189,5 +189,5 @@ export function define<const Fs extends functions.FunctionsInterfaces>(
   ) => Module<FsI, ContextInput>
 } {
   assertUniqueNames(module.functions)
-  return { ...module, implements: (moduleImpl) => build({ ...module, ...moduleImpl }) }
+  return { ...module, implement: (moduleImpl) => build({ ...module, ...moduleImpl }) }
 }

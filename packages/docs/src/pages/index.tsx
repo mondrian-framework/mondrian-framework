@@ -125,17 +125,20 @@ export type User = model.Infer<typeof User>
                   {`import { functions } from '@mondrian-framework/module'
 import { model } from '@mondrian-framework/model'
 
-const register = functions.build({
-  input: model.object({ 
-    email: model.email(), 
-    password: model.string({ minLength: 8 }) 
-  }),
-  output: model.object({ jwt: model.string() }),
-  errors: { weakPassword: model.string() },
-  async body({ input: { email, password } }) {
-    // BUSINESS LOGIC
-  },
-})
+const register = functions
+  .define({
+    input: model.object({ 
+      email: model.email(), 
+      password: model.string({ minLength: 8 }) 
+    }),
+    output: model.object({ jwt: model.string() }),
+    errors: { weakPassword: model.string() },
+  })
+  .implements({
+    async body({ input: { email, password } }) {
+      // BUSINESS LOGIC
+    },
+  })
 
 const userModule = module.build({
   name: 'User',

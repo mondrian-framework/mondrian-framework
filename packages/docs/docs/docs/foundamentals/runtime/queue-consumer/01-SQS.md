@@ -1,3 +1,0 @@
-# SQS consumer
-
-

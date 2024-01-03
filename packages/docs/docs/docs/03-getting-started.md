@@ -45,13 +45,16 @@ import { fastify } from 'fastify'
 const server = fastify()
 
 // function
-const helloWorldFunction = functions.build({
-  input: model.,
-  output: model.string(),
-  async body() {    
-    return 'Hello World!'
-  },
-})
+const helloWorldFunction = functions
+  .define({
+    input: model.,
+    output: model.string(),
+  })
+  .implements({
+    async body() {    
+      return 'Hello World!'
+    },
+  })
 
 // module
 const helloWorldModule = module.build({

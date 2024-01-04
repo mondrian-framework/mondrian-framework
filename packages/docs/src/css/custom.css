@@ -58,11 +58,21 @@
   color: var(--ifm-table-of-contents-color-active);
 }
 
-.toggleButton_------node_modules-\@docusaurus-theme-classic-lib-theme-ColorModeToggle-styles-module:hover {
+.navbar__items .clean-btn:hover {
+  transition: transform .4s;
+}
+
+.navbar__items .clean-btn:hover {
   background: #225095 !important;
   color: #ffffff;
-  transition: transform .4s;
+  
   transform: scale(1.1);
+}
+
+.DocSearch-Button:active,
+.DocSearch-Button:focus,
+.DocSearch-Button:hover {
+  box-shadow: none !important;
 }
 
 @media screen and (max-width: 500px) {

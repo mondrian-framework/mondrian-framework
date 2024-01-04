@@ -47,20 +47,19 @@ const config: Config = {
       },
       items: [
         {
+          to: '/docs/docs/getting-started',
+          position: 'left',
+          label: 'Getting Started',
+        },
+        {
           type: 'docSidebar',
           sidebarId: 'docsSidebar',
           position: 'left',
           label: 'Documentation',
         },
         {
-          type: 'docSidebar',
-          sidebarId: 'communitySidebar',
-          position: 'left',
-          label: 'Community',
-        },
-        {
           href: 'https://github.com/mondrian-framework/mondrian-framework',
-          label: 'GitHub',
+          className: 'header-github-link',
           position: 'right',
         },
       ],

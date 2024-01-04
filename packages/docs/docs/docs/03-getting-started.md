@@ -22,57 +22,90 @@ and you can choose the right modules for your project base on your needs. In thi
 to create a simple backend server that exposes a REST API.
 
 ```
-npm i @mondrian-framework/model 
+> npm i @mondrian-framework/model 
       @mondrian-framework/module 
       @mondrian-framework/rest-fastify 
       @mondrian-framework/graphql-yoga
       fastify
 ```
 
-## Hello World API
+## Writing your first API
 
 Mondrian Framework promotes the decoupling of the parts of an application by well-defined abstractions, 
-which is why creating an API requires defining a function, a module that contains it and a runtime that 
-executes the latter.
+which is why creating an API requires defining a function, a module that contains it and some runtimes 
+to execute the application.
+
+Let's start by writing a very simple echo API.
+
+### The model
+
+First we define the input and output data model, which in this case will be simple strings.
 
 ```ts showLineNumbers
 import { model } from '@mondrian-framework/model'
-import { functions, module } from '@mondrian-framework/module'
+
+const Input = model.string()
+const Output = model.string()
+```
+
+### The function
+
+We continue by writing the definition and logic of the echo function.
+
+```ts showLineNumbers
+import { result } from '@mondrian-framework/model'
+import { functions } from '@mondrian-framework/module'
+
+// ...
+
+const echoFunction = functions
+  .define({
+    input: Input,
+    output: Output,
+  })
+  .implement({
+    async body({ input }) {    
+      return result.ok(input)
+    },
+  })
+```
+
+### The module
+At this point we define the module, in this case with only one function.
+
+```ts showLineNumbers
+import { module } from '@mondrian-framework/module'
+
+// ...
+
+const echoModule = module.build({
+  name: 'echo',
+  functions: { echo: echoFunction }
+})
+```
+
+### The runtimes
+
+In this example, to demonstrate the power of the framework, we will run the module on two 
+different runtimes, one as the Rest API and the other as the GraphQL operation.
+
+```ts showLineNumbers
 import { serve as serveREST, rest } from '@mondrian-framework/rest-fastify'
 import { serveWithFastify as serveGraphQL, graphql } from '@mondrian-framework/graphql-yoga'
 import { fastify } from 'fastify'
 
+//...
+
 const server = fastify()
 
-// function
-const helloWorldFunction = functions
-  .define({
-    input: model.,
-    output: model.string(),
-  })
-  .implement({
-    async body() {    
-      return 'Hello World!'
-    },
-  })
-
-// module
-const helloWorldModule = module.build({
-  name: 'hello-world',
-  functions: { helloWorld: helloWorldFunction },
-  context: async () => ({}),
-})
-
-// REST runtime
 const restAPI = rest.build({
-  module: helloWorldModule,
+  module: echoModule,
   options: { introspection: true },
 })
 serveGraphQL({ server, api: restAPI, context: async ({}) => ({}) })
 
-// GraphQL runtime
 const graphQLAPI = graphql.build({
-  module: moduleInstance,
+  module: echoModule,
   options: { introspection: true },
 })
 serveGraphQL({ server, api: graphQLAPI, context: async ({}) => ({}) })
@@ -82,4 +115,72 @@ server.listen({ port: 4000 }).then((address) => {
   console.log(`OpenAPI specification available at address ${address}/openapi`)
   console.log(`GraphQL endpoint available at address ${address}/graphql`)
 })
+```
+
+### Runnable example
+
+Below is the union of the previous pieces into easily executable code.
+
+```ts showLineNumbers
+import { model } from '@mondrian-framework/model'
+import { functions, module } from '@mondrian-framework/module'
+import { serve as serveREST, rest } from '@mondrian-framework/rest-fastify'
+import { serveWithFastify as serveGraphQL, graphql } from '@mondrian-framework/graphql-yoga'
+import { fastify } from 'fastify'
+
+const Input = model.string()
+const Output = model.string()
+
+const echoFunction = functions
+  .define({
+    input: Input,
+    output: Output,
+  })
+  .implement({
+    async body({ input }) {    
+      return result.ok(input)
+    },
+  })
+
+const echoModule = module.build({
+  name: 'echo',
+  functions: { echo: echoFunction }
+})
+
+const server = fastify()
+
+const restAPI = rest.build({
+  module: echoModule,
+  options: { introspection: true },
+})
+serveGraphQL({ server, api: restAPI, context: async ({}) => ({}) })
+
+const graphQLAPI = graphql.build({
+  module: echoModule,
+  options: { introspection: true },
+})
+serveGraphQL({ server, api: graphQLAPI, context: async ({}) => ({}) })
+
+server.listen({ port: 4000 }).then((address) => {
+  console.log(`Server started.`)
+  console.log(`OpenAPI specification available at address ${address}/openapi`)
+  console.log(`GraphQL endpoint available at address ${address}/graphql`)
+})
+```
+
+## Building
+
+The building of the application is nothing more than the normal build of a 
+TypeScript project, thus requiring simple compilation:
+
+```
+> tsc
+```
+
+## Running
+
+Similarly, you can start it as a normal Node.js application. Assuming that the 
+sources have been compiled into the `/build/app.js` file:
+```
+> node build/app.js
 ```

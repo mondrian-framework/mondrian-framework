@@ -5,7 +5,7 @@ Everything you may need to do it is enclosed inside the `functions` namespace, s
 get things started you should import it:
 
 ```ts showLineNumbers
-import { functions } from '@mondrian-framework/model'
+import { functions } from '@mondrian-framework/module'
 ```
 
 The definition of a function contains all and only the informations necessary to establish 
@@ -188,7 +188,7 @@ every item.
 `take` is an integer that simply indicates the maximum number of records to be returned.
 
 #### Skip
-`take` is an integer that indicates the number of records to skip.
+`skip` is an integer that indicates the number of records to skip.
 
 :::info
 For all these parameters, instead of designing a completely proprietary syntax, we chose to use the 

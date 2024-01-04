@@ -168,7 +168,7 @@ describe('edge cases', () => {
     const client = build({
       endpoint: async () => {
         return {
-          body: { success: true, operationId: '123', failure: {} },
+          body: { success: true, failure: {} },
           status: 200,
         }
       },
@@ -185,7 +185,7 @@ describe('edge cases', () => {
         if (request.headers.additional !== '123') {
           return { body: 'Internal server error', status: 500 }
         } else {
-          return { body: { success: true, operationId: '123', result: 1 }, status: 200 }
+          return { body: { success: true, result: 1 }, status: 200 }
         }
       },
       api,

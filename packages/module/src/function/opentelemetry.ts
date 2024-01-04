@@ -43,7 +43,6 @@ export class OpentelemetryFunction<
       {
         kind: SpanKind.INTERNAL,
         attributes: {
-          operationId: args.operationId,
           retrieve: JSON.stringify(args.retrieve),
         },
       },

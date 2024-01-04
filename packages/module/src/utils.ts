@@ -1,17 +1,6 @@
 import { functions } from '.'
 import { decoding, model, result, validation } from '@mondrian-framework/model'
 import { mapObject } from '@mondrian-framework/utils'
-import crypto from 'crypto'
-
-/**
- * Generates a random operation id.
- * It's a UUID v4.
- *
- * @returns new random operation id.
- */
-export function randomOperationId() {
-  return crypto.randomUUID()
-}
 
 /**
  * Return a set with all the unique types referenced by the given type.

@@ -14,7 +14,7 @@ class MyConsoleLogRecordExporter implements LogRecordExporter {
       console.log(
         `${log.attributes.server} -> [${log.severityText}, ${new Date(
           log.hrTime[0] * 1000 + log.hrTime[1] / 1000000,
-        ).toISOString()}, ${log.attributes.operationId}] ${log.body}`,
+        ).toISOString()}] ${log.body}`,
       )
     }
     resultCallback({ code: opentelemetry.core.ExportResultCode.SUCCESS })

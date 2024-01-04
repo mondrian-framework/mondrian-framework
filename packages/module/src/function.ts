@@ -122,10 +122,6 @@ export type FunctionArguments<
    */
   readonly retrieve: retrieve.FromType<O, C>
   /**
-   * Operation ID.
-   */
-  readonly operationId: string
-  /**
    * Function context.
    */
   readonly context: Context
@@ -133,6 +129,10 @@ export type FunctionArguments<
    * Function logger.
    */
   readonly logger: logger.MondrianLogger
+  /**
+   * Openteletry {@link Tracer} of this function.
+   */
+  readonly tracer: Tracer
 }
 
 export type ErrorType = model.Types | undefined
@@ -321,13 +321,13 @@ export function define<
 >(
   func: FunctionInterface<I, O, E, R>,
 ): FunctionInterface<I, O, E, R> & {
-  implements: <Context extends Record<string, unknown> = {}>(
+  implement: <Context extends Record<string, unknown> = {}>(
     implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
   ) => FunctionImplementation<I, O, E, R, Context>
 } {
   return {
     ...func,
-    implements<Context extends Record<string, unknown> = {}>(
+    implement<Context extends Record<string, unknown> = {}>(
       implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
     ) {
       return withContext<Context>().build({ ...func, ...implementation })

@@ -49,9 +49,6 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
       async (span) => {
         //Setup logging
         const tracer = functionBody.tracer.withPrefix(`mondrian:rest-handler:${functionName}:`)
-        const operationId = utils.randomOperationId()
-        span?.setAttribute('operationId', operationId)
-        const logger = thisLogger.updateContext({ operationId })
 
         const subHandler = async () => {
           //Decode input
@@ -77,8 +74,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
             moduleContext = await module.context(contextInput, {
               retrieve: retrieveValue,
               input,
-              operationId,
-              logger,
+              tracer: functionBody.tracer,
+              logger: thisLogger,
               functionName,
             })
 
@@ -87,8 +84,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
               retrieve: retrieveValue ?? {},
               input: input as never,
               context: moduleContext as Record<string, unknown>,
-              operationId,
-              logger,
+              tracer: functionBody.tracer,
+              logger: thisLogger,
             })
             //Output processing
             if (functionBody.errors && applyOutput.isFailure) {
@@ -121,9 +118,9 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
             if (error) {
               const result = await error({
                 error: e,
-                logger,
+                logger: thisLogger,
                 functionName,
-                operationId,
+                tracer: functionBody.tracer,
                 context: moduleContext,
                 functionArgs: { input, retrieve: retrieveValue },
                 ...serverContext,
@@ -140,7 +137,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
         }
 
         const response = await subHandler()
-        return { ...response, headers: { ...response.headers, operationId } }
+        return { ...response, headers: { ...response.headers } }
       },
     )
   return handler

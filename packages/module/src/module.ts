@@ -1,5 +1,5 @@
 import { functions, logger, retrieve, security } from '.'
-import { ErrorType, OutputRetrieveCapabilities } from './function'
+import { ErrorType, OutputRetrieveCapabilities, Tracer } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
@@ -33,7 +33,7 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
     args: {
       input: unknown
       retrieve: retrieve.GenericRetrieve | undefined
-      operationId: string
+      tracer: Tracer
       logger: logger.MondrianLogger
       functionName: string
     },
@@ -179,7 +179,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 export function define<const Fs extends functions.FunctionsInterfaces>(
   module: ModuleInterface<Fs>,
 ): ModuleInterface<Fs> & {
-  implements: <
+  implement: <
     FsI extends {
       [K in keyof Fs]: functions.FunctionImplementation<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], any, any>
     },
@@ -189,5 +189,5 @@ export function define<const Fs extends functions.FunctionsInterfaces>(
   ) => Module<FsI, ContextInput>
 } {
   assertUniqueNames(module.functions)
-  return { ...module, implements: (moduleImpl) => build({ ...module, ...moduleImpl }) }
+  return { ...module, implement: (moduleImpl) => build({ ...module, ...moduleImpl }) }
 }

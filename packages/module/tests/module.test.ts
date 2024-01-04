@@ -180,10 +180,7 @@ test('Real example', async () => {
   ).rejects.toThrow()
   if (loginResult.isOk && loginResult.value) {
     const authClient = client.withMetadata({ authorization: loginResult.value.jwt })
-    const myUser = await authClient.functions.completeProfile(
-      { firstname: 'Pieter', lastname: 'Mondriaan' },
-      { operationId: '123' },
-    )
+    const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }, {})
     expect(myUser.isOk && myUser.value).toEqual({
       email: 'admin@domain.com',
       password: '1234',

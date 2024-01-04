@@ -7,12 +7,13 @@ In Mondrian, a function is implemented by starting with its [definition](./01-de
 invoking the `implement` method.
 
 ```ts showLineNumbers
+import { result } from '@mondrian-framework/model'
 import { createPostDefinition } from './definitions'
 
 const createPost = createPostDefinition.implement({
   body: async ({ input }) => {
     // const output = ...
-    return output
+    return result.ok(output)
   }
 })
 ```
@@ -42,7 +43,7 @@ const createPost = createPostDefinition.implement({
     // highlight-start
     // typeof input => PostInput
     // highlight-end
-    return output
+    return result.ok(output)
   }
 })
 ```
@@ -83,7 +84,7 @@ const createPost = createPostDefinition.implement<Context>({
     async body({ input, context }) {    
 // highlight-end
       const postId = await context.repository.posts.insertOne(input)
-      return postId
+      return result.ok(postId)
     },
   })
 ```
@@ -100,6 +101,44 @@ of view of the function, is indeed an input, but unlike the others it is not pro
 module and the runtime that executes it. Also, unlike inputs that are normally immutable, context may not be, and 
 through it actions and commands can be executed.
 ::::
+
+## Output
+
+The implementation of a function must have a return value that conforms to when described in the definition, be it 
+an output or an error.
+
+Mondrian provides a utility module named `result` to facilitate this implementation, as shown below.
+
+```ts showLineNumbers
+import { result } from '@mondrian-framework/model'
+
+const createPost = createPostDefinition.implement({
+  async body({ input, context, logger }) {    
+    if(input.content.lenght < 10){
+      return result.fail({ contentMinLength: 'Content must be at least of 10 characters.' })
+    }
+    const postId = await context.repository.posts.insertOne(input)
+    return result.ok(postId)
+  },
+})
+```
+
+You must remember that in Mondrian both errors and results are treated as return values, and no application 
+errors are handled using exceptions and `throw`. This approach is freely inspired by many functional languages.
+
+So every function must always return a value or failure, and to do this the framework puts two respective 
+functions `ok` and `fail`. They are strictly typed accordingly to the function definition, both in terms of 
+output and errors.
+
+:::warning
+A typical error in using the `fail` function is the omission of the `return`. Omitting to return a failure in 
+some cases may generate no error at compile time but only at runtime, so it is important to be careful with it. 
+It is in general a best practice to **always return the result** of an `ok` or `fail` call.
+:::
+
+
+
+
 
 ## Logger
 Mondrian provides a ready-to-use, very convenient and configurable logging mechanism that can be used in any function. 

@@ -125,7 +125,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
 
   return {
     openapi: '3.1.0',
-    info: { version: module.version, title: module.name },
+    info: { version: module.version, title: module.name, description: module.description?.replaceAll('\n', '</br>') },
     servers,
     paths,
     components: {

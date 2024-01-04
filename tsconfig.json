@@ -32,6 +32,7 @@
       "@mondrian-framework/aws-lambda-sqs": ["./packages/aws-lambda-sqs"],
       "@mondrian-framework/aws-lambda-rest": ["./packages/aws-lambda-rest"],
       "@mondrian-framework/cron": ["./packages/cron"],
+      "@mondrian-framework/ci-tools": ["./packages/ci-tools"],
       "@mondrian-framework/example": ["./packages/example"]
     }
   },
@@ -74,6 +75,9 @@
     },
     {
       "path": "packages/graphql-yoga"
+    },
+    {
+      "path": "packages/ci-tools"
     },
     {
       "path": "packages/example"

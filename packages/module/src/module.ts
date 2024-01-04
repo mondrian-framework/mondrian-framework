@@ -14,6 +14,7 @@ import opentelemetry, { ValueType } from '@opentelemetry/api'
  */
 export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = functions.FunctionsInterfaces> {
   name: string
+  description?: string
   version: string
   functions: Fs
 }

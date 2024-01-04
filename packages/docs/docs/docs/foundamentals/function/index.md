@@ -44,7 +44,7 @@ const createPost = functions
     input: PostInput,
     output: model.string(),
   })
-  .implements<Context>({
+  .implement<Context>({
     async body({ input, context }) {    
       const postId = await context.repository.posts.insertOne(input)
       return postId

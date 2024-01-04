@@ -134,7 +134,7 @@ const register = functions
     output: model.object({ jwt: model.string() }),
     errors: { weakPassword: model.string() },
   })
-  .implements({
+  .implement({
     async body({ input: { email, password } }) {
       // BUSINESS LOGIC
     },

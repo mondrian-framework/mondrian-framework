@@ -50,7 +50,7 @@ const helloWorldFunction = functions
     input: model.,
     output: model.string(),
   })
-  .implements({
+  .implement({
     async body() {    
       return 'Hello World!'
     },

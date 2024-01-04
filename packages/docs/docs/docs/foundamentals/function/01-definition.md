@@ -83,7 +83,7 @@ const setNewPassword = functions.define({
 })
 ```
 
-## Entities retrieve
+## Retrieve entities
 
 Many times the output of a function is an [entity](../model//01-definition.md#entities) or an 
 array of entities. In these cases it is common for one or more inputs to be linked to the expected 

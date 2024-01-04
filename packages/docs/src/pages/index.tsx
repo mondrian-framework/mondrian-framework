@@ -6,11 +6,13 @@ import CodeBlock from '@theme/CodeBlock'
 import Layout from '@theme/Layout'
 import clsx from 'clsx'
 import React from 'react'
+import GitHubButton from 'react-github-btn'
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext()
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
+      <script async defer src="https://buttons.github.io/buttons.js"></script>
       <div className="container">
         <div className={styles.bannerContainer}>
           <div className={styles.bannerLeft}>

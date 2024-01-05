@@ -6,7 +6,7 @@ import { errors } from '@mondrian-framework/module'
 import { FastifyInstance } from 'fastify'
 
 const api = graphql.build({
-  module: module.instance,
+  module: module,
   functions: {
     register: { type: 'mutation' },
     login: { type: 'query' },

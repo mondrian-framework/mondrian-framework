@@ -63,18 +63,21 @@ In our first example, we'll guide you through creating a registration function u
 import { model } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
-const register = functions.build({
-  input: model.object({ email: model.email(), password: model.string() }),
-  output: model.object({ jwt: model.string() }),
-  async body({ input: { email, password } }) {
-    // weak password check
-    if (password.length < 3) {
-      throw new Error('Weak password.')
-    }
-    // register logic ...
-    return { jwt: '...' }
-  },
-})
+const register = functions
+  .define({
+    input: model.object({ email: model.email(), password: model.string() }),
+    output: model.object({ jwt: model.string() }),
+  })
+  .implement({
+    async body({ input: { email, password } }) {
+      // weak password check
+      if (password.length < 3) {
+        throw new Error('Weak password.')
+      }
+      // register logic ...
+      return { jwt: '...' }
+    },
+  })
 ```
 
 Congratulations! You've just implemented your initial Mondrian function. To enhance error handling, let's explore a more advanced example where we introduce typed errors:
@@ -83,25 +86,28 @@ Congratulations! You've just implemented your initial Mondrian function. To enha
 import { model, result } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
-const register = functions.build({
-  input: model.object({ email: model.email(), password: model.string() }),
-  output: model.object({ jwt: model.string() }),
-  errors: {
-    weakPassword: model.string(),
-    emailAlreadyUsed: model.string(),
-  },
-  async body({ input: { email, password } }) {
-    // weak password check
-    if (password.length < 3) {
-      return result.fail({ weakPassword: 'Need at least 3 characters' })
-    }
-    if (false /* email check logic */) {
-      return result.fail({ emailAlreadyUsed: 'This email is already used' })
-    }
-    // register logic ...
-    return result.ok({ jwt: '...' })
-  },
-})
+const register = functions
+  .define({
+    input: model.object({ email: model.email(), password: model.string() }),
+    output: model.object({ jwt: model.string() }),
+    errors: {
+      weakPassword: model.string(),
+      emailAlreadyUsed: model.string(),
+    },
+  })
+  .implement({
+    async body({ input: { email, password } }) {
+      // weak password check
+      if (password.length < 3) {
+        return result.fail({ weakPassword: 'Need at least 3 characters' })
+      }
+      if (false /* email check logic */) {
+        return result.fail({ emailAlreadyUsed: 'This email is already used' })
+      }
+      // register logic ...
+      return result.ok({ jwt: '...' })
+    },
+  })
 ```
 
 ### Build module
@@ -232,12 +238,15 @@ const Post = () =>
     author: User,
   })
 
-const getUsers = functions.build({
-  input: model.never(),
-  output: model.array(User),
-  retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
-  body: async ({ retrieve }) => prismaClient.user.findMany(retrieve), //retrieve type match Prisma generated types
-})
+const getUsers = functions
+  .define({
+    input: model.never(),
+    output: model.array(User),
+    retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
+  })
+  .implement({
+    body: async ({ retrieve }) => prismaClient.user.findMany(retrieve), //retrieve type match Prisma generated types
+  })
 ```
 
 By exposing the function as GraphQL endpoint we can navigate the relation between User and Post.
@@ -249,17 +258,20 @@ By exposing the function as GraphQL endpoint we can navigate the relation betwee
 In this configuration, we have created a data breach. In fact, by retrieving users with the `getUsers` query, we are exposing the entire graph to every caller. To resolve this problem, we can (and in some cases should) implement a first level of security on the function that checks if the caller is an authenticated user. We can do this as follows:
 
 ```typescript
-const getUsers = functions.withContext<{ userId?: string }>().build({
-  input: model.never(),
-  output: model.array(User),
-  retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
-  body: async ({ retrieve, context: { userId } }) => {
-    if (!userId) {
-      throw new Error('Not authenticated!') //this can be a first level of security
-    }
-    return await prismaClient.user.findMany(retrieve)
-  },
-})
+const getUsers = functions
+  .define({
+    input: model.never(),
+    output: model.array(User),
+    retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
+  })
+  .implement<{ userId?: string }>({
+    body: async ({ retrieve, context: { userId } }) => {
+      if (!userId) {
+        throw new Error('Not authenticated!') //this can be a first level of security
+      }
+      return await prismaClient.user.findMany(retrieve)
+    },
+  })
 ```
 
 A problem remains... What if a logged-in user selects all user passwords?! Or maybe traverses the graph and selects some private fields? Mondrian-Framework natively supports a layer of security that can be used to secure the graph. This mechanism is applied every time we call a function with some retrieve capabilities and for the protected types (defined by you). In the following example, we show how to define such a level of security:

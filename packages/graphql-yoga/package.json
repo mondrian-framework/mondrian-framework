@@ -11,7 +11,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "graphql-yoga": "^5.0.0"
+    "graphql-yoga": "^5.1.1"
   },
   "peerDependencies": {
     "fastify": "^4.25.2",

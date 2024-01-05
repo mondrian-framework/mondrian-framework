@@ -35,80 +35,89 @@ test('Real example', async () => {
     }
   }
 
-  const login = functions.withContext<SharedContext & { from?: string }>().build({
-    input: LoginInput,
-    output: LoginOutput,
-    errors: { invalidEmailOrPassword: model.literal('Invalid email or password') },
-    body: async ({ input, context: { db }, logger }) => {
-      const user = db.findUser({ email: input.email })
-      if (!user || user.password !== input.password) {
-        logger.logWarn(`Invalid email or password: ${input.email}`)
-        return result.fail({ invalidEmailOrPassword: 'Invalid email or password' })
-      }
-      logger.logInfo(`Logged in: ${input.email}`)
-      return result.ok({ jwt: user.email, user })
-    },
-    middlewares: [
-      {
-        name: 'Hide password',
-        apply: async (args, next) => {
-          const res = await next(args)
-          if (res.isOk && res.value?.user?.password) {
-            return result.ok({ ...res.value, user: { ...res.value.user, password: '****' } })
-          }
-          return res
+  const login = functions
+    .define({
+      input: LoginInput,
+      output: LoginOutput,
+      errors: { invalidEmailOrPassword: model.literal('Invalid email or password') },
+      options: { namespace: 'authentication' },
+    })
+    .implement<SharedContext & { from?: string }>({
+      body: async ({ input, context: { db }, logger }) => {
+        const user = db.findUser({ email: input.email })
+        if (!user || user.password !== input.password) {
+          logger.logWarn(`Invalid email or password: ${input.email}`)
+          return result.fail({ invalidEmailOrPassword: 'Invalid email or password' })
+        }
+        logger.logInfo(`Logged in: ${input.email}`)
+        return result.ok({ jwt: user.email, user })
+      },
+      middlewares: [
+        {
+          name: 'Hide password',
+          apply: async (args, next) => {
+            const res = await next(args)
+            if (res.isOk && res.value?.user?.password) {
+              return result.ok({ ...res.value, user: { ...res.value.user, password: '****' } })
+            }
+            return res
+          },
         },
-      },
-    ],
-    options: { namespace: 'authentication' },
-  })
+      ],
+    })
 
-  const register = functions.withContext<SharedContext & { from?: string }>().build({
-    input: LoginInput,
-    output: model.nullable(User),
-    errors: {
-      weakPassword: model.literal('Weak passowrd'),
-      doubleRegister: model.literal('Double register'),
-    },
-    body: async ({ input, context: { db }, logger }) => {
-      if (!input.email.includes('@domain.com')) {
-        throw new Error('Invalid domain!')
-      }
-      const user = db.findUser({ email: input.email })
-      if (user) {
-        logger.logWarn(`Double register`, { email: input.email })
-        return result.fail({ doubleRegister: 'Double register' })
-      } else {
-        logger.logInfo(`Registered: ${input.email}`)
-        return result.ok(db.updateUser(input))
-      }
-    },
-    middlewares: [
-      {
-        name: 'Avoid weak passwords',
-        apply: async (args, next) =>
-          args.input.password === '123' ? result.fail({ weakPassword: 'Weak passowrd' }) : next(args),
+  const register = functions
+    .define({
+      input: LoginInput,
+      output: model.nullable(User),
+      errors: {
+        weakPassword: model.literal('Weak passowrd'),
+        doubleRegister: model.literal('Double register'),
       },
-    ],
-    options: { namespace: 'authentication' },
-  })
+      options: { namespace: 'authentication' },
+    })
+    .implement<SharedContext & { from?: string }>({
+      body: async ({ input, context: { db }, logger }) => {
+        if (!input.email.includes('@domain.com')) {
+          throw new Error('Invalid domain!')
+        }
+        const user = db.findUser({ email: input.email })
+        if (user) {
+          logger.logWarn(`Double register`, { email: input.email })
+          return result.fail({ doubleRegister: 'Double register' })
+        } else {
+          logger.logInfo(`Registered: ${input.email}`)
+          return result.ok(db.updateUser(input))
+        }
+      },
+      middlewares: [
+        {
+          name: 'Avoid weak passwords',
+          apply: async (args, next) =>
+            args.input.password === '123' ? result.fail({ weakPassword: 'Weak passowrd' }) : next(args),
+        },
+      ],
+    })
 
-  const completeProfile = functions.withContext<SharedContext & { authenticatedUser?: { email: string } }>().build({
-    input: model.object({ firstname: model.string(), lastname: model.string() }),
-    output: User,
-    errors: { unauthorized: model.literal('unauthorized') },
-    body: async ({ input, context: { db, authenticatedUser } }) => {
-      if (!authenticatedUser) {
-        return result.fail({ unauthorized: 'unauthorized' })
-      }
-      const user = db.findUser({ email: authenticatedUser.email })
-      if (!user) {
-        throw new Error('Unrechable')
-      }
-      return result.ok(db.updateUser({ ...user, ...input }))
-    },
-    options: { namespace: 'business-logic' },
-  })
+  const completeProfile = functions
+    .define({
+      input: model.object({ firstname: model.string(), lastname: model.string() }),
+      output: User,
+      errors: { unauthorized: model.literal('unauthorized') },
+      options: { namespace: 'business-logic' },
+    })
+    .implement<SharedContext & { authenticatedUser?: { email: string } }>({
+      body: async ({ input, context: { db, authenticatedUser } }) => {
+        if (!authenticatedUser) {
+          return result.fail({ unauthorized: 'unauthorized' })
+        }
+        const user = db.findUser({ email: authenticatedUser.email })
+        if (!user) {
+          throw new Error('Unrechable')
+        }
+        return result.ok(db.updateUser({ ...user, ...input }))
+      },
+    })
   const memory = new Map<string, User>()
   const db: SharedContext['db'] = {
     updateUser(user) {
@@ -122,7 +131,6 @@ test('Real example', async () => {
 
   const m = module.build({
     name: 'test',
-    version: '1.0.0',
     options: { maxSelectionDepth: 2 },
     functions: { login, register, completeProfile },
     context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
@@ -195,17 +203,19 @@ describe('Unique type name', () => {
     const n = model.number().setName('Input')
     const input = model.number().setName('Input')
     const output = model.union({ n, v: input.setName('V') })
-    const f = functions.build({
-      input,
-      output,
-      body: () => {
-        throw 'Unreachable'
-      },
-    })
+    const f = functions
+      .define({
+        input,
+        output,
+      })
+      .implement({
+        body: () => {
+          throw 'Unreachable'
+        },
+      })
     expect(() =>
       module.build({
         name: 'test',
-        version: '1.0.0',
         functions: { f },
         context: async () => ({}),
       }),
@@ -216,20 +226,22 @@ describe('Unique type name', () => {
 describe('Default middlewares', () => {
   test('Testing maximum projection depth and output type', async () => {
     const type = () => model.entity({ type: model.optional(type), value: model.string() })
-    const dummy = functions.build({
-      input: type,
-      output: type,
-      retrieve: { select: true },
-      body: async ({ input }) => {
-        if (input?.value === 'wrong') {
-          return {} //selection not respected sometimes!
-        }
-        return input
-      },
-    })
+    const dummy = functions
+      .define({
+        input: type,
+        output: type,
+        retrieve: { select: true },
+      })
+      .implement({
+        body: async ({ input }) => {
+          if (input?.value === 'wrong') {
+            return {} //selection not respected sometimes!
+          }
+          return input
+        },
+      })
     const m = module.build({
       name: 'test',
-      version: '1.0.0',
       functions: { dummy },
       options: {
         checkOutputType: 'throw',
@@ -272,18 +284,20 @@ test('Return types', async () => {
       metadata: model.object({ tags: model.string().array() }).optional(),
     })
 
-  const login = functions.build({
-    input: model.never(),
-    output: User,
-    retrieve: { select: true },
-    body: async () => {
-      return { email: 'email@domain.com', metadata: { tags: [] }, friends: [] }
-    },
-  })
+  const login = functions
+    .define({
+      input: model.never(),
+      output: User,
+      retrieve: { select: true },
+    })
+    .implement({
+      body: async () => {
+        return { email: 'email@domain.com', metadata: { tags: [] }, friends: [] }
+      },
+    })
 
   const m = module.build({
     name: 'test',
-    version: '1.0.0',
     functions: { login },
     context: async () => ({}),
   })
@@ -344,31 +358,33 @@ test('Return types', async () => {
 })
 
 test('Errors return', async () => {
-  const errorTest = functions.build({
-    input: model.enumeration(['1', '2', '3', '4', '5', '6']),
-    output: model.string(),
-    retrieve: { select: true },
-    errors: { error1: model.string(), error2: model.object({ a: model.string() }) },
-    body: async ({ input }) => {
-      if (input === '1') {
-        return result.fail({ error1: 'ok' })
-      } else if (input === '2') {
-        return result.fail({ error2: { a: 'ok' } })
-      } else if (input === '3') {
-        return result.fail({ error2: { a: 'ok' }, error1: 'ok' })
-      } else if (input === '4') {
-        return result.fail({} as any)
-      } else if (input === '5') {
-        return result.fail({ error1: new Date(1) } as any)
-      } else {
-        return result.fail({ wrong: 1 } as any)
-      }
-    },
-  })
+  const errorTest = functions
+    .define({
+      input: model.enumeration(['1', '2', '3', '4', '5', '6']),
+      output: model.string(),
+      retrieve: { select: true },
+      errors: { error1: model.string(), error2: model.object({ a: model.string() }) },
+    })
+    .implement({
+      body: async ({ input }) => {
+        if (input === '1') {
+          return result.fail({ error1: 'ok' })
+        } else if (input === '2') {
+          return result.fail({ error2: { a: 'ok' } })
+        } else if (input === '3') {
+          return result.fail({ error2: { a: 'ok' }, error1: 'ok' })
+        } else if (input === '4') {
+          return result.fail({} as any)
+        } else if (input === '5') {
+          return result.fail({ error1: new Date(1) } as any)
+        } else {
+          return result.fail({ wrong: 1 } as any)
+        }
+      },
+    })
 
   const m = module.build({
     name: 'test',
-    version: '1.0.0',
     functions: { errorTest },
     options: { checkOutputType: 'throw' },
     context: async () => ({}),
@@ -400,13 +416,16 @@ test('Errors return', async () => {
 
 test('Undefiend function error tyoe', async () => {
   expect(() =>
-    functions.build({
-      input: model.unknown(),
-      output: model.unknown(),
-      errors: { error1: model.string(), error2: model.number().optional() },
-      body: async () => {
-        return result.ok(null)
-      },
-    }),
+    functions
+      .define({
+        input: model.unknown(),
+        output: model.unknown(),
+        errors: { error1: model.string(), error2: model.number().optional() },
+      })
+      .implement({
+        body: async () => {
+          return result.ok(null)
+        },
+      }),
   ).toThrowError('Function errors cannot be optional. Error "error2" is optional')
 })

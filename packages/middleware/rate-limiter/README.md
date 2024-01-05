@@ -21,21 +21,23 @@ redisClient?.on('error', (err) => console.log('Redis Client Error', err))
 redisClient?.connect()
 export const slotProvider: SlotProvider | undefined = redisClient && new RedisSlotProvider(redisClient)
 
-
 const loginRateLimit = rateLimitMiddleware<typeof loginData, typeof user, typeof loginError, LoginContext>({
   key: ({ input }) => input.email,
   rate: '100 requests in 1 hour',
   onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
-  slotProvider
+  slotProvider,
 })
 
-export const login = functions.withContext<LoginContext>().build({
-  input: loginData,
-  output: user,
-  error: loginError,
-  body: async ({ input, context }) => {
-    // ...
-  },
-  middlewares: [loginRateLimit],
-})
+export const login = functions
+  .define({
+    input: loginData,
+    output: user,
+    error: loginError,
+  })
+  .implement<LoginContext>({
+    body: async ({ input, context }) => {
+      // ...
+    },
+    middlewares: [loginRateLimit],
+  })
 ```

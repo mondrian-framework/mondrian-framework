@@ -15,7 +15,6 @@ import opentelemetry, { ValueType } from '@opentelemetry/api'
 export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = functions.FunctionsInterfaces> {
   name: string
   description?: string
-  version: string
   functions: Fs
 }
 
@@ -26,7 +25,6 @@ export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = func
 export interface Module<Fs extends functions.Functions = functions.Functions, ContextInput = unknown>
   extends ModuleInterface {
   name: string
-  version: string
   functions: Fs
   policies?: (context: ContextType<Fs>) => security.Policies
   context: (

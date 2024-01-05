@@ -8,7 +8,6 @@ describe('module to openapi', () => {
   test('works on simple module', () => {
     const m = module.define({
       name: 'name',
-      version: '0.0.0',
       functions: {
         toString: functions.define({
           input: model.number(),
@@ -20,9 +19,9 @@ describe('module to openapi', () => {
     })
 
     const openapi = rest.openapi.fromModule({
-      module: m,
       version: 1,
       api: {
+        module: m,
         version: 1,
         functions: {
           toString: { method: 'get' },
@@ -32,7 +31,7 @@ describe('module to openapi', () => {
 
     expect(openapi).toEqual({
       openapi: '3.1.0',
-      info: { version: '0.0.0', title: 'name' },
+      info: { version: 'v1', title: 'name' },
       servers: [{ url: '/api/v1' }],
       paths: {
         '/toString': {
@@ -52,7 +51,6 @@ describe('module to openapi', () => {
   test("don't work if path param is not a scalar", () => {
     const m = module.define({
       name: 'name',
-      version: '0.0.0',
       functions: {
         toString: functions.define({
           input: model.object({ a: model.object({}) }),
@@ -63,9 +61,9 @@ describe('module to openapi', () => {
 
     expect(() =>
       rest.openapi.fromModule({
-        module: m,
         version: 1,
         api: {
+          module: m,
           version: 1,
           functions: { toString: { method: 'get', path: '/toString/{a}' } },
         },
@@ -78,7 +76,6 @@ describe('module to openapi', () => {
   test("don't work if path param is inside an array", () => {
     const m = module.define({
       name: 'name',
-      version: '0.0.0',
       functions: {
         toString: functions.define({
           input: model.object({ a: model.string().optional() }).array(),
@@ -89,9 +86,9 @@ describe('module to openapi', () => {
 
     expect(() =>
       rest.openapi.fromModule({
-        module: m,
         version: 1,
         api: {
+          module: m,
           version: 1,
           functions: { toString: { method: 'get', path: '/toString/{a}' } },
         },
@@ -104,7 +101,6 @@ describe('module to openapi', () => {
   test("don't work with multiple path parameters if input is scalar", () => {
     const m = module.define({
       name: 'name',
-      version: '0.0.0',
       functions: {
         toString: functions.define({
           input: model.string().optional(),
@@ -115,9 +111,9 @@ describe('module to openapi', () => {
 
     expect(() =>
       rest.openapi.fromModule({
-        module: m,
         version: 1,
         api: {
+          module: m,
           version: 1,
           functions: { toString: { method: 'get', path: '/toString/{a}/{b}' } },
         },
@@ -144,7 +140,6 @@ describe('module to openapi', () => {
       })
     const m = module.define({
       name: 'name',
-      version: '0.0.0',
       functions: {
         getPosts: functions.define({
           input: model.object({ userId: model.string(), limit: model.integer().optional() }),
@@ -186,9 +181,9 @@ describe('module to openapi', () => {
     })
 
     const openapi = rest.openapi.fromModule({
-      module: m,
       version: 2,
       api: {
+        module: m,
         options: { pathPrefix: 'API' },
         version: 3,
         functions: {
@@ -203,14 +198,13 @@ describe('module to openapi', () => {
             { method: 'post', errorCodes: {} },
             {
               method: 'put',
-              openapi: { specification: {}, input: ({ body }) => body, request: (input) => ({ body: input }) },
+              openapi: { specification: {}, input: ({ body }) => body },
             },
             {
               method: 'put',
               openapi: {
                 specification: { parameters: null, requestBody: null },
                 input: ({ body }) => body,
-                request: (input) => ({ body: input }),
               },
             },
           ],
@@ -222,7 +216,7 @@ describe('module to openapi', () => {
 
     expect(openapi).toEqual({
       openapi: '3.1.0',
-      info: { version: '0.0.0', title: 'name' },
+      info: { version: 'v3', title: 'name' },
       servers: [{ url: 'API/v2' }],
       paths: {
         '/posts/{userId}': {

@@ -40,7 +40,7 @@ export const buildGraphQLReport = moduleInterface.functions.buildGraphQLReport.i
       breakingChanges: changes.filter((c) => c.criticality.level === CriticalityLevel.Breaking).length,
       reportId,
       reportUrl: new URL(`${serverBaseURL}/v1/reports/${reportId}`),
-      info: changes
+      info: changes,
     })
   },
 })

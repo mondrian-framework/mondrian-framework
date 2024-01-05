@@ -1,77 +1,101 @@
-import { ErrorHandler, FunctionSpecifications, Request, Response } from '../src/api'
+import { ErrorHandler, FunctionSpecifications } from '../src/api'
 import { fromFunction } from '../src/handler'
 import { model, result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
+import { http } from '@mondrian-framework/utils'
 import { describe, expect, test } from 'vitest'
 
+type Request = http.Request
+type Response = http.Response
+
 describe('rest handler', () => {
-  const f0 = functions.build({
-    input: model.never(),
-    output: model.number(),
-    async body() {
-      return 1
-    },
-  })
-  const f1 = functions.build({
-    input: model.string(),
-    output: model.number(),
-    async body({ input }) {
-      return Number(input)
-    },
-  })
-  const f2 = functions.build({
-    input: model.object({ a: model.number(), b: model.integer() }),
-    output: model.number(),
-    async body({ input: { a, b } }) {
-      return a * b
-    },
-  })
-  const f3 = functions.build({
-    input: model.object({ ping: model.string() }),
-    output: model.literal('pong'),
-    errors: { notAPing: model.string() },
-    async body({ input: { ping } }) {
-      if (ping !== 'ping') {
-        return result.fail({ notAPing: 'Not a ping!' })
-      }
-      return result.ok('pong')
-    },
-  })
-  const f4 = functions.build({
-    input: model.object({ ping: model.string() }),
-    output: model.literal('pong'),
-    async body({ input: { ping } }) {
-      if (ping !== 'ping') {
-        throw new Error('Not a ping!')
-      }
-      return 'pong' as const
-    },
-  })
+  const f0 = functions
+    .define({
+      input: model.never(),
+      output: model.number(),
+    })
+    .implement({
+      async body() {
+        return 1
+      },
+    })
+  const f1 = functions
+    .define({
+      input: model.string(),
+      output: model.number(),
+    })
+    .implement({
+      async body({ input }) {
+        return Number(input)
+      },
+    })
+  const f2 = functions
+    .define({
+      input: model.object({ a: model.number(), b: model.integer() }),
+      output: model.number(),
+    })
+    .implement({
+      async body({ input: { a, b } }) {
+        return a * b
+      },
+    })
+  const f3 = functions
+    .define({
+      input: model.object({ ping: model.string() }),
+      output: model.literal('pong'),
+      errors: { notAPing: model.string() },
+    })
+    .implement({
+      async body({ input: { ping } }) {
+        if (ping !== 'ping') {
+          return result.fail({ notAPing: 'Not a ping!' })
+        }
+        return result.ok('pong')
+      },
+    })
+  const f4 = functions
+    .define({
+      input: model.object({ ping: model.string() }),
+      output: model.literal('pong'),
+    })
+    .implement({
+      async body({ input: { ping } }) {
+        if (ping !== 'ping') {
+          throw new Error('Not a ping!')
+        }
+        return 'pong' as const
+      },
+    })
   const user = () => model.entity({ username: model.string(), live: model.boolean(), friend: model.optional(user) })
-  const f5 = functions.build({
-    input: model.string(),
-    output: user,
-    retrieve: { select: true },
-    async body({ retrieve }) {
-      if (retrieve.select?.friend) {
-        return { live: true, username: 'name', friend: { live: true, username: 'name2' } }
-      }
-      return { live: true, username: 'name' }
-    },
-  })
-  const f6 = functions.build({
-    input: model.object({ a: model.number(), b: model.object({ a: model.number(), b: model.integer() }) }),
-    output: model.number(),
-    async body({ input: { a, b } }) {
-      return a * b.a * b.b
-    },
-  })
+  const f5 = functions
+    .define({
+      input: model.string(),
+      output: user,
+      retrieve: { select: true },
+    })
+    .implement({
+      async body({ retrieve }) {
+        if (retrieve.select?.friend) {
+          return { live: true, username: 'name', friend: { live: true, username: 'name2' } }
+        }
+        return { live: true, username: 'name' }
+      },
+    })
+  const f6 = functions
+    .define({
+      input: model.object({ a: model.number(), b: model.object({ a: model.number(), b: model.integer() }) }),
+      output: model.number(),
+    })
+    .implement({
+      async body({ input: { a, b } }) {
+        return a * b.a * b.b
+      },
+    })
   const fs = { f0, f1, f2, f3, f4, f5, f6 } as const
   const m = module.build({
     context: async () => ({}),
     functions: fs,
     name: 'example',
-    version: '0.0.0',
   })
 
   function buildHandler(
@@ -138,7 +162,6 @@ describe('rest handler', () => {
       openapi: {
         specification: {},
         input: (request) => request.headers.value,
-        request: () => ({}),
       },
     })
     const response = await handler({ headers: { value: '123' } })
@@ -248,7 +271,6 @@ describe('rest handler', () => {
         input(request) {
           throw new Error('Fail')
         },
-        request: () => ({}),
       },
     })
     const response = await handler({ headers: { ping: 'ping' } })

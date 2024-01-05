@@ -68,7 +68,6 @@ describe('edge cases', () => {
           },
           functions: {},
           name: '',
-          version: '0.0.1',
         }),
 
         exclusions: {},

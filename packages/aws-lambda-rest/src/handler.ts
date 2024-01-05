@@ -50,7 +50,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
       if (cachedSchema) {
         return cachedSchema
       }
-      const schema = rest.openapi.fromModule({ api, version, module: api.module })
+      const schema = rest.openapi.fromModule({ api, version })
       cache.set(v, schema)
       return schema
     })

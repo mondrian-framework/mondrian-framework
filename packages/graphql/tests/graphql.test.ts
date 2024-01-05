@@ -21,40 +21,46 @@ const User = () =>
   })
 type User = model.Infer<typeof User>
 
-const register = functions.build({
-  input: model.object({ email: model.email() }),
-  output: User,
-  errors: { emailAlreadyPresent: model.string() },
-  retrieve: { select: true },
-  body: async ({ input: { email } }) => {
-    if (email === 'user@domain.com') {
-      return result.fail({ emailAlreadyPresent: email })
-    }
-    const user: User = {
-      email,
-      active: true,
-      audit: { registeredAt: new Date() },
-      friendCount: 1,
-      friends: [],
-      tags: ['A'],
-      type: 'User',
-    }
-    user.friends.push(user)
-    return result.ok(user)
-  },
-  options: { namespace: 'user' },
-})
+const register = functions
+  .define({
+    input: model.object({ email: model.email() }),
+    output: User,
+    errors: { emailAlreadyPresent: model.string() },
+    retrieve: { select: true },
+    options: { namespace: 'user' },
+  })
+  .implement({
+    body: async ({ input: { email } }) => {
+      if (email === 'user@domain.com') {
+        return result.fail({ emailAlreadyPresent: email })
+      }
+      const user: User = {
+        email,
+        active: true,
+        audit: { registeredAt: new Date() },
+        friendCount: 1,
+        friends: [],
+        tags: ['A'],
+        type: 'User',
+      }
+      user.friends.push(user)
+      return result.ok(user)
+    },
+  })
 
-const pongUser = functions.build({
-  input: model.union({ user: model.partialDeep(User), error: model.string() }),
-  output: model.partialDeep(User),
-  body: async ({ input }) => {
-    if (typeof input === 'string') {
-      throw new Error(input)
-    }
-    return input
-  },
-})
+const pongUser = functions
+  .define({
+    input: model.union({ user: model.partialDeep(User), error: model.string() }),
+    output: model.partialDeep(User),
+  })
+  .implement({
+    body: async ({ input }) => {
+      if (typeof input === 'string') {
+        throw new Error(input)
+      }
+      return input
+    },
+  })
 const Metadata = () =>
   model
     .union({
@@ -64,25 +70,30 @@ const Metadata = () =>
     .nullable()
     .array()
     .optional()
-const pongMetadata = functions.build({
-  input: Metadata,
-  output: Metadata,
-  body: async ({ input }) => {
-    return input
-  },
-})
+const pongMetadata = functions
+  .define({
+    input: Metadata,
+    output: Metadata,
+  })
+  .implement({
+    body: async ({ input }) => {
+      return input
+    },
+  })
 
-const addOne = functions.build({
-  input: model.number(),
-  output: model.number(),
-  body: async ({ input }) => {
-    return input + 1
-  },
-})
+const addOne = functions
+  .define({
+    input: model.number(),
+    output: model.number(),
+  })
+  .implement({
+    body: async ({ input }) => {
+      return input + 1
+    },
+  })
 
 const m = module.build({
   name: 'test',
-  version: '1.0.0',
   options: { maxSelectionDepth: 2 },
   functions: { addOne, register, pongUser, pongMetadata },
   context: async () => ({}),

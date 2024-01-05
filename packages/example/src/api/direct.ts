@@ -2,10 +2,7 @@ import { module } from '../core'
 import { serveWithFastify as serve, direct } from '@mondrian-framework/direct'
 import { FastifyInstance } from 'fastify'
 
-const api = direct.build({
-  module: module.instance,
-  exclusions: {},
-})
+const api = direct.build({ module, exclusions: {} })
 
 export function serveDirect(server: FastifyInstance) {
   serve({

@@ -2,52 +2,63 @@ import { build as buildApi } from '../src/api'
 import { model, result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 
-const ping = functions.build({
-  input: model.number(),
-  output: model.number(),
-  async body(args) {
-    if (args.input < 0 && !Number.isInteger(args.input)) {
-      throw 'Not integer ping'
-    }
-    if (args.input < 0) {
-      throw new Error('Negative ping')
-    }
-    return args.input
-  },
-})
+const ping = functions
+  .define({
+    input: model.number(),
+    output: model.number(),
+  })
+  .implement({
+    async body(args) {
+      if (args.input < 0 && !Number.isInteger(args.input)) {
+        throw 'Not integer ping'
+      }
+      if (args.input < 0) {
+        throw new Error('Negative ping')
+      }
+      return args.input
+    },
+  })
 
-const divideBy = functions.build({
-  input: model.object({ dividend: model.number(), divisor: model.number() }),
-  output: model.number(),
-  errors: { dividingByZero: model.string() },
-  async body({ input: { dividend, divisor } }) {
-    if (divisor === 0) {
-      return result.fail({ dividingByZero: 'divisor is 0' })
-    }
-    return result.ok(dividend / divisor)
-  },
-})
+const divideBy = functions
+  .define({
+    input: model.object({ dividend: model.number(), divisor: model.number() }),
+    output: model.number(),
+    errors: { dividingByZero: model.string() },
+  })
+  .implement({
+    async body({ input: { dividend, divisor } }) {
+      if (divisor === 0) {
+        return result.fail({ dividingByZero: 'divisor is 0' })
+      }
+      return result.ok(dividend / divisor)
+    },
+  })
 
-const getUsers = functions.build({
-  input: model.never(),
-  output: model.entity({ name: model.string() }).array(),
-  retrieve: { select: true },
-  async body() {
-    return [{ name: 'John' }]
-  },
-})
+const getUsers = functions
+  .define({
+    input: model.never(),
+    output: model.entity({ name: model.string() }).array(),
+    retrieve: { select: true },
+  })
+  .implement({
+    async body() {
+      return [{ name: 'John' }]
+    },
+  })
 
-const omitted = functions.build({
-  input: model.unknown(),
-  output: model.unknown(),
-  async body() {
-    return 1
-  },
-})
+const omitted = functions
+  .define({
+    input: model.unknown(),
+    output: model.unknown(),
+  })
+  .implement({
+    async body() {
+      return 1
+    },
+  })
 
 const m = module.build({
   name: 'test',
-  version: '0.0.1',
   async context() {
     return {}
   },

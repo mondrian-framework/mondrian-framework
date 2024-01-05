@@ -223,95 +223,20 @@ export type FunctionsInterfaces = {
 }
 
 /**
- * Builds a Mondrian function.
+ * Defines the signature of a {@link Function} i.e. a {@link FunctionInterface}.
+ * @param func input, output, and possible errors of the function signature
+ * @returns the function interface with an utility method in order to implement the function (`implement`)
  *
  * Example:
  * ```typescript
  * import { model } from '@mondrian-framework/model'
  * import { functions } from '@mondrian-framework/module'
  *
- * const loginFunction = functions.build({
+ * const loginFunction = functions.define({
  *   input: type.object({ username: model.stirng(), password: model.string() }),
  *   output: model.string(),
- *   body: async ({ input: { username, password }, context: { db } }) => {
- *     const user = await db.findUser({ username })
- *     // ...
- *     return 'signed jwt'
- *   },
- *   middlewares: [hidePasswordMiddleware],
- *   options: {
- *     namespace: 'authentication',
- *     description: 'Sign a jwt for the authenticated user (1h validity)'
- *   }
  * })
  * ```
- */
-export function build<
-  const I extends model.Type,
-  const O extends model.Type,
-  const E extends ErrorType = undefined,
-  const C extends OutputRetrieveCapabilities = undefined,
->(func: Function<I, O, E, C, {}>): FunctionImplementation<I, O, E, C, {}> {
-  return withContext().build(func)
-}
-
-/**
- * Builds a Mondrian function with a given Context type.
- *
- * Example:
- * ```typescript
- * import { model } from '@mondrian-framework/model'
- * import { functions } from '@mondrian-framework/module'
- *
- * const loginFunction = functions
- *   .withContext<{ db: Db }>('namespace')
- *   .build({
- *     input: type.object({ username: model.stirng(), password: model.string() }),
- *     output: model.string(),
- *     body: async ({ input: { username, password }, context: { db } }) => {
- *       return 'something'
- *     }
- *   })
- * ```
- */
-export function withContext<const Context extends Record<string, unknown>>(
-  namespace?: string,
-): FunctionBuilder<Context> {
-  return new FunctionBuilder(namespace)
-}
-
-/**
- * Mondrian function builder.
- */
-class FunctionBuilder<const Context extends Record<string, unknown>> {
-  private readonly namespace: string | undefined
-  constructor(namespace?: string) {
-    this.namespace = namespace
-  }
-  /**
-   * Builds a Mondrian function.
-   * @returns A Mondrian function.
-   */
-  public build<
-    const I extends model.Type,
-    const O extends model.Type,
-    const E extends ErrorType = undefined,
-    const R extends OutputRetrieveCapabilities = undefined,
-  >(func: Function<I, O, E, R, Context>): FunctionImplementation<I, O, E, R, Context> {
-    if (func.errors) {
-      const undefinedError = Object.entries(func.errors).find(([_, errorType]) => model.isOptional(errorType))
-      if (undefinedError) {
-        throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
-      }
-    }
-    return new BaseFunction({ ...func, options: { namespace: this.namespace, ...func.options } })
-  }
-}
-
-/**
- * Build only the signature of a {@link Function} i.e. a {@link FunctionInterface}.
- * @param func input, output, and possible errors of the function signature
- * @returns the function interface
  */
 export function define<
   const I extends model.Type,
@@ -321,6 +246,25 @@ export function define<
 >(
   func: FunctionInterface<I, O, E, R>,
 ): FunctionInterface<I, O, E, R> & {
+  /**
+   * Implements the function definition by defining the body of the function
+   * @param implementation the body, and optionally the middlewares of the function.
+   * @returns the function implementation
+   * * Example:
+   * ```typescript
+   * import { model } from '@mondrian-framework/model'
+   * import { functions } from '@mondrian-framework/module'
+   *
+   * const loginFunction = functions.define({
+   *   input: type.object({ username: model.stirng(), password: model.string() }),
+   *   output: model.string(),
+   * }).implement({
+   *   body: async ({ input: { username, password }, context: { db } }) => {
+   *     return 'something'
+   *   }
+   * })
+   * ```
+   */
   implement: <Context extends Record<string, unknown> = {}>(
     implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
   ) => FunctionImplementation<I, O, E, R, Context>
@@ -330,7 +274,13 @@ export function define<
     implement<Context extends Record<string, unknown> = {}>(
       implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
     ) {
-      return withContext<Context>().build({ ...func, ...implementation })
+      if (func.errors) {
+        const undefinedError = Object.entries(func.errors).find(([_, errorType]) => model.isOptional(errorType))
+        if (undefinedError) {
+          throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
+        }
+      }
+      return new BaseFunction<I, O, E, R, Context>({ ...func, ...implementation })
     },
   }
 }

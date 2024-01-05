@@ -37,19 +37,22 @@ test('Rate limiter middleware', async () => {
     rate: new Rate({ requests: 1, period: 1, scale: 'hour' }),
   })
 
-  const login = functions.withContext<SharedContext & { from?: string }>().build({
-    input: LoginInput,
-    output: LoginOutput,
-    errors: LoginError,
-    retrieve: undefined,
-    body: async ({ input }) => {
-      if (input.email === 'test@domain.com' && input.password === '1234') {
-        return result.ok({ jwt: '...' })
-      }
-      return result.fail({ invalidUsernameOrPassword: '' })
-    },
-    middlewares: [rateLimitByIpEmail, rateLimitByEmail],
-  })
+  const login = functions
+    .define({
+      input: LoginInput,
+      output: LoginOutput,
+      errors: LoginError,
+      retrieve: undefined,
+    })
+    .implement<SharedContext & { from?: string }>({
+      body: async ({ input }) => {
+        if (input.email === 'test@domain.com' && input.password === '1234') {
+          return result.ok({ jwt: '...' })
+        }
+        return result.fail({ invalidUsernameOrPassword: '' })
+      },
+      middlewares: [rateLimitByIpEmail, rateLimitByEmail],
+    })
 
   const m = module.build({
     name: 'test',

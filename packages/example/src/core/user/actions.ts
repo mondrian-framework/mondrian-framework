@@ -1,89 +1,53 @@
+import { module } from '../../interface'
+import { User } from '../../interface/user'
 import { slotProvider } from '../../rate-limiter'
-import { idType } from '../common/model'
 import { Context, LoggedUserContext } from '../context'
-import { User, MyUser } from './model'
-import { result, model } from '@mondrian-framework/model'
-import { functions, retrieve } from '@mondrian-framework/module'
+import { result } from '@mondrian-framework/model'
+import { retrieve } from '@mondrian-framework/module'
 import { RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
-const LoginInput = model.object(
-  {
-    email: model.email(),
-    password: model.string().sensitive(),
-  },
-  { name: 'LoginInput' },
-)
-const LoginOutput = model.string({ name: 'LoginOutput' })
-const loginErrorMap = {
-  invalidLogin: model.string(),
-  tooManyRequests: model.string(),
-} as const
-
 const loginRateLimit: RateLiteral = '10 requests in 1 minute'
-export const login = functions
-  .define({
-    input: LoginInput,
-    output: LoginOutput,
-    errors: loginErrorMap,
-    options: {
-      description: `Gets the jwt of a user. This operation is rate limited at "${loginRateLimit}" on the same email`,
-    },
-  })
-  .implement<Context>({
-    body: async ({ input, context, logger }) => {
-      const { email, password } = input
-      const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
-      if (!loggedUser) {
-        logger.logWarn(`${input.email} failed login`)
-        return result.fail({ invalidLogin: 'invalid username or password' })
-      }
-      await context.prisma.user.update({
-        where: { id: loggedUser.id },
-        data: { loginAt: new Date() },
-      })
-      const secret = process.env.JWT_SECRET ?? 'secret'
-      const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
-      return result.ok(jwt)
-    },
-    middlewares: [
-      rateLimiter.build({
-        key: ({ input }) => input.email,
-        rate: loginRateLimit,
-        onLimit: async () => {
-          //Improvement: warn the user, maybe block the account
-          return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
-        },
-        slotProvider,
-      }),
-      {
-        name: 'Dummy',
-        async apply(args, next, fn) {
-          //do something before
-          const result = await next(args)
-          //do somthign after
-          return result
-        },
+export const login = module.functions.login.implement<Context>({
+  body: async ({ input, context, logger }) => {
+    const { email, password } = input
+    const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
+    if (!loggedUser) {
+      logger.logWarn(`${input.email} failed login`)
+      return result.fail({ invalidLogin: 'invalid username or password' })
+    }
+    await context.prisma.user.update({
+      where: { id: loggedUser.id },
+      data: { loginAt: new Date() },
+    })
+    const secret = process.env.JWT_SECRET ?? 'secret'
+    const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
+    return result.ok(jwt)
+  },
+  middlewares: [
+    rateLimiter.build({
+      key: ({ input }) => input.email,
+      rate: loginRateLimit,
+      onLimit: async () => {
+        //Improvement: warn the user, maybe block the account
+        return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
       },
-    ],
-  })
+      slotProvider,
+    }),
+    {
+      name: 'Dummy',
+      async apply(args, next, fn) {
+        //do something before
+        const result = await next(args)
+        //do somthign after
+        return result
+      },
+    },
+  ],
+})
 
-export const register = functions.withContext<Context>().build({
-  input: model.object(
-    {
-      password: model.string().sensitive(),
-      email: model.email(),
-      firstName: model.string(),
-      lastName: model.string(),
-    },
-    {
-      name: 'RegisterInput',
-    },
-  ),
-  output: MyUser,
-  errors: { emailAlreadyTaken: model.literal('Email already taken') },
-  retrieve: { select: true },
+export const register = module.functions.register.implement<Context>({
   body: async ({ input, context, retrieve }) => {
     try {
       const user = await context.prisma.user.create({
@@ -99,17 +63,9 @@ export const register = functions.withContext<Context>().build({
       return result.fail({ emailAlreadyTaken: 'Email already taken' })
     }
   },
-  options: {
-    namespace: 'user',
-    description: 'Creates a new user.',
-  },
 })
 
-export const follow = functions.withContext<LoggedUserContext>().build({
-  input: model.object({ userId: idType }),
-  output: User,
-  errors: { notLoggedIn: model.string(), userNotExists: model.string() },
-  retrieve: { select: true },
+export const follow = module.functions.follow.implement<LoggedUserContext>({
   body: async ({ input, context, retrieve: thisRetrieve }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' })
@@ -138,23 +94,11 @@ export const follow = functions.withContext<LoggedUserContext>().build({
     const user = await context.prisma.user.findFirstOrThrow(args)
     return result.ok(user)
   },
-  options: {
-    namespace: 'user',
-    description: 'Adds a follower to your user. Available only for logged user.',
-  },
 })
 
-export const getUsers = functions.withContext<LoggedUserContext>().build({
-  input: model.never(),
-  output: model.array(User),
-  errors: { notLoggedIn: model.string() },
-  retrieve: retrieve.allCapabilities,
+export const getUsers = module.functions.getUsers.implement<LoggedUserContext>({
   body: async ({ context, retrieve: thisRetrieve }) => {
     const users = await context.prisma.user.findMany(thisRetrieve)
     return result.ok(users)
-  },
-  options: {
-    namespace: 'user',
-    description: 'Gets some users.',
   },
 })

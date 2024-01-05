@@ -1,22 +1,21 @@
 import { Context, LoggedUserContext, policies, posts, users } from '.'
+import { module } from '../interface'
 import { InvalidJwtError } from './errors'
-import { module } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
 //Merging all functions under a object
 export type Functions = typeof functions
 export const functions = {
-  ...users.actions,
-  ...posts.actions,
+  ...users,
+  ...posts,
 }
 
 //Prisma singleton
 const prisma = new PrismaClient()
 
 //Instance of this module
-export const instance = module.build({
-  name: process.env.MODULE_NAME ?? '???',
+export const instance = module.instance.implement({
   functions,
   options: {
     maxSelectionDepth: 4,

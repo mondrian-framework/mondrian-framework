@@ -1,5 +1,5 @@
-export * as users from './user'
-export * as posts from './post'
+export * as users from './user/actions'
+export * as posts from './post/actions'
 export * from './context'
 export * as module from './module'
 export * as policies from './security-policies'

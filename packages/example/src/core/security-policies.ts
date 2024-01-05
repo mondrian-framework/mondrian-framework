@@ -1,5 +1,5 @@
-import { Like, OwnPost, Post } from './post'
-import { Follower, MyUser, User } from './user'
+import { Like, OwnPost, Post } from '../interface/post'
+import { Follower, MyUser, User } from '../interface/user'
 import { security } from '@mondrian-framework/module'
 
 export const loggedUser: (userId: number) => security.Policies = (userId) =>

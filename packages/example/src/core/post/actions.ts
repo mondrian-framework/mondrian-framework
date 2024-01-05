@@ -1,14 +1,9 @@
 import { LoggedUserContext } from '..'
-import { idType } from '../common/model'
-import { Post, PostVisibility, OwnPost } from './model'
-import { result, model } from '@mondrian-framework/model'
-import { functions, retrieve } from '@mondrian-framework/module'
+import { module } from '../../interface'
+import { PostVisibility } from '../../interface/post'
+import { result } from '@mondrian-framework/model'
 
-export const writePost = functions.withContext<LoggedUserContext>().build({
-  input: model.pick(Post, { title: true, content: true, visibility: true }, { name: 'WritePostInput' }),
-  output: OwnPost,
-  errors: { notLoggedIn: model.string() },
-  retrieve: { select: true },
+export const writePost = module.functions.writePost.implement<LoggedUserContext>({
   body: async ({ input, retrieve, context }) => {
     if (PostVisibility.decode(input.visibility).isFailure) {
       throw new Error(`Invalid post visibility. Use one of ${PostVisibility.variants}`)
@@ -26,31 +21,16 @@ export const writePost = functions.withContext<LoggedUserContext>().build({
     })
     return result.ok(post)
   },
-  options: {
-    namespace: 'post',
-    description: 'Inser a new post by provind the title, content and visibility. Available only for logged user.',
-  },
 })
 
-export const readPosts = functions.withContext<LoggedUserContext>().build({
-  input: model.never(),
-  output: model.array(Post),
-  retrieve: retrieve.allCapabilities,
+export const readPosts = module.functions.readPosts.implement<LoggedUserContext>({
   body: async ({ context, retrieve }) => {
     const posts = await context.prisma.post.findMany(retrieve)
     return posts
   },
-  options: {
-    namespace: 'post',
-    description: 'Gets posts of a specific user. The visibility of posts can vary based on viewer.',
-  },
 })
 
-export const likePost = functions.withContext<LoggedUserContext>().build({
-  input: model.object({ postId: idType }, { name: 'LikePostInput' }),
-  output: OwnPost,
-  errors: { notLoggedIn: model.string(), postNotFound: model.string() },
-  retrieve: { select: true },
+export const likePost = module.functions.likePost.implement<LoggedUserContext>({
   body: async ({ input, retrieve, context }) => {
     if (!context.userId) {
       return result.fail({ notLoggedIn: 'Invalid authentication' })
@@ -84,9 +64,5 @@ export const likePost = functions.withContext<LoggedUserContext>().build({
     })
     const post = await context.prisma.post.findFirstOrThrow({ where: { id: input.postId }, select: retrieve.select })
     return result.ok(post)
-  },
-  options: {
-    namespace: 'post',
-    description: 'Add a like to a post you can view. Available only for logged user.',
   },
 })

@@ -30,22 +30,25 @@ describe('Opentelemetry', () => {
     provider.register()
 
     const type = () => model.object({ type, value: model.string() }).optional()
-    const dummy = functions.build({
-      input: model.string(),
-      output: model.string(),
-      errors: { unknownInput: model.string() },
-      retrieve: undefined,
-      body: async ({ input, logger }) => {
-        if (input === '') {
-          throw new Error('Invalid string')
-        }
-        if (input !== 'ping') {
-          logger.logError('Only "ping" is accepted', { received: input })
-          return result.fail({ unknownInput: 'Only "ping" is accepted' })
-        }
-        return result.ok('pong')
-      },
-    })
+    const dummy = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+        errors: { unknownInput: model.string() },
+        retrieve: undefined,
+      })
+      .implement({
+        body: async ({ input, logger }) => {
+          if (input === '') {
+            throw new Error('Invalid string')
+          }
+          if (input !== 'ping') {
+            logger.logError('Only "ping" is accepted', { received: input })
+            return result.fail({ unknownInput: 'Only "ping" is accepted' })
+          }
+          return result.ok('pong')
+        },
+      })
     const m = module.build({
       name: 'test',
       functions: { dummy },

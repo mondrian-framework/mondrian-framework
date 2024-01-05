@@ -20,7 +20,6 @@ import {
 
 const postModule = module.define({
   name: 'post-module',
-  version: '1.0.0',
   functions: {
     retrievePosts, 
     createPost, 
@@ -31,9 +30,11 @@ const postModule = module.define({
 ```
 
 ## Name
-
-## Version
+The module `name` is a text identifier that can be used by the runtimes to discriminate and document 
+it.
 
 ## Functions
 
 ## Errors
+
+## Description

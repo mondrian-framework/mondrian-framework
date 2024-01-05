@@ -193,13 +193,11 @@ section:nth-child(2n) {
   margin-bottom: 10px;
 }
 
-[data-theme='dark'] {
-  .quality {
-    border: 2px solid var(--ifm-color-primary);
-  }
-  .qualityTitle {
-    color: #fff;
-  }
+[data-theme='dark'] .quality {
+  border: 2px solid var(--ifm-color-primary);
+}
+[data-theme='dark'] .qualityTitle {
+  color: #fff;
 }
 
 @media screen and (max-width: 1280px) {

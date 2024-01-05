@@ -5,7 +5,7 @@ import { serve } from '@mondrian-framework/rest-fastify'
 import { FastifyInstance } from 'fastify'
 
 const api = rest.build({
-  module: module.instance,
+  module: module,
   version: 2,
   functions: {
     register: [

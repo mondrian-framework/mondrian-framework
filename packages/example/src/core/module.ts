@@ -1,22 +1,18 @@
 import { Context, LoggedUserContext, policies, posts, users } from '.'
-import { module } from '../interface'
+import { module as moduleInterface } from '../interface'
 import { InvalidJwtError } from './errors'
 import { PrismaClient } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
-
-//Merging all functions under a object
-export type Functions = typeof functions
-export const functions = {
-  ...users,
-  ...posts,
-}
 
 //Prisma singleton
 const prisma = new PrismaClient()
 
 //Instance of this module
-export const instance = module.instance.implement({
-  functions,
+export const module = moduleInterface.implement({
+  functions: {
+    ...users,
+    ...posts,
+  },
   options: {
     maxSelectionDepth: 4,
     checkOutputType: 'throw',

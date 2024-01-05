@@ -1,15 +1,11 @@
 import { posts, users } from '.'
-import { module } from '@mondrian-framework/module'
-
-//Merging all functions under a object
-export type Functions = typeof functions
-export const functions = {
-  ...users.actions,
-  ...posts.actions,
-}
+import { module as m } from '@mondrian-framework/module'
 
 //Instance of of this module interface
-export const instance = module.define({
+export const module = m.define({
   name: process.env.MODULE_NAME ?? '???',
-  functions,
+  functions: {
+    ...users.actions,
+    ...posts.actions,
+  },
 })

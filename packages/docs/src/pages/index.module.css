@@ -110,6 +110,14 @@ section:nth-child(2n) {
   padding: 2rem 0;
 }
 
+.codeBlock {
+  background: var(--prism-background-color);
+  color: var(--prism-color);
+  margin-bottom: var(--ifm-leading);
+  box-shadow: var(--ifm-global-shadow-lw);
+  border-radius: var(--ifm-code-border-radius);
+}
+
 .buttons {
   padding-top: 40px;
   display: flex;

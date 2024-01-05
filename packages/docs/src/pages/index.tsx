@@ -141,7 +141,7 @@ export default function Home(): JSX.Element {
                 </div>
               </div>
               <div className={styles.featureColumn}>
-                <CodeBlock language="ts" title="app.ts" showLineNumbers>
+                <CodeBlock className={styles.codeBlock} language="ts" title="app.ts" showLineNumbers>
                   {`import { model } from '@mondrian-framework/model'
 
 export const Post = model.object({
@@ -186,7 +186,7 @@ export type User = model.Infer<typeof User>
                 </div>
               </div>
               <div className={styles.featureColumn}>
-                <CodeBlock language="ts" title="module.ts" showLineNumbers>
+                <CodeBlock className={styles.codeBlock} language="ts" title="module.ts" showLineNumbers>
                   {`import { functions } from '@mondrian-framework/module'
 import { model } from '@mondrian-framework/model'
 
@@ -236,7 +236,7 @@ const userModule = module.build({
                 </div>
               </div>
               <div className={styles.featureColumn}>
-                <CodeBlock language="ts" title="model.ts" showLineNumbers>
+                <CodeBlock className={styles.codeBlock} language="ts" title="model.ts" showLineNumbers>
                   {`import { graphql } from '@mondrian-framework/graphql'
 import { serve } from '@mondrian-framework/graphql-fastify'
 import { fastify } from 'fastify'

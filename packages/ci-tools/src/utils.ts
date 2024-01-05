@@ -1,5 +1,7 @@
 import { randomBytes, createCipheriv, createHash, createDecipheriv } from 'crypto'
 
+export const DEFAULT_PASSWORD = 'BqWmsNK6sHxY2PlKDuVOpshTBv3rVkIZ'
+
 export function encrypt(text: string, password: string): string {
   const IV = Buffer.from(randomBytes(16))
   const encryptor = createCipheriv('aes-128-cbc', createHash('md5').update(password).digest(), IV)
@@ -27,5 +29,3 @@ export function decrypt(cipher: string, password: string): string | null {
 export function sha256(content: string): string {
   return createHash('sha256').update(content).digest().toString('hex')
 }
-
-export const DEFAULT_PASSWORD = 'BqWmsNK6sHxY2PlKDuVOpshTBv3rVkIZ'

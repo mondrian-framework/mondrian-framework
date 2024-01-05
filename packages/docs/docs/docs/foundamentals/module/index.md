@@ -18,6 +18,7 @@ on this topic in the [implementation section](./02-implementation.md).
 The following module contains two different functions imported from external files:
 
 ```ts showLineNumbers
+import { result } from '@mondrian-framework/model'
 import { module } from '@mondrian-framework/module'
 import { 
   retrievePosts, 
@@ -26,15 +27,23 @@ import {
   deletePost 
 } from '../post-functions'
 
-const postModule = module.define({
-  name: 'post-module',
-  version: '1.0.0',
-  functions: {
-    retrievePosts, 
-    createPost, 
-    updatePost, 
-    deletePost 
-  }
-})
-
+const postModule = module
+  .define({
+    name: 'post-module',
+    description: '',
+    version: '1.0.0',
+    functions: {
+      retrievePosts, 
+      createPost, 
+      updatePost, 
+      deletePost 
+    }
+  })
+  .implement({
+    context: async () => {
+      return result.ok({ 
+        // a context definition
+      })
+    },
+  })
 ```

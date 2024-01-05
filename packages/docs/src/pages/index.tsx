@@ -8,6 +8,9 @@ import clsx from 'clsx'
 import React from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faLock, faBinoculars, faVialCircleCheck, faCube } from '@fortawesome/free-solid-svg-icons'
+import '@fortawesome/fontawesome-svg-core/styles.css';
+import { config } from '@fortawesome/fontawesome-svg-core';
+config.autoAddCss = false;
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext()

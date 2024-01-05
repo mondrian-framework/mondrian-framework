@@ -11,7 +11,7 @@
     "build": "tsc"
   },
   "peerDependencies": {
-    "@redis/client": "^1.5.0",
+    "@redis/client": "^1.5.13",
     "@mondrian-framework/model": "^2.0.15",
     "@mondrian-framework/module": "^2.0.15",
     "@mondrian-framework/utils": "^2.0.15",

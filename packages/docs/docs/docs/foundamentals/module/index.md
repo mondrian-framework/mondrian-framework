@@ -30,8 +30,6 @@ import {
 const postModule = module
   .define({
     name: 'post-module',
-    description: '',
-    version: '1.0.0',
     functions: {
       retrievePosts, 
       createPost, 

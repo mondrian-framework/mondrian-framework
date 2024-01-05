@@ -6,7 +6,8 @@ import CodeBlock from '@theme/CodeBlock'
 import Layout from '@theme/Layout'
 import clsx from 'clsx'
 import React from 'react'
-import GitHubButton from 'react-github-btn'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faLock, faBinoculars, faVialCircleCheck, faCube } from '@fortawesome/free-solid-svg-icons'
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext()
@@ -57,6 +58,65 @@ export default function Home(): JSX.Element {
     <Layout description={siteConfig.tagline}>
       <HomepageHeader />
       <main>
+        <section>
+          <div className="container">
+            <div className={styles.feature}>
+              <div>
+                <div className={styles.qualitiesDescription}>
+                  Build <b>enterprise-grade</b> applications that will stand the test of time. 
+                  <br/>
+                  Develop your software on a ready-to-use and highly productive <b>clean architecture</b>.
+                </div>
+                <div className={styles.qualities}>
+                  <div className={styles.quality}>
+                    <div className={styles.qualityIcon}>
+                      <FontAwesomeIcon icon={faCube} />
+                    </div>
+                    <div className={styles.qualityTitle}>
+                      Modularity
+                    </div>
+                    <div className={styles.qualityDescription}>
+                      Organize applications into self-contained, reusable and composable modules.
+                    </div>
+                  </div>
+                  <div className={styles.quality}>
+                    <div className={styles.qualityIcon}>
+                      <FontAwesomeIcon icon={faVialCircleCheck} />
+                    </div>
+                    <div className={styles.qualityTitle}>
+                      Testability
+                    </div>
+                    <div className={styles.qualityDescription}>
+                      Build easily testable components by breaking up dependencies.
+                    </div>
+                  </div>
+                  <div className={styles.quality}>
+                    <div className={styles.qualityIcon}>
+                      <FontAwesomeIcon icon={faBinoculars} />
+                    </div>
+                    <div className={styles.qualityTitle}>
+                      Observability
+                    </div>
+                    <div className={styles.qualityDescription}>
+                      Observable by default with strong OpenTelemetry integration.
+                    </div>
+                  </div>
+                  <div className={styles.quality}>
+                    <div className={styles.qualityIcon}>
+                      <FontAwesomeIcon icon={faLock} />
+                    </div>
+                    <div className={styles.qualityTitle}>
+                      Type Safety
+                    </div>
+                    <div className={styles.qualityDescription}>
+                      A robust and type safe development environment using TypeScript.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         <section>
           <div className="container">
             <div className={styles.feature}>

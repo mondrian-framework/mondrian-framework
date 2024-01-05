@@ -291,7 +291,12 @@ After installing a Node.js Redis client library,
 You can setup a slot provider as following:
 
 ```ts showLineNumbers
-import { RedisSlotProvider, SlotProvider, RateLiteral, rateLimiter } from '@mondrian-framework/rate-limiter'
+import { 
+  RedisSlotProvider, 
+  SlotProvider, 
+  RateLiteral, 
+  rateLimiter 
+} from '@mondrian-framework/rate-limiter'
 // highlight-start
 import { createClient } from '@redis/client'
 // highlight-end

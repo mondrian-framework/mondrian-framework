@@ -23,6 +23,7 @@
       "./packages/aws-lmabda-sqs/tsconfig.json",
       "./packages/aws-lmabda-rest/tsconfig.json",
       "./packages/cron/tsconfig.json",
+      "./packages/ci-tools/tsconfig.json",
       "./packages/example/tsconfig.json"
     ]
   },

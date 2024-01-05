@@ -1,0 +1,27 @@
+{
+  "name": "@mondrian-framework/ci-tools",
+  "version": "2.0.15",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "start": "node --env-file dev.env build/serve.js",
+    "test": "vitest run",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.484.0",
+    "fastify": "^4.25.2",
+    "@graphql-inspector/core": "5.0.2",
+    "@pb33f/openapi-changes": "0.0.51"
+  },
+  "peerDependencies": {
+    "@mondrian-framework/aws-lambda-rest": "^2.0.15",
+    "@mondrian-framework/model": "^2.0.15",
+    "@mondrian-framework/module": "^2.0.15",
+    "@mondrian-framework/rest": "^2.0.15",
+    "@mondrian-framework/rest-fastify": "^2.0.15"
+  }
+}

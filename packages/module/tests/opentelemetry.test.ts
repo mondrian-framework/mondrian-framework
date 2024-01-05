@@ -53,7 +53,7 @@ describe('Opentelemetry', () => {
       options: {
         maxSelectionDepth: 2,
         checkOutputType: 'throw',
-        opentelemetryInstrumentation: true,
+        opentelemetry: true,
       },
       context: async () => ({}),
     })

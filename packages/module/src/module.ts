@@ -14,6 +14,7 @@ import opentelemetry, { ValueType } from '@opentelemetry/api'
  */
 export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = functions.FunctionsInterfaces> {
   name: string
+  description?: string
   version: string
   functions: Fs
 }
@@ -61,7 +62,7 @@ export type ModuleOptions<Fs extends functions.Functions, ContextInput> = {
   /**
    * Enables opetelemetry instrumentation.
    */
-  opentelemetryInstrumentation?: boolean
+  opentelemetry?: boolean
 }
 
 /**
@@ -150,7 +151,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
           ...checkOutputTypeMiddleware,
         ],
       }
-      if (module.options?.opentelemetryInstrumentation) {
+      if (module.options?.opentelemetry) {
         const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })

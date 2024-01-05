@@ -22,7 +22,7 @@ export const instance = module.build({
   options: {
     maxSelectionDepth: 4,
     checkOutputType: 'throw',
-    opentelemetryInstrumentation: true,
+    opentelemetry: true,
   },
   async context({ authorization, ip }: { authorization?: string; ip: string }): Promise<Context | LoggedUserContext> {
     if (authorization) {

@@ -125,7 +125,7 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
 
   return {
     openapi: '3.1.0',
-    info: { version: module.version, title: module.name },
+    info: { version: module.version, title: module.name, description: module.description?.replaceAll('\n', '</br>') },
     servers,
     paths,
     components: {
@@ -497,6 +497,10 @@ function customToOpenAPIComponent(
     return anyValue
   } else if (type.typeName === model.json().typeName) {
     return anyValue
+  } else if (type.typeName === model.uuid().typeName) {
+    return { type: 'string', format: 'uuid', description: type.options?.description }
+  } else if (type.typeName === model.url().typeName) {
+    return { type: 'string', format: 'url', description: type.options?.description }
   } else if (type.typeName === model.decimal().typeName) {
     //TODO [Good first issue]: can we add a ragex based on `opts` that describe the decimal value?
     const opts = (type.options ?? {}) as model.DecimalTypeAdditionalOptions

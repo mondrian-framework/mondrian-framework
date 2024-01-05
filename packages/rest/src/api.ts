@@ -5,7 +5,7 @@ import { KeysOfUnion, http } from '@mondrian-framework/utils'
 import { OpenAPIV3_1 } from 'openapi-types'
 
 /**
- * The REST API specification of a mondrian {@link module.ModuleInterface Module Interface}
+ * The REST API specification of a mondrian {@link module.ModuleInterface ModuleInterface}
  * This contains all information needed to generate an openapi specification document.
  * It does not contains the implementation. In order to instantiate this you should use {@link define}.
  */

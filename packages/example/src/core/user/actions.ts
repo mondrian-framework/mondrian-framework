@@ -22,46 +22,52 @@ const loginErrorMap = {
 } as const
 
 const loginRateLimit: RateLiteral = '10 requests in 1 minute'
-const loginRateLimiter = rateLimiter.build<
-  typeof LoginInput,
-  typeof LoginOutput,
-  typeof loginErrorMap,
-  undefined,
-  Context
->({
-  key: ({ input }) => input.email,
-  rate: loginRateLimit,
-  onLimit: async () => {
-    //Improvement: warn the user, maybe block the account
-    return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
-  },
-  slotProvider,
-})
-
-export const login = functions.withContext<Context>().build({
-  input: LoginInput,
-  output: LoginOutput,
-  errors: loginErrorMap,
-  body: async ({ input, context, logger }) => {
-    const { email, password } = input
-    const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
-    if (!loggedUser) {
-      logger.logWarn(`${input.email} failed login`)
-      return result.fail({ invalidLogin: 'invalid username or password' })
-    }
-    await context.prisma.user.update({
-      where: { id: loggedUser.id },
-      data: { loginAt: new Date() },
-    })
-    const secret = process.env.JWT_SECRET ?? 'secret'
-    const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
-    return result.ok(jwt)
-  },
-  middlewares: [loginRateLimiter],
-  options: {
-    description: `Gets the jwt of a user. This operation is rate limited at "${loginRateLimit}" on the same email`,
-  },
-})
+export const login = functions
+  .define({
+    input: LoginInput,
+    output: LoginOutput,
+    errors: loginErrorMap,
+    options: {
+      description: `Gets the jwt of a user. This operation is rate limited at "${loginRateLimit}" on the same email`,
+    },
+  })
+  .implement<Context>({
+    body: async ({ input, context, logger }) => {
+      const { email, password } = input
+      const loggedUser = await context.prisma.user.findFirst({ where: { email, password }, select: { id: true } })
+      if (!loggedUser) {
+        logger.logWarn(`${input.email} failed login`)
+        return result.fail({ invalidLogin: 'invalid username or password' })
+      }
+      await context.prisma.user.update({
+        where: { id: loggedUser.id },
+        data: { loginAt: new Date() },
+      })
+      const secret = process.env.JWT_SECRET ?? 'secret'
+      const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
+      return result.ok(jwt)
+    },
+    middlewares: [
+      rateLimiter.build({
+        key: ({ input }) => input.email,
+        rate: loginRateLimit,
+        onLimit: async () => {
+          //Improvement: warn the user, maybe block the account
+          return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
+        },
+        slotProvider,
+      }),
+      {
+        name: 'Dummy',
+        async apply(args, next, fn) {
+          //do something before
+          const result = await next(args)
+          //do somthign after
+          return result
+        },
+      },
+    ],
+  })
 
 export const register = functions.withContext<Context>().build({
   input: model.object(

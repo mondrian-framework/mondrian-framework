@@ -17,7 +17,6 @@ const prisma = new PrismaClient()
 //Instance of this module
 export const instance = module.build({
   name: process.env.MODULE_NAME ?? '???',
-  version: process.env.MODULE_VERSION ?? '0.0.0',
   functions,
   options: {
     maxSelectionDepth: 4,

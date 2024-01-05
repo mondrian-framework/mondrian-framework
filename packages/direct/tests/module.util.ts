@@ -47,7 +47,6 @@ const omitted = functions.build({
 
 const m = module.build({
   name: 'test',
-  version: '0.0.1',
   async context() {
     return {}
   },

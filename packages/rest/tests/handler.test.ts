@@ -1,8 +1,12 @@
-import { ErrorHandler, FunctionSpecifications, Request, Response } from '../src/api'
+import { ErrorHandler, FunctionSpecifications } from '../src/api'
 import { fromFunction } from '../src/handler'
 import { model, result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
+import { http } from '@mondrian-framework/utils'
 import { describe, expect, test } from 'vitest'
+
+type Request = http.Request
+type Response = http.Response
 
 describe('rest handler', () => {
   const f0 = functions.build({
@@ -71,7 +75,6 @@ describe('rest handler', () => {
     context: async () => ({}),
     functions: fs,
     name: 'example',
-    version: '0.0.0',
   })
 
   function buildHandler(
@@ -138,7 +141,6 @@ describe('rest handler', () => {
       openapi: {
         specification: {},
         input: (request) => request.headers.value,
-        request: () => ({}),
       },
     })
     const response = await handler({ headers: { value: '123' } })
@@ -248,7 +250,6 @@ describe('rest handler', () => {
         input(request) {
           throw new Error('Fail')
         },
-        request: () => ({}),
       },
     })
     const response = await handler({ headers: { ping: 'ping' } })

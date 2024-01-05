@@ -53,7 +53,6 @@ export function serialize(
   const functionMap = serializeFunctions(moduleInterface, nameMap)
   return {
     name: moduleInterface.name,
-    version: moduleInterface.version,
     types: typeMap,
     functions: functionMap,
   }
@@ -369,7 +368,6 @@ type FunctionSchema = model.Infer<typeof FunctionSchema>
 export const ModuleSchema = model
   .object({
     name: model.string({ minLength: 1 }),
-    version: model.string(),
     types: model.record(TypeSchema),
     functions: model.record(FunctionSchema),
   })

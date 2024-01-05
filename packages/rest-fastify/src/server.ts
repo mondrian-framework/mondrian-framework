@@ -59,7 +59,7 @@ export function serve<const Fs extends functions.Functions, ContextInput>({
       if (cachedSchema) {
         return cachedSchema
       }
-      const schema = rest.openapi.fromModule({ api, version, module: api.module })
+      const schema = rest.openapi.fromModule({ api, version })
       cache.set(v, schema)
       return schema
     })

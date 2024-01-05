@@ -53,7 +53,6 @@ test('Rate limiter middleware', async () => {
 
   const m = module.build({
     name: 'test',
-    version: '1.0.0',
     functions: { login },
     context: async ({ ip }: { ip: string }) => {
       return { ip }

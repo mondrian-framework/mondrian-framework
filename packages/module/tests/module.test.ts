@@ -122,7 +122,6 @@ test('Real example', async () => {
 
   const m = module.build({
     name: 'test',
-    version: '1.0.0',
     options: { maxSelectionDepth: 2 },
     functions: { login, register, completeProfile },
     context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
@@ -205,7 +204,6 @@ describe('Unique type name', () => {
     expect(() =>
       module.build({
         name: 'test',
-        version: '1.0.0',
         functions: { f },
         context: async () => ({}),
       }),
@@ -229,7 +227,6 @@ describe('Default middlewares', () => {
     })
     const m = module.build({
       name: 'test',
-      version: '1.0.0',
       functions: { dummy },
       options: {
         checkOutputType: 'throw',
@@ -283,7 +280,6 @@ test('Return types', async () => {
 
   const m = module.build({
     name: 'test',
-    version: '1.0.0',
     functions: { login },
     context: async () => ({}),
   })
@@ -368,7 +364,6 @@ test('Errors return', async () => {
 
   const m = module.build({
     name: 'test',
-    version: '1.0.0',
     functions: { errorTest },
     options: { checkOutputType: 'throw' },
     context: async () => ({}),

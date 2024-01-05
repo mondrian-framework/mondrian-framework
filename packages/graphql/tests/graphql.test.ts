@@ -82,7 +82,6 @@ const addOne = functions.build({
 
 const m = module.build({
   name: 'test',
-  version: '1.0.0',
   options: { maxSelectionDepth: 2 },
   functions: { addOne, register, pongUser, pongMetadata },
   context: async () => ({}),

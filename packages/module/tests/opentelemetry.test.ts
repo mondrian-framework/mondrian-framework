@@ -48,7 +48,6 @@ describe('Opentelemetry', () => {
     })
     const m = module.build({
       name: 'test',
-      version: '1.0.0',
       functions: { dummy },
       options: {
         maxSelectionDepth: 2,

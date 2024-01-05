@@ -12,13 +12,11 @@ describe('Module interface to schema', () => {
     })
     const m = module.define({
       name: 'test',
-      version: '0.0.0',
       functions: { f },
     })
     const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
     expect(schema).toEqual({
       name: 'test',
-      version: '0.0.0',
       types: {
         Input: { type: 'string', options: { name: 'Input' } },
         Output: { type: 'number', options: { name: 'Output' } },
@@ -36,13 +34,11 @@ describe('Module interface to schema', () => {
     })
     const m = module.define({
       name: 'test',
-      version: '0.0.0',
       functions: { f },
     })
     const schema1 = JSON.parse(JSON.stringify(serialization.serialize(m, {})))
     expect(schema1).toEqual({
       name: 'test',
-      version: '0.0.0',
       types: {
         Input: { type: 'custom', typeName: 'record', options: { name: 'Input' } },
         Output: { type: 'custom', typeName: 'timestamp', options: { name: 'Output' } },
@@ -52,7 +48,6 @@ describe('Module interface to schema', () => {
     const schema2 = JSON.parse(JSON.stringify(serialization.serialize(m)))
     expect(schema2).toEqual({
       name: 'test',
-      version: '0.0.0',
       types: {
         ANONYMOUS_TYPE_0: {
           type: 'custom',
@@ -99,13 +94,11 @@ describe('Module interface to schema', () => {
     })
     const m = module.define({
       name: 'test',
-      version: '0.0.0',
       functions: { f },
     })
     const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
     expect(schema).toEqual({
       name: 'test',
-      version: '0.0.0',
       types: {
         String: { type: 'string', options: { regex: 'asd', name: 'String' } },
         Number: { type: 'number', options: { name: 'Number' } },
@@ -186,13 +179,11 @@ describe('Module interface to schema', () => {
     })
     const m = module.define({
       name: 'test',
-      version: '0.0.0',
       functions: { f },
     })
     const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
     expect(schema).toEqual({
       name: 'test',
-      version: '0.0.0',
       types: {
         ANONYMOUS_TYPE_0: { type: 'string' },
         ANONYMOUS_TYPE_1: { type: 'optional', wrappedType: 'ANONYMOUS_TYPE_0' },
@@ -262,13 +253,11 @@ describe('Module interface to schema', () => {
     })
     const m = module.define({
       name: 'test',
-      version: '0.0.0',
       functions: { f },
     })
     const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
     expect(schema).toEqual({
       name: 'test',
-      version: '0.0.0',
       types: {
         ANONYMOUS_TYPE_0: { type: 'string' },
         other: {
@@ -299,7 +288,6 @@ describe('Module interface to schema', () => {
 test('Decode schema', () => {
   const result1 = serialization.ModuleSchema.decode({
     name: 'test',
-    version: '0.0.0',
     types: {
       ANONYMOUS_TYPE_0: { type: 'string' },
       ANONYMOUS_TYPE_1: { type: 'object', fields: { s: 'ANONYMOUS_TYPE_0', input: 'Input' }, lazy: true },

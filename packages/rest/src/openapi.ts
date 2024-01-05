@@ -7,17 +7,15 @@ import BigNumber from 'bignumber.js'
 import { OpenAPIV3_1 } from 'openapi-types'
 
 export function fromModule<Fs extends functions.FunctionsInterfaces>({
-  module,
   api,
   version,
 }: {
-  module: module.ModuleInterface<Fs>
   api: ApiSpecification<Fs>
   version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
-  const { components, internalData } = openapiComponents({ module, version, api })
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  const { components, internalData } = openapiComponents({ version, api })
+  for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue
@@ -125,7 +123,11 @@ export function fromModule<Fs extends functions.FunctionsInterfaces>({
 
   return {
     openapi: '3.1.0',
-    info: { version: module.version, title: module.name, description: module.description?.replaceAll('\n', '</br>') },
+    info: {
+      version: `v${api.version}`,
+      title: api.module.name,
+      description: api.module.description?.replaceAll('\n', '</br>'),
+    },
     servers,
     paths,
     components: {
@@ -316,11 +318,9 @@ function generatePathParameters({
 }
 
 function openapiComponents<Fs extends functions.FunctionsInterfaces>({
-  module,
   version,
   api,
 }: {
-  module: module.ModuleInterface<Fs>
   version: number
   api: ApiSpecification<Fs>
 }): {
@@ -328,7 +328,7 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
   internalData: InternalData
 } {
   const usedTypes: model.Type[] = []
-  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+  for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
     if (!specifications) {
       continue

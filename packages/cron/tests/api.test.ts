@@ -31,7 +31,6 @@ test('cron API test', async () => {
 
   const m = module.build({
     name: 'test',
-    version: '0.0.0',
     functions: { f1, f2, f3 },
     async context() {
       return {}

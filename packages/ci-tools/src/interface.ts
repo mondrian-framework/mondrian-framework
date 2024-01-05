@@ -1,4 +1,4 @@
-import { decoding, encoding, model, validation } from '@mondrian-framework/model'
+import { decoding, model, validation } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { rest } from '@mondrian-framework/rest'
 import gen from 'fast-check'
@@ -39,7 +39,18 @@ export const GraphQLSchemaType = () =>
     },
     encoder: (value) => printSchema(value),
     validator: () => validation.succeed(),
-    arbitrary: () => gen.constant(new GraphQLSchema({})),
+    arbitrary: () =>
+      gen.constant(
+        buildSchema(`
+        type Query {
+          login(username: String!, password:String!): String!
+        }
+        type Mutation {
+          register(username: String!, password:String!): Boolean!
+        }
+        `),
+      ),
+    options: { name: 'GraphQLSchema' },
   })
 
 export const ReportResult = () =>

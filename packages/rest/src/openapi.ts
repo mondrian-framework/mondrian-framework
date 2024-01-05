@@ -519,7 +519,11 @@ function customToOpenAPIComponent(
 
   //otherwise don't known how to convert this type to openapi
   console.warn(`[OpenAPI generation] don't known how to properly map custom type "${type.typeName}"`)
-  return { type: 'string', description: type.options?.description ?? type.typeName }
+  return {
+    type: 'string',
+    description: type.options?.description ?? type.typeName,
+    example: type.encodeWithoutValidation(type.example({ seed: 0 })),
+  }
 }
 
 function arrayToOpenAPIComponent(

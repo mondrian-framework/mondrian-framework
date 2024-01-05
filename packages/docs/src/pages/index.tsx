@@ -72,7 +72,7 @@ export default function Home(): JSX.Element {
                 </div>
                 <div className={styles.qualities}>
                   <div className={styles.quality}>
-                    <div className={styles.qualityIcon}>
+                    <div className={styles.qualityIcon1}>
                       <FontAwesomeIcon icon={faCube} />
                     </div>
                     <div className={styles.qualityTitle}>
@@ -83,7 +83,7 @@ export default function Home(): JSX.Element {
                     </div>
                   </div>
                   <div className={styles.quality}>
-                    <div className={styles.qualityIcon}>
+                    <div className={styles.qualityIcon2}>
                       <FontAwesomeIcon icon={faVialCircleCheck} />
                     </div>
                     <div className={styles.qualityTitle}>
@@ -94,7 +94,7 @@ export default function Home(): JSX.Element {
                     </div>
                   </div>
                   <div className={styles.quality}>
-                    <div className={styles.qualityIcon}>
+                    <div className={styles.qualityIcon3}>
                       <FontAwesomeIcon icon={faBinoculars} />
                     </div>
                     <div className={styles.qualityTitle}>
@@ -105,7 +105,7 @@ export default function Home(): JSX.Element {
                     </div>
                   </div>
                   <div className={styles.quality}>
-                    <div className={styles.qualityIcon}>
+                    <div className={styles.qualityIcon4}>
                       <FontAwesomeIcon icon={faLock} />
                     </div>
                     <div className={styles.qualityTitle}>

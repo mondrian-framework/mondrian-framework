@@ -173,17 +173,37 @@ section:nth-child(2n) {
   height: 300px;
 }
 
-.qualityIcon {
+.qualityIcon1, .qualityIcon2, .qualityIcon3, .qualityIcon4 {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 60px;
   height: 60px;
-  background-color: var(--ifm-color-primary);
+  
   color: #fff;
   border-radius: 10px;
   font-size: 30px;
   margin-bottom: 30px;
+}
+
+.qualityIcon1 {
+  background-color: #000000;
+}
+
+[data-theme='dark'] .qualityIcon1 {
+  color: #000;
+  background-color: #fff;
+}
+
+.qualityIcon2 {
+  background-color: #fac901;
+}
+
+.qualityIcon3 {
+  background-color: #dd0100;
+}
+.qualityIcon4 {
+  background-color: var(--ifm-color-primary);
 }
 
 .qualityTitle {
@@ -194,7 +214,7 @@ section:nth-child(2n) {
 }
 
 [data-theme='dark'] .quality {
-  border: 2px solid var(--ifm-color-primary);
+  border: 2px solid #444;
 }
 [data-theme='dark'] .qualityTitle {
   color: #fff;

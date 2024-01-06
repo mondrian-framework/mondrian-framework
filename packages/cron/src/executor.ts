@@ -9,11 +9,11 @@ import { schedule, validate } from 'node-cron'
  * Starts a new cron listeners with the given configuration.
  * For each cron assigned function a new schedule is created.
  */
-export function start<const F extends functions.Functions, CI>({
+export function start<F extends functions.Functions, E extends functions.ErrorType, CI>({
   api,
   context,
 }: {
-  api: Api<F, CI>
+  api: Api<F, E, CI>
   context: (args: { cron: string }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const baseLogger = logger.build({ moduleName: api.module.name, server: 'CRON' })

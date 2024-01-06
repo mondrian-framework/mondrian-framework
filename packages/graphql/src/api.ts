@@ -22,17 +22,19 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
  * to generate a fully featured graphql schema and serve the module as graphql endpoint.
  * In order to instantiate this you should use {@link build}.
  */
-export type Api<Fs extends functions.Functions, ContextInput> = ApiSpecification<Fs> & {
+export type Api<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput> = ApiSpecification<Fs> & {
   /**
    * Module to serve
    */
-  module: module.Module<Fs, ContextInput>
+  module: module.Module<Fs, E, ContextInput>
 }
 
 /**
  * Builds a GraphQL API in order to expose the module.
  */
-export function build<Fs extends functions.Functions, ContextInput>(api: Api<Fs, ContextInput>): Api<Fs, ContextInput> {
+export function build<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>(
+  api: Api<Fs, E, ContextInput>,
+): Api<Fs, E, ContextInput> {
   //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
   return api
 }
@@ -56,7 +58,6 @@ export type ErrorHandler<F extends functions.Functions, ServerContext> = (
     error: unknown
     logger: logger.MondrianLogger
     functionName: keyof F
-    context: unknown
     tracer: functions.Tracer
     functionArgs: {
       retrieve: unknown

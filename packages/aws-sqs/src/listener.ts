@@ -7,11 +7,11 @@ import { sleep } from '@mondrian-framework/utils'
 /**
  * TODO: doc
  */
-export function listen<const Fs extends functions.Functions, const CI>({
+export function listen<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
   api,
   context,
 }: {
-  api: Api<Fs, CI>
+  api: Api<Fs, E, CI>
   context: (args: { message: AWS.Message }) => Promise<CI>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
@@ -48,7 +48,7 @@ export function listen<const Fs extends functions.Functions, const CI>({
   }
 }
 
-async function listenForMessage<const Fs extends functions.Functions, const CI>({
+async function listenForMessage<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
   alive,
   queueUrl,
   client,
@@ -61,7 +61,7 @@ async function listenForMessage<const Fs extends functions.Functions, const CI>(
   queueUrl: string
   alive: { yes: boolean }
   client: AWS.SQS
-  module: module.Module<Fs, CI>
+  module: module.Module<Fs, E, CI>
   functionName: string
   context: (args: { message: AWS.Message }) => Promise<CI>
   specifications: FunctionSpecifications

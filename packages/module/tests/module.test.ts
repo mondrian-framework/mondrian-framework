@@ -133,17 +133,18 @@ test('Real example', async () => {
     name: 'test',
     options: { maxSelectionDepth: 2 },
     functions: { login, register, completeProfile },
+    errors: { unathorized: model.string() },
     context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
       if (authorization != null) {
         //dummy auth
         const user = db.findUser({ email: authorization })
         if (user) {
-          return { from: ip, authenticatedUser: { email: user.email }, db }
+          return result.ok({ from: ip, authenticatedUser: { email: user.email }, db })
         } else {
-          throw `Invalid authorization`
+          return result.fail({ unathorized: 'Invalid authorization' })
         }
       }
-      return { from: ip, db }
+      return result.ok({ from: ip, db })
     },
   })
 
@@ -179,13 +180,12 @@ test('Real example', async () => {
 
   const completeProfileResult = await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
   expect(completeProfileResult.isFailure && completeProfileResult.error).toEqual({ unauthorized: 'unauthorized' })
-  await expect(
-    async () =>
-      await client.functions.completeProfile(
-        { firstname: 'Pieter', lastname: 'Mondriaan' },
-        { metadata: { authorization: 'wrong' } },
-      ),
-  ).rejects.toThrow()
+  const r1 = await client.functions.completeProfile(
+    { firstname: 'Pieter', lastname: 'Mondriaan' },
+    { metadata: { authorization: 'wrong' } },
+  )
+  expect(r1.isFailure && r1.error).toEqual({ unathorized: 'Invalid authorization' })
+
   if (loginResult.isOk && loginResult.value) {
     const authClient = client.withMetadata({ authorization: loginResult.value.jwt })
     const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }, {})
@@ -217,7 +217,7 @@ describe('Unique type name', () => {
       module.build({
         name: 'test',
         functions: { f },
-        context: async () => ({}),
+        context: async () => result.ok({}),
       }),
     ).toThrowError(`Duplicated type name "Input"`)
   })
@@ -235,9 +235,9 @@ describe('Default middlewares', () => {
       .implement({
         body: async ({ input }) => {
           if (input?.value === 'wrong') {
-            return {} //selection not respected sometimes!
+            return result.ok({}) //selection not respected sometimes!
           }
-          return input
+          return result.ok(input)
         },
       })
     const m = module.build({
@@ -247,7 +247,7 @@ describe('Default middlewares', () => {
         checkOutputType: 'throw',
         maxSelectionDepth: 2,
       },
-      context: async () => ({}),
+      context: async () => result.ok({}),
       policies: () => security.on(type).allows({ selection: true }),
     })
 
@@ -292,14 +292,14 @@ test('Return types', async () => {
     })
     .implement({
       body: async () => {
-        return { email: 'email@domain.com', metadata: { tags: [] }, friends: [] }
+        return result.ok({ email: 'email@domain.com', metadata: { tags: [] }, friends: [] })
       },
     })
 
   const m = module.build({
     name: 'test',
     functions: { login },
-    context: async () => ({}),
+    context: async () => result.ok({}),
   })
 
   const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
@@ -382,12 +382,22 @@ test('Errors return', async () => {
         }
       },
     })
+  const unfailableFunction = functions
+    .define({
+      input: model.string(),
+      output: model.string(),
+    })
+    .implement({
+      body: async ({ input }) => {
+        return result.fail(1 as never)
+      },
+    })
 
   const m = module.build({
     name: 'test',
-    functions: { errorTest },
+    functions: { errorTest, unfailableFunction },
     options: { checkOutputType: 'throw' },
-    context: async () => ({}),
+    context: async () => result.ok({}),
   })
 
   const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
@@ -412,9 +422,13 @@ test('Errors return', async () => {
   expect(() => client.functions.errorTest('6')).rejects.toThrowError(
     'Invalid output on function errorTest. Errors: (1) {"expected":"undefined","got":1,"path":"$.wrong"}',
   )
+
+  expect(() => client.functions.unfailableFunction('1')).rejects.toThrowError(
+    "Unexpected failure on function unfailableFunction. It doesn't declare errors nor the module declares errors.",
+  )
 })
 
-test('Undefiend function error tyoe', async () => {
+test('Undefiend function error type', async () => {
   expect(() =>
     functions
       .define({

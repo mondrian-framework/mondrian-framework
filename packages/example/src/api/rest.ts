@@ -1,5 +1,5 @@
 import { module } from '../core'
-import { InvalidJwtError } from '../core/errors'
+import { errors } from '@mondrian-framework/module'
 import { rest } from '@mondrian-framework/rest'
 import { serve } from '@mondrian-framework/rest-fastify'
 import { FastifyInstance } from 'fastify'
@@ -22,6 +22,7 @@ const api = rest.build({
     loggedUser: { type: 'http', scheme: 'bearer' },
   },
   errorCodes: {
+    invalidJwt: 401,
     invalidLogin: 401,
     tooManyRequests: 429,
   },
@@ -37,8 +38,8 @@ export function serveRest(server: FastifyInstance) {
       ip: request.ip,
     }),
     async error({ error, logger }) {
-      if (error instanceof InvalidJwtError) {
-        return { status: 400, body: error.message }
+      if (error instanceof errors.UnauthorizedAccess) {
+        return { status: 401, body: error.error }
       }
       if (error instanceof Error && process.env.ENVIRONMENT !== 'development') {
         logger.logError(error.message)

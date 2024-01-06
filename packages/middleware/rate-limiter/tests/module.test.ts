@@ -58,7 +58,7 @@ test('Rate limiter middleware', async () => {
     name: 'test',
     functions: { login },
     context: async ({ ip }: { ip: string }) => {
-      return { ip }
+      return result.ok({ ip })
     },
   })
 

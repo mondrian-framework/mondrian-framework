@@ -16,7 +16,7 @@ describe('rest handler', () => {
     })
     .implement({
       async body() {
-        return 1
+        return result.ok(1)
       },
     })
   const f1 = functions
@@ -26,7 +26,7 @@ describe('rest handler', () => {
     })
     .implement({
       async body({ input }) {
-        return Number(input)
+        return result.ok(Number(input))
       },
     })
   const f2 = functions
@@ -36,7 +36,7 @@ describe('rest handler', () => {
     })
     .implement({
       async body({ input: { a, b } }) {
-        return a * b
+        return result.ok(a * b)
       },
     })
   const f3 = functions
@@ -63,7 +63,7 @@ describe('rest handler', () => {
         if (ping !== 'ping') {
           throw new Error('Not a ping!')
         }
-        return 'pong' as const
+        return result.ok('pong')
       },
     })
   const user = () => model.entity({ username: model.string(), live: model.boolean(), friend: model.optional(user) })
@@ -76,9 +76,9 @@ describe('rest handler', () => {
     .implement({
       async body({ retrieve }) {
         if (retrieve.select?.friend) {
-          return { live: true, username: 'name', friend: { live: true, username: 'name2' } }
+          return result.ok({ live: true, username: 'name', friend: { live: true, username: 'name2' } })
         }
-        return { live: true, username: 'name' }
+        return result.ok({ live: true, username: 'name' })
       },
     })
   const f6 = functions
@@ -88,12 +88,12 @@ describe('rest handler', () => {
     })
     .implement({
       async body({ input: { a, b } }) {
-        return a * b.a * b.b
+        return result.ok(a * b.a * b.b)
       },
     })
   const fs = { f0, f1, f2, f3, f4, f5, f6 } as const
   const m = module.build({
-    context: async () => ({}),
+    context: async () => result.ok({}),
     functions: fs,
     name: 'example',
   })

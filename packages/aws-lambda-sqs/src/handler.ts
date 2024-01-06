@@ -20,12 +20,12 @@ type FunctionSpecifications = {
   | { anyQueue: true }
 )
 
-export function build<const Fs extends functions.Functions, CI>({
+export function build<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
   module,
   api,
   context,
 }: {
-  module: module.Module<Fs, CI>
+  module: module.Module<Fs, E, CI>
   api: Api<Fs>
   context: (args: { event: SQSEvent; context: Context; recordIndex: number }) => Promise<CI>
 }): SQSHandler {

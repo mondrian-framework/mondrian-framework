@@ -11,14 +11,14 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 
-export function serve<const Fs extends functions.Functions, ContextInput>({
+export function serve<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
   api,
   server,
   context,
   error,
   ...args
 }: {
-  api: rest.Api<Fs, ContextInput>
+  api: rest.Api<Fs, E, ContextInput>
   server: FastifyInstance
   context: (serverContext: ServerContext) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, ServerContext>

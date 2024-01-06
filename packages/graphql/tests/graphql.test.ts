@@ -58,7 +58,7 @@ const pongUser = functions
       if (typeof input === 'string') {
         throw new Error(input)
       }
-      return input
+      return result.ok(input)
     },
   })
 const Metadata = () =>
@@ -77,7 +77,7 @@ const pongMetadata = functions
   })
   .implement({
     body: async ({ input }) => {
-      return input
+      return result.ok(input)
     },
   })
 
@@ -88,7 +88,7 @@ const addOne = functions
   })
   .implement({
     body: async ({ input }) => {
-      return input + 1
+      return result.ok(input + 1)
     },
   })
 
@@ -96,7 +96,7 @@ const m = module.build({
   name: 'test',
   options: { maxSelectionDepth: 2 },
   functions: { addOne, register, pongUser, pongMetadata },
-  context: async () => ({}),
+  context: async () => result.ok({}),
 })
 
 type ServerContext = { req: http.IncomingMessage; res: http.ServerResponse }

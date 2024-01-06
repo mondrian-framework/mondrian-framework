@@ -6,11 +6,11 @@ import { isArray, http } from '@mondrian-framework/utils'
 import BigNumber from 'bignumber.js'
 import { OpenAPIV3_1 } from 'openapi-types'
 
-export function fromModule<Fs extends functions.FunctionsInterfaces>({
+export function fromModule<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType>({
   api,
   version,
 }: {
-  api: ApiSpecification<Fs>
+  api: ApiSpecification<Fs, E>
   version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
@@ -317,12 +317,12 @@ function generatePathParameters({
   return result
 }
 
-function openapiComponents<Fs extends functions.FunctionsInterfaces>({
+function openapiComponents<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType>({
   version,
   api,
 }: {
   version: number
-  api: ApiSpecification<Fs>
+  api: ApiSpecification<Fs, E>
 }): {
   components: OpenAPIV3_1.ComponentsObject
   internalData: InternalData

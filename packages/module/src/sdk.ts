@@ -1,15 +1,16 @@
 import { functions, module, retrieve, utils } from '.'
 import { logger as mondrianLogger } from '.'
 import { ErrorType } from './function'
+import { MergeErrors } from './utils'
 import { result, model } from '@mondrian-framework/model'
 
-export type Sdk<F extends functions.Functions, Metadata> = {
-  functions: SdkFunctions<F, Metadata>
-  withMetadata: (metadata: Metadata) => Sdk<F, Metadata>
+export type Sdk<F extends functions.Functions, E extends ErrorType, Metadata> = {
+  functions: SdkFunctions<F, E, Metadata>
+  withMetadata: (metadata: Metadata) => Sdk<F, E, Metadata>
 }
 
-type SdkFunctions<F extends functions.Functions, Metadata> = {
-  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], F[K]['errors'], F[K]['retrieve'], Metadata>
+type SdkFunctions<F extends functions.Functions, E extends ErrorType, Metadata> = {
+  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], MergeErrors<F[K]['errors'], E>, F[K]['retrieve'], Metadata>
 }
 
 type SdkFunction<
@@ -164,13 +165,13 @@ class SdkBuilder<const Metadata> {
     this.metadata = metadata
   }
 
-  public build<const Fs extends functions.Functions, ContextInput>({
+  public build<Fs extends functions.Functions, ContextInput, E extends ErrorType = undefined>({
     module,
     context,
   }: {
-    module: module.Module<Fs, ContextInput>
+    module: module.Module<Fs, E, ContextInput>
     context: (args: { metadata?: Metadata }) => Promise<ContextInput>
-  }): Sdk<Fs, Metadata> {
+  }): Sdk<Fs, E, Metadata> {
     const presetLogger = mondrianLogger.build({ moduleName: module.name, server: 'LOCAL' })
     const fs = Object.fromEntries(
       Object.entries(module.functions).map(([functionName, functionBody]) => {
@@ -184,20 +185,30 @@ class SdkBuilder<const Metadata> {
           const thisLogger = presetLogger.updateContext({ operationName: functionName })
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
-            const ctx = await module.context(contextInput, {
+            const ctxResult = await module.context(contextInput, {
               input,
               retrieve: options?.retrieve,
               tracer: functionBody.tracer,
               logger: thisLogger,
               functionName,
             })
+            if (ctxResult.isFailure) {
+              return ctxResult
+            }
             const result = await functionBody.apply({
               input: input as never,
               retrieve: options?.retrieve ?? {},
-              context: ctx,
+              context: ctxResult.value,
               tracer: functionBody.tracer,
               logger: thisLogger,
             })
+            if (!functionBody.errors) {
+              if (result.isOk) {
+                return result.value
+              } else {
+                throw new Error(`Unexpected failure result for function ${functionName}`)
+              }
+            }
             return result
           } catch (error) {
             throw error
@@ -207,7 +218,7 @@ class SdkBuilder<const Metadata> {
       }),
     )
     return {
-      functions: fs as unknown as SdkFunctions<Fs, Metadata>,
+      functions: fs as unknown as SdkFunctions<Fs, E, Metadata>,
       withMetadata: (metadata) => withMetadata(metadata).build({ module, context }),
     }
   }
@@ -217,9 +228,9 @@ export function withMetadata<const Metadata>(metadata?: Metadata): SdkBuilder<Me
   return new SdkBuilder(metadata)
 }
 
-export function build<const Fs extends functions.Functions, ContextInput>(args: {
-  module: module.Module<Fs, ContextInput>
+export function build<Fs extends functions.Functions, E extends ErrorType, ContextInput>(args: {
+  module: module.Module<Fs, E, ContextInput>
   context: (args: { metadata?: unknown }) => Promise<ContextInput>
-}): Sdk<Fs, unknown> {
+}): Sdk<Fs, E, unknown> {
   return withMetadata().build(args)
 }

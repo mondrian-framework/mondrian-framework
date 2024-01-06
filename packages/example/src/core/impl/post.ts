@@ -26,7 +26,7 @@ export const writePost = module.functions.writePost.implement<LoggedUserContext>
 export const readPosts = module.functions.readPosts.implement<LoggedUserContext>({
   body: async ({ context, retrieve }) => {
     const posts = await context.prisma.post.findMany(retrieve)
-    return posts
+    return result.ok(posts)
   },
 })
 

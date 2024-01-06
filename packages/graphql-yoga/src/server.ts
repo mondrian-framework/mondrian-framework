@@ -7,13 +7,13 @@ import http from 'node:http'
 
 export type ServerContext = { req: http.IncomingMessage; res: http.ServerResponse }
 
-export function createServer<const Fs extends functions.Functions, const ContextInput>({
+export function createServer<Fs extends functions.Functions, E extends functions.ErrorType, const ContextInput>({
   api,
   context,
   errorHandler,
   ...args
 }: {
-  api: graphql.Api<Fs, ContextInput>
+  api: graphql.Api<Fs, E, ContextInput>
   context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   errorHandler?: graphql.ErrorHandler<Fs, ServerContext>
   options?: Omit<YogaServerOptions<ServerContext, ContextInput>, 'schema' | 'context' | 'graphqlEndpoint'> &

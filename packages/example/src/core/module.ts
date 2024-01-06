@@ -1,6 +1,6 @@
-import { Context, LoggedUserContext, policies, posts, users } from '.'
+import { policies, posts, users } from '.'
 import { module as moduleInterface } from '../interface'
-import { InvalidJwtError } from './errors'
+import { result } from '@mondrian-framework/model'
 import { PrismaClient } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
@@ -18,7 +18,7 @@ export const module = moduleInterface.implement({
     checkOutputType: 'throw',
     opentelemetry: true,
   },
-  async context({ authorization, ip }: { authorization?: string; ip: string }): Promise<Context | LoggedUserContext> {
+  async context({ authorization, ip }: { authorization?: string; ip: string }) {
     if (authorization) {
       const secret = process.env.JWT_SECRET ?? 'secret'
       const rawJwt = authorization.replace('Bearer ', '')
@@ -26,13 +26,13 @@ export const module = moduleInterface.implement({
         const jwt = jsonwebtoken.verify(rawJwt, secret, { complete: true })
         if (typeof jwt.payload === 'object' && jwt.payload.sub) {
           const userId = Number(jwt.payload.sub)
-          return { prisma, ip, userId }
+          return result.ok({ prisma, ip, userId })
         }
       } catch {
-        throw new InvalidJwtError(rawJwt)
+        return result.fail({ invalidJwt: rawJwt })
       }
     }
-    return { prisma, ip }
+    return result.ok({ prisma, ip })
   },
   policies(context) {
     if (context.userId != null) {

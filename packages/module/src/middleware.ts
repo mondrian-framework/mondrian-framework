@@ -34,47 +34,38 @@ export function checkOutputType(
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
-      const nextRes: result.Result<unknown, unknown> | unknown = await next(args)
-      if (thisFunction.errors && (nextRes as result.Result<unknown, unknown>).isFailure) {
-        //Checks the error type
-        const errorDecodeResult = utils.decodeFunctionFailure(
-          (nextRes as result.Failure<unknown>).error,
-          thisFunction.errors,
-          {
-            errorReportingStrategy: 'allErrors',
-            fieldStrictness: 'expectExactFields',
-          },
-        )
-        if (errorDecodeResult.isFailure) {
-          handleFailure({ onFailure, functionName, logger: args.logger, result: errorDecodeResult })
+      const originalResult = await next(args)
+      if (originalResult.isFailure) {
+        if (!thisFunction.errors) {
+          throw new Error(
+            `Unexpected failure on function ${functionName}. It doesn't declare errors nor the module declares errors.`,
+          )
         }
-        return errorDecodeResult.isOk ? result.fail(errorDecodeResult.value) : nextRes
+        const mappedError = utils.decodeFunctionFailure(originalResult.error, thisFunction.errors, {
+          errorReportingStrategy: 'allErrors',
+          fieldStrictness: 'expectExactFields',
+        })
+        if (mappedError.isFailure) {
+          handleFailure({ onFailure, functionName, logger: args.logger, result: mappedError })
+          return originalResult
+        }
+        return result.fail(mappedError.value as {})
       }
 
-      //Unwrap the value
-      let outputValue
-      if (thisFunction.errors) {
-        outputValue = (nextRes as result.Ok<unknown>).value
-      } else {
-        outputValue = nextRes
-      }
       const retrieveType = retrieve.fromType(thisFunction.output, thisFunction.retrieve)
       const defaultRetrieve = retrieveType.isOk ? { select: {} } : {}
 
       const typeToRespect = retrieve.selectedType(thisFunction.output, args.retrieve ?? defaultRetrieve)
-      const valueDecodeResult = model.concretise(typeToRespect).decode(outputValue as never, {
+      const mappedResult = model.concretise(typeToRespect).decode(originalResult.value as never, {
         errorReportingStrategy: 'allErrors',
         fieldStrictness: 'allowAdditionalFields',
       })
 
-      if (valueDecodeResult.isFailure) {
-        handleFailure({ onFailure, functionName, logger: args.logger, result: valueDecodeResult })
-        return outputValue
-      } else if (thisFunction.errors) {
-        return result.ok(valueDecodeResult.value)
-      } else {
-        return valueDecodeResult.value
+      if (mappedResult.isFailure) {
+        handleFailure({ onFailure, functionName, logger: args.logger, result: mappedResult })
+        return originalResult
       }
+      return mappedResult as result.Ok<never>
     },
   }
 }

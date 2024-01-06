@@ -9,19 +9,19 @@ export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 /**
  * Attachs a Direct server to a fastify instace.
  */
-export function serveWithFastify<const Fs extends functions.Functions, const ContextInput>({
+export function serveWithFastify<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
   server,
   api,
   context,
   ...args
 }: {
-  api: Api<Fs, any, ContextInput>
+  api: Api<Fs, E, any, ContextInput>
   server: FastifyInstance
   context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
   options?: Partial<ServeOptions>
 }): void {
   const options = { ...DEFAULT_SERVE_OPTIONS, ...args.options }
-  const handler = fromModule<Fs, ServerContext, ContextInput>({ api, context, options })
+  const handler = fromModule<Fs, E, ServerContext, ContextInput>({ api, context, options })
   const path = api.options?.path ?? '/mondrian'
   server.post(path, async (request, reply) => {
     const response = await handler({

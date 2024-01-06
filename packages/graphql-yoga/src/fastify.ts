@@ -7,14 +7,14 @@ import { createYoga, Plugin, YogaServerOptions } from 'graphql-yoga'
 
 export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 
-export function serveWithFastify<const Fs extends functions.Functions, const ContextInput>({
+export function serveWithFastify<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
   server,
   api,
   context,
   errorHandler,
   ...args
 }: {
-  api: graphql.Api<Fs, ContextInput>
+  api: graphql.Api<Fs, E, ContextInput>
   server: FastifyInstance
   context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   errorHandler?: graphql.ErrorHandler<Fs, ServerContext>

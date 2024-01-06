@@ -15,7 +15,7 @@ const ping = functions
       if (args.input < 0) {
         throw new Error('Negative ping')
       }
-      return args.input
+      return result.ok(args.input)
     },
   })
 
@@ -42,7 +42,7 @@ const getUsers = functions
   })
   .implement({
     async body() {
-      return [{ name: 'John' }]
+      return result.ok([{ name: 'John' }])
     },
   })
 
@@ -53,14 +53,27 @@ const omitted = functions
   })
   .implement({
     async body() {
-      return 1
+      return result.ok(1)
     },
   })
 
 const m = module.build({
   name: 'test',
   async context() {
-    return {}
+    return result.ok({})
+  },
+  functions: { ping, getUsers, divideBy, omitted },
+})
+
+const m2 = module.build({
+  name: 'test',
+  errors: { invalidJwt: model.string() },
+  async context(jwt: string) {
+    if (jwt === 'wrong') {
+      return result.fail({ invalidJwt: '' })
+    } else {
+      return result.ok({})
+    }
   },
   functions: { ping, getUsers, divideBy, omitted },
 })
@@ -70,4 +83,11 @@ export const api = buildApi({
     omitted: true,
   },
   module: m,
+})
+
+export const api2 = buildApi({
+  exclusions: {
+    omitted: true,
+  },
+  module: m2,
 })

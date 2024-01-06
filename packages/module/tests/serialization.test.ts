@@ -95,6 +95,7 @@ describe('Module interface to schema', () => {
     const m = module.define({
       name: 'test',
       functions: { f },
+      errors: { asd: str },
     })
     const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
     expect(schema).toEqual({
@@ -148,6 +149,7 @@ describe('Module interface to schema', () => {
         Error1: { type: 'nullable', wrappedType: 'String', options: { name: 'Error1' } },
         Error2: { type: 'array', wrappedType: 'String', options: { name: 'Error2' } },
       },
+      errors: { asd: 'String' },
       functions: { f: { input: 'Input', output: 'Output', errors: { error1: 'Error1', error2: 'Error2' } } },
     })
   })

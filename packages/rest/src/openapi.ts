@@ -172,7 +172,7 @@ export function generateOpenapiInput({
     ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
     : []
   const inputType = functionBody.input
-  if (model.isNever(inputType)) {
+  if (model.isLiteral(inputType, undefined)) {
     return {
       parameters: [],
       input: () => null,
@@ -464,7 +464,7 @@ function literalToOpenAPIComponent(type: model.LiteralType): OpenAPIV3_1.NonArra
         : literalType === 'string'
           ? literalType
           : 'unknown'
-  if (type.literalValue === null) {
+  if (type.literalValue === null || type.literalValue === undefined) {
     return {
       type: 'null',
       const: 'null',

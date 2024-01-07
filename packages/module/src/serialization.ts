@@ -280,10 +280,11 @@ const booleanTypeSchema = model.object({
 const literalTypeSchema = model.object({
   type: model.literal('literal'),
   literalValue: model.union({
-    null: model.literal(null),
     string: model.string(),
     boolean: model.boolean(),
     number: model.number(),
+    null: model.null(),
+    undefined: model.undefined(),
   }),
   options: model.object(baseOptionsFields).optional(),
 })

@@ -27,7 +27,7 @@ type SdkFunction<
   OutputType extends model.Type,
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
-> = model.IsNever<InputType> extends true
+> = model.IsLiteral<InputType, undefined> extends true
   ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
       input?: undefined,
       options?: [P] extends [never]
@@ -77,9 +77,7 @@ export function build<
     const handler = async (input: never, options?: { retrieve?: never; metadata?: Record<string, string> }) => {
       const responseType = Response(functionBody, options?.retrieve)
 
-      const inputJson = model.isNever(functionBody.input)
-        ? undefined
-        : model.concretise(functionBody.input).encodeWithoutValidation(input)
+      const inputJson = model.concretise(functionBody.input).encodeWithoutValidation(input)
       const retrieveJson = retrieveType.isOk
         ? model.concretise(retrieveType.value).encodeWithoutValidation(options?.retrieve ?? {})
         : undefined

@@ -7,8 +7,9 @@
     "build"
   ],
   "scripts": {
+    "build": "tsc",
     "test": "vitest run",
-    "build": "tsc"
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "node-cron": "3.0.3",

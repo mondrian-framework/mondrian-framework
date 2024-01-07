@@ -240,7 +240,6 @@ const Post = () =>
 
 const getUsers = functions
   .define({
-    input: model.never(),
     output: model.array(User),
     retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
   })
@@ -260,7 +259,6 @@ In this configuration, we have created a data breach. In fact, by retrieving use
 ```typescript
 const getUsers = functions
   .define({
-    input: model.never(),
     output: model.array(User),
     retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
   })

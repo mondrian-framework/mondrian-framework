@@ -214,7 +214,7 @@ function enumToGraphQLType(
 
 // Turns a literal into a GraphQL scalar.
 function literalToGraphQLType(
-  literal: model.LiteralType<number | string | null | boolean>,
+  literal: model.LiteralType<number | string | null | boolean | undefined>,
   internalData: InternalData,
 ): GraphQLScalarType {
   //Set a default description and a default name
@@ -635,7 +635,7 @@ function makeOperation<Fs extends functions.Functions, E extends functions.Error
 ): [string, GraphQLFieldConfig<any, any>] {
   const operationName = specification.name ?? functionName
   let input: { type: GraphQLInputType } | undefined = undefined
-  if (!model.isNever(functionBody.input)) {
+  if (!model.isLiteral(functionBody.input, undefined)) {
     const plainInput = typeToGraphQLInputType(functionBody.input, {
       ...internalData,
       defaultName: `${capitalise(operationName)}Input`,
@@ -675,9 +675,7 @@ function makeOperation<Fs extends functions.Functions, E extends functions.Error
       const tracer = functionBody.tracer.withPrefix(`mondrian:graphql-resolver:${functionName}:`)
       try {
         // Decode all the needed bits to call the function
-        const input = model.isNever(functionBody.input)
-          ? undefined
-          : decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], thisLogger, tracer)
+        const input = decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], thisLogger, tracer)
         const retrieveValue = completeRetrieveType.isOk
           ? decodeRetrieve(info, completeRetrieveType.value, isOutputTypeWrapped, tracer)
           : {}

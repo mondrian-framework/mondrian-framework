@@ -19,7 +19,7 @@ type SdkFunction<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   Metadata,
-> = model.IsNever<InputType> extends true
+> = model.IsLiteral<InputType, undefined> extends true
   ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(options?: {
       retrieve?: P
       metadata?: Metadata

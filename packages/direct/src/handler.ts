@@ -58,7 +58,7 @@ export function fromModule<Fs extends functions.Functions, E extends functions.E
     const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
     return model.object({
       function: model.literal(functionName),
-      ...(model.isNever(functionBody.input) ? {} : { input: functionBody.input as model.UnknownType }),
+      input: functionBody.input as model.UnknownType,
       ...(retrieveType.isOk ? { retrieve: model.optional(retrieveType.value) as unknown as model.UnknownType } : {}),
       metadata: model.record(model.string()).optional(),
     })

@@ -36,7 +36,6 @@ const divideBy = functions
 
 const getUsers = functions
   .define({
-    input: model.never(),
     output: model.entity({ name: model.string() }).array(),
     retrieve: { select: true },
   })

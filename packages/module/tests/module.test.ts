@@ -118,6 +118,16 @@ test('Real example', async () => {
         return result.ok(db.updateUser({ ...user, ...input }))
       },
     })
+
+  const noInputOrOutput = functions
+    .define({
+      errors: { unauthorized: model.literal('unauthorized') },
+    })
+    .implement<SharedContext & { authenticatedUser?: { email: string } }>({
+      body: async ({}) => {
+        return result.ok(undefined)
+      },
+    })
   const memory = new Map<string, User>()
   const db: SharedContext['db'] = {
     updateUser(user) {
@@ -132,7 +142,7 @@ test('Real example', async () => {
   const m = module.build({
     name: 'test',
     options: { maxSelectionDepth: 2 },
-    functions: { login, register, completeProfile },
+    functions: { login, register, completeProfile, noInputOrOutput },
     errors: { unathorized: model.string() },
     context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
       if (authorization != null) {
@@ -154,6 +164,9 @@ test('Real example', async () => {
       return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
     },
   })
+
+  const rUndef = await client.functions.noInputOrOutput()
+  expect(rUndef.isOk && rUndef.value).toBe(undefined)
 
   await expect(() => client.functions.register({ email: 'admin@google.com', password: '123456' })).rejects.toThrow()
 
@@ -286,7 +299,6 @@ test('Return types', async () => {
 
   const login = functions
     .define({
-      input: model.never(),
       output: User,
       retrieve: { select: true },
     })

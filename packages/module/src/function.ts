@@ -241,12 +241,12 @@ export type FunctionsInterfaces = {
  * ```
  */
 export function define<
-  const I extends model.Type,
-  const O extends model.Type,
+  const I extends model.Type = model.LiteralType<undefined>,
+  const O extends model.Type = model.LiteralType<undefined>,
   const E extends ErrorType = undefined,
   R extends OutputRetrieveCapabilities = undefined,
 >(
-  func: FunctionInterface<I, O, E, R>,
+  func: Partial<FunctionInterface<I, O, E, R>>,
 ): FunctionInterface<I, O, E, R> & {
   /**
    * Implements the function definition by defining the body of the function
@@ -271,8 +271,13 @@ export function define<
     implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
   ) => FunctionImplementation<I, O, E, R, Context>
 } {
-  return {
+  const fi = {
+    input: model.undefined() as I,
+    output: model.undefined() as O,
     ...func,
+  }
+  return {
+    ...fi,
     implement<const Context extends Record<string, unknown> = {}>(
       implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
     ) {
@@ -282,7 +287,7 @@ export function define<
           throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
         }
       }
-      return new BaseFunction<I, O, E, R, Context>({ ...func, ...implementation })
+      return new BaseFunction<I, O, E, R, Context>({ ...fi, ...implementation })
     },
   }
 }

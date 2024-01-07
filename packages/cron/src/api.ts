@@ -30,7 +30,7 @@ export type FunctionSpecifications<InputType extends model.Type> = {
 
 //prettier-ignore
 type InputGenerator<InputType extends model.Type> 
-  = model.IsNever<InputType> extends true ? {}
+  = model.IsLiteral<InputType, undefined> extends true ? {}
   : model.IsOptional<InputType> extends true ? { input?: () => Promise<model.Infer<InputType>> }
   : { input: () => Promise<model.Infer<InputType>> }
 

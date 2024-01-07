@@ -11,7 +11,6 @@ type Response = http.Response
 describe('rest handler', () => {
   const f0 = functions
     .define({
-      input: model.never(),
       output: model.number(),
     })
     .implement({

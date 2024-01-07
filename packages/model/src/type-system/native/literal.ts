@@ -21,21 +21,21 @@ import gen from 'fast-check'
  *          const version: RequiredVersion = "2.0"
  *          ```
  */
-export function literal<const L extends number | string | boolean | null>(
+export function literal<const L extends number | string | boolean>(
   literalValue: L,
   options?: model.LiteralTypeOptions,
 ): model.LiteralType<L> {
   return new LiteralTypeImpl(literalValue, options)
 }
 
-class LiteralTypeImpl<L extends number | string | boolean | null>
+class LiteralTypeImpl<L extends number | string | boolean | null | undefined>
   extends BaseType<model.LiteralType<L>>
   implements model.LiteralType<L>
 {
   readonly kind = model.Kind.Literal
   readonly literalValue: L
 
-  protected fromOptions = (options: model.LiteralTypeOptions) => literal(this.literalValue, options)
+  protected fromOptions = (options: model.LiteralTypeOptions) => new LiteralTypeImpl(this.literalValue, options)
   protected getThis = () => this
 
   constructor(literalValue: L, options?: model.LiteralTypeOptions) {
@@ -44,6 +44,9 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
   }
 
   protected encodeWithoutValidationInternal(value: L): JSONType {
+    if (value === undefined) {
+      return null
+    }
     return value
   }
 
@@ -56,8 +59,17 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
       return decoding.succeed(this.literalValue)
     } else if (options.typeCastingStrategy === 'tryCasting' && this.literalValue === null && value === 'null') {
       return decoding.succeed(this.literalValue)
+    } else if (this.literalValue === undefined && value === null) {
+      return decoding.succeed(this.literalValue)
     } else {
-      return decoding.fail(`literal (${this.literalValue})`, value)
+      return decoding.fail(
+        this.literalValue === undefined
+          ? 'undefined'
+          : this.literalValue === null
+            ? 'null'
+            : `literal (${this.literalValue})`,
+        value,
+      )
     }
   }
 
@@ -65,3 +77,9 @@ class LiteralTypeImpl<L extends number | string | boolean | null>
     return gen.constant(this.literalValue)
   }
 }
+
+export const nullLiteral = (options?: model.LiteralTypeOptions): model.LiteralType<null> =>
+  new LiteralTypeImpl(null, options)
+
+export const undefinedLiteral = (options?: model.LiteralTypeOptions): model.LiteralType<undefined> =>
+  new LiteralTypeImpl(undefined, options)

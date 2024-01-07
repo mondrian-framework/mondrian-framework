@@ -197,32 +197,16 @@ export type IsOptional<T extends Type>
   : false
 
 /**
- * Returns the literal type `true` for any {@link Type} that is optional. That is, if the type has a top-level
- * {@link OptionalType optional wrapper}
- *
- * @example ```ts
- *          const Model = model.never().optional().nullable()
- *          IsOptional<typeof Model> // true
- *          ```
- *          The top-level decorators are `OptionalType` and `ReferenceType` so the type is optional
- * @example ```ts
- *          const Model = model.never().optional()
- *          IsOptional<typeof Model> // true
- *          ```
- *          The top-level decorator is `OptionalType` so the type is optional
- * @example ```ts
- *          const Model = model.never().optional().array()
- *          IsOptional<typeof Model> // false
- *          ```
- *          The top-level decorator is `ArrayType` so the type is not optional
+ * Returns the literal type `true` for any {@link Type} that is the specified literal.
  */
 //prettier-ignore
-export type IsNever<T extends model.Type> 
-  = [T] extends [model.CustomType<'never'>] ? true
-  : [T] extends [model.OptionalType<infer T1>] ? IsNever<T1>
-  : [T] extends [model.NullableType<infer T1>] ? IsNever<T1>
-  : [T] extends [(() => infer T1 extends model.Type)] ? IsNever<T1>
-  : false
+export type IsLiteral<T extends Type, L extends number | string | boolean | null | undefined> 
+= [T] extends [LiteralType<infer L1>] ? [L] extends [L1] ? [L1] extends [L] ? true : false : false
+: [T] extends [NullableType<infer T1>] ? IsLiteral<T1, L>
+: [T] extends [OptionalType<infer T1>] ? IsLiteral<T1, L>
+: [T] extends [(() => infer T1 extends Type)] ? IsOptional<T1>
+: false
+
 /**
  * Given a {@link Type}, returns the type of the options it can accept when it is defined
  *
@@ -870,7 +854,9 @@ export type EnumTypeOptions = BaseOptions
 /**
  * The model of a literal type in the Mondrian framework.
  */
-export type LiteralType<L extends number | string | boolean | null = number | string | boolean | null> = {
+export type LiteralType<
+  L extends number | string | boolean | null | undefined = number | string | boolean | null | undefined,
+> = {
   readonly kind: Kind.Literal
   readonly literalValue: L
   readonly options?: LiteralTypeOptions
@@ -2218,6 +2204,19 @@ export function isOptional(type: Type): boolean {
 
 /**
  * @param type the type to check
+ * @returns true if the type represent the given literal
+ */
+export function isLiteral(type: Type, literal: string | number | boolean | null | undefined): boolean {
+  return match(type, {
+    literal: ({ literalValue }) => literalValue === literal,
+    wrapper: ({ wrappedType }) => isLiteral(wrappedType, literal),
+    array: () => false,
+    otherwise: () => false,
+  })
+}
+
+/**
+ * @param type the type to check
  * @returns true if the type is a nullable type
  */
 export function isNullable(type: Type): type is NullableType<Type> {
@@ -2230,19 +2229,6 @@ export function isNullable(type: Type): type is NullableType<Type> {
  */
 export function isArray(type: Type): type is ArrayType<Mutability, Type> {
   return hasWrapper(type, Kind.Array)
-}
-
-/**
- * @param type the type to check
- * @returns true if the type is an array type
- */
-export function isNever(type: Type): type is NeverType {
-  return match(type, {
-    custom: ({ typeName }) => typeName === 'never',
-    wrapper: ({ wrappedType }) => isNever(wrappedType),
-    array: () => false,
-    otherwise: () => false,
-  })
 }
 
 /**

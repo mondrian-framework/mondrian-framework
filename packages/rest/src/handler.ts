@@ -158,7 +158,7 @@ function decodeInput(
   tracer: functions.Tracer,
 ): result.Result<unknown, http.Response> {
   return tracer.startActiveSpan('decode-input', (span) => {
-    if (model.isNever(inputType)) {
+    if (model.isLiteral(inputType, undefined)) {
       return result.ok(undefined)
     }
     let rawInput

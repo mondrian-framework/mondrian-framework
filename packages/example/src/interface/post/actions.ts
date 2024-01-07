@@ -15,7 +15,6 @@ export const writePost = functions.define({
 })
 
 export const readPosts = functions.define({
-  input: model.never(),
   output: model.array(Post),
   retrieve: retrieve.allCapabilities,
   options: {

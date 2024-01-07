@@ -8,6 +8,8 @@ export type Result<A, E> = Ok<A> | Failure<E>
  * @param value the value to wrap in an {@link Ok} result
  * @returns a {@link Result} that always succeeds with the given value
  */
+export function ok<const A>(value: A): Ok<A>
+export function ok(value?: undefined): Ok<undefined>
 export function ok<const A>(value: A): Ok<A> {
   return new Ok(value)
 }

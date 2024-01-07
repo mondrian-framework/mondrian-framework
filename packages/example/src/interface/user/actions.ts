@@ -56,7 +56,6 @@ export const follow = functions.define({
 })
 
 export const getUsers = functions.define({
-  input: model.never(),
   output: model.array(User),
   errors: { notLoggedIn: model.string() },
   retrieve: retrieve.allCapabilities,

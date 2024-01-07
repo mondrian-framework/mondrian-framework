@@ -1,3 +1,4 @@
+import { CustomTypeSpecifications } from './openapi'
 import { assertApiValidity } from './utils'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { KeysOfUnion, http } from '@mondrian-framework/utils'
@@ -49,6 +50,11 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces, E extends
    * Interface of the module
    */
   module: module.ModuleInterface<Fs>
+
+  /**
+   * Custom type map
+   */
+  customTypeSchemas?: CustomTypeSpecifications
 }
 
 /**

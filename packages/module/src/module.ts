@@ -54,6 +54,26 @@ type ContextResultType<Fs extends functions.Functions = functions.Functions, E e
   : result.Result<ContextType<Fs>, never>
 
 /**
+ * Intersection of all function's Contexts.
+ */
+export type ContextType<Fs extends functions.Functions> = UnionToIntersection<
+  { [K in keyof Fs]: FunctionContext<Fs[K]> }[keyof Fs]
+>
+
+/**
+ * Gets the Context type of a function.
+ */
+type FunctionContext<F extends functions.FunctionImplementation> = F extends functions.FunctionImplementation<
+  any,
+  any,
+  any,
+  any,
+  infer Context
+>
+  ? Context
+  : never
+
+/**
  * Mondrian module options.
  */
 export type ModuleOptions<Fs extends functions.Functions, ContextInput> = {
@@ -75,26 +95,6 @@ export type ModuleOptions<Fs extends functions.Functions, ContextInput> = {
    */
   opentelemetry?: boolean
 }
-
-/**
- * Intersection of all function's Contexts.
- */
-export type ContextType<F extends functions.Functions> = UnionToIntersection<
-  { [K in keyof F]: FunctionContext<F[K]> }[keyof F]
->
-
-/**
- * Gets the Context type of a function.
- */
-type FunctionContext<F extends functions.FunctionImplementation> = F extends functions.FunctionImplementation<
-  any,
-  any,
-  any,
-  any,
-  infer Context
->
-  ? Context
-  : never
 
 /**
  * Checks for name collisions in the types that appear in the given function's signature.

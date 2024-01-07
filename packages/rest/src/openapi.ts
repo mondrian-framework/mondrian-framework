@@ -1,10 +1,15 @@
 import { ApiSpecification, FunctionSpecifications } from './api'
-import { decodeQueryObject, encodeQueryObject } from './utils'
+import { decodeQueryObject } from './utils'
 import { model } from '@mondrian-framework/model'
 import { functions, module, retrieve } from '@mondrian-framework/module'
 import { isArray, http } from '@mondrian-framework/utils'
 import BigNumber from 'bignumber.js'
 import { OpenAPIV3_1 } from 'openapi-types'
+
+export type CustomTypeSpecifications = Record<
+  string,
+  ((type: model.CustomType) => OpenAPIV3_1.NonArraySchemaObject) | OpenAPIV3_1.NonArraySchemaObject
+>
 
 export function fromModule<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType>({
   api,
@@ -348,7 +353,7 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces, E extends f
       usedTypes.push(functionBody.output)
     }
   }
-  const internalData = emptyInternalData()
+  const internalData = emptyInternalData(api.customTypeSchemas)
   for (const type of usedTypes) {
     modelToSchema(type, internalData)
   }
@@ -359,8 +364,8 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces, E extends f
   return { components: { schemas }, internalData }
 }
 
-export function emptyInternalData(): InternalData {
-  return { typeMap: new Map(), typeRef: new Map() }
+export function emptyInternalData(customTypeSchemas: CustomTypeSpecifications | undefined): InternalData {
+  return { typeMap: new Map(), typeRef: new Map(), customTypeSchemas }
 }
 
 export function clearInternalData(internalData: InternalData) {
@@ -372,6 +377,7 @@ type InternalData = {
   typeMap: Map<string, OpenAPIV3_1.SchemaObject> //type name -> SchemaObject
   typeRef: Map<model.Type, string> // type -> type name
   ignoreFirstLevelOptionality?: boolean
+  customTypeSchemas: CustomTypeSpecifications | undefined
 }
 
 function modelToSchema(
@@ -517,10 +523,19 @@ function customToOpenAPIComponent(
   //TODO [Good first issue]: complete with other known custom type
   //...
 
+  //user specific custom types
+  if (internalData.customTypeSchemas && internalData.customTypeSchemas[type.typeName]) {
+    const schema = internalData.customTypeSchemas[type.typeName]
+    const concreteSchema = typeof schema === 'function' ? schema(type) : schema
+    return {
+      example: type.encodeWithoutValidation(type.example({ seed: 0 })),
+      ...concreteSchema,
+    }
+  }
+
   //otherwise don't known how to convert this type to openapi
   console.warn(`[OpenAPI generation] don't known how to properly map custom type "${type.typeName}"`)
   return {
-    type: 'string',
     description: type.options?.description ?? type.typeName,
     example: type.encodeWithoutValidation(type.example({ seed: 0 })),
   }

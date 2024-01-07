@@ -141,4 +141,9 @@ export const restAPI = rest.define({
     reportNotFound: 404,
     pb33fNotDefined: 500,
   },
+  customTypeSchemas: {
+    'graphql-schema': {
+      type: 'string',
+    },
+  },
 })

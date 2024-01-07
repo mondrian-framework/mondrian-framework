@@ -1,5 +1,5 @@
 import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
-import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
+import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
 import { result, model } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
@@ -27,11 +27,11 @@ export function fromFunction<
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   error?: ErrorHandler<functions.Functions, ServerContext>
-  api: Pick<ApiSpecification<functions.FunctionsInterfaces, E>, 'errorCodes'>
+  api: Pick<ApiSpecification<functions.FunctionsInterfaces, E>, 'errorCodes' | 'customTypeSchemas'>
 }): http.Handler<ServerContext> {
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
-    : generateGetInputFromRequest({ functionBody, specification })
+    : generateGetInputFromRequest({ functionBody, specification, customTypeSchemas: api.customTypeSchemas })
   const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
   const thisLogger = logger.build({
@@ -221,8 +221,9 @@ function decodeRetrieve(
 function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
+  customTypeSchemas: CustomTypeSpecifications | undefined
 }): (request: http.Request) => unknown {
-  const internalData = emptyInternalData()
+  const internalData = emptyInternalData(args.customTypeSchemas)
   const result = generateOpenapiInput({ ...args, internalData }).input
   clearInternalData(internalData)
   return result

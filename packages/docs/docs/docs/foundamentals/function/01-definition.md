@@ -51,7 +51,7 @@ const registerUser = functions.define({
 })
 ```
 
-A function can also receive no input, in which case the `undefined`` type can be used, or the input definition can be omitted.
+A function can also receive no input, in which case the `undefined` type can be used, or the input definition can be omitted.
 ```ts showLineNumbers
 const generateRandomString = functions.define({
   output: model.string(),

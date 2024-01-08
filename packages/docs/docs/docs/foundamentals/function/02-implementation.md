@@ -136,10 +136,6 @@ some cases may generate no error at compile time but only at runtime, so it is i
 It is in general a best practice to **always return the result** of an `ok` or `fail` call.
 :::
 
-
-
-
-
 ## Logger
 Mondrian provides a ready-to-use, very convenient and configurable logging mechanism that can be used in any function. 
 When implementing the body you can simply use an instance of the logger provided as an additional parameter.

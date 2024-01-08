@@ -102,6 +102,10 @@ export type FunctionOptions = {
    * Description of a function. It's used as documentation.
    */
   readonly description?: string
+  /**
+   * Describes the function semantc: query or command
+   */
+  readonly operation?: 'query' | 'command' | { readonly command: 'create' | 'update' | 'delete' }
 }
 
 /**

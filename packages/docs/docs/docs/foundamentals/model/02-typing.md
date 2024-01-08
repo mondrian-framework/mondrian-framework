@@ -48,6 +48,8 @@ primitive type:
 | `model.enumeration(["foo", "bar"])` | <code>"foo" &#124; "bar"</code> |
 | `model.literal(1)`                  | `1`                             |
 | `model.literal("foo")`              | `"foo"`                         |
+| `model.null()`                      | `null`                          |
+| `model.undefined()`                 | `undefined`                     |
 
 ### Inference of wrapper types
 

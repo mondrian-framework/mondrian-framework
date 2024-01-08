@@ -190,11 +190,11 @@ test('isType', () => {
   expect(model.assertType(union, 2.2)).toBe(undefined)
 })
 
-test('isNever', () => {
-  expect(model.isNever(model.never().array())).toBe(false)
-  expect(model.isNever(model.never().optional())).toBe(true)
-  expect(model.isNever(model.never().nullable())).toBe(true)
-  expect(model.isNever(model.number().optional())).toBe(false)
+test('isLiteral', () => {
+  expect(model.isLiteral(model.literal('a').array(), 'a')).toBe(false)
+  expect(model.isLiteral(model.undefined().optional(), undefined)).toBe(true)
+  expect(model.isLiteral(model.undefined().nullable(), undefined)).toBe(true)
+  expect(model.isLiteral(model.literal(123), 123)).toBe(true)
 })
 
 test('isObject', () => {

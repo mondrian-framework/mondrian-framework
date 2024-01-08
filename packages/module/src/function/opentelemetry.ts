@@ -105,9 +105,6 @@ export class OpentelemetryFunction<
   }
 
   private addInputToSpanAttribute(span: Span, input: unknown) {
-    if (model.isNever(this.input)) {
-      return
-    }
     const concreteInputType = model.concretise(this.input)
     const encodedInput = concreteInputType.encodeWithoutValidation(input as never, {
       sensitiveInformationStrategy: 'hide',

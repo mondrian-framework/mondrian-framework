@@ -214,7 +214,7 @@ function enumToGraphQLType(
 
 // Turns a literal into a GraphQL scalar.
 function literalToGraphQLType(
-  literal: model.LiteralType<number | string | null | boolean>,
+  literal: model.LiteralType<number | string | null | boolean | undefined>,
   internalData: InternalData,
 ): GraphQLScalarType {
   //Set a default description and a default name
@@ -484,8 +484,13 @@ function customTypeToGraphQLType(
 /**
  * Information needed to create a graphql schema from a mondrian module.
  */
-export type FromModuleInput<ServerContext, Fs extends functions.Functions, ContextInput> = {
-  api: Api<Fs, ContextInput>
+export type FromModuleInput<
+  Fs extends functions.Functions,
+  E extends functions.ErrorType,
+  ServerContext,
+  ContextInput,
+> = {
+  api: Api<Fs, E, ContextInput>
   context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
   setHeader: (context: ServerContext, name: string, value: string) => void
   errorHandler?: ErrorHandler<Fs, ServerContext>
@@ -496,8 +501,8 @@ export type FromModuleInput<ServerContext, Fs extends functions.Functions, Conte
  * Each function appearing in the module's API is either turned into a query or a mutation according to the
  * provided specification.
  */
-export function fromModule<const ServerContext, const Fs extends functions.Functions, const ContextInput>(
-  input: FromModuleInput<ServerContext, Fs, ContextInput>,
+export function fromModule<Fs extends functions.Functions, E extends functions.ErrorType, ServerContext, ContextInput>(
+  input: FromModuleInput<Fs, E, ServerContext, ContextInput>,
 ): GraphQLSchema {
   const { api } = input
   const moduleFunctions = Object.entries(api.module.functions)
@@ -620,17 +625,17 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
  * `setHeader`, `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
  * somehow needed by the resolver implementation.
  */
-function makeOperation<Fs extends functions.Functions, ServerContext, ContextInput>(
-  module: module.Module<Fs, ContextInput>,
+function makeOperation<Fs extends functions.Functions, E extends functions.ErrorType, ServerContext, ContextInput>(
+  module: module.Module<Fs, E, ContextInput>,
   specification: FunctionSpecifications,
   functionName: string,
   functionBody: functions.FunctionImplementation,
-  fromModuleInput: FromModuleInput<ServerContext, Fs, ContextInput>,
+  fromModuleInput: FromModuleInput<Fs, E, ServerContext, ContextInput>,
   internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>] {
   const operationName = specification.name ?? functionName
   let input: { type: GraphQLInputType } | undefined = undefined
-  if (!model.isNever(functionBody.input)) {
+  if (!model.isLiteral(functionBody.input, undefined)) {
     const plainInput = typeToGraphQLInputType(functionBody.input, {
       ...internalData,
       defaultName: `${capitalise(operationName)}Input`,
@@ -670,28 +675,37 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
       const tracer = functionBody.tracer.withPrefix(`mondrian:graphql-resolver:${functionName}:`)
       try {
         // Decode all the needed bits to call the function
-        const input = model.isNever(functionBody.input)
-          ? undefined
-          : decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], thisLogger, tracer)
+        const input = decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], thisLogger, tracer)
         const retrieveValue = completeRetrieveType.isOk
           ? decodeRetrieve(info, completeRetrieveType.value, isOutputTypeWrapped, tracer)
           : {}
 
-        let moduleContext
         try {
           //Context building
           const contextInput = await fromModuleInput.context(serverContext, info)
-          moduleContext = await module.context(contextInput, {
+          const ctxResult = await module.context(contextInput, {
             retrieve: retrieveValue,
             input,
             tracer: functionBody.tracer,
             logger: thisLogger,
             functionName,
           })
+          if (ctxResult.isFailure) {
+            const errorCode = Object.keys(ctxResult.error)[0]
+            const errorValue = ctxResult.error[errorCode]
+            const mappedError = {
+              '[GraphQL generation]: isError': true,
+              errorCode,
+              errorValue,
+              errors: ctxResult.error,
+            }
+            endSpanWithResult(ctxResult, span)
+            return partialOutputType.encodeWithoutValidation(mappedError as never)
+          }
 
           // Function call
-          const applyOutput = await functionBody.apply({
-            context: moduleContext as Record<string, unknown>,
+          const applyResult = await functionBody.apply({
+            context: ctxResult.value as Record<string, unknown>,
             retrieve: retrieveValue,
             input: input as never,
             tracer: functionBody.tracer,
@@ -700,34 +714,32 @@ function makeOperation<Fs extends functions.Functions, ServerContext, ContextInp
 
           //Output processing
           let outputValue
-          if (functionBody.errors) {
-            const applyResult = applyOutput as result.Result<unknown, Record<string, unknown>>
-            if (applyResult.isOk) {
+          if (applyResult.isOk) {
+            if (functionBody.errors) {
               //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
               const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
               outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
             } else {
-              const errorCode = Object.keys(applyResult.error)[0]
-              const errorValue = applyResult.error[errorCode]
-              const mappedError = {
-                '[GraphQL generation]: isError': true,
-                errorCode,
-                errorValue,
-                errors: applyResult.error,
-              }
-              outputValue = partialOutputType.encodeWithoutValidation(mappedError as never)
+              outputValue = partialOutputType.encodeWithoutValidation(applyResult.value as never)
+              span?.setStatus({ code: SpanStatusCode.OK })
+              span?.end()
             }
-            endSpanWithResult(applyResult, span)
           } else {
-            outputValue = partialOutputType.encodeWithoutValidation(applyOutput as never)
-            span?.setStatus({ code: SpanStatusCode.OK })
-            span?.end()
+            const errorCode = Object.keys(applyResult.error)[0]
+            const errorValue = applyResult.error[errorCode]
+            const mappedError = {
+              '[GraphQL generation]: isError': true,
+              errorCode,
+              errorValue,
+              errors: applyResult.error,
+            }
+            outputValue = partialOutputType.encodeWithoutValidation(mappedError as never)
           }
+          endSpanWithResult(applyResult, span)
           return outputValue
         } catch (error) {
           if (fromModuleInput.errorHandler) {
             const result = await fromModuleInput.errorHandler({
-              context: moduleContext,
               error,
               functionArgs: { retrieve: retrieveValue, input },
               functionName: operationName,

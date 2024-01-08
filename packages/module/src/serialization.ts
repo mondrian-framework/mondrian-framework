@@ -51,10 +51,12 @@ export function serialize(
 ): ModuleSchema {
   const { typeMap, nameMap } = serializeTypes(moduleInterface, customSerializers ?? defaultCustomSerializers)
   const functionMap = serializeFunctions(moduleInterface, nameMap)
+  const errorsMap = serializeErrors(moduleInterface, nameMap)
   return {
     name: moduleInterface.name,
     types: typeMap,
     functions: functionMap,
+    errors: errorsMap,
   }
 }
 
@@ -69,9 +71,12 @@ function serializeTypes(
   typeMap: Record<string, TypeSchema>
   nameMap: Map<model.Type, string>
 } {
-  const allTypes = Object.values(moduleInterface.functions).flatMap((f) =>
-    f.errors ? [f.input, f.output, ...Object.values(f.errors)] : [f.input, f.output],
-  )
+  const allTypes = Object.values(moduleInterface.functions).flatMap((f) => [
+    f.input,
+    f.output,
+    ...Object.values(f.errors ?? {}),
+    ...Object.values(moduleInterface.errors ?? {}),
+  ])
   const uniqueTypes = utils.allUniqueTypes(allTypes)
   const nameMap: Map<model.Type, string> = new Map()
   const typeMap: Record<string, TypeSchema> = {}
@@ -202,7 +207,7 @@ function serializeType(
 }
 
 /**
- * Serializes all functions of a mondrian interface.
+ * Serializes all functions of a mondrian module interface.
  * It needs the map of serialized types.
  */
 function serializeFunctions(
@@ -220,6 +225,20 @@ function serializeFunctions(
     }
   })
   return functionMap
+}
+
+/**
+ * Serializes all errors of a mondrian module interface.
+ * It needs the map of serialized types.
+ */
+function serializeErrors(
+  moduleInterface: module.ModuleInterface,
+  nameMap: Map<model.Type, string>,
+): Record<string, string> | undefined {
+  const errorsMap = moduleInterface.errors
+    ? mapObject(moduleInterface.errors, (_, errorType) => nameMap.get(errorType)!)
+    : undefined
+  return errorsMap
 }
 
 const baseOptionsFields = {
@@ -261,10 +280,11 @@ const booleanTypeSchema = model.object({
 const literalTypeSchema = model.object({
   type: model.literal('literal'),
   literalValue: model.union({
-    null: model.literal(null),
     string: model.string(),
     boolean: model.boolean(),
     number: model.number(),
+    null: model.null(),
+    undefined: model.undefined(),
   }),
   options: model.object(baseOptionsFields).optional(),
 })
@@ -370,6 +390,7 @@ export const ModuleSchema = model
     name: model.string({ minLength: 1 }),
     types: model.record(TypeSchema),
     functions: model.record(FunctionSchema),
+    errors: model.record(model.string({ minLength: 1 })).optional(),
   })
   .setName('ModuleSchema')
 

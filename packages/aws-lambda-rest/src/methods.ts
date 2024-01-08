@@ -4,14 +4,14 @@ import { rest, utils } from '@mondrian-framework/rest'
 import { http, isArray } from '@mondrian-framework/utils'
 import { API, HandlerFunction, METHODS } from 'lambda-api'
 
-export function attachRestMethods<const Fs extends functions.Functions, const ContextInput>({
+export function attachRestMethods<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
   server,
   api,
   context,
   error,
 }: {
   server: API
-  api: rest.Api<Fs, ContextInput>
+  api: rest.Api<Fs, E, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
 }): void {
@@ -29,14 +29,14 @@ export function attachRestMethods<const Fs extends functions.Functions, const Co
           maxVersion: api.version,
         })
         .map((p) => p.replace(/{(.*?)}/g, ':$1'))
-      const restHandler = rest.handler.fromFunction<Fs, Context, ContextInput>({
+      const restHandler = rest.handler.fromFunction<Fs, E, Context, ContextInput>({
         module: api.module,
         context,
         specification,
         functionName,
         functionBody,
         error,
-        api,
+        api: api as any,
       })
       const lambdaApiHandler: HandlerFunction = async (request, response) => {
         const result = await restHandler({

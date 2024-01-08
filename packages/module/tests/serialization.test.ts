@@ -79,14 +79,15 @@ describe('Module interface to schema', () => {
     const lit1 = model.literal(123).setName('Literal1')
     const lit2 = model.literal('123').setName('Literal2')
     const lit3 = model.literal(true).setName('Literal3')
-    const lit4 = model.literal(null).setName('Literal4')
+    const lit4 = model.null().setName('Literal4')
+    const lit5 = model.undefined().setName('Literal5')
     const enumerator = model.enumeration(['A', 'B']).setName('Enum')
     const datetime = model.datetime().setName('DateTime')
     const timestamp = model.datetime().setName('Timestamp')
     const record = model.record(model.string()).setName('Record')
     const f = functions.define({
       input: model
-        .object({ str, num, bool, lit1, lit2, lit3, lit4, enumerator, datetime, timestamp, record })
+        .object({ str, num, bool, lit1, lit2, lit3, lit4, lit5, enumerator, datetime, timestamp, record })
         .setName('Input'),
       output: str.optional().setName('Output'),
       errors: { error1: str.nullable().setName('Error1'), error2: str.array().setName('Error2') },
@@ -95,6 +96,7 @@ describe('Module interface to schema', () => {
     const m = module.define({
       name: 'test',
       functions: { f },
+      errors: { asd: str },
     })
     const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
     expect(schema).toEqual({
@@ -107,6 +109,7 @@ describe('Module interface to schema', () => {
         Literal2: { type: 'literal', literalValue: '123', options: { name: 'Literal2' } },
         Literal3: { type: 'literal', literalValue: true, options: { name: 'Literal3' } },
         Literal4: { type: 'literal', literalValue: null, options: { name: 'Literal4' } },
+        Literal5: { type: 'literal', literalValue: undefined, options: { name: 'Literal5' } },
         Enum: { type: 'enumeration', variants: ['A', 'B'], options: { name: 'Enum' } },
         DateTime: {
           type: 'custom',
@@ -137,6 +140,7 @@ describe('Module interface to schema', () => {
             lit2: 'Literal2',
             lit3: 'Literal3',
             lit4: 'Literal4',
+            lit5: 'Literal5',
             enumerator: 'Enum',
             datetime: 'DateTime',
             timestamp: 'Timestamp',
@@ -148,6 +152,7 @@ describe('Module interface to schema', () => {
         Error1: { type: 'nullable', wrappedType: 'String', options: { name: 'Error1' } },
         Error2: { type: 'array', wrappedType: 'String', options: { name: 'Error2' } },
       },
+      errors: { asd: 'String' },
       functions: { f: { input: 'Input', output: 'Output', errors: { error1: 'Error1', error2: 'Error2' } } },
     })
   })
@@ -289,7 +294,7 @@ test('Decode schema', () => {
   const result1 = serialization.ModuleSchema.decode({
     name: 'test',
     types: {
-      ANONYMOUS_TYPE_0: { type: 'string' },
+      ANONYMOUS_TYPE_0: { type: 'literal', literalValue: undefined },
       ANONYMOUS_TYPE_1: { type: 'object', fields: { s: 'ANONYMOUS_TYPE_0', input: 'Input' }, lazy: true },
       Input: {
         type: 'object',

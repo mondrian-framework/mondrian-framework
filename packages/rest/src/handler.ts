@@ -1,5 +1,5 @@
 import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
-import { clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
+import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve } from './utils'
 import { result, model } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
@@ -7,7 +7,12 @@ import { http } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
-export function fromFunction<Fs extends functions.Functions, ServerContext, ContextInput>({
+export function fromFunction<
+  Fs extends functions.Functions,
+  E extends functions.ErrorType,
+  ServerContext,
+  ContextInput,
+>({
   functionName,
   module,
   specification,
@@ -17,16 +22,16 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
   api,
 }: {
   functionName: string
-  module: module.Module<Fs, ContextInput>
+  module: module.Module<Fs, E, ContextInput>
   functionBody: functions.FunctionImplementation
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<ContextInput>
   error?: ErrorHandler<functions.Functions, ServerContext>
-  api: Pick<ApiSpecification<functions.FunctionsInterfaces>, 'errorCodes'>
+  api: Pick<ApiSpecification<functions.FunctionsInterfaces, E>, 'errorCodes' | 'customTypeSchemas'>
 }): http.Handler<ServerContext> {
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
-    : generateGetInputFromRequest({ functionBody, specification })
+    : generateGetInputFromRequest({ functionBody, specification, customTypeSchemas: api.customTypeSchemas })
   const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
   const thisLogger = logger.build({
@@ -67,41 +72,45 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
           }
           const retrieveValue: retrieve.GenericRetrieve | undefined = retrieveResult.value
 
-          let moduleContext
+          function handleFailure(error: Record<string, unknown>) {
+            const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
+            const key = Object.keys(error)[0]
+            const status = key ? codes[key] ?? 400 : 400
+            const response: http.Response = {
+              status,
+              body: error,
+              headers: { 'Content-Type': 'application/json' },
+            }
+            endSpanWithResponse({ span, response })
+            return response
+          }
+
           try {
             //context building
             const contextInput = await context(serverContext)
-            moduleContext = await module.context(contextInput, {
+            const ctxResult = await module.context(contextInput, {
               retrieve: retrieveValue,
               input,
               tracer: functionBody.tracer,
               logger: thisLogger,
               functionName,
             })
-
+            if (ctxResult.isFailure) {
+              return handleFailure(ctxResult.error)
+            }
             // Function call
-            const applyOutput = await functionBody.apply({
+            const applyResult = await functionBody.apply({
               retrieve: retrieveValue ?? {},
               input: input as never,
-              context: moduleContext as Record<string, unknown>,
+              context: ctxResult.value as Record<string, unknown>,
               tracer: functionBody.tracer,
               logger: thisLogger,
             })
             //Output processing
-            if (functionBody.errors && applyOutput.isFailure) {
-              const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
-              const key = Object.keys(applyOutput.error)[0]
-              const status = key ? codes[key] ?? 400 : 400
-              const response: http.Response = {
-                status,
-                body: applyOutput.error,
-                headers: { 'Content-Type': 'application/json' },
-              }
-              endSpanWithResponse({ span, response })
-              return response
+            if (applyResult.isFailure) {
+              return handleFailure(applyResult.error)
             } else {
-              const value = functionBody.errors ? applyOutput.value : applyOutput //unwrap output
-              const encoded = partialOutputType.encodeWithoutValidation(value as never)
+              const encoded = partialOutputType.encodeWithoutValidation(applyResult.value)
               const response: http.Response = {
                 status: 200,
                 body: encoded,
@@ -121,7 +130,6 @@ export function fromFunction<Fs extends functions.Functions, ServerContext, Cont
                 logger: thisLogger,
                 functionName,
                 tracer: functionBody.tracer,
-                context: moduleContext,
                 functionArgs: { input, retrieve: retrieveValue },
                 ...serverContext,
               })
@@ -150,7 +158,7 @@ function decodeInput(
   tracer: functions.Tracer,
 ): result.Result<unknown, http.Response> {
   return tracer.startActiveSpan('decode-input', (span) => {
-    if (model.isNever(inputType)) {
+    if (model.isLiteral(inputType, undefined)) {
       return result.ok(undefined)
     }
     let rawInput
@@ -213,8 +221,9 @@ function decodeRetrieve(
 function generateGetInputFromRequest(args: {
   specification: FunctionSpecifications
   functionBody: functions.FunctionImplementation
+  customTypeSchemas: CustomTypeSpecifications | undefined
 }): (request: http.Request) => unknown {
-  const internalData = emptyInternalData()
+  const internalData = emptyInternalData(args.customTypeSchemas)
   const result = generateOpenapiInput({ ...args, internalData }).input
   clearInternalData(internalData)
   return result

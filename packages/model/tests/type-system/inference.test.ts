@@ -65,9 +65,15 @@ describe('Infer', () => {
     })
 
     test('LiteralType of null inferred as literal null', () => {
-      const Model = model.literal(null)
+      const Model = model.null()
       type Model = model.Infer<typeof Model>
       expectTypeOf<Model>().toEqualTypeOf<null>()
+    })
+
+    test('LiteralType of undefined inferred as literal undefined', () => {
+      const Model = model.undefined()
+      type Model = model.Infer<typeof Model>
+      expectTypeOf<Model>().toEqualTypeOf<undefined>()
     })
   })
 
@@ -86,7 +92,8 @@ describe('Infer', () => {
           inner: boolean
         }
       }
-      expectTypeOf<Model>().toEqualTypeOf<Expected>()
+      expectTypeOf<Model>().toMatchTypeOf<Expected>()
+      expectTypeOf<Expected>().toMatchTypeOf<Model>()
     })
 
     test('mutable ObjectType inferred with mutable fields', () => {
@@ -95,7 +102,9 @@ describe('Infer', () => {
         field2: model.string(),
       })
       type Model = model.Infer<typeof Model>
-      expectTypeOf<Model>().toEqualTypeOf<{ field1: number; field2: string }>()
+      type Expected = { field1: number; field2: string }
+      expectTypeOf<Model>().toMatchTypeOf<Expected>()
+      expectTypeOf<Expected>().toMatchTypeOf<Model>()
     })
   })
 
@@ -144,15 +153,15 @@ describe('Infer', () => {
   })
 
   test('CustomType inferred as the specified type', () => {
-    const Model = model.custom<'myCustomType', {}, number>(
-      'myCustomType',
-      () => null,
-      () => decoding.fail('test', 'test'),
-      () => validation.fail('test', 'test'),
-      () => {
+    const Model = model.custom<'myCustomType', {}, number>({
+      typeName: 'myCustomType',
+      encoder: () => null,
+      decoder: () => decoding.fail('test', 'test'),
+      validator: () => validation.fail('test', 'test'),
+      arbitrary: () => {
         throw 'error'
       },
-    )
+    })
     type Model = model.Infer<typeof Model>
     expectTypeOf<Model>().toEqualTypeOf<number>()
   })

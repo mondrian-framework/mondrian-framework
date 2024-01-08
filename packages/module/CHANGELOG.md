@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.16
+
+### Patch Changes
+
+- Variuos features
+- Updated dependencies
+  - @mondrian-framework/model@2.0.16
+
 ## 2.0.15
 
 ### Patch Changes

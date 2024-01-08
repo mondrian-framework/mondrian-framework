@@ -51,6 +51,20 @@ export function string(): gen.Arbitrary<model.StringType> {
 }
 
 /**
+ * @returns A generator for null types.
+ */
+export function nullType(): gen.Arbitrary<model.LiteralType<null>> {
+  return orUndefined(baseOptions()).map(model.null)
+}
+
+/**
+ * @returns A generator for undefined types.
+ */
+export function undefinedType(): gen.Arbitrary<model.LiteralType<undefined>> {
+  return orUndefined(baseOptions()).map(model.undefined)
+}
+
+/**
  * @returns A generator for number types' options.
  *          All of its keys are optional and may be omitted in the generated options.
  */
@@ -149,7 +163,7 @@ export function literalTypeOptions(): gen.Arbitrary<model.LiteralTypeOptions> {
  * @param literalGenerator the generator for the literal value of the randomly generated literal type
  * @returns a generator for a literal type wrapping the given literal
  */
-export function literal<L extends number | string | boolean | null>(
+export function literal<L extends number | string | boolean>(
   literalGenerator: gen.Arbitrary<L>,
 ): gen.Arbitrary<model.LiteralType<L>> {
   return orUndefined(literalTypeOptions()).chain((options) => {
@@ -567,8 +581,8 @@ function nonEmptyStringArray(): gen.Arbitrary<[string, ...string[]]> {
 /**
  * Generator for values that can be used to create a Literal type.
  */
-function literalValue(): gen.Arbitrary<boolean | string | number | null> {
-  return gen.oneof(gen.string(), gen.integer(), gen.boolean(), gen.constant(null))
+function literalValue(): gen.Arbitrary<boolean | string | number> {
+  return gen.oneof(gen.string(), gen.integer(), gen.boolean())
 }
 
 /**
@@ -579,7 +593,7 @@ export function baseType(): gen.Arbitrary<
   | model.StringType
   | model.BooleanType
   | model.EnumType<[string, ...string[]]>
-  | model.LiteralType<boolean | string | number | null>
+  | model.LiteralType<boolean | string | number | undefined | null>
   | model.CustomType<string, any, any>
 > {
   return gen.oneof(
@@ -588,6 +602,8 @@ export function baseType(): gen.Arbitrary<
     boolean(),
     enumeration(nonEmptyStringArray()),
     literal(literalValue()),
+    nullType(),
+    undefinedType(),
     datetime(),
     timestamp(),
     unknown(),

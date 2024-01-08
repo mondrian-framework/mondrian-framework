@@ -327,7 +327,7 @@ describe.concurrent('validation.validate', () => {
   describe.concurrent('on never types', () => {
     const Model = model.never()
     test.prop([gen.anything()])('never succeeds on anything', (anything) => {
-      expect(() => Model.validate(anything as never)).toThrowError()
+      checkError(Model.validate(anything as never), [{ got: anything, path: path.root }])
     })
   })
 

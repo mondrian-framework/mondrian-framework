@@ -38,9 +38,10 @@ class OptionalTypeImpl<T extends model.Type> extends BaseType<model.OptionalType
     value: undefined | model.Infer<T>,
     options: Required<encoding.Options>,
   ): JSONType {
-    return value === undefined
-      ? null
-      : model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
+    if (value === undefined) {
+      return null
+    }
+    return model.concretise(this.wrappedType).encodeWithoutValidation(value as never, options)
   }
 
   protected validateInternal(

@@ -86,7 +86,7 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     const object = value as Record<string, model.Type>
     return filterMapObject(this.fields, (fieldName, fieldType) => {
       const concreteFieldType = model.concretise(fieldType)
-      const fieldIsOptional = model.isOptional(concreteFieldType)
+      const fieldIsOptional = model.isOptional(concreteFieldType) || model.isLiteral(concreteFieldType, undefined)
       const rawField = object[fieldName]
       return fieldIsOptional && rawField === undefined
         ? undefined

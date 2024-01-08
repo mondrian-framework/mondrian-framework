@@ -40,12 +40,12 @@ export type Response = SuccessResponse | FailureResponse
 /**
  * Gets an http handler with the implementation of the Direct transport for a whole Mondrian module.
  */
-export function fromModule<Fs extends functions.Functions, ServerContext, ContextInput>({
+export function fromModule<Fs extends functions.Functions, E extends functions.ErrorType, ServerContext, ContextInput>({
   api,
   context,
   options,
 }: {
-  api: Api<Fs, any, ContextInput>
+  api: Api<Fs, E, any, ContextInput>
   context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
   options: ServeOptions
 }): http.Handler<ServerContext, unknown, Response> {
@@ -58,7 +58,7 @@ export function fromModule<Fs extends functions.Functions, ServerContext, Contex
     const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
     return model.object({
       function: model.literal(functionName),
-      ...(model.isNever(functionBody.input) ? {} : { input: functionBody.input as model.UnknownType }),
+      input: functionBody.input as model.UnknownType,
       ...(retrieveType.isOk ? { retrieve: model.optional(retrieveType.value) as unknown as model.UnknownType } : {}),
       metadata: model.record(model.string()).optional(),
     })
@@ -103,7 +103,12 @@ export function fromModule<Fs extends functions.Functions, ServerContext, Contex
   return handler
 }
 
-async function handleFunctionCall<Fs extends functions.Functions, ServerContext, ContextInput>({
+async function handleFunctionCall<
+  Fs extends functions.Functions,
+  E extends functions.ErrorType,
+  ServerContext,
+  ContextInput,
+>({
   functionName,
   tracer,
   requestInputTypeMap,
@@ -118,7 +123,7 @@ async function handleFunctionCall<Fs extends functions.Functions, ServerContext,
   requestInputTypeMap: Record<string, model.ConcreteType>
   request: http.Request
   options: ServeOptions
-  api: Api<Fs, any, ContextInput>
+  api: Api<Fs, E, any, ContextInput>
   serverContext: ServerContext
   context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
 }): Promise<result.Result<SuccessResponse, FailureResponse>> {
@@ -146,26 +151,30 @@ async function handleFunctionCall<Fs extends functions.Functions, ServerContext,
 
   try {
     const contextInput = await context(serverContext, metadata)
-    const contextValue = await api.module.context(contextInput, {
+    const ctxResult = await api.module.context(contextInput, {
       functionName,
       input,
       tracer: functionBody.tracer,
       retrieve: thisRetrieve,
       logger: baseLogger,
     })
-    const functionReturn = await functionBody.apply({
-      context: contextValue,
+    if (ctxResult.isFailure) {
+      const response = successResponse.encodeWithoutValidation({
+        success: true,
+        failure: ctxResult.error as never,
+      }) as SuccessResponse
+      return result.ok(response)
+    }
+    const applyResult = await functionBody.apply({
+      context: ctxResult.value,
       input,
       tracer: functionBody.tracer,
       retrieve: thisRetrieve,
       logger: baseLogger,
     })
-    const functionResult: result.Result<unknown, unknown> = functionBody.errors
-      ? functionReturn
-      : result.ok(functionReturn)
     const response = successResponse.encodeWithoutValidation({
       success: true,
-      ...(functionResult.isOk ? { result: functionResult.value as never } : { failure: functionResult.error as never }),
+      ...(applyResult.isOk ? { result: applyResult.value as never } : { failure: applyResult.error as never }),
     }) as SuccessResponse
     return result.ok(response)
   } catch (error) {

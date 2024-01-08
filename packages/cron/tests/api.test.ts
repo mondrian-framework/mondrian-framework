@@ -1,18 +1,17 @@
 import { start } from '../src'
 import { build } from '../src/api'
-import { model } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { test } from 'vitest'
 
 test('cron API test', async () => {
   const f1 = functions
     .define({
-      input: model.never(),
       output: model.number(),
     })
     .implement({
       async body() {
-        return 1
+        return result.ok(1)
       },
     })
 
@@ -23,7 +22,7 @@ test('cron API test', async () => {
     })
     .implement({
       async body({ input }) {
-        return input + 1
+        return result.ok(input + 1)
       },
     })
 
@@ -34,7 +33,7 @@ test('cron API test', async () => {
     })
     .implement({
       async body({ input }) {
-        return input ?? 1 + 1
+        return result.ok(input ?? 1 + 1)
       },
     })
 
@@ -42,7 +41,7 @@ test('cron API test', async () => {
     name: 'test',
     functions: { f1, f2, f3 },
     async context() {
-      return {}
+      return result.ok({})
     },
   })
 

@@ -10,14 +10,14 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type Context = { lambdaApi: { request: Request; response: Response } }
 
-export function build<const Fs extends functions.Functions, const ContextInput>({
+export function build<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
   api,
   context,
   error,
   customize,
   ...args
 }: {
-  api: rest.Api<Fs, ContextInput>
+  api: rest.Api<Fs, E, ContextInput>
   context: (serverContext: Context) => Promise<ContextInput>
   error?: rest.ErrorHandler<Fs, Context>
   options: Partial<rest.ServeOptions>

@@ -1,5 +1,4 @@
 import { module } from '../core'
-import { InvalidJwtError } from '../core/errors'
 import { graphql } from '@mondrian-framework/graphql'
 import { serveWithFastify as serve } from '@mondrian-framework/graphql-yoga'
 import { errors } from '@mondrian-framework/module'
@@ -27,9 +26,6 @@ export function serveGraphql(server: FastifyInstance) {
       ip: request.ip,
     }),
     errorHandler: async ({ error, logger }) => {
-      if (error instanceof InvalidJwtError) {
-        return { message: 'Invalid JWT' }
-      }
       if (error instanceof errors.UnauthorizedAccess) {
         return { message: 'Unauthorized access', options: { extensions: { info: error.error } } }
       }

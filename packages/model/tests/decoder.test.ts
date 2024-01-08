@@ -19,6 +19,7 @@ const nonString = gen.anything().filter((value) => typeof value !== 'string')
 const nonBoolean = gen.anything().filter((value) => typeof value !== 'boolean')
 const nonNumber = gen.anything().filter((value) => typeof value !== 'number')
 const nonNull = gen.anything().filter((value) => value !== null)
+const nonUndefinedAndNonNull = gen.anything().filter((value) => value !== undefined && value !== null)
 const nonArray = gen.anything().filter((value) => !(value instanceof Array))
 const nonObject = gen.anything().filter((value) => !(typeof value === 'object'))
 const nonDate = gen
@@ -234,7 +235,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
     describe.concurrent('literal null', () => {
       const literalValue = null
-      const Model = model.literal(literalValue)
+      const Model = model.null()
 
       describe.concurrent('without casting', () => {
         const options = { typeCastingStrategy: 'expectExactTypes' } as const
@@ -245,7 +246,7 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
         test.prop([nonNull])('fails on non null values', (value) => {
           const result = Model.decodeWithoutValidation(value, options)
-          const expectedError = [{ expected: 'literal (null)', got: value, path: path.root }]
+          const expectedError = [{ expected: 'null', got: value, path: path.root }]
           checkError(result, expectedError)
         })
       })
@@ -259,9 +260,32 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
         test.prop([gen.string().filter((s) => s !== 'null')])('fails on other strings', (string) => {
           const result = Model.decodeWithoutValidation(string, options)
-          const expectedError = [{ expected: 'literal (null)', got: string, path: path.root }]
+          const expectedError = [{ expected: 'null', got: string, path: path.root }]
           checkError(result, expectedError)
         })
+      })
+    })
+
+    describe.concurrent('literal undefined', () => {
+      const literalValue = undefined
+      const Model = model.undefined()
+
+      describe.concurrent('without casting', () => {
+        const options = { typeCastingStrategy: 'expectExactTypes' } as const
+
+        test('can decode the exact same literal', () => {
+          checkValue(Model.decodeWithoutValidation(literalValue, options), literalValue)
+        })
+
+        test.prop([nonUndefinedAndNonNull])('fails on non undefiend and null values', (value) => {
+          const result = Model.decodeWithoutValidation(value, options)
+          const expectedError = [{ expected: 'undefined', got: value, path: path.root }]
+          checkError(result, expectedError)
+        })
+      })
+
+      test('can decode null as undefined', () => {
+        checkValue(Model.decodeWithoutValidation(null), undefined)
       })
     })
   })
@@ -395,7 +419,9 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
   describe.concurrent('never value', () => {
     const Model = model.never()
     test.prop([gen.anything()])('can never decode anything', (anything) => {
-      expect(() => Model.decodeWithoutValidation(anything)).toThrowError()
+      const result = Model.decodeWithoutValidation(anything)
+      const expectedError = [{ expected: 'never', got: anything, path: path.root }]
+      checkError(result, expectedError)
     })
   })
 
@@ -625,6 +651,35 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       const result = Model.decodeWithoutValidation(null, { typeCastingStrategy: 'tryCasting' })
       const expectedError = [{ expected: 'number', got: undefined, path: path.ofField('field1') }]
       checkError(result, expectedError)
+    })
+
+    test('treats undefined fields correctly', () => {
+      checkValue(
+        model
+          .object({
+            a: model.undefined(),
+          })
+          .decode({}),
+        { a: undefined },
+      )
+
+      checkValue(
+        model
+          .object({
+            a: model.undefined(),
+          })
+          .decode({ a: undefined }),
+        { a: undefined },
+      )
+
+      checkValue(
+        model
+          .object({
+            a: model.undefined().optional(),
+          })
+          .decode({}),
+        {},
+      )
     })
 
     test.prop([nonObject])('fails on non objects', (value) => {

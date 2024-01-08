@@ -51,10 +51,9 @@ const registerUser = functions.define({
 })
 ```
 
-A function can also receive no input, in which case the `never` type can be used.
+A function can also receive no input, in which case the `undefined`` type can be used, or the input definition can be omitted.
 ```ts showLineNumbers
 const generateRandomString = functions.define({
-  input: model.never(),
   output: model.string(),
 })
 ```
@@ -68,18 +67,16 @@ array or a union.
 const User = ...
 
 const getAllUsers = functions.define({
-  input: model.never(),
   output: model.array(User),
 })
 ```
 
 In the case where the function has no output, i.e. is *void*, the output type must be 
-defined as `never`.
+defined as `undefined` or be omitted.
 
 ```ts showLineNumbers
 const setNewPassword = functions.define({
   input: model.string(),
-  output: model.never(),
 })
 ```
 
@@ -117,7 +114,6 @@ const User = model.entity({
 })
 
 const retrieveUsers = functions.define({
-  input: model.never(),
   output: model.array(User),
   // highlight-start
   retrieve: {
@@ -261,7 +257,6 @@ linked to the nature of the function.
 const User = ...
 
 const getAllUsers = functions.define({
-  input: model.never(),
   output: model.array(User),
   // highlight-start
   options: {

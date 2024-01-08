@@ -25,18 +25,22 @@ export type ApiSpecification<
  */
 export type Api<
   Fs extends functions.Functions,
+  E extends functions.ErrorType,
   Exclusions extends { [K in keyof Fs]?: true },
   ContextInput,
 > = ApiSpecification<Fs, Exclusions> & {
-  module: module.Module<Fs, ContextInput>
+  module: module.Module<Fs, E, ContextInput>
 }
 
 /**
  * Builds a Direct API in order to expose the module.
  */
-export function build<Fs extends functions.Functions, Exclusions extends { [K in keyof Fs]?: true }, ContextInput>(
-  api: Api<Fs, Exclusions, ContextInput>,
-): Api<Fs, Exclusions, ContextInput> {
+export function build<
+  Fs extends functions.Functions,
+  E extends functions.ErrorType,
+  Exclusions extends { [K in keyof Fs]?: true },
+  ContextInput,
+>(api: Api<Fs, E, Exclusions, ContextInput>): Api<Fs, E, Exclusions, ContextInput> {
   //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
   return api
 }

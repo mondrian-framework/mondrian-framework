@@ -1,16 +1,25 @@
 import { ApiSpecification } from './api'
 import { Response } from './handler'
 import { result, model } from '@mondrian-framework/model'
-import { functions, sdk, retrieve } from '@mondrian-framework/module'
+import { functions, sdk, retrieve, utils } from '@mondrian-framework/module'
 import { flatMapObject, http } from '@mondrian-framework/utils'
 
-export type Sdk<Fs extends functions.FunctionsInterfaces, Exclusions extends { [K in keyof Fs]?: true }> = {
-  functions: SdkFunctions<Omit<Fs, keyof Exclusions & keyof Fs>>
-  withMetadata: (metadata: Record<string, string>) => Sdk<Fs, Exclusions>
+export type Sdk<
+  Fs extends functions.FunctionsInterfaces,
+  E extends functions.ErrorType,
+  Exclusions extends { [K in keyof Fs]?: true },
+> = {
+  functions: SdkFunctions<Omit<Fs, keyof Exclusions & keyof Fs>, E>
+  withMetadata: (metadata: Record<string, string>) => Sdk<Fs, E, Exclusions>
 }
 
-type SdkFunctions<Fs extends functions.FunctionsInterfaces> = {
-  [K in keyof Fs]: SdkFunction<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], Fs[K]['retrieve']>
+type SdkFunctions<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType> = {
+  [K in keyof Fs]: SdkFunction<
+    Fs[K]['input'],
+    Fs[K]['output'],
+    utils.MergeErrors<Fs[K]['errors'], E>,
+    Fs[K]['retrieve']
+  >
 }
 
 type SdkFunction<
@@ -18,7 +27,7 @@ type SdkFunction<
   OutputType extends model.Type,
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
-> = model.IsNever<InputType> extends true
+> = model.IsLiteral<InputType, undefined> extends true
   ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
       input?: undefined,
       options?: [P] extends [never]
@@ -45,8 +54,9 @@ type SdkFunctionResult<
  * Builds a new client that will connect to a Mondrian Direct endpoint.
  */
 export function build<
-  const Fs extends functions.FunctionsInterfaces,
-  const Exclusions extends { [K in keyof Fs]?: true },
+  Fs extends functions.FunctionsInterfaces,
+  E extends functions.ErrorType,
+  Exclusions extends { [K in keyof Fs]?: true },
 >({
   endpoint,
   api,
@@ -57,7 +67,7 @@ export function build<
   api: ApiSpecification<Fs, Exclusions>
   metadata?: Record<string, string>
   fetchOptions?: Omit<RequestInit, 'method' | 'headers' | 'body'> & { headers?: Record<string, string | undefined> }
-}): Sdk<Fs, Exclusions> {
+}): Sdk<Fs, E, Exclusions> {
   const funcs = flatMapObject(api.module.functions, (functionName, functionBody) => {
     if (api.exclusions[functionName]) {
       return []
@@ -67,9 +77,7 @@ export function build<
     const handler = async (input: never, options?: { retrieve?: never; metadata?: Record<string, string> }) => {
       const responseType = Response(functionBody, options?.retrieve)
 
-      const inputJson = model.isNever(functionBody.input)
-        ? undefined
-        : model.concretise(functionBody.input).encodeWithoutValidation(input)
+      const inputJson = model.concretise(functionBody.input).encodeWithoutValidation(input)
       const retrieveJson = retrieveType.isOk
         ? model.concretise(retrieveType.value).encodeWithoutValidation(options?.retrieve ?? {})
         : undefined
@@ -153,7 +161,7 @@ export function build<
   })
 
   return {
-    functions: funcs as unknown as Sdk<Fs, Exclusions>['functions'],
+    functions: funcs as unknown as Sdk<Fs, E, Exclusions>['functions'],
     withMetadata: (metadata) => build({ endpoint, api, metadata }),
   }
 }

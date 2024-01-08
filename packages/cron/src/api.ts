@@ -18,8 +18,8 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
  * schedule functions execution with a cron string.
  * In order to instantiate this you should use {@link build}.
  */
-export type Api<Fs extends functions.Functions, CI> = ApiSpecification<Fs> & {
-  module: module.Module<Fs, CI>
+export type Api<Fs extends functions.Functions, E extends functions.ErrorType, CI> = ApiSpecification<Fs> & {
+  module: module.Module<Fs, E, CI>
 }
 
 export type FunctionSpecifications<InputType extends model.Type> = {
@@ -30,14 +30,16 @@ export type FunctionSpecifications<InputType extends model.Type> = {
 
 //prettier-ignore
 type InputGenerator<InputType extends model.Type> 
-  = model.IsNever<InputType> extends true ? {}
+  = model.IsLiteral<InputType, undefined> extends true ? {}
   : model.IsOptional<InputType> extends true ? { input?: () => Promise<model.Infer<InputType>> }
   : { input: () => Promise<model.Infer<InputType>> }
 
 /**
  * Builds a cron API in order to schedule function execution.
  */
-export function build<const Fs extends functions.Functions, CI>(api: Api<Fs, CI>): Api<Fs, CI> {
+export function build<Fs extends functions.Functions, E extends functions.ErrorType, CI>(
+  api: Api<Fs, E, CI>,
+): Api<Fs, E, CI> {
   //TODO [Good first issue]: check validity of api as rest.build
   return api
 }

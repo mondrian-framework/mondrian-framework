@@ -3,8 +3,8 @@ import { ErrorType, OutputRetrieveCapabilities, Tracer } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
-import { allUniqueTypes } from './utils'
-import { model } from '@mondrian-framework/model'
+import { allUniqueTypes, mergeErrors } from './utils'
+import { model, result } from '@mondrian-framework/model'
 import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
@@ -12,20 +12,28 @@ import opentelemetry, { ValueType } from '@opentelemetry/api'
  * The Mondrian module interface.
  * Contains only the function signatures, module name and version.
  */
-export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = functions.FunctionsInterfaces> {
+export interface ModuleInterface<
+  Fs extends functions.FunctionsInterfaces = functions.FunctionsInterfaces,
+  E extends ErrorType = ErrorType,
+> {
   name: string
   description?: string
   functions: Fs
+  errors?: E
 }
 
 /**
  * The Mondrian module type.
  * Contains all the module functions with also the implementation and how to build the context.
  */
-export interface Module<Fs extends functions.Functions = functions.Functions, ContextInput = unknown>
-  extends ModuleInterface {
+export interface Module<
+  Fs extends functions.Functions = functions.Functions,
+  E extends ErrorType = ErrorType,
+  ContextInput = unknown,
+> extends ModuleInterface {
   name: string
   functions: Fs
+  errors?: E
   policies?: (context: ContextType<Fs>) => security.Policies
   context: (
     input: ContextInput,
@@ -36,9 +44,34 @@ export interface Module<Fs extends functions.Functions = functions.Functions, Co
       logger: logger.MondrianLogger
       functionName: string
     },
-  ) => Promise<ContextType<Fs>>
+  ) => Promise<ContextResultType<Fs, E>>
   options?: ModuleOptions<Fs, ContextInput>
 }
+
+//prettier-ignore
+type ContextResultType<Fs extends functions.Functions = functions.Functions, E extends ErrorType = ErrorType> 
+  = [E] extends [model.Types] ? result.Result<ContextType<Fs>, functions.InferErrorType<E>>
+  : result.Result<ContextType<Fs>, never>
+
+/**
+ * Intersection of all function's Contexts.
+ */
+export type ContextType<Fs extends functions.Functions> = UnionToIntersection<
+  { [K in keyof Fs]: FunctionContext<Fs[K]> }[keyof Fs]
+>
+
+/**
+ * Gets the Context type of a function.
+ */
+type FunctionContext<F extends functions.FunctionImplementation> = F extends functions.FunctionImplementation<
+  any,
+  any,
+  any,
+  any,
+  infer Context
+>
+  ? Context
+  : never
 
 /**
  * Mondrian module options.
@@ -62,26 +95,6 @@ export type ModuleOptions<Fs extends functions.Functions, ContextInput> = {
    */
   opentelemetry?: boolean
 }
-
-/**
- * Intersection of all function's Contexts.
- */
-export type ContextType<F extends functions.Functions> = UnionToIntersection<
-  { [K in keyof F]: FunctionContext<F[K]> }[keyof F]
->
-
-/**
- * Gets the Context type of a function.
- */
-type FunctionContext<F extends functions.FunctionImplementation> = F extends functions.FunctionImplementation<
-  any,
-  any,
-  any,
-  any,
-  infer Context
->
-  ? Context
-  : never
 
 /**
  * Checks for name collisions in the types that appear in the given function's signature.
@@ -123,10 +136,18 @@ function assertUniqueNames(functions: functions.FunctionsInterfaces) {
  *   })
  * ```
  */
-export function build<const Fs extends functions.Functions, const ContextInput>(
-  module: Module<Fs, ContextInput>,
-): Module<Fs, ContextInput> {
+export function build<const Fs extends functions.Functions, ContextInput, const E extends ErrorType = undefined>(
+  module: Module<Fs, E, ContextInput>,
+): Module<Fs, E, ContextInput> {
   assertUniqueNames(module.functions)
+  //TODO: this logic is the same as function implement, refactor
+  if (module.errors) {
+    const undefinedError = Object.entries(module.errors).find(([_, errorType]) => model.isOptional(errorType))
+    if (undefinedError) {
+      throw new Error(`Module errors cannot be optional. Error "${undefinedError[0]}" is optional`)
+    }
+  }
+
   const maxProjectionDepthMiddleware =
     module.options?.maxSelectionDepth != null
       ? [middleware.checkMaxSelectionDepth(module.options.maxSelectionDepth)]
@@ -142,6 +163,7 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
 
       const func: functions.FunctionImplementation = {
         ...functionBody,
+        errors: mergeErrors(functionBody.errors, module.errors, functionName),
         middlewares: [
           ...maxProjectionDepthMiddleware,
           ...(functionBody.middlewares ?? []),
@@ -175,8 +197,8 @@ export function build<const Fs extends functions.Functions, const ContextInput>(
  * @param module a map of {@link FunctionInterface}, module name and module version.
  * @returns the module interface
  */
-export function define<const Fs extends functions.FunctionsInterfaces>(
-  module: ModuleInterface<Fs>,
+export function define<const Fs extends functions.FunctionsInterfaces, const E extends ErrorType = undefined>(
+  module: ModuleInterface<Fs, E>,
 ): ModuleInterface<Fs> & {
   implement: <
     FsI extends {
@@ -184,8 +206,8 @@ export function define<const Fs extends functions.FunctionsInterfaces>(
     },
     ContextInput,
   >(
-    module: Pick<Module<FsI, ContextInput>, 'functions' | 'context' | 'policies' | 'options'>,
-  ) => Module<FsI, ContextInput>
+    module: Pick<Module<FsI, E, ContextInput>, 'functions' | 'context' | 'policies' | 'options'>,
+  ) => Module<FsI, E, ContextInput>
 } {
   assertUniqueNames(module.functions)
   return { ...module, implement: (moduleImpl) => build({ ...module, ...moduleImpl }) }

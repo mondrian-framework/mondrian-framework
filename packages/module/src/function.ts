@@ -152,14 +152,16 @@ export type FunctionResult<O extends model.Type, E extends ErrorType, C extends 
 //prettier-ignore
 type FunctionResultInternal<O extends model.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> 
   = [C] extends [{ select: true }] ?
-      [E] extends [model.Types] ? result.Result<model.Infer<model.PartialDeep<O>>, InferErrorType<E>>
-    : [E] extends [undefined] ? model.Infer<model.PartialDeep<O>>
-    : any
-  :   [E] extends [model.Types] ? result.Result<model.Infer<O>, InferErrorType<E>>
-    : [E] extends [undefined] ? model.Infer<O>
-    : any
+      [Exclude<E, undefined>] extends [infer E1 extends model.Types] ? result.Result<model.Infer<model.PartialDeep<O>>, InferErrorType<E1>>
+    : [E] extends [undefined] ? result.Result<model.Infer<model.PartialDeep<O>>, never>
+    : result.Result<never, Record<string, unknown>>
+  :   [Exclude<E, undefined>] extends [infer E1 extends model.Types] ? result.Result<model.Infer<O>, InferErrorType<E1>>
+    : [E] extends [undefined] ? result.Result<model.Infer<O>, never>
+    : result.Result<never, Record<string, unknown>>
 
-type InferErrorType<Ts extends model.Types> = AtLeastOnePropertyOf<{ [K in keyof Ts]: model.Infer<Ts[K]> }>
+export type InferErrorType<Ts extends model.Types> = 0 extends 1 & Ts
+  ? never
+  : AtLeastOnePropertyOf<{ [K in keyof Ts]: model.Infer<Ts[K]> }>
 
 type AtLeastOnePropertyOf<T> = { [K in keyof T]: { [L in K]: T[L] } & { [L in Exclude<keyof T, K>]?: T[L] } }[keyof T]
 
@@ -193,13 +195,13 @@ export type Middleware<
    * Apply function of this middleware.
    * @param args Argument of the functin invokation. Can be transformed with `next` callback.
    * @param next Continuation callback of the middleware.
-   * @param thisFunction Reference to the underlying {@link FunctionImplementation}.
+   * @param fn Reference to the underlying {@link FunctionImplementation}.
    * @returns a value that respect function's output type and the given projection.
    */
   apply: (
     args: FunctionArguments<I, O, C, Context>,
     next: (args: FunctionArguments<I, O, C, Context>) => FunctionResult<O, E, C>,
-    thisFunction: FunctionImplementation<I, O, E, C, Context>,
+    fn: FunctionImplementation<I, O, E, C, Context>,
   ) => FunctionResult<O, E, C>
 }
 
@@ -239,12 +241,12 @@ export type FunctionsInterfaces = {
  * ```
  */
 export function define<
-  const I extends model.Type,
-  const O extends model.Type,
+  const I extends model.Type = model.LiteralType<undefined>,
+  const O extends model.Type = model.LiteralType<undefined>,
   const E extends ErrorType = undefined,
   R extends OutputRetrieveCapabilities = undefined,
 >(
-  func: FunctionInterface<I, O, E, R>,
+  func: Partial<FunctionInterface<I, O, E, R>>,
 ): FunctionInterface<I, O, E, R> & {
   /**
    * Implements the function definition by defining the body of the function
@@ -265,13 +267,18 @@ export function define<
    * })
    * ```
    */
-  implement: <Context extends Record<string, unknown> = {}>(
+  implement: <const Context extends Record<string, unknown> = {}>(
     implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
   ) => FunctionImplementation<I, O, E, R, Context>
 } {
-  return {
+  const fi = {
+    input: model.undefined() as I,
+    output: model.undefined() as O,
     ...func,
-    implement<Context extends Record<string, unknown> = {}>(
+  }
+  return {
+    ...fi,
+    implement<const Context extends Record<string, unknown> = {}>(
       implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
     ) {
       if (func.errors) {
@@ -280,7 +287,7 @@ export function define<
           throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
         }
       }
-      return new BaseFunction<I, O, E, R, Context>({ ...func, ...implementation })
+      return new BaseFunction<I, O, E, R, Context>({ ...fi, ...implementation })
     },
   }
 }

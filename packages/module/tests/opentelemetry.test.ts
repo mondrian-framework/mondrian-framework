@@ -57,7 +57,7 @@ describe('Opentelemetry', () => {
         checkOutputType: 'throw',
         opentelemetry: true,
       },
-      context: async () => ({}),
+      context: async () => result.ok({}),
     })
 
     const client = sdk.build({

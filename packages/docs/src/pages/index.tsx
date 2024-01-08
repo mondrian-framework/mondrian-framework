@@ -245,9 +245,16 @@ const server = fastify()
 
 const api = graphql.build({ 
   module: userModule,
+  functions: {
+    register: { type: 'mutation' },
+  },
+})
+
+serve({ 
+  server,
+  api,
   options: { introspection: true },
 })
-serve({ server, api })
 
 server.listen({ port: 4000 }).then((address) => {
   console.log(\`Server started at address \${address}/graphql\`)

@@ -273,13 +273,13 @@ server.listen({ port: 4000 }).then((address) => {
               </div>
               <div className={styles.featureDescription}>
                 See how your application may potentially look like without leaving your personal browser. Feel free to change the codebase
-                and reload the preview of the specification.
+                and reload the preview of the OpenAPI specification.
               </div>
               <iframe
                 className={styles.previewCode} 
                 width="100%"
                 height="800px"
-                src="https://stackblitz.com/edit/stackblitz-starters-kwhrtw?embed=1&file=src%2Fapp.ts&hideNavigation=1" 
+                src="https://stackblitz.com/edit/stackblitz-starters-kwhrtw?embed=1&file=src%2Fapp.ts" 
               />
             </div>
           </div>

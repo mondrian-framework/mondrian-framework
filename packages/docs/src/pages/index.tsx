@@ -181,7 +181,7 @@ export type User = model.Infer<typeof User>
                 </div>
                 <div className={styles.featureButton}>
                   <Link className={`button button--primary button--lg`} to="/docs/docs/foundamentals/function">
-                    Learn more about modules and functions
+                    Learn more about modules
                   </Link>
                 </div>
               </div>
@@ -255,6 +255,25 @@ server.listen({ port: 4000 }).then((address) => {
 `}
                 </CodeBlock>
               </div>
+            </div>
+          </div>
+        </section>
+        <section>
+          <div className="container">
+            <div className={styles.preview}>
+              <div className={styles.featureTitle}>
+                Live Preview
+              </div>
+              <div className={styles.featureDescription}>
+                See how your application may potentially look like without leaving your personal browser. Feel free to change the codebase
+                and reload the preview of the specification.
+              </div>
+              <iframe
+                className={styles.previewCode} 
+                width="100%"
+                height="800px"
+                src="https://stackblitz.com/edit/stackblitz-starters-kwhrtw?embed=1&file=src%2Fapp.ts&hideNavigation=1" 
+              />
             </div>
           </div>
         </section>

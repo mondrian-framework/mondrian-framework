@@ -110,6 +110,16 @@ section:nth-child(2n) {
   padding: 2rem 0;
 }
 
+.preview {
+  padding: 6rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.previewCode {
+  margin-top: 50px;
+}
+
 .codeBlock {
   background: var(--prism-background-color);
   color: var(--prism-color);

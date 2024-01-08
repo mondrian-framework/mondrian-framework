@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.16
+
+### Patch Changes
+
+- Variuos features
+
 ## 2.0.15
 
 ### Patch Changes

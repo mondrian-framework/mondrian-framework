@@ -78,7 +78,7 @@ export function fromFunction<
             const status = key ? codes[key] ?? 400 : 400
             const response: http.Response = {
               status,
-              body: error,
+              body: JSON.stringify(error),
               headers: { 'Content-Type': 'application/json' },
             }
             endSpanWithResponse({ span, response })
@@ -111,10 +111,11 @@ export function fromFunction<
               return handleFailure(applyResult.error)
             } else {
               const encoded = partialOutputType.encodeWithoutValidation(applyResult.value)
+              const contentType = specification.contentType ?? 'application/json'
               const response: http.Response = {
                 status: 200,
-                body: encoded,
-                headers: { 'Content-Type': specification.contentType ?? 'application/json' },
+                body: contentType === 'application/json' ? JSON.stringify(encoded) : encoded,
+                headers: { 'Content-Type': contentType },
               }
               endSpanWithResponse({ span, response })
               return response
@@ -172,7 +173,11 @@ function decodeInput(
     const decoded = model
       .concretise(inputType)
       .decode(rawInput, { typeCastingStrategy: 'tryCasting' })
-      .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid input' }, headers: {} }))
+      .mapError((errors) => ({
+        status: 400,
+        body: JSON.stringify({ errors, message: 'Invalid input' }),
+        headers: { 'Content-Type': 'application/json' },
+      }))
     if (decoded.isFailure) {
       endSpanWithError({ span, failure: decoded })
       return result.fail(decoded.error)
@@ -206,7 +211,11 @@ function decodeRetrieve(
       const decodedRetrieve = model
         .concretise(retrieveType.value)
         .decode(jsonRawRetrieve, { typeCastingStrategy: 'tryCasting' })
-        .mapError((errors) => ({ status: 400, body: { errors, message: 'Invalid retrieve' }, headers: {} }))
+        .mapError((errors) => ({
+          status: 400,
+          body: JSON.stringify({ errors, message: 'Invalid retrieve' }),
+          headers: { 'Content-Type': 'application/json' },
+        }))
       if (decodedRetrieve.isFailure) {
         endSpanWithError({ span, failure: decodedRetrieve })
         return result.fail(decodedRetrieve.error)

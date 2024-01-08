@@ -39,7 +39,7 @@ export function attachRestMethods<Fs extends functions.Functions, E extends func
         const result = await restHandler({
           serverContext: { request, reply },
           request: {
-            body: request.body as string,
+            body: request.body,
             headers: request.headers,
             method: request.method.toLowerCase() as http.Method,
             params: request.params as Record<string, string>,

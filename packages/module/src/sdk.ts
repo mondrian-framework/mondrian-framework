@@ -73,14 +73,13 @@ type InferSelectionInternal<T extends model.Type, P extends { readonly [K in str
 // prettier-ignore
 type InferObject<M extends model.Mutability, Ts extends model.Types, P extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean }> =
   model.ApplyObjectMutability<M,
-    //@ts-ignore
-    { [Key in (NonUndefinedKeys<P> & model.NonOptionalKeys<Ts>)]: IsObjectOrEntity<Ts[Key]> extends true ? Project<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], P[Key]> } &
-    //@ts-ignore
-    { [Key in (NonUndefinedKeys<P> & model.OptionalKeys<Ts>)]?: IsObjectOrEntity<Ts[Key]> extends true ? Project<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], P[Key]> }
+    { [Key in (NonUndefinedKeys<P> & model.NonOptionalKeys<Ts>)]: IsObjectOrEntity<Ts[Key]> extends true ? P[Key] extends retrieve.GenericRetrieve ? Project<Ts[Key], P[Key]> : never : P[Key] extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean } ? InferSelectionInternal<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], {}> } &
+    { [Key in (NonUndefinedKeys<P> & model.OptionalKeys<Ts>)]?: IsObjectOrEntity<Ts[Key]> extends true ? P[Key] extends retrieve.GenericRetrieve ? Project<Ts[Key], P[Key]> : never : P[Key] extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean } ? InferSelectionInternal<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], {}> }
   >
 
+// prettier-ignore
 type NonUndefinedKeys<P extends Record<string, unknown>> = {
-  [K in keyof P]: [Exclude<P[K], undefined>] extends [never] ? never : K
+  [K in keyof P]: [Exclude<P[K], undefined>] extends [never] ? never : [Exclude<P[K], undefined>] extends [false] ? never : K
 }[keyof P]
 
 // prettier-ignore

@@ -344,6 +344,9 @@ test('Return types', async () => {
   const r5 = await client.functions.login({ retrieve: { select: { email: true } } })
   expectTypeOf(r5).toEqualTypeOf<{ readonly email: string }>()
 
+  const r14 = await client.functions.login({ retrieve: { select: { email: false } } })
+  expectTypeOf(r14).toEqualTypeOf<{}>()
+
   const r6 = await client.functions.login({ retrieve: { select: { metadata: undefined } } })
   expectTypeOf(r6).toEqualTypeOf<{}>()
 

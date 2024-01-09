@@ -31,4 +31,11 @@ jobs:
           folder: packages/docs/build
           bucket: 730335233470-prod-mondrian-doc
           bucket-region: eu-central-1
-      
+      - name: Invalidate CloudFront
+        uses: chetan/invalidate-cloudfront-action@v2
+        env:
+          DISTRIBUTION: ESTEQAO38X4PS
+          PATHS: "/*"
+          AWS_REGION: "eu-central-1"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

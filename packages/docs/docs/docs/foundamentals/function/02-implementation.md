@@ -159,7 +159,7 @@ that is extremely popular for observability features.
 It offers five simple methods for logging at different levels: `logDebug`, `logInfo`, `logWarn`, `logError`, `logFatal`. Each 
 of these functions accepts a free string and, as a second parameter, a key-value object in which to specify additional details.
 
-More details on logging in the [section on this topic](../../07-logging.md).
+More details on logging in the [section on this topic](../../guides/05-logging.md).
 
 ## Tracer
 Just as mentioned for logging capabilities, Mondrian provides ready-to-use support for tracing, again based on [OpenTelemetry](https://opentelemetry.io/). When implementing the body of a function you can use an instance of the tracer provided as an additional parameter.
@@ -184,7 +184,7 @@ const createPost = createPostDefinition.implement({
 ```
 You can also specify additional tracing options using the `startActiveSpanWithOptions` method.
 
-More details on tracing in the [section on this topic](../../07-logging.md).
+More details on tracing in the [section on this topic](../../guides/05-logging.md).
 
 ## Middleware
 

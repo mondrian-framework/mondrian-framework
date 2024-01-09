@@ -26,7 +26,7 @@ The following function implements the business logic to create a post
 in a blogging platform:
 
 ```ts showLineNumbers
-import { model } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 import { Repository } from '../repository'
 
@@ -47,7 +47,7 @@ const createPost = functions
   .implement<Context>({
     async body({ input, context }) {    
       const postId = await context.repository.posts.insertOne(input)
-      return postId
+      return result.ok(postId)
     },
   })
 ```

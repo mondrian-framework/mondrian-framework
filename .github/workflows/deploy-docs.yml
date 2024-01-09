@@ -1,6 +1,7 @@
 name: docs
 on:
   push:
+    paths: packages/docs/**
     branches: [develop]
 
 jobs:
@@ -11,13 +12,28 @@ jobs:
       GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: npm
-      - run: git config --global user.email "info@mondrianframework.com"
-      - run: git config --global user.name "Mondrian Framework"
-      - name: Npm install
+          node-version: '20.10'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+      - name: Install dependencies
         run: npm ci
-      - name: Docs deploy
-        run: npm run deploy-docs
+      - name: Build docs
+        run: npm run build-doc --workspace=@mondrian-framework/docs
+      - uses: shallwefootball/s3-upload-action@master
+        with:
+          aws_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+          aws_bucket: 730335233470-prod-mondrian-doc
+          source_dir: packages/docs/build
+          destination_dir: ''
+      - name: Invalidate CloudFront
+        uses: chetan/invalidate-cloudfront-action@v2
+        env:
+          DISTRIBUTION: ESTEQAO38X4PS
+          PATHS: "/*"
+          AWS_REGION: "eu-central-1"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

@@ -23,6 +23,8 @@ A module is a named set of functions referring to a shared domain, with a well-d
 ### Runtime
 A runtime is a container or in general an environment that can independently execute one or more modules on a target infrastructure by providing them with all the resources they need. Every module should be compatible and interoperable with all runtimes, switching from one runtime to another should therefore not require any changes to a module. 
 
+![Framework architecture overview](/img/architecture-overview.png)
+
 ## Programming style
 Mondrian Framework combines elements of **FP (Functional Programming)** and FRP (Functional Reactive Programming) with mainstream PP (Procedural Programmin) to minimize errors resulting from improper state management and unwanted side effects. It represents an attempt to combine these different programming styles in order to maximize productivity while still producing quality software.
 

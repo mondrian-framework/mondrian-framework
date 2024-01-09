@@ -1,4 +1,5 @@
 .vscode
+packages/docs
 packages/*/build
 packages/*/tests
 packages/*/coverage

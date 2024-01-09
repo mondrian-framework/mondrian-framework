@@ -1,3 +1,3 @@
-# SNS
+# AWS SNS
 
 Work in progress.

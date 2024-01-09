@@ -6,8 +6,8 @@ const config: Config = {
   title: 'Mondrian Framework',
   tagline: 'The Node.js framework for building modular server-side applications ready to evolve',
   favicon: 'img/favicon.ico',
-  url: 'https://mondrianframework.io',
-  baseUrl: '/mondrian-framework/',
+  url: 'https://mondrianframework.com',
+  baseUrl: '/',
   organizationName: 'mondrian-framework',
   projectName: 'mondrian-framework',
   deploymentBranch: 'docs',
@@ -18,7 +18,10 @@ const config: Config = {
     defaultLocale: 'en',
     locales: ['en'],
   },
-
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
   presets: [
     [
       'classic',

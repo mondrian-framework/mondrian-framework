@@ -1,5 +1,3 @@
 import { test } from 'vitest'
 
-test('test', async () => {
-  
-})
+test('test', async () => {})

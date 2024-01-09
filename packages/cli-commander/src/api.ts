@@ -1,7 +1,6 @@
 import { result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 
-
 type InputBindingStyle = 'single-json' | 'argument-spreaded'
 /**
  * The commander API specification of a mondrian {@link module.ModuleInterface Module Interface}

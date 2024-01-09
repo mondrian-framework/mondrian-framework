@@ -34,6 +34,7 @@
     "packages/model",
     "packages/arbitrary",
     "packages/module",
+    "packages/cli-commander",
     "packages/middleware/rate-limiter",
     "packages/direct",
     "packages/rest",

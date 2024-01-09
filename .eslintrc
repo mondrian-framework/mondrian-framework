@@ -13,6 +13,7 @@
       "./packages/model/tsconfig.json",
       "./packages/arbitrary/tsconfig.json",
       "./packages/module/tsconfig.json",
+      "./packages/cli-commander/tsconfig.json",
       "./packages/utils/tsconfig.json",
       "./packages/direct/tsconfig.json",
       "./packages/rest/tsconfig.json",

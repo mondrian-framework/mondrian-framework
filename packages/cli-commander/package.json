@@ -1,5 +1,5 @@
 {
-  "name": "@mondrian-framework/cron",
+  "name": "@mondrian-framework/cli-commander",
   "version": "2.0.17",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -12,14 +12,11 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "node-cron": "3.0.3"
+    "commander": "11.1.0"
   },
   "peerDependencies": {
     "@mondrian-framework/model": "^2.0.17",
     "@mondrian-framework/module": "^2.0.17",
     "@mondrian-framework/utils": "^2.0.17"
-  },
-  "devDependencies": {
-    "@types/node-cron": "3.0.11"
   }
 }

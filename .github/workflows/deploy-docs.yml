@@ -26,11 +26,12 @@ jobs:
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - uses: reggionick/s3-deploy@v4
+      - uses: shallwefootball/s3-upload-action@master
         with:
-          folder: packages/docs/build
-          bucket: 730335233470-prod-mondrian-doc
-          bucket-region: eu-central-1
+          aws_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+          aws_bucket: 730335233470-prod-mondrian-doc
+          source_dir: packages/docs/build
       - name: Invalidate CloudFront
         uses: chetan/invalidate-cloudfront-action@v2
         env:

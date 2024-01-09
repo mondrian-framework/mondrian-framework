@@ -27,6 +27,7 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
           aws_bucket: 730335233470-prod-mondrian-doc
           source_dir: packages/docs/build
+          destination_dir: ''
       - name: Invalidate CloudFront
         uses: chetan/invalidate-cloudfront-action@v2
         env:

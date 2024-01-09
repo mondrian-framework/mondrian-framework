@@ -60,7 +60,7 @@ npm i @mondrian-framework/model \
 In our first example, we'll guide you through creating a registration function using the Mondrian framework. This function, written in TypeScript, accepts an email and password as input and outputs a JSON web token:
 
 ```typescript
-import { model } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
 
 const register = functions
@@ -75,7 +75,7 @@ const register = functions
         throw new Error('Weak password.')
       }
       // register logic ...
-      return { jwt: '...' }
+      return result.ok({ jwt: '...' })
     },
   })
 ```
@@ -115,6 +115,7 @@ const register = functions
 Here's how you can build the Mondrian module using TypeScript:
 
 ```typescript
+import { result } from '@mondrian-framework/model'
 import { module } from '@mondrian-framework/module'
 
 const myFunctions = { register } //here we put all the module functions
@@ -124,7 +125,7 @@ const moduleInstance = module.build({
   name: 'my-module',
   version: '0.0.0',
   functions: myFunctions,
-  context: async () => ({}),
+  context: async () => result.ok({}),
 })
 ```
 
@@ -244,7 +245,7 @@ const getUsers = functions
     retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
   })
   .implement({
-    body: async ({ retrieve }) => prismaClient.user.findMany(retrieve), //retrieve type match Prisma generated types
+    body: async ({ retrieve }) => result.ok(await prismaClient.user.findMany(retrieve)), //retrieve type match Prisma generated types
   })
 ```
 
@@ -267,7 +268,7 @@ const getUsers = functions
       if (!userId) {
         throw new Error('Not authenticated!') //this can be a first level of security
       }
-      return await prismaClient.user.findMany(retrieve)
+      return result.ok(await prismaClient.user.findMany(retrieve))
     },
   })
 ```
@@ -275,16 +276,18 @@ const getUsers = functions
 A problem remains... What if a logged-in user selects all user passwords?! Or maybe traverses the graph and selects some private fields? Mondrian-Framework natively supports a layer of security that can be used to secure the graph. This mechanism is applied every time we call a function with some retrieve capabilities and for the protected types (defined by you). In the following example, we show how to define such a level of security:
 
 ```typescript
+import { result } from '@mondrian-framework/model'
 import { module, security } from '@mondrian-framework/module'
 
 const moduleInstance = module.build({
   name: 'my-module',
   version: '0.0.0',
   functions: myFunctions,
-  context: async ({ authHeader }: { authHeader: string }) => ({
-    //maybe do something with authHeader
-    userId: authHeader ? '123...123' : undefiend,
-  }),
+  context: async ({ authHeader }: { authHeader: string }) =>
+    result.ok({
+      //maybe do something with authHeader
+      userId: authHeader ? '123...123' : undefiend,
+    }),
   policies({ userId }) {
     if (userId != null) {
       return (

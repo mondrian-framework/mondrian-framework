@@ -11,13 +11,24 @@ jobs:
       GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: npm
-      - run: git config --global user.email "info@mondrianframework.com"
-      - run: git config --global user.name "Mondrian Framework"
-      - name: Npm install
+          node-version: '20.10'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+      - name: Install dependencies
         run: npm ci
-      - name: Docs deploy
-        run: npm run deploy-docs
+      - name: Build docs
+        run: npm run build-doc --workspace=@mondrian-framework/docs
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - uses: reggionick/s3-deploy@v4
+        with:
+          folder: packages/docs/build
+          bucket: 730335233470-prod-mondrian-doc
+          bucket-region: eu-central-1
+      

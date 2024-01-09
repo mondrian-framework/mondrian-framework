@@ -3,7 +3,7 @@
 
 # Mondrian
 
-[Home page](https://mondrian-framework.github.io/mondrian-framework/)
+[Home page](https://mondrianframework.com/)
 
 ## 1 minute spinup example
 

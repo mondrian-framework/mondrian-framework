@@ -177,3 +177,25 @@ As you can see from the example, the `policies` function receives as input the m
 To explore this topic further you will find all the details in the section on [security policies](../../05-security.md).
 
 ## Options
+
+Every module implementation accepts several options that can be used to customize its behavior.
+
+```ts showLineNumbers
+const moduleImplementation = moduleDefinition.implement({
+  // ...
+  options: {
+    checkOutputType: 'log',
+    maxSelectionDepth: 3,
+    opentelemetry: true,
+  },
+})
+```
+
+Options specifications is not mandatory and each one has a default value. Here is a brief description of each one:
+
+- `checkOutputType`: checks (at runtime) if the output value of any function is valid, it also checks if the eventual selection is respected. Default is `throw`, so if the check fails an error is thrown. You can also set it to `log` to do the check and just log failures, but without returning an error. With `ignore` the check is skipped (could be useful in a production environment in order to improve performance). 
+
+- `maxSelectionDepth`: maximum selection depth allowed in a request. If the requested selection is deeper than this value an error is thrown. The default is any depth, but in production it is suggested to set a limit (like 5) in order to prevent denial of service attacks.
+
+- `opentelemetry`: enables opentelemetry instrumentation, this can be useful for tracing and monitoring the performance of your application. You can find more details about tracing in the [dedicated section](../../07-logging.md).
+

@@ -123,7 +123,7 @@ export const moduleInterface = module.define({
 Supported models: OpenAPI Specification, GraphQL Schema (Coming soon...)
 We do not save any data without encryption, so we do not own your schemas. You can check the code at the Mondrian-Framework repositoty under ci-tools package.
 
-Powerd by <a href="https://pb33f.io/openapi-changes/">pb33f openapi-changes</a> <a href="https://mondrian-framework.github.io/mondrian-framework/">Mondrian Framework</a>`,
+Powerd by <a href="https://pb33f.io/openapi-changes/">pb33f openapi-changes</a> <a href="https://mondrianframework.com/">Mondrian Framework</a>`,
   functions: { getReport, buildOASReport, buildGraphQLReport },
 })
 

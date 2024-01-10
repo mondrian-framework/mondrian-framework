@@ -174,7 +174,7 @@ const moduleImplementation = moduleDefinition.implement({
 
 As you can see from the example, the `policies` function receives as input the module context and, based on it, returns a security policy that will then allow the framework to determine whether or not the call is authorized. Security policies are user-defined and determine what resources the caller may or may not access.
 
-To explore this topic further you will find all the details in the section on [security policies](../../05-security.md).
+To explore this topic further you will find all the details in the section on [security policies](../../guides/01-security.md).
 
 ## Options
 
@@ -197,5 +197,5 @@ Options specifications is not mandatory and each one has a default value. Here i
 
 - `maxSelectionDepth`: maximum selection depth allowed in a request. If the requested selection is deeper than this value an error is thrown. The default is any depth, but in production it is suggested to set a limit (like 5) in order to prevent denial of service attacks.
 
-- `opentelemetry`: enables opentelemetry instrumentation, this can be useful for tracing and monitoring the performance of your application. You can find more details about tracing in the [dedicated section](../../07-logging.md).
+- `opentelemetry`: enables opentelemetry instrumentation, this can be useful for tracing and monitoring the performance of your application. You can find more details about tracing in the [dedicated section](../../guides/05-logging.md).
 

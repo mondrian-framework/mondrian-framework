@@ -6,6 +6,7 @@ import { buildSchema } from 'graphql'
 import { expect, test } from 'vitest'
 
 test('api test', async () => {
+  process.env.SERVER_BASE_URL = "http://localhost:4000"
   const client = sdk.build({
     module: module,
     async context() {},

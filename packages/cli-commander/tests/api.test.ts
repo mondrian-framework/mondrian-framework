@@ -35,7 +35,7 @@ const double = functions
 
 const register = functions
   .define({
-    input: model.object({ username: model.string().optional(), password: model.string() }),
+    input: model.object({ 'user-name': model.string().optional(), password: model.string() }),
     output: model.string(),
   })
   .implement({
@@ -59,7 +59,7 @@ const m = module.build({
   },
 })
 
-test('test', async () => {
+test('cli-test', async () => {
   let res: result.Result<unknown, unknown> = result.fail(null) as result.Result<unknown, unknown>
   const prg = cli.fromModule({
     async context() {
@@ -86,13 +86,13 @@ test('test', async () => {
   expect(res.isOk && res.value).toEqual('pong')
   await prg.parseAsync(['ping', 'ctx'], { from: 'user' })
   expect(res.isFailure && res.error).toEqual({ c1: 1 })
-  await prg.parseAsync(['register', '{"username":"user", "password":"pass"}'], { from: 'user' })
+  await prg.parseAsync(['register', '{"user-name":"user", "password":"pass"}'], { from: 'user' })
   expect(res.isOk && res.value).toEqual('ok')
-  await prg.parseAsync(['register', '{"username":"user", "password2":"pass"}'], { from: 'user' })
+  await prg.parseAsync(['register', '{"user-name":"user", "password2":"pass"}'], { from: 'user' })
   expect(res.isFailure && res.error).toEqual([{ expected: 'string', got: undefined, path: '$.password' }])
-  await prg.parseAsync(['register2', '--username', 'user', '--password', 'pass'], { from: 'user' })
+  await prg.parseAsync(['register2', '--user-name', 'user', '--password', 'pass'], { from: 'user' })
   expect(res.isOk && res.value).toEqual('ok')
-  await prg.parseAsync(['register2', '--username', 'user', '--password', 'a'], { from: 'user' })
+  await prg.parseAsync(['register2', '--user-name', 'user', '--password', 'a'], { from: 'user' })
   expect(res.isFailure && res.error).toEqual(new Error('Too short'))
   await prg.parseAsync(['double'], { from: 'user' })
   expect(res.isOk && res.value).toEqual(undefined)

@@ -15,7 +15,7 @@ async function main() {
   const partialTime2 = new Date().getTime()
   serveDirect(server)
   const finishTime = new Date().getTime()
-  const address = await server.listen({ port: 4000 })
+  const address = await server.listen({ port: 4001 })
   console.log(`Rest    server started in ${partialTime1 - startTime}ms -> ${address}/openapi`)
   console.log(`Graphql server started in ${partialTime2 - partialTime1}ms -> ${address}/graphql`)
   console.log(`Direct  server started in ${finishTime - partialTime2}ms -> ${address}/mondrian`)

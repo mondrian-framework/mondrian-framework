@@ -57,7 +57,7 @@ export const ReportResult = () =>
   model.object({
     breakingChanges: model.integer(),
     reportId: ReporId,
-    reportUrl: model.url(),
+    reportUrl: model.url().optional(),
     info: model.unknown(),
   })
 export type ReportResult = model.Infer<typeof ReportResult>
@@ -120,7 +120,7 @@ const buildGraphQLReport = functions.define({
 export const moduleInterface = module.define({
   name: 'Mondrian CI-Tools',
   description: `This module provides model-checking utilities that can be used to detect breaking changes on CI/CD
-Supported models: OpenAPI Specification, GraphQL Schema (Coming soon...)
+Supported models: OpenAPI Specification, GraphQL Schema
 We do not save any data without encryption, so we do not own your schemas. You can check the code at the Mondrian-Framework repositoty under ci-tools package.
 
 Powerd by <a href="https://pb33f.io/openapi-changes/">pb33f openapi-changes</a> <a href="https://mondrianframework.com/">Mondrian Framework</a>`,

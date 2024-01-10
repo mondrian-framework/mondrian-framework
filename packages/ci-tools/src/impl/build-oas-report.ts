@@ -61,11 +61,13 @@ export const buildOASReport = moduleInterface.functions.buildOASReport.implement
     }
     const output = fs.readFileSync(`${cwd}/report.html`).toString()
     fs.unlinkSync(`${cwd}/report.html`)
-    await writeReport({ fileManager, content: output, password, reportId })
+    if (serverBaseURL) {
+      await writeReport({ fileManager, content: output, password, reportId })
+    }
     return result.ok({
       breakingChanges: report?.reportSummary?.components?.breakingChanges ?? 0,
       reportId: reportId,
-      reportUrl: new URL(`${serverBaseURL}/v1/reports/${reportId}`),
+      reportUrl: serverBaseURL ? new URL(`${serverBaseURL}/v1/reports/${reportId}`) : undefined,
       info: report,
     })
   },

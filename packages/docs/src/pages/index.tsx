@@ -206,9 +206,10 @@ const register = functions
   })
 
 const userModule = module.build({
-  name: 'User',
-  version: '0.0.1',
-  functions: { register }
+  name: 'user',
+  functions: { 
+    register 
+  }
 })
 `}
                 </CodeBlock>
@@ -241,8 +242,6 @@ const userModule = module.build({
 import { serve } from '@mondrian-framework/graphql-fastify'
 import { fastify } from 'fastify'
 
-const server = fastify()
-
 const api = graphql.build({ 
   module: userModule,
   functions: {
@@ -250,12 +249,12 @@ const api = graphql.build({
   },
 })
 
+const server = fastify()
 serve({ 
   server,
   api,
   options: { introspection: true },
 })
-
 server.listen({ port: 4000 }).then((address) => {
   console.log(\`Server started at address \${address}/graphql\`)
 })

@@ -93,21 +93,9 @@ const moduleImplementation = moduleDefinition
 ```
 
 That of context is thus a chain of processing in which each step fulfills its own responsibilities:
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Client
-  Client->>Runtime: Request
-  activate Runtime
-  Runtime->>Module: ModuleContext
-  deactivate Runtime
-  activate Module
-  Module->>Function: FunctionContext
-  deactivate Module
-  activate Function
-  deactivate Function
-```
+
 &nbsp;
+![Context](/img/context.png)
 
 - the **runtime** is responsible for interpreting the caller's request, since it knows its format, and extrapolating from it the data needed for the form, hiding all the technicalities of the execution environment.
 - the **module** is responsible for processing these inputs from the runtime to create the context required by its functions
@@ -117,7 +105,7 @@ sequenceDiagram
 Context creation is an operation that is **invoked at each function execution**; in fact, the module does not have its own permanent state. Therefore, care must be taken with this operation and the implications it may have on performance, connection management, etc.
 :::
 
-### Errors
+## Errors
 Note that, as described in the [module definition](./01-definition.md), context creation can also return errors.
 
 ```ts showLineNumbers
@@ -174,7 +162,7 @@ const moduleImplementation = moduleDefinition.implement({
 
 As you can see from the example, the `policies` function receives as input the module context and, based on it, returns a security policy that will then allow the framework to determine whether or not the call is authorized. Security policies are user-defined and determine what resources the caller may or may not access.
 
-To explore this topic further you will find all the details in the section on [security policies](../../guides/01-security.md).
+To further explore this topic you will find all the details in the section on [security policies](../../guides/01-security.md).
 
 ## Options
 
@@ -191,7 +179,7 @@ const moduleImplementation = moduleDefinition.implement({
 })
 ```
 
-Options specifications is not mandatory and each one has a default value. Here is a brief description of each one:
+Options specifications is not mandatory and each one has a default value:
 
 - `checkOutputType`: checks (at runtime) if the output value of any function is valid, it also checks if the eventual selection is respected. Default is `throw`, so if the check fails an error is thrown. You can also set it to `log` to do the check and just log failures, but without returning an error. With `ignore` the check is skipped (could be useful in a production environment in order to improve performance). 
 

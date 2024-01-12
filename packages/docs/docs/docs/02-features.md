@@ -7,14 +7,18 @@ Mondrian Framework provides many features for building modern cloud native appli
 
 ## Modeling
 - Formal model definition
-- Custom scalars
-- Standard and custom format validation
-- Serialization / deserialization 
-- Type inference
-- Projection types and utilities
+- Entity references
+- Custom types
+- Validation of both given and custom types
+- Serialization / deserialization
+- TypeScript type inference
+- Utilities types inference
 
-## API
-- Business Logic function definition
+## Development
+- 100% TypeScript
+- Business logic encapsulation using functions
+- Reusable module definition
+- Module composition
 - Context management
 - Multiple API server generation
   - REST, with OpenAPI specification
@@ -24,19 +28,18 @@ Mondrian Framework provides many features for building modern cloud native appli
 - Multiple non-API runtimes
   - React to messages, events, notifications (AWS SQS, Apache Kafka, AWS SNS)
   - Scheduled cron-like execution
+  - Command Line Interfaces (CLI)
   - others from the community
-- Container support
+- Containerization support
 - AWS Lambda Functions support
+- Extensibility through middlewares
+- Automatic fully typed client SDK generation
+- Expressive error management
+- Built-in logging, metrics and tracing
+- Built for testability
+- Automatically mockable
 
 ## Security
-  - API based security framework
-  - Advanced domain based security framework
-
-## Others
-- 100% TypeScript
-- Exception management
-- Built-in mocking
-- Built-in logging
-- Built-in metrics
-- Built-in tracing
-- Automatic client SDK generation
+  - API level authorization
+  - Entity-based access control
+  - Rate limiting and max call depth

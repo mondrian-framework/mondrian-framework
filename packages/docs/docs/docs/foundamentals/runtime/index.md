@@ -24,8 +24,6 @@ import { serve } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 import { module } from './module'
 
-const server = fastify()
-
 const api = rest.build({
   module: module,
   version: 1,
@@ -36,10 +34,16 @@ const api = rest.build({
   }
 })
 
+const server = fastify()
+
 serve({
   server,
   api,
   context: async ({ }) => ({ }),
+})
+
+server.listen({ port: 4000 }).then((address) => {
+  console.log(`Server started at address ${address}`)
 })
 ```
 

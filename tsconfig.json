@@ -22,6 +22,7 @@
       "@mondrian-framework/model": ["./packages/model"],
       "@mondrian-framework/arbitrary": ["./packages/arbitrary"],
       "@mondrian-framework/module": ["./packages/module"],
+      "@mondrian-framework/cli-commander": ["./packages/cli-commander"],
       "@mondrian-framework/middleware/rate-limiter": ["./packages/middleware/rate-limiter"],
       "@mondrian-framework/direct": ["./packages/direct"],
       "@mondrian-framework/rest": ["./packages/rest"],
@@ -33,6 +34,7 @@
       "@mondrian-framework/aws-lambda-rest": ["./packages/aws-lambda-rest"],
       "@mondrian-framework/cron": ["./packages/cron"],
       "@mondrian-framework/ci-tools": ["./packages/ci-tools"],
+      "@mondrian-framework/cli": ["./packages/cli"],
       "@mondrian-framework/example": ["./packages/example"]
     }
   },
@@ -45,6 +47,9 @@
     },
     {
       "path": "packages/module"
+    },
+    {
+      "path": "packages/cli-commander"
     },
     {
       "path": "packages/middleware/rate-limiter"
@@ -78,6 +83,9 @@
     },
     {
       "path": "packages/ci-tools"
+    },
+    {
+      "path": "packages/cli"
     },
     {
       "path": "packages/example"

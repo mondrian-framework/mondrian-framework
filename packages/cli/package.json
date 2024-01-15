@@ -1,0 +1,21 @@
+{
+  "name": "@mondrian-framework/cli",
+  "version": "2.0.17",
+  "main": "build/index.js",
+  "bin": {
+    "mondrian": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "commander": "11.1.0"
+  },
+  "peerDependencies": {
+    "@mondrian-framework/ci-tools": "^2.0.17",
+    "@mondrian-framework/cli-commander": "^2.0.17"
+  }
+}

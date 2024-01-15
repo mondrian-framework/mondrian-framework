@@ -35,11 +35,13 @@ export const buildGraphQLReport = moduleInterface.functions.buildGraphQLReport.i
       </body>
     </html>
     `
-    await writeReport({ fileManager, content: html, password, reportId })
+    if (serverBaseURL) {
+      await writeReport({ fileManager, content: html, password, reportId })
+    }
     return result.ok({
       breakingChanges: changes.filter((c) => c.criticality.level === CriticalityLevel.Breaking).length,
       reportId,
-      reportUrl: new URL(`${serverBaseURL}/v1/reports/${reportId}`),
+      reportUrl: serverBaseURL ? new URL(`${serverBaseURL}/v1/reports/${reportId}`) : undefined,
       info: changes,
     })
   },

@@ -34,6 +34,7 @@
     "packages/model",
     "packages/arbitrary",
     "packages/module",
+    "packages/cli-commander",
     "packages/middleware/rate-limiter",
     "packages/direct",
     "packages/rest",
@@ -45,6 +46,7 @@
     "packages/aws-lambda-rest",
     "packages/cron",
     "packages/ci-tools",
+    "packages/cli",
     "packages/example"
   ],
   "engines": {

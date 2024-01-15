@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.484.0",
-    "fastify": "^4.25.2",
     "@graphql-inspector/core": "5.0.2",
-    "@pb33f/openapi-changes": "0.0.52"
+    "@pb33f/openapi-changes": "0.0.52",
+    "fastify": "^4.25.2"
   },
   "peerDependencies": {
     "@mondrian-framework/aws-lambda-rest": "^2.0.17",

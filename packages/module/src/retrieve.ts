@@ -149,7 +149,7 @@ function selectInternal(type: model.Type): model.Type {
 // prettier-ignore
 type SelectField<T extends model.Type, C extends Capabilities>
   = [T] extends [model.EntityType<any, any>] ? boolean | Retrieve<T, C>
-  : [T] extends [model.ObjectType<any, infer Ts>] ? boolean | { readonly select?: { [K in keyof Ts]?: Select<Ts[K]> } }
+  : [T] extends [model.ObjectType<any, infer Ts>] ? boolean | { readonly select?: { [K in keyof Ts]?: SelectField<Ts[K], { select: true }> } }
   : [T] extends [model.ArrayType<any, infer T1>] ? SelectField<T1, AllCapabilities>
   : [T] extends [model.OptionalType<infer T1>] ? SelectField<T1, C>
   : [T] extends [model.NullableType<infer T1>] ? SelectField<T1, C>
@@ -162,7 +162,9 @@ function selectField(type: model.Type, capabilities: Capabilities): model.Type {
     object: ({ fields }) =>
       model.union({
         fields: model.object({
-          select: model.object(mapObject(fields, (_, fieldType) => model.optional(select(fieldType)))).optional(),
+          select: model
+            .object(mapObject(fields, (_, fieldType) => model.optional(selectField(fieldType, { select: true }))))
+            .optional(),
         }),
         all: model.boolean(),
       }),

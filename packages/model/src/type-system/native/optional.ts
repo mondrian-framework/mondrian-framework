@@ -76,7 +76,7 @@ class OptionalTypeImpl<T extends model.Type> extends BaseType<model.OptionalType
     }
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<undefined | model.Infer<T>> {
+  arbitraryInternal(maxDepth: number): gen.Arbitrary<undefined | model.Infer<T>> {
     if (maxDepth <= 0) {
       return gen.constant(undefined)
     } else {

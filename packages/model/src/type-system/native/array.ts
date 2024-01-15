@@ -175,16 +175,18 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     return objectToArray(object).chain((object) => this.decodeArrayValues(Object.values(object), options))
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.ArrayType<M, T>>> {
+  arbitraryInternal(maxDepth: number): gen.Arbitrary<model.Infer<model.ArrayType<M, T>>> {
     if (maxDepth <= 0 && (this.options?.minItems ?? 0) <= 0) {
       return gen.constant([])
-    } else {
-      const concreteType = model.concretise(this.wrappedType)
-      return gen.array(concreteType.arbitrary(maxDepth), {
-        minLength: this.options?.minItems,
-        maxLength: this.options?.maxItems,
-      })
     }
+    if (maxDepth < -100) {
+      throw new Error('Impossible to generate an arbitrary value with the given max depth')
+    }
+    const concreteType = model.concretise(this.wrappedType)
+    return gen.array(concreteType.arbitrary(maxDepth - 1), {
+      minLength: this.options?.minItems,
+      maxLength: this.options?.maxItems,
+    })
   }
 }
 

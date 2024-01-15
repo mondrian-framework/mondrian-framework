@@ -59,7 +59,7 @@ class BooleanTypeImpl extends BaseType<model.BooleanType> implements model.Boole
     return decoding.fail('boolean', value)
   }
 
-  arbitrary(): gen.Arbitrary<boolean> {
+  arbitraryInternal(): gen.Arbitrary<boolean> {
     return gen.boolean()
   }
 }

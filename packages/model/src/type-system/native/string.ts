@@ -81,7 +81,7 @@ class StringTypeImpl extends BaseType<model.StringType> implements model.StringT
     }
   }
 
-  arbitrary(): gen.Arbitrary<string> {
+  arbitraryInternal(): gen.Arbitrary<string> {
     if (!this.options) {
       return gen.string()
     } else {

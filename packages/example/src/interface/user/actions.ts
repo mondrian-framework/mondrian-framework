@@ -7,7 +7,6 @@ const LoginInput = model.object(
   {
     email: model.email(),
     password: model.string().sensitive(),
-    asd: model.string(),
   },
   { name: 'LoginInput' },
 )

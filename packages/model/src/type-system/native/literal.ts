@@ -73,7 +73,7 @@ class LiteralTypeImpl<L extends number | string | boolean | null | undefined>
     }
   }
 
-  arbitrary(): gen.Arbitrary<L> {
+  arbitraryInternal(): gen.Arbitrary<L> {
     return gen.constant(this.literalValue)
   }
 }

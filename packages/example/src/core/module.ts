@@ -10,8 +10,8 @@ const prisma = new PrismaClient()
 //Instance of this module
 export const module = moduleInterface.implement({
   functions: {
-    ...users,
     ...posts,
+    ...users,
   },
   options: {
     maxSelectionDepth: 4,

@@ -58,7 +58,7 @@ class EnumTypeImpl<Vs extends readonly [string, ...string[]]>
       : decoding.fail(`enum (${this.variants.map((v: any) => `"${v}"`).join(' | ')})`, value)
   }
 
-  arbitrary(): gen.Arbitrary<Vs[number]> {
+  arbitraryInternal(): gen.Arbitrary<Vs[number]> {
     return gen.constantFrom(...this.variants)
   }
 }

@@ -21,7 +21,22 @@ export abstract class BaseType<T extends model.Type> {
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<T>>
   protected abstract validateInternal(value: model.Infer<T>, options: Required<validation.Options>): validation.Result
-  abstract arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<T>>
+  abstract arbitraryInternal(maxDepth: number): gen.Arbitrary<model.Infer<T>>
+
+  arbitrary(maxDepth?: number): gen.Arbitrary<model.Infer<T>> {
+    maxDepth = maxDepth ?? 1
+    // The value of -20 is chosen arbitrarily. The underlying logic is as follows:
+    // If we are dealing with a non-recursive data structure but with a depth of 3,
+    // the generation process will persist until reaching -2, assuming we start at maxDepth 1
+    // without triggering an exception. The decision not to throw an exception until -20
+    // is based on the confidence that the data structure is likely recursive at that point.
+    // To enhance this logic, a more robust approach would involve traversing the graph
+    // of the data structure for a more accurate assessment.
+    if (maxDepth < -20) {
+      throw new Error('Impossible to generate an arbitrary value with the given max depth')
+    }
+    return this.arbitraryInternal(maxDepth)
+  }
 
   encodeWithoutValidation(value: model.Infer<T>, options?: encoding.Options): JSONType {
     const encodingOptions = { ...encoding.defaultOptions, ...options }
@@ -66,7 +81,7 @@ export abstract class BaseType<T extends model.Type> {
   example(args?: { maxDepth?: number; seed?: number }): model.Infer<T> {
     const randomSeed = args?.seed ?? Date.now() ^ (Math.random() * 0x100000000)
     const random = new gen.Random(prand.xoroshiro128plus(randomSeed))
-    const value = this.arbitrary(args?.maxDepth ?? 1).generate(random, undefined)
+    const value = this.arbitrary(args?.maxDepth).generate(random, undefined)
     return value.value
   }
 

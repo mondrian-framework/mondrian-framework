@@ -124,7 +124,7 @@ class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     return castToObject(value, options).chain((object) => decodeObjectProperties(this.fields, object, options))
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.ObjectType<M, Ts>>> {
+  arbitraryInternal(maxDepth: number): gen.Arbitrary<model.Infer<model.ObjectType<M, Ts>>> {
     const entriesGenerators = Object.fromEntries(
       Object.entries(this.fields).map(
         ([fieldName, fieldType]: [string, model.Type]) =>

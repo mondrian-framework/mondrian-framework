@@ -63,7 +63,7 @@ class NullableTypeImpl<T extends model.Type> extends BaseType<model.NullableType
     }
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<null | model.Infer<T>> {
+  arbitraryInternal(maxDepth: number): gen.Arbitrary<null | model.Infer<T>> {
     if (maxDepth <= 0) {
       return gen.constant(null)
     } else {

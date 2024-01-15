@@ -85,7 +85,7 @@ class UnionTypeImpl<Ts extends model.Types> extends BaseType<model.UnionType<Ts>
     return this.decodeAndTryToValidate(value, options).map(({ value }) => value)
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<model.Infer<model.UnionType<Ts>>> {
+  arbitraryInternal(maxDepth: number): gen.Arbitrary<model.Infer<model.UnionType<Ts>>> {
     const variantsGenerators = Object.values(this.variants).map((variantType) =>
       model.concretise(variantType).arbitrary(maxDepth - 1),
     )

@@ -1,7 +1,8 @@
-import { logger, retrieve } from '.'
+import { functions, logger, retrieve } from '.'
 import { BaseFunction } from './function/base'
 import { result, model } from '@mondrian-framework/model'
 import { Span, SpanOptions } from '@opentelemetry/api'
+import { randomInt } from 'crypto'
 
 /**
  * Mondrian function interface.
@@ -10,7 +11,7 @@ export interface FunctionInterface<
   I extends model.Type = model.Type,
   O extends model.Type = model.Type,
   E extends ErrorType = ErrorType,
-  R extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
+  C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
 > {
   /**
    * Function input {@link model.Type Type}.
@@ -27,7 +28,7 @@ export interface FunctionInterface<
   /**
    * The type describing the possible errors returned by the function.
    */
-  readonly retrieve?: R
+  readonly retrieve?: C
   /**
    * Function {@link FunctionOptions}
    */
@@ -274,6 +275,11 @@ export function define<
   implement: <const Context extends Record<string, unknown> = {}>(
     implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
   ) => FunctionImplementation<I, O, E, R, Context>
+
+  /**
+   * Instantiate a mocked {@link FunctionImplementation}.
+   */
+  mock(options?: MockOptions): FunctionImplementation<I, O, E, R, {}>
 } {
   const fi = {
     input: model.undefined() as I,
@@ -282,6 +288,7 @@ export function define<
   }
   return {
     ...fi,
+    mock: createMockedFunction(fi),
     implement<const Context extends Record<string, unknown> = {}>(
       implementation: Pick<Function<I, O, E, R, Context>, 'body' | 'middlewares'>,
     ) {
@@ -293,5 +300,46 @@ export function define<
       }
       return new BaseFunction<I, O, E, R, Context>({ ...fi, ...implementation })
     },
+  }
+}
+
+type MockOptions = {
+  /**
+   * Express the probability of the function to return an error.
+   */
+  errorProbability?: number
+  /**
+   * Express how deep the example should be generated. Default is 1.
+   * With a value greater than 3 the perfomance could become an issue if you data-graph contains many arrays.
+   */
+  maxDepth?: number
+}
+
+function createMockedFunction<
+  const I extends model.Type = model.LiteralType<undefined>,
+  const O extends model.Type = model.LiteralType<undefined>,
+  const E extends ErrorType = undefined,
+  R extends OutputRetrieveCapabilities = undefined,
+>(
+  fi: functions.FunctionInterface<I, O, E, R>,
+): (options?: MockOptions) => functions.FunctionImplementation<I, O, E, R, {}> {
+  return (options) => {
+    const outputType = model.concretise(fi.output)
+    const errorProbability = options?.errorProbability ?? 0
+    return new BaseFunction<I, O, E, R, {}>({
+      ...fi,
+      async body() {
+        if (fi.errors && errorProbability > Math.random()) {
+          const errors = Object.entries(fi.errors)
+          const selected = randomInt(0, errors.length)
+          const errorKey = errors[selected][0]
+          const errorValue = model.concretise(errors[selected][1]).example({ maxDepth: options?.maxDepth })
+          return result.fail({ [errorKey]: errorValue })
+        }
+        //TODO: we could improve this generation by following selection inside retrieve
+        const value = outputType.example({ maxDepth: options?.maxDepth })
+        return result.ok(value) as any
+      },
+    })
   }
 }

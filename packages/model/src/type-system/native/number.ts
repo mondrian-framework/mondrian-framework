@@ -127,7 +127,7 @@ class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberT
     }
   }
 
-  arbitrary(): gen.Arbitrary<number> {
+  arbitraryInternal(): gen.Arbitrary<number> {
     function doubleMatchingOptions(options: model.NumberTypeOptions): gen.Arbitrary<number> {
       const { minimum, exclusiveMinimum, maximum, exclusiveMaximum } = options
       const min = selectMinimumDouble(minimum, exclusiveMinimum)

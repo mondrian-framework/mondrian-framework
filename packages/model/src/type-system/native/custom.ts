@@ -121,7 +121,7 @@ class CustomTypeImpl<Name extends string, Options extends Record<string, any>, I
     return this.decoder(value, options, this.options)
   }
 
-  arbitrary(maxDepth: number): gen.Arbitrary<InferredAs> {
+  arbitraryInternal(maxDepth: number): gen.Arbitrary<InferredAs> {
     return this.arbitraryFromOptions(maxDepth, this.options)
   }
 }

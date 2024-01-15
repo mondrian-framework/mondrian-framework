@@ -48,7 +48,7 @@ export function define<Fs extends functions.FunctionsInterfaces>(api: ApiSpecifi
 }
 
 export type FunctionSpecifications = {
-  type: 'query' | 'mutation'
+  type?: 'query' | 'mutation'
   name?: string
   inputName?: string
 }

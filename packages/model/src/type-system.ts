@@ -284,7 +284,7 @@ export type BaseOptions = {
   /**
    * Can be used for any general purpose when traversing the AST.
    */
-  readonly tags?: Record<string, string | number | boolean>
+  readonly tags?: Record<string, JSONType>
 }
 
 /**

@@ -509,20 +509,22 @@ export function fromModule<Fs extends functions.Functions, E extends functions.E
   const internalData: InternalData = emptyInternalData()
   const queriesArray = moduleFunctions.map(([functionName, functionBody]) => {
     const specs = api.functions[functionName]
+    const defaultType = typeFromOptions(functionBody.options)
     return {
       namespace: functionBody.options?.namespace ?? '',
       fields: (specs && isArray(specs) ? specs : specs ? [specs] : [])
-        .filter((spec) => spec.type === 'query')
+        .filter((spec) => (spec.type ?? defaultType) === 'query')
         .map((spec) => makeOperation(api.module, spec, functionName, functionBody, input, internalData)),
     }
   })
   const queries = splitIntoNamespaces(queriesArray, 'Query')
   const mutationsArray = moduleFunctions.map(([functionName, functionBody]) => {
     const specs = api.functions[functionName]
+    const defaultType = typeFromOptions(functionBody.options)
     return {
       namespace: functionBody.options?.namespace ?? '',
       fields: (specs && isArray(specs) ? specs : specs ? [specs] : [])
-        .filter((spec) => spec.type === 'mutation')
+        .filter((spec) => (spec.type ?? defaultType) === 'mutation')
         .map((spec) => makeOperation(api.module, spec, functionName, functionBody, input, internalData)),
     }
   })
@@ -657,10 +659,11 @@ function makeOperation<Fs extends functions.Functions, E extends functions.Error
   const capabilities = functionBody.retrieve ?? {}
   const retrieveType = retrieve.fromType(functionBody.output, capabilities)
   const completeRetrieveType = retrieve.fromType(functionBody.output, { ...capabilities, select: true })
+  const defaultType = typeFromOptions(functionBody.options)
 
   const thisLogger = logging.build({
     moduleName: module.name,
-    operationType: specification.type,
+    operationType: specification.type ?? defaultType,
     operationName,
     server: 'GQL',
   })
@@ -939,4 +942,8 @@ function decodeRetrieve(
   } else {
     throw createGraphQLError('Failed to decode query parameters', { extensions: result.error })
   }
+}
+
+function typeFromOptions(options?: functions.FunctionOptions): 'query' | 'mutation' {
+  return options?.operation === 'query' ? 'query' : 'mutation'
 }

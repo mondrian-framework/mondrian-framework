@@ -54,7 +54,7 @@ export function attachRestMethods<Fs extends functions.Functions, E extends func
         return result.body
       }
       for (const path of paths) {
-        server[specification.method](path, fastifyHandler)
+        server[specification.method ?? utils.methodFromOptions(functionBody.options)](path, fastifyHandler)
       }
     }
   }

@@ -78,8 +78,7 @@ export type Api<Fs extends functions.Functions, E extends functions.ErrorType, C
 export function build<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>(
   api: Api<Fs, E, ContextInput>,
 ): Api<Fs, E, ContextInput> {
-  assertApiValidity(api)
-  return api
+  return { ...define(api), module: api.module }
 }
 
 /**
@@ -106,7 +105,7 @@ export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
 ) => Promise<http.Response | void>
 
 export type FunctionSpecifications<F extends functions.FunctionInterface = functions.FunctionInterface> = {
-  method: http.Method
+  method?: http.Method
   path?: string
   inputName?: string
   version?: { min?: number; max?: number }
@@ -117,7 +116,7 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   errorCodes?: { [K in keyof Exclude<F['errors'], undefined>]?: number }
   namespace?: string | null
   security?: OpenAPIV3_1.SecurityRequirementObject[]
-  contentType?: string
+  contentType?: 'application/json' | 'text/plain' | 'text/html' | 'text/csv'
 }
 
 type NullableOperationObject = {

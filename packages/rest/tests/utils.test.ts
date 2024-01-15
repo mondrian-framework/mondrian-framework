@@ -4,6 +4,7 @@ import {
   decodeQueryObject,
   encodeQueryObject,
   getPathsFromSpecification,
+  methodFromOptions,
 } from '../src/utils'
 import { model } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
@@ -95,4 +96,13 @@ test('encodeQueryObject', () => {
 
   const encoded2 = encodeQueryObject({ id: '1', meta: [1, 2] }, 'input')
   expect(encoded2).toEqual('input[id]=1&input[meta][0]=1&input[meta][1]=2')
+})
+
+test('methodFromOptions', () => {
+  expect(methodFromOptions({ operation: 'query' })).toEqual('get')
+  expect(methodFromOptions({ operation: 'command' })).toEqual('post')
+  expect(methodFromOptions({ operation: { command: 'create' } })).toEqual('put')
+  expect(methodFromOptions({ operation: { command: 'update' } })).toEqual('post')
+  expect(methodFromOptions({ operation: { command: 'delete' } })).toEqual('delete')
+  expect(methodFromOptions({})).toEqual('post')
 })

@@ -245,9 +245,7 @@ const baseOptionsFields = {
   name: model.string({ minLength: 1 }).optional(),
   description: model.string().optional(),
   sensitive: model.boolean().optional(),
-  tags: model
-    .record(model.union({ string: model.string(), boolean: model.boolean(), number: model.number() }))
-    .optional(),
+  tags: model.record(model.json()).optional(),
 }
 const stringTypeSchema = model.object({
   type: model.literal('string'),

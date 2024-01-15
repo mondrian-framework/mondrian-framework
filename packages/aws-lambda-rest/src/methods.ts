@@ -59,7 +59,11 @@ export function attachRestMethods<Fs extends functions.Functions, E extends func
         return result.body
       }
       for (const path of paths) {
-        server.METHOD(specification.method.toUpperCase() as METHODS, path, lambdaApiHandler)
+        server.METHOD(
+          (specification.method?.toUpperCase() ?? utils.methodFromOptions(functionBody.options)) as METHODS,
+          path,
+          lambdaApiHandler,
+        )
       }
     }
   }

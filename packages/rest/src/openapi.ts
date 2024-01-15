@@ -1,7 +1,7 @@
 import { ApiSpecification, FunctionSpecifications } from './api'
-import { decodeQueryObject } from './utils'
+import { decodeQueryObject, methodFromOptions } from './utils'
 import { model } from '@mondrian-framework/model'
-import { functions, module, retrieve } from '@mondrian-framework/module'
+import { functions, retrieve } from '@mondrian-framework/module'
 import { isArray, http } from '@mondrian-framework/utils'
 import BigNumber from 'bignumber.js'
 import { OpenAPIV3_1 } from 'openapi-types'
@@ -112,10 +112,11 @@ export function fromModule<Fs extends functions.FunctionsInterfaces, E extends f
                 : [],
         security: specification.security,
       }
+      const method = specification.method?.toLocaleLowerCase() ?? methodFromOptions(functionBody.options)
       if (paths[path]) {
-        ;(paths[path] as Record<string, unknown>)[specification.method.toLocaleLowerCase()] = operationObj
+        ;(paths[path] as Record<string, unknown>)[method] = operationObj
       } else {
-        paths[path] = { [specification.method.toLocaleLowerCase()]: operationObj }
+        paths[path] = { [method]: operationObj }
       }
     }
   }

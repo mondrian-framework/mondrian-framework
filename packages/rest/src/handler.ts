@@ -1,6 +1,6 @@
 import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
 import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
-import { completeRetrieve } from './utils'
+import { completeRetrieve, methodFromOptions } from './utils'
 import { result, model } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { http } from '@mondrian-framework/utils'
@@ -37,7 +37,7 @@ export function fromFunction<
   const thisLogger = logger.build({
     moduleName: module.name,
     operationName: functionName,
-    operationType: specification.method.toUpperCase(),
+    operationType: specification.method?.toLocaleLowerCase() ?? methodFromOptions(functionBody.options),
     server: 'REST',
   })
 

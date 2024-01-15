@@ -1,7 +1,7 @@
 import { Api, ApiSpecification, FunctionSpecifications } from './api'
 import { model } from '@mondrian-framework/model'
 import { functions, retrieve } from '@mondrian-framework/module'
-import { JSONType, isArray, setTraversingValue, mapObject } from '@mondrian-framework/utils'
+import { JSONType, isArray, setTraversingValue, mapObject, http } from '@mondrian-framework/utils'
 
 export function encodeQueryObject(input: JSONType, prefix: string): string {
   return internalEncodeQueryObject(input, prefix).join('&')
@@ -143,4 +143,17 @@ export function completeRetrieve(
       }) as retrieve.GenericRetrieve,
     otherwise: () => retr,
   })
+}
+
+export function methodFromOptions(options?: functions.FunctionOptions): http.Method {
+  if (typeof options?.operation === 'object') {
+    if (options.operation.command === 'create') {
+      return 'put'
+    } else if (options.operation.command === 'delete') {
+      return 'delete'
+    } else if (options.operation.command === 'update') {
+      return 'post'
+    }
+  }
+  return options?.operation === 'query' ? 'get' : 'post'
 }

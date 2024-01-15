@@ -46,6 +46,7 @@
     "packages/aws-lambda-rest",
     "packages/cron",
     "packages/ci-tools",
+    "packages/cli",
     "packages/example"
   ],
   "engines": {

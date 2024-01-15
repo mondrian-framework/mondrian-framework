@@ -34,6 +34,7 @@
       "@mondrian-framework/aws-lambda-rest": ["./packages/aws-lambda-rest"],
       "@mondrian-framework/cron": ["./packages/cron"],
       "@mondrian-framework/ci-tools": ["./packages/ci-tools"],
+      "@mondrian-framework/cli": ["./packages/cli"],
       "@mondrian-framework/example": ["./packages/example"]
     }
   },
@@ -82,6 +83,9 @@
     },
     {
       "path": "packages/ci-tools"
+    },
+    {
+      "path": "packages/cli"
     },
     {
       "path": "packages/example"

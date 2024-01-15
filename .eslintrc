@@ -25,6 +25,7 @@
       "./packages/aws-lmabda-rest/tsconfig.json",
       "./packages/cron/tsconfig.json",
       "./packages/ci-tools/tsconfig.json",
+      "./packages/cli/tsconfig.json",
       "./packages/example/tsconfig.json"
     ]
   },

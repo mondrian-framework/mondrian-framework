@@ -1,8 +1,8 @@
 {
   "name": "@mondrian-framework/ci-tools",
   "version": "2.0.17",
-  "main": "build/serve.js",
-  "types": "build/serve.d.ts",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "files": [
     "build"
   ],
@@ -19,7 +19,6 @@
   },
   "peerDependencies": {
     "@mondrian-framework/aws-lambda-rest": "^2.0.17",
-    "@mondrian-framework/cli-commander": "^2.0.17",
     "@mondrian-framework/model": "^2.0.17",
     "@mondrian-framework/module": "^2.0.17",
     "@mondrian-framework/rest": "^2.0.17",

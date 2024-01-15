@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { module as ciToolsModule } from './impl/module'
-import { GraphQLSchemaType, OASSchema } from './interface'
+import { module as ciToolsModule, GraphQLSchemaType, OASSchema } from '@mondrian-framework/ci-tools'
 import { cli } from '@mondrian-framework/cli-commander'
 import { model, result } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
@@ -50,10 +49,6 @@ const graphqlDiff = functions
       'current-schema-headers': model
         .record(model.string())
         .optional({ description: `headers to use on current schema download. Example: '{ "auth": "Bearer ..." }'` }),
-      log: model.enumeration(['summary', 'report']).optional({
-        description:
-          "controls the return type - default is 'summary' and print a json summary, the other option is 'report' and print an html report",
-      }),
       'fail-on-breaking-changes': model.boolean().optional({
         description: `'true' or 'false'. if 'true' breaking changes will return 1 as exit code. default is 'true'`,
       }),
@@ -85,15 +80,10 @@ const graphqlDiff = functions
       if (graphqlReport.isFailure) {
         return graphqlReport.mapError((e) => ({ error: e.badParameters }))
       }
-      if (input.log === 'report') {
-        const report = await client.functions.getReport({ reportId: graphqlReport.value.reportId })
-        return report.mapError((e) => ({ error: e.reportNotFound }))
-      } else {
-        if (graphqlReport.value.breakingChanges >= 1 && input['fail-on-breaking-changes'] !== false) {
-          return result.fail({ error: graphqlReport.value })
-        }
-        return graphqlReport
+      if (graphqlReport.value.breakingChanges >= 1 && input['fail-on-breaking-changes'] !== false) {
+        return result.fail({ error: graphqlReport.value })
       }
+      return graphqlReport
     },
   })
 
@@ -108,10 +98,6 @@ const openapiDiff = functions
       'current-schema-headers': model
         .record(model.string())
         .optional({ description: `headers to use on current schema download. Example: '{ "auth": "Bearer ..." }'` }),
-      log: model.enumeration(['summary', 'report']).optional({
-        description:
-          "controls the return type - default is 'summary' and print a json summary, the other option is 'report' and print an html report",
-      }),
       'fail-on-breaking-changes': model.boolean().optional({
         description: `'true' or 'false'. if 'true' breaking changes will return 1 as exit code. default is 'true'`,
       }),
@@ -143,15 +129,10 @@ const openapiDiff = functions
       if (oasReport.isFailure) {
         return oasReport.mapError((e) => ({ error: e.badParameters }))
       }
-      if (input.log === 'report') {
-        const report = await client.functions.getReport({ reportId: oasReport.value.reportId })
-        return report.mapError((e) => ({ error: e.reportNotFound }))
-      } else {
-        if (oasReport.value.breakingChanges >= 1 && input['fail-on-breaking-changes'] !== false) {
-          return result.fail({ error: oasReport.value })
-        }
-        return oasReport
+      if (oasReport.value.breakingChanges >= 1 && input['fail-on-breaking-changes'] !== false) {
+        return result.fail({ error: oasReport.value })
       }
+      return oasReport
     },
   })
 

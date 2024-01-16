@@ -119,9 +119,8 @@ const buildGraphQLReport = functions.define({
 
 export const moduleInterface = module.define({
   name: 'Mondrian CI-Tools',
-  description: `This module provides model-checking utilities that can be used to detect breaking changes on CI/CD
-Supported models: OpenAPI Specification, GraphQL Schema
-We do not save any data without encryption, so we do not own your schemas. You can check the code at the Mondrian-Framework repositoty under ci-tools package.
+  description: `This module offers model-checking utilities designed to identify breaking changes within CI/CD pipelines. It supports the following models: OpenAPI Specification and GraphQL Schema.
+We prioritize your data security. All data is encrypted, ensuring we don't have access to your schemas. For transparency, you can review our code at Mondrian-Framework repositoty under ci-tools package.
 
 Powerd by <a href="https://pb33f.io/openapi-changes/">pb33f openapi-changes</a> <a href="https://mondrianframework.com/">Mondrian Framework</a>`,
   functions: { getReport, buildOASReport, buildGraphQLReport },

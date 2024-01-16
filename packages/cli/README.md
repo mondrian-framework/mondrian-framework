@@ -2,6 +2,8 @@
 
 Mondrian CLI is a command line tool to help you detect breaking changes on your GraphQL and OpenAPI schemas.
 
+Some functionality of this CLI is also available on our [CI Tools](https://ci-tools.mondrianframework.com) which is a free service to help you detect breaking changes on your GraphQL and OpenAPI schemas.
+
 ## Installation
 
 Just install it globally using npm:

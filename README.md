@@ -28,7 +28,7 @@ curl --location --globoff 'http://localhost:4000/graphql' \
 ## How it works
 
 Mondrian allows you to define a data model in an intuitive human-readable way. In addition to model fields, types, possibly new scalars and relationships, you can utilize a wide range of validity rules or create new and reusable ones. Once the model is defined, the framework provides a set of fully automatic translation features to major standards: JSONSchema (OpenAPI), GraphQL and Protobuf.
-<img width="777" alt="graphql-example" src="https://github.com/mondrian-framework/mondrian-framework/assets/50401517/1b7611d6-7a48-4190-b230-0947958e1903"/>
+<img width="777" alt="graphql-example" src="https://mondrianframework.com/schemas/main.svg"/>
 
 ## Usage example
 

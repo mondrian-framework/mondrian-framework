@@ -5,6 +5,9 @@ import { model, result } from '@mondrian-framework/model'
 import { functions, module, sdk } from '@mondrian-framework/module'
 import fs from 'fs'
 
+/**
+ * This is the client that will be used to call the utilities in ci-tools
+ */
 const client = sdk.build({
   module: ciToolsModule,
   context: async () => {},
@@ -38,6 +41,9 @@ function decode<T extends model.Type>(
   }
 }
 
+/**
+ * This function compares two GraphQL schemas and returns a report of the differences
+ */
 const graphqlDiff = functions
   .define({
     input: model.object({
@@ -80,6 +86,7 @@ const graphqlDiff = functions
       if (graphqlReport.isFailure) {
         return graphqlReport.mapError((e) => ({ error: e.badParameters }))
       }
+      delete (graphqlReport.value as any).reportId
       if (graphqlReport.value.breakingChanges >= 1 && input['fail-on-breaking-changes'] !== false) {
         return result.fail({ error: graphqlReport.value })
       }
@@ -87,6 +94,9 @@ const graphqlDiff = functions
     },
   })
 
+/**
+ * This function compares two OpenAPI specifications and returns a report of the differences
+ */
 const openapiDiff = functions
   .define({
     input: model.object({
@@ -129,6 +139,7 @@ const openapiDiff = functions
       if (oasReport.isFailure) {
         return oasReport.mapError((e) => ({ error: e.badParameters }))
       }
+      delete (oasReport.value as any).reportId
       if (oasReport.value.breakingChanges >= 1 && input['fail-on-breaking-changes'] !== false) {
         return result.fail({ error: oasReport.value })
       }
@@ -143,6 +154,9 @@ const m = module.build({
   context: async () => result.ok({}),
 })
 
+/**
+ * This is the main program builded with the cli-commander runtime
+ */
 const program = cli.fromModule({
   module: m,
   async context() {

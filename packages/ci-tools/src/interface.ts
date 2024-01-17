@@ -6,7 +6,7 @@ import { buildSchema, GraphQLSchema, printSchema } from 'graphql'
 
 export const OASSchema = () =>
   model.object({
-    //TODO: finish model?
+    //we could improve this by typing all this fields with the correct type
     openapi: model.string(),
     info: model.unknown(),
     jsonSchemaDialect: model.string().optional(),

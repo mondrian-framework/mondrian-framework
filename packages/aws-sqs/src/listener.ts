@@ -1,11 +1,11 @@
 import { Api, FunctionSpecifications } from './api'
 import * as AWS from '@aws-sdk/client-sqs'
 import { model } from '@mondrian-framework/model'
-import { functions, logger, module, utils } from '@mondrian-framework/module'
+import { functions, logger, module } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
 /**
- * TODO: doc
+ * Attaches a Mondrian module to some SQS queues.
  */
 export function listen<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
   api,

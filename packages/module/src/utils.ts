@@ -64,35 +64,3 @@ export function decodeFunctionFailure(
   }
   return errorDecodeResult
 }
-
-//prettier-ignore
-export type MergeErrors<E1 extends ErrorType, E2 extends ErrorType> 
-  = [E1] extends [undefined] ? E2
-  : [E2] extends [undefined] ? E1
-  : { [K in (keyof E1 | keyof E2)]: K extends keyof E1 ? E1[K] : K extends keyof E2 ? E2[K] : never } extends (infer E extends ErrorType) ? E : never
-
-export function mergeErrors(
-  l: ErrorType | undefined,
-  r: ErrorType | undefined,
-  functionName: string,
-): ErrorType | undefined {
-  if (!l) {
-    return r
-  }
-  if (!r) {
-    return l
-  }
-  const errors: Record<string, model.Type> = {}
-  for (const key of [...Object.keys(l), ...Object.keys(r)]) {
-    if (!l[key]) {
-      errors[key] = r[key]
-    } else if (!r[key]) {
-      errors[key] = l[key]
-    } else if (model.areEqual(l[key], r[key])) {
-      errors[key] = l[key]
-    } else {
-      throw new Error(`Duplicate error definition "${key}". Both on module and on function "${functionName ?? ''}"`)
-    }
-  }
-  return errors
-}

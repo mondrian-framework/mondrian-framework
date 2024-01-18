@@ -1,6 +1,6 @@
 import { functions } from '..'
 import { ErrorType, FunctionResult, OutputRetrieveCapabilities, Tracer } from '../function'
-import { model } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { Span, SpanOptions } from '@opentelemetry/api'
 
 /**
@@ -11,36 +11,63 @@ export class BaseFunction<
   O extends model.Type,
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
-  Context extends Record<string, unknown>,
-> implements functions.FunctionImplementation<I, O, E, C, Context>
+  Pv extends functions.Providers,
+> implements functions.FunctionImplementation<I, O, E, C, Pv>
 {
   readonly input: I
   readonly output: O
   readonly errors?: E
   readonly retrieve?: C
-  readonly body: (args: functions.FunctionArguments<I, O, C, Context>) => FunctionResult<O, E, C>
-  readonly middlewares: readonly functions.Middleware<I, O, E, C, Context>[]
+  readonly providers: Pv
+  readonly body: (args: functions.FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>
+  readonly middlewares: readonly functions.Middleware<I, O, E, C, Pv>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
   readonly tracer: Tracer
 
-  constructor(func: functions.Function<I, O, E, C, Context>) {
+  constructor(func: functions.Function<I, O, E, C, Pv>) {
     this.input = func.input
     this.output = func.output
     this.errors = func.errors
     this.retrieve = func.retrieve
+    this.providers = func.providers
     this.body = func.body
     this.middlewares = func.middlewares ?? []
     this.options = func.options
     this.tracer = voidTracer
   }
 
-  public apply(args: functions.FunctionArguments<I, O, C, Context>): FunctionResult<O, E, C> {
-    return this.execute(0, args)
+  public async applyProviders(
+    args: functions.FunctionApplyArguments<I, O, C, Pv>,
+  ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, unknown>> {
+    const context: Record<string, unknown> = {}
+    for (const [providerName, provider] of Object.entries(this.providers)) {
+      const res = await provider.build(args.contextInput, args)
+      if (res.isFailure) {
+        return res
+      }
+      context[providerName] = res.value
+    }
+    const mappedArgs: functions.FunctionArguments<I, O, C, Pv> = {
+      input: args.input,
+      retrieve: args.retrieve,
+      logger: args.logger,
+      tracer: args.tracer,
+      context: context as any,
+    }
+    return result.ok(mappedArgs)
+  }
+
+  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv>): FunctionResult<O, E, C> {
+    const mappedArgs = await this.applyProviders(args)
+    if (mappedArgs.isFailure) {
+      return mappedArgs as any
+    }
+    return this.execute(0, mappedArgs.value)
   }
 
   private async execute(
     middlewareIndex: number,
-    args: functions.FunctionArguments<I, O, C, Context>,
+    args: functions.FunctionArguments<I, O, C, Pv>,
   ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
       return this.body(args)

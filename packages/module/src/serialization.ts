@@ -51,12 +51,10 @@ export function serialize(
 ): ModuleSchema {
   const { typeMap, nameMap } = serializeTypes(moduleInterface, customSerializers ?? defaultCustomSerializers)
   const functionMap = serializeFunctions(moduleInterface, nameMap)
-  const errorsMap = serializeErrors(moduleInterface, nameMap)
   return {
     name: moduleInterface.name,
     types: typeMap,
     functions: functionMap,
-    errors: errorsMap,
   }
 }
 
@@ -75,7 +73,6 @@ function serializeTypes(
     f.input,
     f.output,
     ...Object.values(f.errors ?? {}),
-    ...Object.values(moduleInterface.errors ?? {}),
   ])
   const uniqueTypes = utils.allUniqueTypes(allTypes)
   const nameMap: Map<model.Type, string> = new Map()
@@ -227,20 +224,6 @@ function serializeFunctions(
   return functionMap
 }
 
-/**
- * Serializes all errors of a mondrian module interface.
- * It needs the map of serialized types.
- */
-function serializeErrors(
-  moduleInterface: module.ModuleInterface,
-  nameMap: Map<model.Type, string>,
-): Record<string, string> | undefined {
-  const errorsMap = moduleInterface.errors
-    ? mapObject(moduleInterface.errors, (_, errorType) => nameMap.get(errorType)!)
-    : undefined
-  return errorsMap
-}
-
 const baseOptionsFields = {
   name: model.string({ minLength: 1 }).optional(),
   description: model.string().optional(),
@@ -388,7 +371,6 @@ export const ModuleSchema = model
     name: model.string({ minLength: 1 }),
     types: model.record(TypeSchema),
     functions: model.record(FunctionSchema),
-    errors: model.record(model.string({ minLength: 1 })).optional(),
   })
   .setName('ModuleSchema')
 

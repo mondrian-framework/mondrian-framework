@@ -1,16 +1,15 @@
-import { functions, module, retrieve, utils } from '.'
+import { functions, module, retrieve } from '.'
 import { logger as mondrianLogger } from '.'
 import { ErrorType } from './function'
-import { MergeErrors } from './utils'
 import { result, model } from '@mondrian-framework/model'
 
-export type Sdk<F extends functions.Functions, E extends ErrorType, Metadata> = {
-  functions: SdkFunctions<F, E, Metadata>
-  withMetadata: (metadata: Metadata) => Sdk<F, E, Metadata>
+export type Sdk<F extends functions.Functions, Metadata> = {
+  functions: SdkFunctions<F, Metadata>
+  withMetadata: (metadata: Metadata) => Sdk<F, Metadata>
 }
 
-type SdkFunctions<F extends functions.Functions, E extends ErrorType, Metadata> = {
-  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], MergeErrors<F[K]['errors'], E>, F[K]['retrieve'], Metadata>
+type SdkFunctions<F extends functions.Functions, Metadata> = {
+  [K in keyof F]: SdkFunction<F[K]['input'], F[K]['output'], F[K]['errors'], F[K]['retrieve'], Metadata>
 }
 
 type SdkFunction<
@@ -73,8 +72,8 @@ type InferSelectionInternal<T extends model.Type, P extends { readonly [K in str
 // prettier-ignore
 type InferObject<M extends model.Mutability, Ts extends model.Types, P extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean }> =
   model.ApplyObjectMutability<M,
-    { [Key in (NonUndefinedKeys<P> & model.NonOptionalKeys<Ts>)]: IsObjectOrEntity<Ts[Key]> extends true ? P[Key] extends retrieve.GenericRetrieve ? Project<Ts[Key], P[Key]> : never : P[Key] extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean } ? InferSelectionInternal<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], {}> } &
-    { [Key in (NonUndefinedKeys<P> & model.OptionalKeys<Ts>)]?: IsObjectOrEntity<Ts[Key]> extends true ? P[Key] extends retrieve.GenericRetrieve ? Project<Ts[Key], P[Key]> : never : P[Key] extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean } ? InferSelectionInternal<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], {}> }
+    { [Key in (NonUndefinedKeys<P> & model.NonOptionalKeys<Ts>)]: IsObjectOrEntity<Ts[Key]> extends true ? P[Key] extends retrieve.GenericRetrieve ? Project<Ts[Key], P[Key]> : P[Key] extends true ? InferReturn<Ts[Key]> : never : P[Key] extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean } ? InferSelectionInternal<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], {}> } &
+    { [Key in (NonUndefinedKeys<P> & model.OptionalKeys<Ts>)]?:   IsObjectOrEntity<Ts[Key]> extends true ? P[Key] extends retrieve.GenericRetrieve ? Project<Ts[Key], P[Key]> : P[Key] extends true ? InferReturn<Ts[Key]> : never : P[Key] extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean } ? InferSelectionInternal<Ts[Key], P[Key]> : InferSelectionInternal<Ts[Key], {}> }
   >
 
 // prettier-ignore
@@ -164,13 +163,13 @@ class SdkBuilder<const Metadata> {
     this.metadata = metadata
   }
 
-  public build<Fs extends functions.Functions, ContextInput, E extends ErrorType = undefined>({
+  public build<Fs extends functions.Functions>({
     module,
     context,
   }: {
-    module: module.Module<Fs, E, ContextInput>
-    context: (args: { metadata?: Metadata }) => Promise<ContextInput>
-  }): Sdk<Fs, E, Metadata> {
+    module: module.Module<Fs>
+    context: (args: { metadata?: Metadata }) => Promise<module.FunctionsToContextInput<Fs>>
+  }): Sdk<Fs, Metadata> {
     const presetLogger = mondrianLogger.build({ moduleName: module.name, server: 'LOCAL' })
     const fs = Object.fromEntries(
       Object.entries(module.functions).map(([functionName, functionBody]) => {
@@ -184,20 +183,10 @@ class SdkBuilder<const Metadata> {
           const thisLogger = presetLogger.updateContext({ operationName: functionName })
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
-            const ctxResult = await module.context(contextInput, {
-              input,
-              retrieve: options?.retrieve,
-              tracer: functionBody.tracer,
-              logger: thisLogger,
-              functionName,
-            })
-            if (ctxResult.isFailure) {
-              return ctxResult
-            }
             const result = await functionBody.apply({
               input: input as never,
               retrieve: options?.retrieve ?? {},
-              context: ctxResult.value,
+              contextInput: contextInput as Record<string, unknown>,
               tracer: functionBody.tracer,
               logger: thisLogger,
             })
@@ -217,7 +206,7 @@ class SdkBuilder<const Metadata> {
       }),
     )
     return {
-      functions: fs as unknown as SdkFunctions<Fs, E, Metadata>,
+      functions: fs as unknown as SdkFunctions<Fs, Metadata>,
       withMetadata: (metadata) => withMetadata(metadata).build({ module, context }),
     }
   }
@@ -227,9 +216,9 @@ export function withMetadata<const Metadata>(metadata?: Metadata): SdkBuilder<Me
   return new SdkBuilder(metadata)
 }
 
-export function build<Fs extends functions.Functions, E extends ErrorType, ContextInput>(args: {
-  module: module.Module<Fs, E, ContextInput>
-  context: (args: { metadata?: unknown }) => Promise<ContextInput>
-}): Sdk<Fs, E, unknown> {
+export function build<Fs extends functions.Functions>(args: {
+  module: module.Module<Fs>
+  context: (args: { metadata?: unknown }) => Promise<module.FunctionsToContextInput<Fs>>
+}): Sdk<Fs, unknown> {
   return withMetadata().build(args)
 }

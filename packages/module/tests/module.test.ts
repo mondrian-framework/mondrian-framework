@@ -1,4 +1,4 @@
-import { module, functions, sdk, security } from '../src'
+import { module, functions, sdk, security, provider } from '../src'
 import { result, model } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf, test } from 'vitest'
 
@@ -27,13 +27,39 @@ test('Real example', async () => {
     )
   const LoginOutput = model.object({ jwt: model.string(), user: User }).nullable().setName('LoginOuput')
 
-  //Functions
-  type SharedContext = {
-    db: {
-      findUser(filter: { email: string }): User | undefined
-      updateUser(user: User): User
-    }
+  //Providers
+  const memory = new Map<string, User>()
+  const db: {
+    findUser(filter: { email: string }): User | undefined
+    updateUser(user: User): User
+  } = {
+    updateUser(user) {
+      memory.set(user.email, user)
+      return user
+    },
+    findUser(user) {
+      return memory.get(user.email)
+    },
   }
+
+  const dbProvider = provider.build({
+    build: async () => result.ok(db),
+  })
+  const fromProvider = provider.build({
+    build: async ({ ip }: { ip: string }) => result.ok({ from: ip }),
+  })
+  const authProvider = provider.build({
+    errors: { unauthorized: model.string() },
+    async build({ authorization }: { authorization: string | undefined }) {
+      if (authorization != null) {
+        const user = db.findUser({ email: authorization })
+        if (user) {
+          return result.ok({ email: user.email })
+        }
+      }
+      return result.fail({ unauthorized: 'Invalid authorization' })
+    },
+  })
 
   const login = functions
     .define({
@@ -42,7 +68,8 @@ test('Real example', async () => {
       errors: { invalidEmailOrPassword: model.literal('Invalid email or password') },
       options: { namespace: 'authentication' },
     })
-    .implement<SharedContext & { from?: string }>({
+    .withProviders({ db: dbProvider, from: fromProvider })
+    .implement({
       body: async ({ input, context: { db }, logger }) => {
         const user = db.findUser({ email: input.email })
         if (!user || user.password !== input.password) {
@@ -76,7 +103,8 @@ test('Real example', async () => {
       },
       options: { namespace: 'authentication' },
     })
-    .implement<SharedContext & { from?: string }>({
+    .withProviders({ db: dbProvider, from: fromProvider })
+    .implement({
       body: async ({ input, context: { db }, logger }) => {
         if (!input.email.includes('@domain.com')) {
           throw new Error('Invalid domain!')
@@ -103,15 +131,13 @@ test('Real example', async () => {
     .define({
       input: model.object({ firstname: model.string(), lastname: model.string() }),
       output: User,
-      errors: { unauthorized: model.literal('unauthorized') },
+      errors: { unauthorized: model.string() },
       options: { namespace: 'business-logic' },
     })
-    .implement<SharedContext & { authenticatedUser?: { email: string } }>({
-      body: async ({ input, context: { db, authenticatedUser } }) => {
-        if (!authenticatedUser) {
-          return result.fail({ unauthorized: 'unauthorized' })
-        }
-        const user = db.findUser({ email: authenticatedUser.email })
+    .withProviders({ db: dbProvider, auth: authProvider })
+    .implement({
+      body: async ({ input, context: { db, auth } }) => {
+        const user = db.findUser({ email: auth.email })
         if (!user) {
           throw new Error('Unrechable')
         }
@@ -121,41 +147,19 @@ test('Real example', async () => {
 
   const noInputOrOutput = functions
     .define({
-      errors: { unauthorized: model.literal('unauthorized') },
+      errors: { unauthorized: model.string() },
     })
-    .implement<SharedContext & { authenticatedUser?: { email: string } }>({
+    .withProviders({ dbProvider })
+    .implement({
       body: async ({}) => {
         return result.ok(undefined)
       },
     })
-  const memory = new Map<string, User>()
-  const db: SharedContext['db'] = {
-    updateUser(user) {
-      memory.set(user.email, user)
-      return user
-    },
-    findUser(user) {
-      return memory.get(user.email)
-    },
-  }
 
   const m = module.build({
     name: 'test',
     options: { maxSelectionDepth: 2 },
     functions: { login, register, completeProfile, noInputOrOutput },
-    errors: { unathorized: model.string() },
-    context: async ({ ip, authorization }: { ip: string; authorization: string | undefined }) => {
-      if (authorization != null) {
-        //dummy auth
-        const user = db.findUser({ email: authorization })
-        if (user) {
-          return result.ok({ from: ip, authenticatedUser: { email: user.email }, db })
-        } else {
-          return result.fail({ unathorized: 'Invalid authorization' })
-        }
-      }
-      return result.ok({ from: ip, db })
-    },
   })
 
   const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
@@ -192,12 +196,14 @@ test('Real example', async () => {
   })
 
   const completeProfileResult = await client.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' })
-  expect(completeProfileResult.isFailure && completeProfileResult.error).toEqual({ unauthorized: 'unauthorized' })
+  expect(completeProfileResult.isFailure && completeProfileResult.error).toEqual({
+    unauthorized: 'Invalid authorization',
+  })
   const r1 = await client.functions.completeProfile(
     { firstname: 'Pieter', lastname: 'Mondriaan' },
     { metadata: { authorization: 'wrong' } },
   )
-  expect(r1.isFailure && r1.error).toEqual({ unathorized: 'Invalid authorization' })
+  expect(r1.isFailure && r1.error).toEqual({ unauthorized: 'Invalid authorization' })
 
   if (loginResult.isOk && loginResult.value) {
     const authClient = client.withMetadata({ authorization: loginResult.value.jwt })
@@ -230,9 +236,54 @@ describe('Unique type name', () => {
       module.build({
         name: 'test',
         functions: { f },
-        context: async () => result.ok({}),
       }),
     ).toThrowError(`Duplicated type name "Input"`)
+  })
+})
+
+describe('Invalid provider error', () => {
+  test('A function must define the provider error', () => {
+    const prov = provider.build({
+      errors: { errorName: model.string() },
+      build: async () => result.ok({}),
+    })
+    const f = functions
+      .define({})
+      .withProviders({ prov })
+      .implement({
+        body: () => {
+          throw 'Unreachable'
+        },
+      })
+    expect(() =>
+      module.build({
+        name: 'test',
+        functions: { f },
+      }),
+    ).toThrowError(`Provider "prov" use error "errorName" that is not defined in function "f" errors`)
+  })
+
+  test('A function must define the same provider error', () => {
+    const prov = provider.build({
+      errors: { errorName: model.string() },
+      build: async () => result.ok({}),
+    })
+    const f = functions
+      .define({
+        errors: { errorName: model.number() },
+      })
+      .withProviders({ prov })
+      .implement({
+        body: () => {
+          throw 'Unreachable'
+        },
+      })
+    expect(() =>
+      module.build({
+        name: 'test',
+        functions: { f },
+      }),
+    ).toThrowError(`Provider "prov" use error "errorName" that is not equal to the function "f" error type`)
   })
 })
 
@@ -260,7 +311,6 @@ describe('Default middlewares', () => {
         checkOutputType: 'throw',
         maxSelectionDepth: 2,
       },
-      context: async () => result.ok({}),
       policies: () => security.on(type).allows({ selection: true }),
     })
 
@@ -311,7 +361,6 @@ test('Return types', async () => {
   const m = module.build({
     name: 'test',
     functions: { login },
-    context: async () => result.ok({}),
   })
 
   const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
@@ -403,7 +452,7 @@ test('Errors return', async () => {
       output: model.string(),
     })
     .implement({
-      body: async ({ input }) => {
+      body: async () => {
         return result.fail(1 as never)
       },
     })
@@ -412,7 +461,6 @@ test('Errors return', async () => {
     name: 'test',
     functions: { errorTest, unfailableFunction },
     options: { checkOutputType: 'throw' },
-    context: async () => result.ok({}),
   })
 
   const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({

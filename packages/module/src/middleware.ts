@@ -9,7 +9,13 @@ import { buildErrorMessage } from '@mondrian-framework/utils'
  */
 export function checkMaxSelectionDepth(
   maxDepth: number,
-): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
+): functions.Middleware<
+  model.Type,
+  model.Type,
+  functions.ErrorType,
+  functions.OutputRetrieveCapabilities,
+  functions.Providers
+> {
   return {
     name: 'Check max selection depth',
     apply: (args, next, thisFunction) => {
@@ -30,7 +36,13 @@ export function checkMaxSelectionDepth(
 export function checkOutputType(
   functionName: string,
   onFailure: 'log' | 'throw',
-): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
+): functions.Middleware<
+  model.Type,
+  model.Type,
+  functions.ErrorType,
+  functions.OutputRetrieveCapabilities,
+  functions.Providers
+> {
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
@@ -102,7 +114,13 @@ function handleFailure({
  */
 export function checkPolicies(
   policies: (context: any) => security.Policies,
-): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
+): functions.Middleware<
+  model.Type,
+  model.Type,
+  functions.ErrorType,
+  functions.OutputRetrieveCapabilities,
+  functions.Providers
+> {
   return {
     name: 'Check policies',
     apply: (args, next, thisFunction) => {

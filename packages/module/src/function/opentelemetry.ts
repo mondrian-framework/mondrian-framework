@@ -12,15 +12,15 @@ export class OpentelemetryFunction<
   O extends model.Type,
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
-  Context extends Record<string, unknown>,
-> extends BaseFunction<I, O, E, C, Context> {
+  Pv extends functions.Providers,
+> extends BaseFunction<I, O, E, C, Pv> {
   private readonly name: string
   public readonly tracer: TracerWrapper
   private readonly counter: Counter
   private readonly histogram: Histogram
 
   constructor(
-    func: functions.Function<I, O, E, C, Context>,
+    func: functions.Function<I, O, E, C, Pv>,
     name: string,
     opentelemetry: {
       tracer: Tracer
@@ -35,7 +35,11 @@ export class OpentelemetryFunction<
     this.histogram = opentelemetry.histogram
   }
 
-  public async apply(args: functions.FunctionArguments<I, O, C, Context>): FunctionResult<O, E, C> {
+  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv>): FunctionResult<O, E, C> {
+    const mappedArgs = await this.applyProviders(args)
+    if (mappedArgs.isFailure) {
+      return mappedArgs as any
+    }
     this.counter.add(1)
     const startTime = new Date().getTime()
     const spanResult = await this.tracer.startActiveSpanWithOptions(
@@ -48,7 +52,7 @@ export class OpentelemetryFunction<
       },
       async (span) => {
         try {
-          const applyResult = await this.executeWithinSpan(0, args, span)
+          const applyResult = await this.executeWithinSpan(0, mappedArgs.value, span)
           const applyResult2 = applyResult as result.Result<unknown, Record<string, unknown>>
           if (this.errors && applyResult2.isFailure) {
             this.addErrorsToSpanAttribute(span, applyResult2.error)
@@ -80,7 +84,7 @@ export class OpentelemetryFunction<
 
   private async executeWithinSpan(
     middlewareIndex: number,
-    args: functions.FunctionArguments<I, O, C, Context>,
+    args: functions.FunctionArguments<I, O, C, Pv>,
     span: Span,
   ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {

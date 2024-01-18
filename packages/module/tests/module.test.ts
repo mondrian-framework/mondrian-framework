@@ -43,14 +43,14 @@ test('Real example', async () => {
   }
 
   const dbProvider = provider.build({
-    build: async () => result.ok(db),
+    body: async () => result.ok(db),
   })
   const fromProvider = provider.build({
-    build: async ({ ip }: { ip: string }) => result.ok({ from: ip }),
+    body: async ({ ip }: { ip: string }) => result.ok(ip),
   })
   const authProvider = provider.build({
     errors: { unauthorized: model.string() },
-    async build({ authorization }: { authorization: string | undefined }) {
+    async body({ authorization }: { authorization: string | undefined }) {
       if (authorization != null) {
         const user = db.findUser({ email: authorization })
         if (user) {
@@ -70,7 +70,7 @@ test('Real example', async () => {
     })
     .withProviders({ db: dbProvider, from: fromProvider })
     .implement({
-      body: async ({ input, context: { db }, logger }) => {
+      body: async ({ input, db, logger }) => {
         const user = db.findUser({ email: input.email })
         if (!user || user.password !== input.password) {
           logger.logWarn(`Invalid email or password: ${input.email}`)
@@ -105,7 +105,7 @@ test('Real example', async () => {
     })
     .withProviders({ db: dbProvider, from: fromProvider })
     .implement({
-      body: async ({ input, context: { db }, logger }) => {
+      body: async ({ input, db, from, logger }) => {
         if (!input.email.includes('@domain.com')) {
           throw new Error('Invalid domain!')
         }
@@ -136,7 +136,7 @@ test('Real example', async () => {
     })
     .withProviders({ db: dbProvider, auth: authProvider })
     .implement({
-      body: async ({ input, context: { db, auth } }) => {
+      body: async ({ input, db, auth }) => {
         const user = db.findUser({ email: auth.email })
         if (!user) {
           throw new Error('Unrechable')
@@ -241,11 +241,30 @@ describe('Unique type name', () => {
   })
 })
 
-describe('Invalid provider error', () => {
+describe('Invalid provider errors', () => {
+  test('A function cannot define provider with reserved names', () => {
+    const prov = provider.build({
+      body: async () => result.ok({}),
+    })
+    const f = functions
+      .define({})
+      .withProviders({ input: prov })
+      .implement({
+        body: () => {
+          throw 'Unreachable'
+        },
+      })
+    expect(() =>
+      module.build({
+        name: 'test',
+        functions: { f },
+      }),
+    ).toThrowError(`Provider "input" is using a reserved name in function "f". `)
+  })
   test('A function must define the provider error', () => {
     const prov = provider.build({
       errors: { errorName: model.string() },
-      build: async () => result.ok({}),
+      body: async () => result.ok({}),
     })
     const f = functions
       .define({})
@@ -266,7 +285,7 @@ describe('Invalid provider error', () => {
   test('A function must define the same provider error', () => {
     const prov = provider.build({
       errors: { errorName: model.string() },
-      build: async () => result.ok({}),
+      body: async () => result.ok({}),
     })
     const f = functions
       .define({

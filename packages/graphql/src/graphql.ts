@@ -484,14 +484,9 @@ function customTypeToGraphQLType(
 /**
  * Information needed to create a graphql schema from a mondrian module.
  */
-export type FromModuleInput<
-  Fs extends functions.Functions,
-  E extends functions.ErrorType,
-  ServerContext,
-  ContextInput,
-> = {
-  api: Api<Fs, E, ContextInput>
-  context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
+export type FromModuleInput<Fs extends functions.Functions, ServerContext> = {
+  api: Api<Fs>
+  context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<module.FunctionsToContextInput<Fs>>
   setHeader: (context: ServerContext, name: string, value: string) => void
   errorHandler?: ErrorHandler<Fs, ServerContext>
 }
@@ -501,8 +496,8 @@ export type FromModuleInput<
  * Each function appearing in the module's API is either turned into a query or a mutation according to the
  * provided specification.
  */
-export function fromModule<Fs extends functions.Functions, E extends functions.ErrorType, ServerContext, ContextInput>(
-  input: FromModuleInput<Fs, E, ServerContext, ContextInput>,
+export function fromModule<Fs extends functions.Functions, ServerContext>(
+  input: FromModuleInput<Fs, ServerContext>,
 ): GraphQLSchema {
   const { api } = input
   const moduleFunctions = Object.entries(api.module.functions)
@@ -627,12 +622,12 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
  * `setHeader`, `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
  * somehow needed by the resolver implementation.
  */
-function makeOperation<Fs extends functions.Functions, E extends functions.ErrorType, ServerContext, ContextInput>(
-  module: module.Module<Fs, E, ContextInput>,
+function makeOperation<Fs extends functions.Functions, ServerContext>(
+  module: module.Module<Fs>,
   specification: FunctionSpecifications,
   functionName: string,
   functionBody: functions.FunctionImplementation,
-  fromModuleInput: FromModuleInput<Fs, E, ServerContext, ContextInput>,
+  fromModuleInput: FromModuleInput<Fs, ServerContext>,
   internalData: InternalData,
 ): [string, GraphQLFieldConfig<any, any>] {
   const operationName = specification.name ?? functionName
@@ -684,31 +679,12 @@ function makeOperation<Fs extends functions.Functions, E extends functions.Error
           : {}
 
         try {
-          //Context building
+          //Context input retieval
           const contextInput = await fromModuleInput.context(serverContext, info)
-          const ctxResult = await module.context(contextInput, {
-            retrieve: retrieveValue,
-            input,
-            tracer: functionBody.tracer,
-            logger: thisLogger,
-            functionName,
-          })
-          if (ctxResult.isFailure) {
-            const errorCode = Object.keys(ctxResult.error)[0]
-            const errorValue = ctxResult.error[errorCode]
-            const mappedError = {
-              '[GraphQL generation]: isError': true,
-              errorCode,
-              errorValue,
-              errors: ctxResult.error,
-            }
-            endSpanWithResult(ctxResult, span)
-            return partialOutputType.encodeWithoutValidation(mappedError as never)
-          }
 
           // Function call
           const applyResult = await functionBody.apply({
-            context: ctxResult.value as Record<string, unknown>,
+            contextInput,
             retrieve: retrieveValue,
             input: input as never,
             tracer: functionBody.tracer,

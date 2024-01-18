@@ -22,19 +22,17 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
  * to generate a fully featured graphql schema and serve the module as graphql endpoint.
  * In order to instantiate this you should use {@link build}.
  */
-export type Api<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput> = ApiSpecification<Fs> & {
+export type Api<Fs extends functions.Functions> = ApiSpecification<Fs> & {
   /**
    * Module to serve
    */
-  module: module.Module<Fs, E, ContextInput>
+  module: module.Module<Fs>
 }
 
 /**
  * Builds a GraphQL API in order to expose the module.
  */
-export function build<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>(
-  api: Api<Fs, E, ContextInput>,
-): Api<Fs, E, ContextInput> {
+export function build<Fs extends functions.Functions>(api: Api<Fs>): Api<Fs> {
   //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
   return api
 }

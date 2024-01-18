@@ -127,7 +127,7 @@ export function checkPolicies(
       const res = checkPolicyInternal({
         outputType: thisFunction.output,
         retrieve: args.retrieve,
-        policies: policies(args.context),
+        policies: policies(args),
         capabilities: thisFunction.retrieve,
         path: path.root,
       })

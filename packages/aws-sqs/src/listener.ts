@@ -7,12 +7,12 @@ import { sleep } from '@mondrian-framework/utils'
 /**
  * Attaches a Mondrian module to some SQS queues.
  */
-export function listen<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
+export function listen<Fs extends functions.Functions>({
   api,
   context,
 }: {
-  api: Api<Fs, E, CI>
-  context: (args: { message: AWS.Message }) => Promise<CI>
+  api: Api<Fs>
+  context: (args: { message: AWS.Message }) => Promise<module.FunctionsToContextInput<Fs>>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
   const promises: Promise<void>[] = []
@@ -48,7 +48,7 @@ export function listen<Fs extends functions.Functions, E extends functions.Error
   }
 }
 
-async function listenForMessage<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
+async function listenForMessage<Fs extends functions.Functions>({
   alive,
   queueUrl,
   client,
@@ -61,9 +61,9 @@ async function listenForMessage<Fs extends functions.Functions, E extends functi
   queueUrl: string
   alive: { yes: boolean }
   client: AWS.SQS
-  module: module.Module<Fs, E, CI>
+  module: module.Module<Fs>
   functionName: string
-  context: (args: { message: AWS.Message }) => Promise<CI>
+  context: (args: { message: AWS.Message }) => Promise<module.FunctionsToContextInput<Fs>>
   specifications: FunctionSpecifications
   concurrency: number
 }) {
@@ -99,18 +99,11 @@ async function listenForMessage<Fs extends functions.Functions, E extends functi
         continue
       }
       const contextInput = await context({ message: m })
-      const ctx = await module.context(contextInput, {
-        input: decoded.value,
-        retrieve: undefined,
-        tracer: functionBody.tracer,
-        logger: baseLogger,
-        functionName,
-      })
       await functionBody.apply({
         input: decoded.value as never,
         retrieve: {},
         tracer: functionBody.tracer,
-        context: ctx,
+        contextInput: contextInput as Record<string, unknown>,
         logger: baseLogger,
       })
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })

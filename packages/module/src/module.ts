@@ -25,7 +25,7 @@ export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = func
 export interface Module<Fs extends functions.Functions = functions.Functions> extends ModuleInterface {
   name: string
   functions: Fs
-  policies?: (context: ContextType<Fs>) => security.Policies
+  policies?: (context: Partial<FunctionsToContextSum<Fs>>) => security.Policies
   options?: ModuleOptions
 }
 
@@ -38,22 +38,9 @@ export type FunctionsToContextInput<Fs extends functions.Functions = functions.F
 /**
  * Intersection of all function's Contexts.
  */
-export type ContextType<Fs extends functions.Functions> = UnionToIntersection<
-  { [K in keyof Fs]: FunctionContext<Fs[K]> }[keyof Fs]
+export type FunctionsToContextSum<Fs extends functions.Functions> = UnionToIntersection<
+  { [K in keyof Fs]: functions.ProvidersToContext<Fs[K]['providers']> }[keyof Fs]
 >
-
-/**
- * Gets the Context type of a function.
- */
-type FunctionContext<F extends functions.FunctionImplementation> = F extends functions.FunctionImplementation<
-  any,
-  any,
-  any,
-  any,
-  infer Context
->
-  ? Context
-  : never
 
 /**
  * Mondrian module options.
@@ -126,6 +113,17 @@ function assertCorrectProviderErrors(functions: functions.Functions) {
   }
 }
 
+function assertCorrectProviderNames(functions: functions.Functions) {
+  const reservedNames = ['input', 'retrieve', 'logger', 'tracer']
+  for (const [functionName, functionBody] of Object.entries(functions)) {
+    for (const providerName of Object.keys(functionBody.providers)) {
+      if (reservedNames.includes(providerName)) {
+        throw new Error(`Provider "${providerName}" is using a reserved name in function "${functionName}". `)
+      }
+    }
+  }
+}
+
 /**
  * Builds any Mondrian module.
  *
@@ -146,6 +144,7 @@ function assertCorrectProviderErrors(functions: functions.Functions) {
 export function build<const Fs extends functions.Functions>(module: Module<Fs>): Module<Fs> {
   assertUniqueNames(module.functions)
   assertCorrectProviderErrors(module.functions)
+  assertCorrectProviderNames(module.functions)
 
   const maxProjectionDepthMiddleware =
     module.options?.maxSelectionDepth != null

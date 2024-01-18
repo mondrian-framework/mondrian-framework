@@ -1,7 +1,7 @@
 import { ApiSpecification } from './api'
 import { Response } from './handler'
 import { result, model } from '@mondrian-framework/model'
-import { functions, sdk, retrieve, utils } from '@mondrian-framework/module'
+import { functions, sdk, retrieve } from '@mondrian-framework/module'
 import { flatMapObject, http } from '@mondrian-framework/utils'
 
 export type Sdk<
@@ -14,12 +14,7 @@ export type Sdk<
 }
 
 type SdkFunctions<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType> = {
-  [K in keyof Fs]: SdkFunction<
-    Fs[K]['input'],
-    Fs[K]['output'],
-    utils.MergeErrors<Fs[K]['errors'], E>,
-    Fs[K]['retrieve']
-  >
+  [K in keyof Fs]: SdkFunction<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], Fs[K]['retrieve']>
 }
 
 type SdkFunction<

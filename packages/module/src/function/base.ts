@@ -39,22 +39,20 @@ export class BaseFunction<
   public async applyProviders(
     args: functions.FunctionApplyArguments<I, O, C, Pv>,
   ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, unknown>> {
-    const context: Record<string, unknown> = {}
-    for (const [providerName, provider] of Object.entries(this.providers)) {
-      const res = await provider.build(args.contextInput, args)
-      if (res.isFailure) {
-        return res
-      }
-      context[providerName] = res.value
-    }
-    const mappedArgs: functions.FunctionArguments<I, O, C, Pv> = {
+    const mappedArgs: Record<string, unknown> = {
       input: args.input,
       retrieve: args.retrieve,
       logger: args.logger,
       tracer: args.tracer,
-      context: context as any,
     }
-    return result.ok(mappedArgs)
+    for (const [providerName, provider] of Object.entries(this.providers)) {
+      const res = await provider.body(args.contextInput, args)
+      if (res.isFailure) {
+        return res
+      }
+      mappedArgs[providerName] = res.value
+    }
+    return result.ok(mappedArgs as functions.FunctionArguments<I, O, C, Pv>)
   }
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv>): FunctionResult<O, E, C> {

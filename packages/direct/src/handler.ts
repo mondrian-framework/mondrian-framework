@@ -1,6 +1,6 @@
 import { Api, ServeOptions } from './api'
 import { model, result } from '@mondrian-framework/model'
-import { functions, logger, retrieve, utils } from '@mondrian-framework/module'
+import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -40,13 +40,16 @@ export type Response = SuccessResponse | FailureResponse
 /**
  * Gets an http handler with the implementation of the Direct transport for a whole Mondrian module.
  */
-export function fromModule<Fs extends functions.Functions, E extends functions.ErrorType, ServerContext, ContextInput>({
+export function fromModule<Fs extends functions.Functions, ServerContext>({
   api,
   context,
   options,
 }: {
-  api: Api<Fs, E, any, ContextInput>
-  context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
+  api: Api<Fs, any>
+  context: (
+    serverContext: ServerContext,
+    metadata: Record<string, string> | undefined,
+  ) => Promise<module.FunctionsToContextInput<Fs>>
   options: ServeOptions
 }): http.Handler<ServerContext, unknown, Response> {
   function wrapResponse(value: Response): http.Response<Response> {
@@ -103,12 +106,7 @@ export function fromModule<Fs extends functions.Functions, E extends functions.E
   return handler
 }
 
-async function handleFunctionCall<
-  Fs extends functions.Functions,
-  E extends functions.ErrorType,
-  ServerContext,
-  ContextInput,
->({
+async function handleFunctionCall<Fs extends functions.Functions, ServerContext>({
   functionName,
   tracer,
   requestInputTypeMap,
@@ -123,9 +121,12 @@ async function handleFunctionCall<
   requestInputTypeMap: Record<string, model.ConcreteType>
   request: http.Request
   options: ServeOptions
-  api: Api<Fs, E, any, ContextInput>
+  api: Api<Fs, any>
   serverContext: ServerContext
-  context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
+  context: (
+    serverContext: ServerContext,
+    metadata: Record<string, string> | undefined,
+  ) => Promise<module.FunctionsToContextInput<Fs>>
 }): Promise<result.Result<SuccessResponse, FailureResponse>> {
   const functionBody = api.module.functions[functionName]
   const decodedRequest = tracer.startActiveSpan('decode-input', (span) =>
@@ -151,22 +152,8 @@ async function handleFunctionCall<
 
   try {
     const contextInput = await context(serverContext, metadata)
-    const ctxResult = await api.module.context(contextInput, {
-      functionName,
-      input,
-      tracer: functionBody.tracer,
-      retrieve: thisRetrieve,
-      logger: baseLogger,
-    })
-    if (ctxResult.isFailure) {
-      const response = successResponse.encodeWithoutValidation({
-        success: true,
-        failure: ctxResult.error as never,
-      }) as SuccessResponse
-      return result.ok(response)
-    }
     const applyResult = await functionBody.apply({
-      context: ctxResult.value,
+      contextInput: contextInput as Record<string, unknown>,
       input,
       tracer: functionBody.tracer,
       retrieve: thisRetrieve,

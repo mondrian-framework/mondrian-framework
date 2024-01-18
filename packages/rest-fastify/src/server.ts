@@ -1,6 +1,6 @@
 import { attachRestMethods } from './methods'
 import { fastifyStatic } from '@fastify/static'
-import { functions } from '@mondrian-framework/module'
+import { functions, module } from '@mondrian-framework/module'
 import { rest } from '@mondrian-framework/rest'
 import { replaceLast } from '@mondrian-framework/utils'
 import { FastifyReply, FastifyRequest } from 'fastify'
@@ -11,16 +11,16 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 
-export function serve<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
+export function serve<Fs extends functions.Functions>({
   api,
   server,
   context,
   error,
   ...args
 }: {
-  api: rest.Api<Fs, E, ContextInput>
+  api: rest.Api<Fs>
   server: FastifyInstance
-  context: (serverContext: ServerContext) => Promise<ContextInput>
+  context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
   error?: rest.ErrorHandler<Fs, ServerContext>
   options?: Partial<rest.ServeOptions>
 }): void {

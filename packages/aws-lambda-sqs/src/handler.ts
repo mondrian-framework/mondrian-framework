@@ -1,5 +1,5 @@
 import { model } from '@mondrian-framework/model'
-import { functions, logger, module, utils } from '@mondrian-framework/module'
+import { functions, logger, module } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
@@ -9,6 +9,8 @@ export type Api<Fs extends functions.Functions> = {
     [K in keyof Fs]?: FunctionSpecifications | readonly FunctionSpecifications[]
   }
 }
+
+//TODO: API build & define
 
 type FunctionSpecifications = {
   malformedMessagePolicy?: 'ignore' | 'delete'
@@ -20,14 +22,18 @@ type FunctionSpecifications = {
   | { anyQueue: true }
 )
 
-export function build<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
+export function build<Fs extends functions.Functions>({
   module,
   api,
   context,
 }: {
-  module: module.Module<Fs, E, CI>
+  module: module.Module<Fs>
   api: Api<Fs>
-  context: (args: { event: SQSEvent; context: Context; recordIndex: number }) => Promise<CI>
+  context: (args: {
+    event: SQSEvent
+    context: Context
+    recordIndex: number
+  }) => Promise<module.FunctionsToContextInput<Fs>>
 }): SQSHandler {
   const specifications = Object.entries(api.functions).flatMap(([functionName, specifications]) => {
     if (!specifications) {
@@ -97,18 +103,11 @@ export function build<Fs extends functions.Functions, E extends functions.ErrorT
               return
             }
             const contextInput = await context({ context: fContext, event, recordIndex: i })
-            const ctx = await module.context(contextInput, {
-              input: decoded.value,
-              retrieve: undefined,
-              tracer: functionBody.tracer,
-              logger: operationLogger,
-              functionName,
-            })
             await functionBody.apply({
               input: decoded.value as never,
               retrieve: {},
               tracer: functionBody.tracer,
-              context: ctx,
+              contextInput: contextInput as Record<string, unknown>,
               logger: operationLogger,
             })
             span?.end()

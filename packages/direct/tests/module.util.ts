@@ -58,22 +58,6 @@ const omitted = functions
 
 const m = module.build({
   name: 'test',
-  async context() {
-    return result.ok({})
-  },
-  functions: { ping, getUsers, divideBy, omitted },
-})
-
-const m2 = module.build({
-  name: 'test',
-  errors: { invalidJwt: model.string() },
-  async context(jwt: string) {
-    if (jwt === 'wrong') {
-      return result.fail({ invalidJwt: '' })
-    } else {
-      return result.ok({})
-    }
-  },
   functions: { ping, getUsers, divideBy, omitted },
 })
 
@@ -82,11 +66,4 @@ export const api = buildApi({
     omitted: true,
   },
   module: m,
-})
-
-export const api2 = buildApi({
-  exclusions: {
-    omitted: true,
-  },
-  module: m2,
 })

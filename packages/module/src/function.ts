@@ -36,7 +36,7 @@ export interface FunctionInterface<
   readonly options?: FunctionOptions
 }
 
-export type Providers = Record<string, provider.ContextProvider<any, Record<string, unknown>, ErrorType>>
+export type Providers = Record<string, provider.ContextProvider<any, unknown, ErrorType>>
 
 /**
  * Mondrian function.
@@ -134,10 +134,6 @@ export type FunctionArguments<
    */
   readonly retrieve: retrieve.FromType<O, C>
   /**
-   * Function context.
-   */
-  readonly context: ProvidersToContext<Pv>
-  /**
    * Function logger.
    */
   readonly logger: logger.MondrianLogger
@@ -145,7 +141,7 @@ export type FunctionArguments<
    * Openteletry {@link Tracer} of this function.
    */
   readonly tracer: Tracer
-}
+} & ProvidersToContext<Pv>
 
 export type FunctionApplyArguments<
   I extends model.Type,
@@ -381,7 +377,7 @@ function createMockedFunction<
   }
 }
 
-type ProvidersToContext<Pv extends Providers> = {
+export type ProvidersToContext<Pv extends Providers> = {
   [K in keyof Pv]: Pv[K] extends provider.ContextProvider<any, infer C, any> ? C : {}
 } extends infer Context extends Record<string, unknown>
   ? Context

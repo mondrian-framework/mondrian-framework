@@ -1,5 +1,5 @@
 import { RemoteSchema, moduleInterface } from '../interface'
-import { Context } from './module'
+import { contextProvider } from './providers'
 import { writeReport } from './write-report'
 import { diff } from '@graphql-inspector/core'
 import { CriticalityLevel } from '@graphql-inspector/core'
@@ -7,19 +7,21 @@ import { result } from '@mondrian-framework/model'
 import { randomUUID } from 'crypto'
 import { GraphQLSchema, getIntrospectionQuery, buildClientSchema } from 'graphql'
 
-export const buildGraphQLReport = moduleInterface.functions.buildGraphQLReport.implement<Context>({
-  async body({ input: { previousSchema, currentSchema, password }, context: { fileManager, serverBaseURL } }) {
-    const pSchema = await parseSchema(previousSchema)
-    if (pSchema.isFailure) {
-      return pSchema
-    }
-    const cSchema = await parseSchema(currentSchema)
-    if (cSchema.isFailure) {
-      return cSchema
-    }
-    const reportId = randomUUID()
-    const changes = await diff(pSchema.value, cSchema.value)
-    const html = `
+export const buildGraphQLReport = moduleInterface.functions.buildGraphQLReport
+  .withProviders({ context: contextProvider })
+  .implement({
+    async body({ input: { previousSchema, currentSchema, password }, context: { fileManager, serverBaseURL } }) {
+      const pSchema = await parseSchema(previousSchema)
+      if (pSchema.isFailure) {
+        return pSchema
+      }
+      const cSchema = await parseSchema(currentSchema)
+      if (cSchema.isFailure) {
+        return cSchema
+      }
+      const reportId = randomUUID()
+      const changes = await diff(pSchema.value, cSchema.value)
+      const html = `
     <!DOCTYPE html>
     <html lang="en">
       <head>
@@ -35,17 +37,17 @@ export const buildGraphQLReport = moduleInterface.functions.buildGraphQLReport.i
       </body>
     </html>
     `
-    if (serverBaseURL) {
-      await writeReport({ fileManager, content: html, password, reportId })
-    }
-    return result.ok({
-      breakingChanges: changes.filter((c) => c.criticality.level === CriticalityLevel.Breaking).length,
-      reportId,
-      reportUrl: serverBaseURL ? new URL(`${serverBaseURL}/v1/reports/${reportId}`) : undefined,
-      info: changes,
-    })
-  },
-})
+      if (serverBaseURL) {
+        await writeReport({ fileManager, content: html, password, reportId })
+      }
+      return result.ok({
+        breakingChanges: changes.filter((c) => c.criticality.level === CriticalityLevel.Breaking).length,
+        reportId,
+        reportUrl: serverBaseURL ? new URL(`${serverBaseURL}/v1/reports/${reportId}`) : undefined,
+        info: changes,
+      })
+    },
+  })
 
 async function parseSchema(
   source: GraphQLSchema | RemoteSchema,

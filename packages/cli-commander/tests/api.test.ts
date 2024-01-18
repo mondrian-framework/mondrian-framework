@@ -50,13 +50,6 @@ const m = module.build({
   name: 'test',
   description: 'test',
   functions: { ping, register, register2: register, double },
-  errors: { c1: model.number() },
-  async context(_, { functionName, input }) {
-    if (functionName === 'ping' && input === 'ctx') {
-      return result.fail({ c1: 1 })
-    }
-    return result.ok({})
-  },
 })
 
 test('cli-test', async () => {
@@ -84,8 +77,6 @@ test('cli-test', async () => {
   expect(res.isFailure && res.error).toEqual({ e1: 'Not a ping' })
   await prg.parseAsync(['ping2', 'ping'], { from: 'user' })
   expect(res.isOk && res.value).toEqual('pong')
-  await prg.parseAsync(['ping', 'ctx'], { from: 'user' })
-  expect(res.isFailure && res.error).toEqual({ c1: 1 })
   await prg.parseAsync(['register', '{"user-name":"user", "password":"pass"}'], { from: 'user' })
   expect(res.isOk && res.value).toEqual('ok')
   await prg.parseAsync(['register', '{"user-name":"user", "password2":"pass"}'], { from: 'user' })

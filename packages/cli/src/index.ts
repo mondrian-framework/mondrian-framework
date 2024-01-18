@@ -10,7 +10,7 @@ import fs from 'fs'
  */
 const client = sdk.build({
   module: ciToolsModule,
-  context: async () => {},
+  context: async () => ({}),
 })
 
 /**
@@ -151,7 +151,6 @@ const m = module.build({
   name: 'mondrian',
   description: 'Mondrian CLI',
   functions: { graphqlDiff, openapiDiff },
-  context: async () => result.ok({}),
 })
 
 /**

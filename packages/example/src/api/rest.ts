@@ -12,7 +12,7 @@ const api = rest.build({
       { method: 'post', path: '/subscribe', version: { min: 2 } },
       { method: 'put', path: '/user', version: { max: 1 } },
     ],
-    login: { method: 'post', path: '/login' },
+    login: { method: 'post', path: '/login', errorCodes: { invalidLogin: 401 } },
     follow: { method: 'put', path: '/user/{userId}/follow', security: [{ loggedUser: [] }] },
     writePost: { method: 'post', path: '/post', security: [{ loggedUser: [] }] },
     readPosts: [{ method: 'get', path: '/user/{userId}/posts', security: [{ loggedUser: [] }] }],
@@ -22,8 +22,7 @@ const api = rest.build({
     loggedUser: { type: 'http', scheme: 'bearer' },
   },
   errorCodes: {
-    invalidJwt: 401,
-    invalidLogin: 401,
+    unauthorized: 401,
     tooManyRequests: 429,
   },
   options: { endpoints: ['http://localhost:4000', 'http://127.0.0.1:4000'] },

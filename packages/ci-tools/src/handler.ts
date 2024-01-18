@@ -5,7 +5,7 @@ import { Response, Request } from 'lambda-api'
 
 export const handler = h.build({
   api: { ...restAPI, module },
-  async context() {},
+  context: async () => ({}),
   options: { introspection: { path: '/specs' } },
   customize: (server) => {
     server.get('/', (_: Request, res: Response) => {

@@ -47,7 +47,7 @@ export const register = functions.define({
 export const follow = functions.define({
   input: model.object({ userId: idType }),
   output: User,
-  errors: { notLoggedIn: model.string(), userNotExists: model.string() },
+  errors: { unauthorized: model.string(), userNotExists: model.string() },
   retrieve: { select: true },
   options: {
     namespace: 'user',
@@ -57,7 +57,7 @@ export const follow = functions.define({
 
 export const getUsers = functions.define({
   output: model.array(User),
-  errors: { notLoggedIn: model.string() },
+  errors: { unauthorized: model.string() },
   retrieve: retrieve.allCapabilities,
   options: {
     namespace: 'user',

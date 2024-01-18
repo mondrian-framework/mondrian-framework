@@ -25,13 +25,13 @@ const defaultOutputHandler = async (result: result.Result<unknown, unknown>) => 
   }
 }
 
-type Api<Fs extends functions.Functions, E extends functions.ErrorType, CI> = {
+type Api<Fs extends functions.Functions> = {
   programVersion?: string
   inputBindingStyle?: InputBindingStyle
   functions: {
     [K in keyof Fs]?: CommandSpecification | CommandSpecification[]
   }
-  module: module.Module<Fs, E, CI>
+  module: module.Module<Fs>
   output?: (
     result: result.Result<unknown, unknown>,
     args: { functionName: string },
@@ -42,12 +42,12 @@ type Api<Fs extends functions.Functions, E extends functions.ErrorType, CI> = {
 /**
  * Creates a new cli program with commander from a cli api specification.
  */
-export function fromModule<Fs extends functions.Functions, E extends functions.ErrorType, CI>({
+export function fromModule<Fs extends functions.Functions>({
   context,
   ...api
 }: {
-  context: () => Promise<CI>
-} & Api<Fs, E, CI>): Command {
+  context: () => Promise<module.FunctionsToContextInput<Fs>>
+} & Api<Fs>): Command {
   const program = p.name(api.module.name)
   if (api.programVersion) {
     program.version(api.programVersion)
@@ -86,19 +86,8 @@ export function fromModule<Fs extends functions.Functions, E extends functions.E
         }
         try {
           const contextInput = await context()
-          const ctxResult = await api.module.context(contextInput, {
-            functionName,
-            input: inputResult.value as any,
-            retrieve: undefined as any,
-            logger: baseLogger,
-            tracer: functionBody.tracer,
-          })
-          if (ctxResult.isFailure) {
-            await outputHandler(ctxResult, { functionName }, () => defaultOutputHandler(ctxResult))
-            return
-          }
           const applyResult = await functionBody.apply({
-            context: ctxResult.value,
+            contextInput: contextInput as Record<string, unknown>,
             input: inputResult.value as any,
             retrieve: undefined as any,
             logger: baseLogger,

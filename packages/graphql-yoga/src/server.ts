@@ -1,5 +1,5 @@
 import { graphql } from '@mondrian-framework/graphql'
-import { functions } from '@mondrian-framework/module'
+import { functions, module } from '@mondrian-framework/module'
 import { GraphQLResolveInfo } from 'graphql'
 import { NoSchemaIntrospectionCustomRule } from 'graphql'
 import { createYoga, Plugin, YogaServerOptions } from 'graphql-yoga'
@@ -7,16 +7,19 @@ import http from 'node:http'
 
 export type ServerContext = { req: http.IncomingMessage; res: http.ServerResponse }
 
-export function createServer<Fs extends functions.Functions, E extends functions.ErrorType, const ContextInput>({
+export function createServer<Fs extends functions.Functions>({
   api,
   context,
   errorHandler,
   ...args
 }: {
-  api: graphql.Api<Fs, E, ContextInput>
-  context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<ContextInput>
+  api: graphql.Api<Fs>
+  context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<module.FunctionsToContextInput<Fs>>
   errorHandler?: graphql.ErrorHandler<Fs, ServerContext>
-  options?: Omit<YogaServerOptions<ServerContext, ContextInput>, 'schema' | 'context' | 'graphqlEndpoint'> &
+  options?: Omit<
+    YogaServerOptions<ServerContext, module.FunctionsToContextInput<Fs>>,
+    'schema' | 'context' | 'graphqlEndpoint'
+  > &
     Partial<graphql.ServeOptions>
 }): http.Server {
   const schema = graphql.fromModule({

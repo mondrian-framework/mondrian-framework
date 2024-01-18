@@ -7,7 +7,7 @@ const server = fastify()
 
 serve({
   api: { ...restAPI, module },
-  async context() {},
+  context: async () => ({}),
   server,
   options: {
     introspection: { path: '/specs' },

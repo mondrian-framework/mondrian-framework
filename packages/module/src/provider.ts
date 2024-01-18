@@ -8,6 +8,10 @@ type GenericFunctionArgs = {
   logger: logger.MondrianLogger
 }
 
+/**
+ * A context provider is a utility that takes an arbitraty ContextInput and returns a piece of information
+ * that will be propagated to the function input. The ContextInput instead will be requested from the runtime.
+ */
 export type ContextProvider<
   ContextInput extends Record<string, unknown>,
   Context,
@@ -22,6 +26,9 @@ export type ContextProvider<
     : Promise<result.Result<Context, never>>
 }
 
+/**
+ * Utility function to build a context provider.
+ */
 export function build<
   const ContextInput extends Record<string, unknown>,
   const Context,

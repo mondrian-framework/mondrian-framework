@@ -36,6 +36,9 @@ export interface FunctionInterface<
   readonly options?: FunctionOptions
 }
 
+/**
+ * A map of {@link provider.ContextProvider ContextProvider}s.
+ */
 export type Providers = Record<string, provider.ContextProvider<any, unknown, ErrorType>>
 
 /**
@@ -117,7 +120,7 @@ export type FunctionOptions = {
 }
 
 /**
- * Arguments of a function invokation.
+ * Arguments of a function invokation. The information coming from the providers are merged into the aruguments.
  */
 export type FunctionArguments<
   I extends model.Type,
@@ -279,6 +282,9 @@ type FunctionProviderer<
   R extends OutputRetrieveCapabilities,
 > = {
   //TODO: how to limit providers errors to be a subset of function interface errors?
+  /**
+   * Binds some {@link provider.ContextProvider ContextProvider}s to the function.
+   */
   withProviders<const Pv extends Providers>(providers: Pv): FunctionImplementor<I, O, E, R, Pv>
 }
 

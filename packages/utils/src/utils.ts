@@ -201,6 +201,16 @@ export function areSameArray<A>(
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 
 /**
+ * ```
+ * type A = { a: string; b: string }
+ * type B = AtLeastOnePropertyOf<A> // { a: string; b?: string } | { b: string; a?: string }
+ * ```
+ */
+export type AtLeastOnePropertyOf<T> = {
+  [K in keyof T]: { [L in K]: T[L] } & { [L in Exclude<keyof T, K>]?: T[L] }
+}[keyof T]
+
+/**
  * Checks if two json are the same by value
  * @returns if the two json have the same value
  */

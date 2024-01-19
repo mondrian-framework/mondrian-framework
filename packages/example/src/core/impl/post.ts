@@ -1,4 +1,5 @@
 import { module } from '../../interface'
+import { postNotFound } from '../../interface/common/model'
 import { PostVisibility } from '../../interface/post'
 import { authProvider, dbProvider, optionalAuthProvider } from '../providers'
 import { result } from '@mondrian-framework/model'
@@ -42,7 +43,7 @@ export const likePost = module.functions.likePost.withProviders({ auth: authProv
       },
     })
     if (!canViewPost) {
-      return result.fail({ postNotFound: 'Post not found' })
+      return result.fail(postNotFound.error())
     }
     await prisma.like.upsert({
       create: {

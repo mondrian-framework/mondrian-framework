@@ -1,7 +1,7 @@
 import { functions, logger, provider, retrieve, utils } from '.'
 import { BaseFunction } from './function/base'
 import { result, model } from '@mondrian-framework/model'
-import { UnionToIntersection } from '@mondrian-framework/utils'
+import { AtLeastOnePropertyOf, UnionToIntersection } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
 import { randomInt } from 'crypto'
 
@@ -422,5 +422,3 @@ type FunctionResultInternal<O extends model.Type, E extends ErrorType, C extends
 export type InferErrorType<Ts extends model.Types> = 0 extends 1 & Ts
   ? never
   : AtLeastOnePropertyOf<{ [K in keyof Ts]: model.Infer<Ts[K]> }>
-
-type AtLeastOnePropertyOf<T> = { [K in keyof T]: { [L in K]: T[L] } & { [L in Exclude<keyof T, K>]?: T[L] } }[keyof T]

@@ -1,4 +1,4 @@
-import { idType } from '../common/model'
+import { idType, unauthorized, postNotFound } from '../common/model'
 import { Post, OwnPost } from './model'
 import { model } from '@mondrian-framework/model'
 import { functions, retrieve } from '@mondrian-framework/module'
@@ -6,7 +6,7 @@ import { functions, retrieve } from '@mondrian-framework/module'
 export const writePost = functions.define({
   input: model.pick(Post, { title: true, content: true, visibility: true }, { name: 'WritePostInput' }),
   output: OwnPost,
-  errors: { unauthorized: model.string() },
+  errors: { unauthorized },
   retrieve: { select: true },
   options: {
     namespace: 'post',
@@ -26,7 +26,7 @@ export const readPosts = functions.define({
 export const likePost = functions.define({
   input: model.object({ postId: idType }, { name: 'LikePostInput' }),
   output: OwnPost,
-  errors: { unauthorized: model.string(), postNotFound: model.string() },
+  errors: { unauthorized, postNotFound },
   retrieve: { select: true },
   options: {
     namespace: 'post',

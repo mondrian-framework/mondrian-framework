@@ -1,7 +1,7 @@
 import { module } from '../core'
 import { graphql } from '@mondrian-framework/graphql'
 import { serveWithFastify as serve } from '@mondrian-framework/graphql-yoga'
-import { errors } from '@mondrian-framework/module'
+import { exception } from '@mondrian-framework/module'
 import { FastifyInstance } from 'fastify'
 
 const api = graphql.build({
@@ -26,7 +26,7 @@ export function serveGraphql(server: FastifyInstance) {
       ip: request.ip,
     }),
     errorHandler: async ({ error, logger }) => {
-      if (error instanceof errors.UnauthorizedAccess) {
+      if (error instanceof exception.UnauthorizedAccess) {
         return { message: 'Unauthorized access', options: { extensions: { info: error.error } } }
       }
       if (error instanceof Error && process.env.ENVIRONMENT !== 'development') {

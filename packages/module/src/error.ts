@@ -63,7 +63,7 @@ type Error<Es extends ErrorsDefinition> = {
  */
 export function define<const Es extends ErrorsDefinition>(errors: Es): Error<Es> {
   return mapObject(errors, (errorCode, { message, details }) => {
-    const detailsType = details ?? model.undefined()
+    const detailsType = details ?? model.null()
     const defaultValue = model.matcher({
       nullable: () => null,
       literal: ({ literalValue }) => literalValue,
@@ -72,10 +72,14 @@ export function define<const Es extends ErrorsDefinition>(errors: Es): Error<Es>
       },
     })
     const nonOptional = !canBeOptional(detailsType)
-    const obj: any = model.object({
-      message: model.literal(message),
-      details: detailsType,
-    })
+    const obj: any = model.object(
+      {
+        message: model.literal(message),
+        details: detailsType,
+      },
+      { name: errorCode },
+    )
+    //TODO: maybe do not inject
     obj.error = (details: unknown) => ({
       [errorCode]: {
         message,

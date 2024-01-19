@@ -7,7 +7,7 @@ test('error definition', () => {
   expect(
     model.areEqual(
       unauthorized,
-      model.object({ message: model.literal('Unauthorised access.'), details: model.undefined() }),
+      model.object({ message: model.literal('Unauthorised access.'), details: model.null() }, { name: 'unauthorized' }),
     ),
   ).toBe(true)
 
@@ -20,10 +20,13 @@ test('error definition', () => {
   expect(
     model.areEqual(
       tooManyRequests,
-      model.object({
-        message: model.literal('Too many requests.'),
-        details: model.object({ count: model.number(), max: model.number() }),
-      }),
+      model.object(
+        {
+          message: model.literal('Too many requests.'),
+          details: model.object({ count: model.number(), max: model.number() }),
+        },
+        { name: 'tooManyRequests' },
+      ),
     ),
   ).toBe(true)
   const { invalidPassword } = error.define({
@@ -37,9 +40,9 @@ test('error definition', () => {
   })
 
   const v1 = unauthorized.error()
-  expect(v1).toEqual({ unauthorized: { message: 'Unauthorised access.', details: undefined } })
+  expect(v1).toEqual({ unauthorized: { message: 'Unauthorised access.', details: null } })
   const v2 = unauthorized.error(undefined)
-  expect(v2).toEqual({ unauthorized: { message: 'Unauthorised access.', details: undefined } })
+  expect(v2).toEqual({ unauthorized: { message: 'Unauthorised access.', details: null } })
   const v3 = tooManyRequests.error({ count: 1, max: 10 })
   expect(v3).toEqual({ tooManyRequests: { message: 'Too many requests.', details: { count: 1, max: 10 } } })
   expect(() => (tooManyRequests as any).error()).toThrowError('Type system should have prevented this.')

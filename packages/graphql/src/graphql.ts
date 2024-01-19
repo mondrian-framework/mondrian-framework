@@ -320,6 +320,15 @@ function entityToInputGraphQLType(
   })
 }
 
+function fieldCanBeMissing(fieldType: model.Type): boolean {
+  return model.match(fieldType, {
+    optional: () => true,
+    nullable: () => true,
+    literal: ({ literalValue }) => literalValue === undefined || literalValue === null,
+    otherwise: () => false,
+  })
+}
+
 function typeToGraphQLObjectField(
   internalData: InternalData,
   objectName: string,
@@ -339,7 +348,6 @@ function typeToGraphQLObjectField(
       ...internalData,
       defaultName: fieldDefaultName,
     })
-    const canBeMissing = model.isOptional(fieldType) || model.isNullable(fieldType)
     const unwrappedFieldType = model.unwrap(fieldType)
     const canBeRetrieved = unwrappedFieldType.kind === model.Kind.Entity && model.isArray(fieldType)
     let graphqlRetrieveArgs: GraphQLFieldConfigArgumentMap | undefined = undefined
@@ -358,7 +366,7 @@ function typeToGraphQLObjectField(
       [
         fieldName,
         {
-          type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType),
+          type: fieldCanBeMissing(fieldType) ? graphQLType : new GraphQLNonNull(graphQLType),
           args: graphqlRetrieveArgs,
           description: (objectOptions?.fields ?? {})[fieldName]?.description,
         },
@@ -399,9 +407,8 @@ function typeToGraphQLInputObjectField(
       ...internalData,
       defaultName: fieldDefaultName,
     })
-    const canBeMissing = model.isOptional(fieldType) || model.isNullable(fieldType)
     return {
-      type: canBeMissing ? graphQLType : new GraphQLNonNull(graphQLType),
+      type: fieldCanBeMissing(fieldType) ? graphQLType : new GraphQLNonNull(graphQLType),
       description: (objectOptions?.fields ?? {})[fieldName]?.description,
     }
   }

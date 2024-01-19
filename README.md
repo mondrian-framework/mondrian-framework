@@ -258,17 +258,21 @@ In this configuration, we have created a data breach. In fact, by retrieving use
 
 ```typescript
 import { result, model } from '@mondrian-framework/model'
-import { functions, provider } from '@mondrian-framework/module'
+import { functions, provider, error } from '@mondrian-framework/module'
+
+const { unauthorized } = error.define({ unauthorized: { message: 'Not authenticated!' } })
 
 const authProvider = provider.build({
-  errors: { unauthorized: model.string() },
+  errors: { unauthorized },
   body: async ({ authorization }: { authorization?: string }) => {
-    if (authorization) {
-      const userId = await verifyToken(authorization)
-      return result.ok({ userId })
-    } else {
-      throw result.fail({ unauthorized: 'Not authenticated!' }) //this can be a first level of security
+    if (!authorization) {
+      return result.fail(unauthorized.error())
     }
+    const userId = await verifyToken(authorization)
+    if (!userId) {
+      return result.fail(unauthorized.error())
+    }
+    return result.ok({ userId })
   },
 })
 

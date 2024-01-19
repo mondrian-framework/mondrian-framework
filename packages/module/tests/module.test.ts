@@ -43,14 +43,14 @@ test('Real example', async () => {
   }
 
   const dbProvider = provider.build({
-    body: async () => result.ok(db),
+    apply: async () => result.ok(db),
   })
   const fromProvider = provider.build({
-    body: async ({ ip }: { ip: string }) => result.ok(ip),
+    apply: async ({ ip }: { ip: string }) => result.ok(ip),
   })
   const authProvider = provider.build({
     errors: { unauthorized: model.string() },
-    async body({ authorization }: { authorization: string | undefined }) {
+    async apply({ authorization }: { authorization: string | undefined }) {
       if (authorization != null) {
         const user = db.findUser({ email: authorization })
         if (user) {
@@ -244,7 +244,7 @@ describe('Unique type name', () => {
 describe('Invalid provider errors', () => {
   test('A function cannot define provider with reserved names', () => {
     const prov = provider.build({
-      body: async () => result.ok({}),
+      apply: async () => result.ok({}),
     })
     const f = functions
       .define({})
@@ -264,7 +264,7 @@ describe('Invalid provider errors', () => {
   test('A function must define the provider error', () => {
     const prov = provider.build({
       errors: { errorName: model.string() },
-      body: async () => result.ok({}),
+      apply: async () => result.ok({}),
     })
     const f = functions
       .define({})
@@ -285,7 +285,7 @@ describe('Invalid provider errors', () => {
   test('A function must define the same provider error', () => {
     const prov = provider.build({
       errors: { errorName: model.string() },
-      body: async () => result.ok({}),
+      apply: async () => result.ok({}),
     })
     const f = functions
       .define({

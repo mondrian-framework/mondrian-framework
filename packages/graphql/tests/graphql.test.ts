@@ -96,7 +96,6 @@ const m = module.build({
   name: 'test',
   options: { maxSelectionDepth: 2 },
   functions: { addOne, register, pongUser, pongMetadata },
-  context: async () => result.ok({}),
 })
 
 type ServerContext = { req: http.IncomingMessage; res: http.ServerResponse }

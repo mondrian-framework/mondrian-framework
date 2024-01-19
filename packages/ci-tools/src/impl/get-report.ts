@@ -1,9 +1,9 @@
 import { moduleInterface } from '../interface'
 import { DEFAULT_PASSWORD, decrypt, sha256 } from '../utils'
-import { Context } from './module'
+import { contextProvider } from './providers'
 import { result } from '@mondrian-framework/model'
 
-export const getReport = moduleInterface.functions.getReport.implement<Context>({
+export const getReport = moduleInterface.functions.getReport.withProviders({ context: contextProvider }).implement({
   async body({ input: { reportId, password }, context: { fileManager } }) {
     const secret = password || DEFAULT_PASSWORD
     const reportName = fileManager.type === 's3' ? `${reportId}.json` : `/tmp/${reportId}.json`

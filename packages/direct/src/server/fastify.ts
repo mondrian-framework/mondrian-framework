@@ -1,6 +1,6 @@
 import { ServeOptions, DEFAULT_SERVE_OPTIONS, Api } from '../api'
 import { fromModule } from '../handler'
-import { functions, serialization } from '@mondrian-framework/module'
+import { functions, module, serialization } from '@mondrian-framework/module'
 import { http } from '@mondrian-framework/utils'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
@@ -9,19 +9,22 @@ export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 /**
  * Attachs a Direct server to a fastify instace.
  */
-export function serveWithFastify<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
+export function serveWithFastify<Fs extends functions.Functions>({
   server,
   api,
   context,
   ...args
 }: {
-  api: Api<Fs, E, any, ContextInput>
+  api: Api<Fs, any>
   server: FastifyInstance
-  context: (serverContext: ServerContext, metadata: Record<string, string> | undefined) => Promise<ContextInput>
+  context: (
+    serverContext: ServerContext,
+    metadata: Record<string, string> | undefined,
+  ) => Promise<module.FunctionsToContextInput<Fs>>
   options?: Partial<ServeOptions>
 }): void {
   const options = { ...DEFAULT_SERVE_OPTIONS, ...args.options }
-  const handler = fromModule<Fs, E, ServerContext, ContextInput>({ api, context, options })
+  const handler = fromModule<Fs, ServerContext>({ api, context, options })
   const path = api.options?.path ?? '/mondrian'
   server.post(path, async (request, reply) => {
     const response = await handler({

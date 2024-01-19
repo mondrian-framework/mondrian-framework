@@ -1,5 +1,4 @@
 export * as users from './impl/user'
 export * as posts from './impl/post'
-export * from './context'
 export { module } from './module'
 export * as policies from './security-policies'

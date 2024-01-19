@@ -1,6 +1,6 @@
 import { Api } from './api'
 import { model } from '@mondrian-framework/model'
-import { functions, utils, logger } from '@mondrian-framework/module'
+import { functions, utils, logger, module } from '@mondrian-framework/module'
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api'
 import { ScheduledTask } from 'node-cron'
 import { schedule, validate } from 'node-cron'
@@ -9,12 +9,12 @@ import { schedule, validate } from 'node-cron'
  * Starts a new cron listeners with the given configuration.
  * For each cron assigned function a new schedule is created.
  */
-export function start<F extends functions.Functions, E extends functions.ErrorType, CI>({
+export function start<Fs extends functions.Functions>({
   api,
   context,
 }: {
-  api: Api<F, E, CI>
-  context: (args: { cron: string }) => Promise<CI>
+  api: Api<Fs>
+  context: (args: { cron: string }) => Promise<module.FunctionsToContextInput<Fs>>
 }): { close: () => Promise<void> } {
   const baseLogger = logger.build({ moduleName: api.module.name, server: 'CRON' })
   const scheduledTasks: { task: ScheduledTask }[] = []
@@ -48,19 +48,12 @@ export function start<F extends functions.Functions, E extends functions.ErrorTy
             }
             try {
               const contextInput = await context({ cron: options.cron })
-              const ctx = await api.module.context(contextInput, {
-                input,
-                retrieve: undefined,
-                tracer: functionBody.tracer,
-                logger: operationLogger,
-                functionName,
-              })
               await functionBody.apply({
                 input: input as never,
                 retrieve: {},
                 tracer: functionBody.tracer,
                 logger: operationLogger,
-                context: ctx,
+                contextInput: contextInput as Record<string, unknown>,
               })
               span?.end()
             } catch (error) {

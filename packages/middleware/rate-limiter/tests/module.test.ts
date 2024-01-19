@@ -1,7 +1,7 @@
 import { rateLimiter } from '../src'
 import { Rate } from '../src/rate'
 import { result, model } from '@mondrian-framework/model'
-import { module, functions, sdk } from '@mondrian-framework/module'
+import { module, functions, sdk, provider } from '@mondrian-framework/module'
 import { expect, test } from 'vitest'
 
 test('Rate limiter middleware', async () => {
@@ -12,16 +12,20 @@ test('Rate limiter middleware', async () => {
     })
     .setName('LoginInput')
   const LoginOutput = model.object({ jwt: model.string() }).nullable().setName('LoginOuput')
-  type SharedContext = { ip: string }
+  const locationProvider = provider.build({
+    apply: async ({ ip }: { ip: string }) => {
+      return result.ok({ ip })
+    },
+  })
   const LoginError = { invalidUsernameOrPassword: model.string(), tooManyRequests: model.string() }
   const rateLimitByIpEmail = rateLimiter.build<
     typeof LoginInput,
     typeof LoginOutput,
     typeof LoginError,
     undefined,
-    SharedContext
+    { location: typeof locationProvider }
   >({
-    key: ({ context, input }) => (input.email === 'admin@domain.com' ? null : `${context.ip}-${input.email}`),
+    key: ({ location: { ip }, input }) => (input.email === 'admin@domain.com' ? null : `${ip}-${input.email}`),
     rate: '1 requests in 1 minutes',
     onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
   })
@@ -31,7 +35,7 @@ test('Rate limiter middleware', async () => {
     typeof LoginOutput,
     typeof LoginError,
     undefined,
-    SharedContext
+    { location: typeof locationProvider }
   >({
     key: ({ input }) => input.email,
     rate: new Rate({ requests: 1, period: 1, scale: 'hour' }),
@@ -44,7 +48,8 @@ test('Rate limiter middleware', async () => {
       errors: LoginError,
       retrieve: undefined,
     })
-    .implement<SharedContext & { from?: string }>({
+    .withProviders({ location: locationProvider })
+    .implement({
       body: async ({ input }) => {
         if (input.email === 'test@domain.com' && input.password === '1234') {
           return result.ok({ jwt: '...' })
@@ -57,9 +62,6 @@ test('Rate limiter middleware', async () => {
   const m = module.build({
     name: 'test',
     functions: { login },
-    context: async ({ ip }: { ip: string }) => {
-      return result.ok({ ip })
-    },
   })
 
   const client = sdk.withMetadata<{ ip?: string }>().build({

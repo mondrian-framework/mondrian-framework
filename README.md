@@ -120,14 +120,11 @@ Here's how you can build the Mondrian module using TypeScript:
 import { result } from '@mondrian-framework/model'
 import { module } from '@mondrian-framework/module'
 
-const myFunctions = { register } //here we put all the module functions
-
 //instantiate the Mondrian module
 const moduleInstance = module.build({
   name: 'my-module',
   version: '0.0.0',
-  functions: myFunctions,
-  context: async () => result.ok({}),
+  functions: { register },
 })
 ```
 
@@ -260,16 +257,30 @@ By exposing the function as GraphQL endpoint we can navigate the relation betwee
 In this configuration, we have created a data breach. In fact, by retrieving users with the `getUsers` query, we are exposing the entire graph to every caller. To resolve this problem, we can (and in some cases should) implement a first level of security on the function that checks if the caller is an authenticated user. We can do this as follows:
 
 ```typescript
+import { result, model } from '@mondrian-framework/model'
+import { functions, provider } from '@mondrian-framework/module'
+
+const authProvider = provider.build({
+  errors: { unauthorized: model.string() },
+  body: async ({ authorization }: { authorization?: string }) => {
+    if (authorization) {
+      const userId = await verifyToken(authorization)
+      return result.ok({ userId })
+    } else {
+      throw result.fail({ unauthorized: 'Not authenticated!' }) //this can be a first level of security
+    }
+  },
+})
+
 const getUsers = functions
   .define({
     output: model.array(User),
+    errors: { unauthorized: model.string() },
     retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
   })
-  .implement<{ userId?: string }>({
-    body: async ({ retrieve, context: { userId } }) => {
-      if (!userId) {
-        throw new Error('Not authenticated!') //this can be a first level of security
-      }
+  .withProviders({ auth: authProvider })
+  .implement({
+    body: async ({ retrieve, auth: { userId } }) => {
       return result.ok(await prismaClient.user.findMany(retrieve))
     },
   })
@@ -285,12 +296,7 @@ const moduleInstance = module.build({
   name: 'my-module',
   version: '0.0.0',
   functions: myFunctions,
-  context: async ({ authHeader }: { authHeader: string }) =>
-    result.ok({
-      //maybe do something with authHeader
-      userId: authHeader ? '123...123' : undefiend,
-    }),
-  policies({ userId }) {
+  policies({ auth: { userId } }) {
     if (userId != null) {
       return (
         security

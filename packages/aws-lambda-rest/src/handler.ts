@@ -1,5 +1,5 @@
 import { attachRestMethods } from './methods'
-import { functions } from '@mondrian-framework/module'
+import { functions, module } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { replaceLast } from '@mondrian-framework/utils'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
@@ -8,18 +8,18 @@ import lambdaApi, { Request, Response, API } from 'lambda-api'
 import path from 'path'
 import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
-export type Context = { lambdaApi: { request: Request; response: Response } }
+export type ServerContext = { lambdaApi: { request: Request; response: Response } }
 
-export function build<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
+export function build<Fs extends functions.Functions>({
   api,
   context,
   error,
   customize,
   ...args
 }: {
-  api: rest.Api<Fs, E, ContextInput>
-  context: (serverContext: Context) => Promise<ContextInput>
-  error?: rest.ErrorHandler<Fs, Context>
+  api: rest.Api<Fs>
+  context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
+  error?: rest.ErrorHandler<Fs, ServerContext>
   options: Partial<rest.ServeOptions>
   customize?: (server: API) => void
 }): APIGatewayProxyHandlerV2 {

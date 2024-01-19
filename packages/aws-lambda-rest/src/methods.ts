@@ -1,19 +1,19 @@
-import { Context } from './handler'
-import { functions } from '@mondrian-framework/module'
+import { ServerContext } from './handler'
+import { functions, module } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { http, isArray } from '@mondrian-framework/utils'
 import { API, HandlerFunction, METHODS } from 'lambda-api'
 
-export function attachRestMethods<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>({
+export function attachRestMethods<Fs extends functions.Functions>({
   server,
   api,
   context,
   error,
 }: {
   server: API
-  api: rest.Api<Fs, E, ContextInput>
-  context: (serverContext: Context) => Promise<ContextInput>
-  error?: rest.ErrorHandler<Fs, Context>
+  api: rest.Api<Fs>
+  context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
+  error?: rest.ErrorHandler<Fs, ServerContext>
 }): void {
   for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
@@ -29,7 +29,7 @@ export function attachRestMethods<Fs extends functions.Functions, E extends func
           maxVersion: api.version,
         })
         .map((p) => p.replace(/{(.*?)}/g, ':$1'))
-      const restHandler = rest.handler.fromFunction<Fs, E, Context, ContextInput>({
+      const restHandler = rest.handler.fromFunction<Fs, ServerContext>({
         module: api.module,
         context,
         specification,

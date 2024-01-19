@@ -2,8 +2,7 @@ import { DEFAULT_SERVE_OPTIONS } from '../src/api'
 import { build as buildApi } from '../src/api'
 import { fromModule } from '../src/handler'
 import { build } from '../src/sdk'
-import { api, api2 } from './module.util'
-import { result } from '@mondrian-framework/model'
+import { api } from './module.util'
 import { module } from '@mondrian-framework/module'
 import http from 'node:http'
 import { expect, test, describe } from 'vitest'
@@ -60,28 +59,10 @@ describe('direct sdk', () => {
 })
 
 describe('edge cases', () => {
-  test('module with failing context build should return a failure', async () => {
-    const handler = fromModule({
-      api: api2,
-      async context(context, metadata) {
-        if (metadata?.auth === 'wrong') {
-          return 'wrong'
-        }
-        return 'ok'
-      },
-      options: { ...DEFAULT_SERVE_OPTIONS, introspection: true },
-    })
-    const client = build({ endpoint: handler, api: api2 }).withMetadata({ auth: 'wrong' })
-    const r1 = await client.functions.ping(123)
-    expect(r1.isFailure && r1.error).toEqual({ invalidJwt: '' })
-  })
   test('module without functions should throw exception', async () => {
     const r1 = await fromModule({
       api: buildApi({
         module: module.build({
-          async context(input, args) {
-            return result.ok({})
-          },
           functions: {},
           name: '',
         }),

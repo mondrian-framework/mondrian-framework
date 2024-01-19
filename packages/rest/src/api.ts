@@ -9,7 +9,7 @@ import { OpenAPIV3_1 } from 'openapi-types'
  * This contains all information needed to generate an openapi specification document.
  * It does not contains the implementation. In order to instantiate this you should use {@link define}.
  */
-export type ApiSpecification<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType> = {
+export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
   /**
    * The current api version. Must be an integer greater than or quelas to 1.
    */
@@ -40,9 +40,9 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces, E extends
   errorCodes?: {
     [K in KeysOfUnion<
       {
-        [K2 in keyof Fs]: Exclude<utils.MergeErrors<Exclude<Fs[K2]['errors'], undefined>, E>, undefined> extends never
+        [K2 in keyof Fs]: Exclude<Fs[K2]['errors'], undefined> extends never
           ? never
-          : Exclude<utils.MergeErrors<Exclude<Fs[K2]['errors'], undefined>, E>, undefined>
+          : Exclude<Fs[K2]['errors'], undefined>
       }[keyof Fs]
     >]?: number
   }
@@ -62,22 +62,17 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces, E extends
  * this contains also the function implementations. With an instance of {@link Api} it is possible
  * to serve the module with a rest server. In order to instantiate this you should use {@link build}.
  */
-export type Api<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput> = ApiSpecification<
-  Fs,
-  E
-> & {
+export type Api<Fs extends functions.Functions> = ApiSpecification<Fs> & {
   /**
    * Module to serve
    */
-  module: module.Module<Fs, E, ContextInput>
+  module: module.Module<Fs>
 }
 
 /**
  * Builds a REST API in order to expose the module.
  */
-export function build<Fs extends functions.Functions, E extends functions.ErrorType, ContextInput>(
-  api: Api<Fs, E, ContextInput>,
-): Api<Fs, E, ContextInput> {
+export function build<Fs extends functions.Functions>(api: Api<Fs>): Api<Fs> {
   return { ...define(api), module: api.module }
 }
 
@@ -85,8 +80,8 @@ export function build<Fs extends functions.Functions, E extends functions.ErrorT
  * Defines the REST API with just the module interface.
  */
 export function define<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType>(
-  api: ApiSpecification<Fs, E>,
-): ApiSpecification<Fs, E> {
+  api: ApiSpecification<Fs>,
+): ApiSpecification<Fs> {
   assertApiValidity(api)
   return api
 }

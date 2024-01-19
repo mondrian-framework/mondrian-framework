@@ -9,7 +9,13 @@ import { buildErrorMessage } from '@mondrian-framework/utils'
  */
 export function checkMaxSelectionDepth(
   maxDepth: number,
-): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
+): functions.Middleware<
+  model.Type,
+  model.Type,
+  functions.ErrorType,
+  functions.OutputRetrieveCapabilities,
+  functions.Providers
+> {
   return {
     name: 'Check max selection depth',
     apply: (args, next, thisFunction) => {
@@ -30,7 +36,13 @@ export function checkMaxSelectionDepth(
 export function checkOutputType(
   functionName: string,
   onFailure: 'log' | 'throw',
-): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
+): functions.Middleware<
+  model.Type,
+  model.Type,
+  functions.ErrorType,
+  functions.OutputRetrieveCapabilities,
+  functions.Providers
+> {
   return {
     name: 'Check output type',
     apply: async (args, next, thisFunction) => {
@@ -101,15 +113,28 @@ function handleFailure({
  * In case the checks fails and {@link errors.UnauthorizedAccess} is thrown
  */
 export function checkPolicies(
-  policies: (context: any) => security.Policies,
-): functions.Middleware<model.Type, model.Type, functions.ErrorType, functions.OutputRetrieveCapabilities, {}> {
+  policies: (
+    args: functions.FunctionArguments<
+      model.Type,
+      model.Type,
+      functions.OutputRetrieveCapabilities,
+      functions.Providers
+    >,
+  ) => security.Policies,
+): functions.Middleware<
+  model.Type,
+  model.Type,
+  functions.ErrorType,
+  functions.OutputRetrieveCapabilities,
+  functions.Providers
+> {
   return {
     name: 'Check policies',
     apply: (args, next, thisFunction) => {
       const res = checkPolicyInternal({
         outputType: thisFunction.output,
         retrieve: args.retrieve,
-        policies: policies(args.context),
+        policies: policies(args),
         capabilities: thisFunction.retrieve,
         path: path.root,
       })

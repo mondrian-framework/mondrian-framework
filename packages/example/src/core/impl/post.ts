@@ -1,21 +1,18 @@
-import { LoggedUserContext } from '..'
 import { module } from '../../interface'
 import { PostVisibility } from '../../interface/post'
+import { authProvider, dbProvider, optionalAuthProvider } from '../providers'
 import { result } from '@mondrian-framework/model'
 
-export const writePost = module.functions.writePost.implement<LoggedUserContext>({
-  body: async ({ input, retrieve, context }) => {
+export const writePost = module.functions.writePost.withProviders({ auth: authProvider, db: dbProvider }).implement({
+  body: async ({ input, retrieve, db: { prisma }, auth: { userId } }) => {
     if (PostVisibility.decode(input.visibility).isFailure) {
       throw new Error(`Invalid post visibility. Use one of ${PostVisibility.variants}`)
     }
-    if (!context.userId) {
-      return result.fail({ notLoggedIn: 'Invalid authentication' })
-    }
-    const post = await context.prisma.post.create({
+    const post = await prisma.post.create({
       data: {
         ...input,
         publishedAt: new Date(),
-        authorId: context.userId,
+        authorId: userId,
       },
       select: retrieve.select,
     })
@@ -23,46 +20,45 @@ export const writePost = module.functions.writePost.implement<LoggedUserContext>
   },
 })
 
-export const readPosts = module.functions.readPosts.implement<LoggedUserContext>({
-  body: async ({ context, retrieve }) => {
-    const posts = await context.prisma.post.findMany(retrieve)
-    return result.ok(posts)
-  },
-})
+export const readPosts = module.functions.readPosts
+  .withProviders({ db: dbProvider, auth: optionalAuthProvider })
+  .implement({
+    body: async ({ db: { prisma }, retrieve }) => {
+      const posts = await prisma.post.findMany(retrieve)
+      return result.ok(posts)
+    },
+  })
 
-export const likePost = module.functions.likePost.implement<LoggedUserContext>({
-  body: async ({ input, retrieve, context }) => {
-    if (!context.userId) {
-      return result.fail({ notLoggedIn: 'Invalid authentication' })
-    }
-    const canViewPost = await context.prisma.post.findFirst({
+export const likePost = module.functions.likePost.withProviders({ auth: authProvider, db: dbProvider }).implement({
+  body: async ({ input, retrieve, auth: { userId }, db: { prisma } }) => {
+    const canViewPost = await prisma.post.findFirst({
       where: {
         id: input.postId,
         OR: [
           { visibility: 'PUBLIC' },
-          { visibility: 'FOLLOWERS', author: { followers: { some: { followerId: context.userId } } } },
-          { visibility: 'PRIVATE', authorId: context.userId },
+          { visibility: 'FOLLOWERS', author: { followers: { some: { followerId: userId } } } },
+          { visibility: 'PRIVATE', authorId: userId },
         ],
       },
     })
     if (!canViewPost) {
       return result.fail({ postNotFound: 'Post not found' })
     }
-    await context.prisma.like.upsert({
+    await prisma.like.upsert({
       create: {
         createdAt: new Date(),
         postId: input.postId,
-        userId: context.userId,
+        userId: userId,
       },
       where: {
         userId_postId: {
           postId: input.postId,
-          userId: context.userId,
+          userId: userId,
         },
       },
       update: {},
     })
-    const post = await context.prisma.post.findFirstOrThrow({ where: { id: input.postId }, select: retrieve.select })
+    const post = await prisma.post.findFirstOrThrow({ where: { id: input.postId }, select: retrieve.select })
     return result.ok(post)
   },
 })

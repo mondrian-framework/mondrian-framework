@@ -23,24 +23,19 @@ export type ApiSpecification<
  * this contains also the function implementations. With an instance of {@link Api} it is possible
  * to serve the module with a Direct server. In order to instantiate this you should use {@link build}.
  */
-export type Api<
-  Fs extends functions.Functions,
-  E extends functions.ErrorType,
-  Exclusions extends { [K in keyof Fs]?: true },
-  ContextInput,
-> = ApiSpecification<Fs, Exclusions> & {
-  module: module.Module<Fs, E, ContextInput>
+export type Api<Fs extends functions.Functions, Exclusions extends { [K in keyof Fs]?: true }> = ApiSpecification<
+  Fs,
+  Exclusions
+> & {
+  module: module.Module<Fs>
 }
 
 /**
  * Builds a Direct API in order to expose the module.
  */
-export function build<
-  Fs extends functions.Functions,
-  E extends functions.ErrorType,
-  Exclusions extends { [K in keyof Fs]?: true },
-  ContextInput,
->(api: Api<Fs, E, Exclusions, ContextInput>): Api<Fs, E, Exclusions, ContextInput> {
+export function build<Fs extends functions.Functions, Exclusions extends { [K in keyof Fs]?: true }>(
+  api: Api<Fs, Exclusions>,
+): Api<Fs, Exclusions> {
   //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
   return api
 }

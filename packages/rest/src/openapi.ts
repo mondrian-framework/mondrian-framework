@@ -11,11 +11,11 @@ export type CustomTypeSpecifications = Record<
   ((type: model.CustomType) => OpenAPIV3_1.NonArraySchemaObject) | OpenAPIV3_1.NonArraySchemaObject
 >
 
-export function fromModule<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType>({
+export function fromModule<Fs extends functions.FunctionsInterfaces>({
   api,
   version,
 }: {
-  api: ApiSpecification<Fs, E>
+  api: ApiSpecification<Fs>
   version: number
 }): OpenAPIV3_1.Document {
   const paths: OpenAPIV3_1.PathsObject = {}
@@ -323,12 +323,12 @@ function generatePathParameters({
   return result
 }
 
-function openapiComponents<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType>({
+function openapiComponents<Fs extends functions.FunctionsInterfaces>({
   version,
   api,
 }: {
   version: number
-  api: ApiSpecification<Fs, E>
+  api: ApiSpecification<Fs>
 }): {
   components: OpenAPIV3_1.ComponentsObject
   internalData: InternalData

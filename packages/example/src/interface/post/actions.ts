@@ -6,7 +6,7 @@ import { functions, retrieve } from '@mondrian-framework/module'
 export const writePost = functions.define({
   input: model.pick(Post, { title: true, content: true, visibility: true }, { name: 'WritePostInput' }),
   output: OwnPost,
-  errors: { notLoggedIn: model.string() },
+  errors: { unauthorized: model.string() },
   retrieve: { select: true },
   options: {
     namespace: 'post',
@@ -26,7 +26,7 @@ export const readPosts = functions.define({
 export const likePost = functions.define({
   input: model.object({ postId: idType }, { name: 'LikePostInput' }),
   output: OwnPost,
-  errors: { notLoggedIn: model.string(), postNotFound: model.string() },
+  errors: { unauthorized: model.string(), postNotFound: model.string() },
   retrieve: { select: true },
   options: {
     namespace: 'post',

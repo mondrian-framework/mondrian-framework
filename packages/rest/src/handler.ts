@@ -7,12 +7,7 @@ import { http } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
-export function fromFunction<
-  Fs extends functions.Functions,
-  E extends functions.ErrorType,
-  ServerContext,
-  ContextInput,
->({
+export function fromFunction<Fs extends functions.Functions, ServerContext>({
   functionName,
   module,
   specification,
@@ -22,12 +17,12 @@ export function fromFunction<
   api,
 }: {
   functionName: string
-  module: module.Module<Fs, E, ContextInput>
+  module: module.Module<Fs>
   functionBody: functions.FunctionImplementation
   specification: FunctionSpecifications
-  context: (serverContext: ServerContext) => Promise<ContextInput>
+  context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
   error?: ErrorHandler<functions.Functions, ServerContext>
-  api: Pick<ApiSpecification<functions.FunctionsInterfaces, E>, 'errorCodes' | 'customTypeSchemas'>
+  api: Pick<ApiSpecification<functions.FunctionsInterfaces>, 'errorCodes' | 'customTypeSchemas'>
 }): http.Handler<ServerContext> {
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
@@ -86,26 +81,18 @@ export function fromFunction<
           }
 
           try {
-            //context building
+            //Context input retrieval
             const contextInput = await context(serverContext)
-            const ctxResult = await module.context(contextInput, {
-              retrieve: retrieveValue,
-              input,
-              tracer: functionBody.tracer,
-              logger: thisLogger,
-              functionName,
-            })
-            if (ctxResult.isFailure) {
-              return handleFailure(ctxResult.error)
-            }
+
             // Function call
             const applyResult = await functionBody.apply({
               retrieve: retrieveValue ?? {},
               input: input as never,
-              context: ctxResult.value as Record<string, unknown>,
+              contextInput: contextInput,
               tracer: functionBody.tracer,
               logger: thisLogger,
             })
+
             //Output processing
             if (applyResult.isFailure) {
               return handleFailure(applyResult.error)

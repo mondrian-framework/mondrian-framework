@@ -1,6 +1,6 @@
 import { module } from '../../interface'
 import { PostVisibility } from '../../interface/post'
-import { authProvider, dbProvider } from '../providers'
+import { authProvider, dbProvider, optionalAuthProvider } from '../providers'
 import { result } from '@mondrian-framework/model'
 
 export const writePost = module.functions.writePost.withProviders({ auth: authProvider, db: dbProvider }).implement({
@@ -20,12 +20,14 @@ export const writePost = module.functions.writePost.withProviders({ auth: authPr
   },
 })
 
-export const readPosts = module.functions.readPosts.withProviders({ db: dbProvider }).implement({
-  body: async ({ db: { prisma }, retrieve }) => {
-    const posts = await prisma.post.findMany(retrieve)
-    return result.ok(posts)
-  },
-})
+export const readPosts = module.functions.readPosts
+  .withProviders({ db: dbProvider, auth: optionalAuthProvider })
+  .implement({
+    body: async ({ db: { prisma }, retrieve }) => {
+      const posts = await prisma.post.findMany(retrieve)
+      return result.ok(posts)
+    },
+  })
 
 export const likePost = module.functions.likePost.withProviders({ auth: authProvider, db: dbProvider }).implement({
   body: async ({ input, retrieve, auth: { userId }, db: { prisma } }) => {

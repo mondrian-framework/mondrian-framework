@@ -25,10 +25,13 @@ export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = func
 export interface Module<Fs extends functions.Functions = functions.Functions> extends ModuleInterface {
   name: string
   functions: Fs
-  policies?: (context: Partial<FunctionsToContextSum<Fs>>) => security.Policies
+  policies?: (args: ModuleMiddlewareInputArgs<Fs>) => security.Policies
   options?: ModuleOptions
 }
 
+/**
+ * Convert a map of functions to the context input object by merging all the required inputs.
+ */
 export type FunctionsToContextInput<Fs extends functions.Functions = functions.Functions> = UnionToIntersection<
   {
     [K in keyof Fs]: functions.ProvidersToContextInput<Fs[K]['providers']>
@@ -36,11 +39,16 @@ export type FunctionsToContextInput<Fs extends functions.Functions = functions.F
 >
 
 /**
- * Intersection of all function's Contexts.
+ * Convert a map of functions to the union of possible functions arguments.
  */
-export type FunctionsToContextSum<Fs extends functions.Functions> = UnionToIntersection<
-  { [K in keyof Fs]: functions.ProvidersToContext<Fs[K]['providers']> }[keyof Fs]
->
+export type ModuleMiddlewareInputArgs<Fs extends functions.Functions> = {
+  [K in keyof Fs]: functions.FunctionArguments<
+    Fs[K]['input'],
+    Fs[K]['output'],
+    Fs[K]['retrieve'],
+    Fs[K]['providers']
+  > & { functionName: K }
+}[keyof Fs]
 
 /**
  * Mondrian module options.
@@ -114,7 +122,7 @@ function assertCorrectProviderErrors(functions: functions.Functions) {
 }
 
 function assertCorrectProviderNames(functions: functions.Functions) {
-  const reservedNames = ['input', 'retrieve', 'logger', 'tracer']
+  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']
   for (const [functionName, functionBody] of Object.entries(functions)) {
     for (const providerName of Object.keys(functionBody.providers)) {
       if (reservedNames.includes(providerName)) {
@@ -150,13 +158,17 @@ export function build<const Fs extends functions.Functions>(module: Module<Fs>):
     module.options?.maxSelectionDepth != null
       ? [middleware.checkMaxSelectionDepth(module.options.maxSelectionDepth)]
       : []
-  const checkPoliciesMiddleware = module.policies != null ? [middleware.checkPolicies(module.policies)] : []
 
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
       const checkOutputTypeMiddleware =
         module.options?.checkOutputType == null || module.options?.checkOutputType !== 'ignore'
           ? [middleware.checkOutputType(functionName, module.options?.checkOutputType ?? 'throw')]
+          : []
+
+      const checkPoliciesMiddleware =
+        module.policies != null
+          ? [middleware.checkPolicies((args) => module.policies!({ ...args, functionName } as any))]
           : []
 
       const func: functions.FunctionImplementation = {

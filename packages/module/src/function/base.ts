@@ -46,7 +46,7 @@ export class BaseFunction<
       tracer: args.tracer,
     }
     for (const [providerName, provider] of Object.entries(this.providers)) {
-      const res = await provider.body(args.contextInput, args)
+      const res = await provider.apply(args.contextInput, args)
       if (res.isFailure) {
         return res
       }

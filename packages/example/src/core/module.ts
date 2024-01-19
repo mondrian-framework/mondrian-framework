@@ -12,9 +12,9 @@ export const module = moduleInterface.implement({
     checkOutputType: 'throw',
     opentelemetry: true,
   },
-  policies(context) {
-    if (context.auth != null) {
-      return policies.loggedUser(context.auth.userId)
+  policies(args) {
+    if ('auth' in args && args.auth.userId != null) {
+      return policies.loggedUser(args.auth.userId)
     } else {
       return policies.guest
     }

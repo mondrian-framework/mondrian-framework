@@ -6,7 +6,7 @@ import jsonwebtoken from 'jsonwebtoken'
 
 export const authProvider = provider.build({
   errors: { unauthorized: model.string() },
-  body: async ({ authorization }: { authorization: string | undefined }) => {
+  apply: async ({ authorization }: { authorization: string | undefined }) => {
     if (authorization) {
       const secret = process.env.JWT_SECRET ?? 'secret'
       const rawJwt = authorization.replace('Bearer ', '')
@@ -24,15 +24,23 @@ export const authProvider = provider.build({
   },
 })
 
+export const optionalAuthProvider = provider.build({
+  apply: async (input: { authorization: string | undefined }, args) => {
+    const auth = await authProvider.apply(input, args)
+    const res = auth.recover(() => ({ userId: undefined }))
+    return result.ok(res)
+  },
+})
+
 const prismaSingleton = new PrismaClient()
 export const dbProvider = provider.build({
-  body: async () => {
+  apply: async () => {
     return result.ok({ prisma: prismaSingleton })
   },
 })
 
 export const localizationProvider = provider.build({
-  body: async ({ ip }: { ip: string }) => {
+  apply: async ({ ip }: { ip: string }) => {
     return result.ok({ ip })
   },
 })

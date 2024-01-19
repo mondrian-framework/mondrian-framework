@@ -113,7 +113,14 @@ function handleFailure({
  * In case the checks fails and {@link errors.UnauthorizedAccess} is thrown
  */
 export function checkPolicies(
-  policies: (context: any) => security.Policies,
+  policies: (
+    args: functions.FunctionArguments<
+      model.Type,
+      model.Type,
+      functions.OutputRetrieveCapabilities,
+      functions.Providers
+    >,
+  ) => security.Policies,
 ): functions.Middleware<
   model.Type,
   model.Type,

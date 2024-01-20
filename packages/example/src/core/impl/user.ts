@@ -1,4 +1,11 @@
 import { module } from '../../interface'
+import {
+  emailAlreadyTaken,
+  invalidLogin,
+  tooManyRequests,
+  unauthorized,
+  userNotExists,
+} from '../../interface/common/model'
 import { User } from '../../interface/user'
 import { slotProvider } from '../../rate-limiter'
 import { authProvider, dbProvider, localizationProvider } from '../providers'
@@ -16,7 +23,7 @@ export const login = module.functions.login
       const loggedUser = await prisma.user.findFirst({ where: { email, password }, select: { id: true } })
       if (!loggedUser) {
         logger.logWarn(`${input.email} failed login`)
-        return result.fail({ invalidLogin: 'invalid username or password' })
+        return result.fail(invalidLogin.error())
       }
       await prisma.user.update({
         where: { id: loggedUser.id },
@@ -32,7 +39,7 @@ export const login = module.functions.login
         rate: '10 requests in 1 minute',
         onLimit: async () => {
           //Improvement: warn the user, maybe block the account
-          return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes. (Limited by Email)' })
+          return result.fail(tooManyRequests.error({ limitedBy: 'email' }))
         },
         slotProvider,
       }),
@@ -40,7 +47,7 @@ export const login = module.functions.login
         key: ({ localization: { ip } }) => ip,
         rate: '10000 requests in 1 hours',
         onLimit: async () => {
-          return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes. (Limited by IP)' })
+          return result.fail(tooManyRequests.error({ limitedBy: 'ip' }))
         },
         slotProvider,
       }),
@@ -60,7 +67,7 @@ export const register = module.functions.register.withProviders({ db: dbProvider
       return result.ok(user)
     } catch {
       //unique index fail
-      return result.fail({ emailAlreadyTaken: 'Email already taken' })
+      return result.fail(emailAlreadyTaken.error())
     }
   },
 })
@@ -68,7 +75,7 @@ export const register = module.functions.register.withProviders({ db: dbProvider
 export const follow = module.functions.follow.withProviders({ auth: authProvider, db: dbProvider }).implement({
   body: async ({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma } }) => {
     if (input.userId === userId || (await prisma.user.count({ where: { id: input.userId } })) === 0) {
-      return result.fail({ userNotExists: 'User does not exists' })
+      return result.fail(userNotExists.error())
     }
     await prisma.follower.upsert({
       create: {

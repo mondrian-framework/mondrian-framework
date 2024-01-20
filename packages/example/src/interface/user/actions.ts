@@ -1,4 +1,4 @@
-import { idType } from '../common/model'
+import { idType, emailAlreadyTaken, unauthorized, userNotExists, invalidLogin, tooManyRequests } from '../common/model'
 import { User, MyUser } from './model'
 import { model } from '@mondrian-framework/model'
 import { functions, retrieve } from '@mondrian-framework/module'
@@ -11,15 +11,11 @@ const LoginInput = model.object(
   { name: 'LoginInput' },
 )
 const LoginOutput = model.string({ name: 'LoginOutput' })
-const loginErrorMap = {
-  invalidLogin: model.string(),
-  tooManyRequests: model.string(),
-} as const
 
 export const login = functions.define({
   input: LoginInput,
   output: LoginOutput,
-  errors: loginErrorMap,
+  errors: { invalidLogin, tooManyRequests },
   options: { description: `Gets the jwt of a user. This operation is rate limited` },
 })
 
@@ -36,7 +32,7 @@ export const register = functions.define({
     },
   ),
   output: MyUser,
-  errors: { emailAlreadyTaken: model.literal('Email already taken') },
+  errors: { emailAlreadyTaken },
   retrieve: { select: true },
   options: {
     namespace: 'user',
@@ -47,7 +43,7 @@ export const register = functions.define({
 export const follow = functions.define({
   input: model.object({ userId: idType }),
   output: User,
-  errors: { unauthorized: model.string(), userNotExists: model.string() },
+  errors: { unauthorized, userNotExists },
   retrieve: { select: true },
   options: {
     namespace: 'user',
@@ -57,7 +53,7 @@ export const follow = functions.define({
 
 export const getUsers = functions.define({
   output: model.array(User),
-  errors: { unauthorized: model.string() },
+  errors: { unauthorized },
   retrieve: retrieve.allCapabilities,
   options: {
     namespace: 'user',

@@ -1,4 +1,5 @@
 import { model } from '@mondrian-framework/model'
+import { error } from '@mondrian-framework/module'
 
 export type IdType = model.Infer<typeof idType>
 export const idType = model.integer({
@@ -6,3 +7,19 @@ export const idType = model.integer({
   name: 'Id',
   description: 'an id that uniquely identifies an entity',
 })
+
+export const { unauthorized, emailAlreadyTaken, postNotFound, userNotExists, invalidLogin, tooManyRequests } =
+  error.define({
+    unauthorized: {
+      message: 'Unauthorised access.',
+      details: model.object({ reason: model.enumeration(['InvalidJwt', 'AuthorizationMissing']) }),
+    },
+    postNotFound: { message: 'Post not found.' },
+    emailAlreadyTaken: { message: 'Email already taken.' },
+    userNotExists: { message: 'User does not exists.' },
+    invalidLogin: { message: 'Invalid email or passowrd.' },
+    tooManyRequests: {
+      message: 'Too many request',
+      details: model.object({ limitedBy: model.enumeration(['ip', 'email']) }),
+    },
+  })

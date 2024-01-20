@@ -201,8 +201,17 @@ export function areSameArray<A>(
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 
 /**
- * Checks if two json are the same by value
- * @returns if the two json have the same value
+ * ```
+ * type A = { a: string; b: string }
+ * type B = AtLeastOnePropertyOf<A> // { a: string; b?: string } | { b: string; a?: string }
+ * ```
+ */
+export type AtLeastOnePropertyOf<T> = {
+  [K in keyof T]: { [L in K]: T[L] } & { [L in Exclude<keyof T, K>]?: T[L] }
+}[keyof T]
+
+/**
+ * Checks if two json are the same by value.
  */
 export function areJsonsEquals(left: JSONType, right: JSONType): boolean {
   if (left === right) {
@@ -282,10 +291,16 @@ export function groupBy<O, K extends string>(list: O[], getKey: (item: O) => K):
   )
 }
 
-export function reverseStr(s: string): string {
-  return [...s].reverse().join('')
+/**
+ * Reverses a string.
+ */
+export function reverseStr(str: string): string {
+  return [...str].reverse().join('')
 }
 
+/**
+ * Replaces the last occurrence of a string in a string.
+ */
 export function replaceLast(str: string, toFind: string, toReplace: string): string {
   return reverseStr(reverseStr(str).replace(reverseStr(toFind), reverseStr(toReplace)))
 }

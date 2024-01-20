@@ -1,4 +1,4 @@
-import { errors, functions, logger, retrieve, security, utils } from '.'
+import { exception, functions, logger, retrieve, security, utils } from '.'
 import { checkPolicies as checkPolicyInternal } from './security'
 import { result, model, decoding, validation, path } from '@mondrian-framework/model'
 import { buildErrorMessage } from '@mondrian-framework/utils'
@@ -21,7 +21,7 @@ export function checkMaxSelectionDepth(
     apply: (args, next, thisFunction) => {
       const depth = retrieve.selectionDepth(thisFunction.output, args.retrieve ?? {})
       if (depth > maxDepth) {
-        throw new errors.MaxSelectionDepthReached(depth, maxDepth)
+        throw new exception.MaxSelectionDepthReached(depth, maxDepth)
       }
       return next(args)
     },
@@ -104,13 +104,13 @@ function handleFailure({
       },
     )
   } else {
-    throw new errors.InvalidOutputValue(functionName, result.error)
+    throw new exception.InvalidOutputValue(functionName, result.error)
   }
 }
 
 /**
  * This middleware applies the given security policies for a retrieve operation.
- * In case the checks fails and {@link errors.UnauthorizedAccess} is thrown
+ * In case the checks fails and {@link exception.UnauthorizedAccess} is thrown
  */
 export function checkPolicies(
   policies: (
@@ -139,7 +139,7 @@ export function checkPolicies(
         path: path.root,
       })
       if (!res.isOk) {
-        throw new errors.UnauthorizedAccess(res.error)
+        throw new exception.UnauthorizedAccess(res.error)
       }
       return next({ ...args, retrieve: res.value ?? {} })
     },

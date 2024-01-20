@@ -8,12 +8,12 @@ export function attachRestMethods<Fs extends functions.Functions>({
   server,
   api,
   context,
-  error,
+  onError,
 }: {
   server: API
   api: rest.Api<Fs>
   context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
-  error?: rest.ErrorHandler<Fs, ServerContext>
+  onError?: rest.ErrorHandler<Fs, ServerContext>
 }): void {
   for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
@@ -35,7 +35,7 @@ export function attachRestMethods<Fs extends functions.Functions>({
         specification,
         functionName,
         functionBody,
-        error,
+        onError,
         api: api as any,
       })
       const lambdaApiHandler: HandlerFunction = async (request, response) => {

@@ -9,13 +9,13 @@ export function attachRestMethods<Fs extends functions.Functions>({
   api,
   context,
   pathPrefix,
-  error,
+  onError,
 }: {
   server: FastifyInstance
   api: rest.Api<Fs>
   context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
   pathPrefix: string
-  error?: rest.ErrorHandler<Fs, ServerContext>
+  onError?: rest.ErrorHandler<Fs, ServerContext>
 }): void {
   for (const [functionName, functionBody] of Object.entries(api.module.functions)) {
     const specifications = api.functions[functionName]
@@ -32,7 +32,7 @@ export function attachRestMethods<Fs extends functions.Functions>({
         specification,
         functionName,
         functionBody,
-        error,
+        onError,
         api: api as any,
       })
       const fastifyHandler = async (request: FastifyRequest, reply: FastifyReply) => {

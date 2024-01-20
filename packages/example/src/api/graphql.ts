@@ -25,7 +25,7 @@ export function serveGraphql(server: FastifyInstance) {
       authorization: request.headers.authorization,
       ip: request.ip,
     }),
-    errorHandler: async ({ error, logger }) => {
+    onError: async ({ error, logger }) => {
       if (error instanceof exception.UnauthorizedAccess) {
         return { message: 'Unauthorized access', options: { extensions: { info: error.error } } }
       }

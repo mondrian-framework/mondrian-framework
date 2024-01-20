@@ -13,7 +13,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
   specification,
   functionBody,
   context,
-  error,
+  onError,
   api,
 }: {
   functionName: string
@@ -21,7 +21,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
   functionBody: functions.FunctionImplementation
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
-  error?: ErrorHandler<functions.Functions, ServerContext>
+  onError?: ErrorHandler<functions.Functions, ServerContext>
   api: Pick<ApiSpecification<functions.FunctionsInterfaces>, 'errorCodes' | 'customTypeSchemas'>
 }): http.Handler<ServerContext> {
   const getInputFromRequest = specification.openapi
@@ -112,8 +112,8 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
             if (e instanceof Error) {
               span?.recordException(e)
             }
-            if (error) {
-              const result = await error({
+            if (onError) {
+              const result = await onError({
                 error: e,
                 logger: thisLogger,
                 functionName,

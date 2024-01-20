@@ -13,13 +13,13 @@ export type ServerContext = { lambdaApi: { request: Request; response: Response 
 export function build<Fs extends functions.Functions>({
   api,
   context,
-  error,
+  onError,
   customize,
   ...args
 }: {
   api: rest.Api<Fs>
   context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
-  error?: rest.ErrorHandler<Fs, ServerContext>
+  onError?: rest.ErrorHandler<Fs, ServerContext>
   options: Partial<rest.ServeOptions>
   customize?: (server: API) => void
 }): APIGatewayProxyHandlerV2 {
@@ -66,7 +66,7 @@ export function build<Fs extends functions.Functions>({
       res.sendFile(path)
     })
   }
-  attachRestMethods({ api, context, server, error })
+  attachRestMethods({ api, context, server, onError })
   if (customize) {
     customize(server)
   }

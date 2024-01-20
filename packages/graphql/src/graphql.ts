@@ -495,7 +495,7 @@ export type FromModuleInput<Fs extends functions.Functions, ServerContext> = {
   api: Api<Fs>
   context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<module.FunctionsToContextInput<Fs>>
   setHeader: (context: ServerContext, name: string, value: string) => void
-  errorHandler?: ErrorHandler<Fs, ServerContext>
+  onError?: ErrorHandler<Fs, ServerContext>
 }
 
 /**
@@ -724,11 +724,11 @@ function makeOperation<Fs extends functions.Functions, ServerContext>(
           endSpanWithResult(applyResult, span)
           return outputValue
         } catch (error) {
-          if (fromModuleInput.errorHandler) {
-            const result = await fromModuleInput.errorHandler({
+          if (fromModuleInput.onError) {
+            const result = await fromModuleInput.onError({
               error,
               functionArgs: { retrieve: retrieveValue, input },
-              functionName: operationName,
+              functionName,
               logger: thisLogger,
               tracer: functionBody.tracer,
               ...serverContext,

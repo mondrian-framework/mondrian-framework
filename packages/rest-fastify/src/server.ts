@@ -15,13 +15,13 @@ export function serve<Fs extends functions.Functions>({
   api,
   server,
   context,
-  error,
+  onError,
   ...args
 }: {
   api: rest.Api<Fs>
   server: FastifyInstance
   context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
-  error?: rest.ErrorHandler<Fs, ServerContext>
+  onError?: rest.ErrorHandler<Fs, ServerContext>
   options?: Partial<rest.ServeOptions>
 }): void {
   const options = { ...rest.DEFAULT_SERVE_OPTIONS, ...args.options }
@@ -64,5 +64,5 @@ export function serve<Fs extends functions.Functions>({
       return schema
     })
   }
-  attachRestMethods({ api, server, context, pathPrefix, error })
+  attachRestMethods({ api, server, context, pathPrefix, onError })
 }

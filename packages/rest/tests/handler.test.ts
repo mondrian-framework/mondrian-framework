@@ -92,7 +92,6 @@ describe('rest handler', () => {
     })
   const fs = { f0, f1, f2, f3, f4, f5, f6 } as const
   const m = module.build({
-    context: async () => result.ok({}),
     functions: fs,
     name: 'example',
   })
@@ -100,7 +99,7 @@ describe('rest handler', () => {
   function buildHandler(
     f: keyof typeof fs,
     specification: FunctionSpecifications,
-    error?: ErrorHandler<functions.Functions, {}>,
+    onError?: ErrorHandler<functions.Functions, {}>,
   ): (request: Partial<Pick<Request, 'body' | 'query' | 'params' | 'headers'>>) => Promise<Response> {
     const handler = fromFunction({
       functionBody: m.functions[f] as functions.FunctionImplementation,
@@ -108,7 +107,7 @@ describe('rest handler', () => {
       context: async () => ({}),
       specification,
       module: m,
-      error,
+      onError,
       api: {},
     })
     return (request) =>

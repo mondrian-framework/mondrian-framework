@@ -36,7 +36,7 @@ export function serveRest(server: FastifyInstance) {
       authorization: request.headers.authorization,
       ip: request.ip,
     }),
-    async error({ error, logger }) {
+    async onError({ error, logger }) {
       if (error instanceof exception.UnauthorizedAccess) {
         return { status: 401, body: error.error }
       }

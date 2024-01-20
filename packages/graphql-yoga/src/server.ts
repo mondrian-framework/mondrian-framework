@@ -10,12 +10,12 @@ export type ServerContext = { req: http.IncomingMessage; res: http.ServerRespons
 export function createServer<Fs extends functions.Functions>({
   api,
   context,
-  errorHandler,
+  onError,
   ...args
 }: {
   api: graphql.Api<Fs>
   context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<module.FunctionsToContextInput<Fs>>
-  errorHandler?: graphql.ErrorHandler<Fs, ServerContext>
+  onError?: graphql.ErrorHandler<Fs, ServerContext>
   options?: Omit<
     YogaServerOptions<ServerContext, module.FunctionsToContextInput<Fs>>,
     'schema' | 'context' | 'graphqlEndpoint'
@@ -26,7 +26,7 @@ export function createServer<Fs extends functions.Functions>({
     api,
     context,
     setHeader: (ctx, name, value) => ctx.res.setHeader(name, value),
-    errorHandler,
+    onError,
   })
   const disableIntrospection: Plugin = {
     onValidate({ addValidationRule }) {

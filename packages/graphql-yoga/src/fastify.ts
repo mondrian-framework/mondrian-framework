@@ -11,13 +11,13 @@ export function serveWithFastify<Fs extends functions.Functions>({
   server,
   api,
   context,
-  errorHandler,
+  onError,
   ...args
 }: {
   api: graphql.Api<Fs>
   server: FastifyInstance
   context: (serverContext: ServerContext, info: GraphQLResolveInfo) => Promise<module.FunctionsToContextInput<Fs>>
-  errorHandler?: graphql.ErrorHandler<Fs, ServerContext>
+  onError?: graphql.ErrorHandler<Fs, ServerContext>
   options?: Omit<
     YogaServerOptions<ServerContext, module.FunctionsToContextInput<Fs>>,
     'schema' | 'context' | 'graphqlEndpoint'
@@ -30,7 +30,7 @@ export function serveWithFastify<Fs extends functions.Functions>({
     setHeader: ({ reply }, name, value) => {
       reply.header(name, value)
     },
-    errorHandler,
+    onError,
   })
   const disableIntrospection: Plugin = {
     onValidate({ addValidationRule }) {

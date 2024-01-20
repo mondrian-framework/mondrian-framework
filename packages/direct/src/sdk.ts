@@ -22,19 +22,20 @@ type SdkFunction<
   OutputType extends model.Type,
   E extends functions.ErrorType,
   C extends retrieve.Capabilities | undefined,
-> = model.IsLiteral<InputType, undefined> extends true
-  ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
-      input?: undefined,
-      options?: [P] extends [never]
-        ? { metadata?: Record<string, string> }
-        : { retrieve?: P; metadata?: Record<string, string> },
-    ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
-  : <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
-      input: model.Infer<InputType>,
-      options?: [P] extends [never]
-        ? { metadata?: Record<string, string> }
-        : { retrieve?: P; metadata?: Record<string, string> },
-    ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+> =
+  model.IsLiteral<InputType, undefined> extends true
+    ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
+        input?: undefined,
+        options?: [P] extends [never]
+          ? { metadata?: Record<string, string> }
+          : { retrieve?: P; metadata?: Record<string, string> },
+      ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+    : <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
+        input: model.Infer<InputType>,
+        options?: [P] extends [never]
+          ? { metadata?: Record<string, string> }
+          : { retrieve?: P; metadata?: Record<string, string> },
+      ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
   O extends model.Type,

@@ -391,11 +391,12 @@ export type ProvidersToContext<Pv extends Providers> = {
   ? Context
   : {}
 
-export type ProvidersToContextInput<Pv extends functions.Providers> = UnionToIntersection<
-  { [K in keyof Pv]: Pv[K] extends provider.ContextProvider<infer C, any, any> ? C : {} }[keyof Pv]
-> extends infer ContextInput extends Record<string, unknown>
-  ? ContextInput
-  : {}
+export type ProvidersToContextInput<Pv extends functions.Providers> =
+  UnionToIntersection<
+    { [K in keyof Pv]: Pv[K] extends provider.ContextProvider<infer C, any, any> ? C : {} }[keyof Pv]
+  > extends infer ContextInput extends Record<string, unknown>
+    ? ContextInput
+    : {}
 
 export type ErrorType = model.Types | undefined
 

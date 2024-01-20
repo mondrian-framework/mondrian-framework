@@ -12,8 +12,8 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@opentelemetry/sdk-node": "0.45.1",
-    "@opentelemetry/api-logs": "0.45.1"
+    "@opentelemetry/sdk-node": "0.47.0",
+    "@opentelemetry/api-logs": "0.47.0"
   },
   "peerDependencies": {
     "@mondrian-framework/model": "^2.0.18"

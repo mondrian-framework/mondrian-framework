@@ -18,15 +18,16 @@ type SdkFunction<
   E extends ErrorType,
   C extends retrieve.Capabilities | undefined,
   Metadata,
-> = model.IsLiteral<InputType, undefined> extends true
-  ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(options?: {
-      retrieve?: P
-      metadata?: Metadata
-    }) => Promise<SdkFunctionResult<OutputType, E, C, P>>
-  : <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
-      input: model.Infer<InputType>,
-      options?: { retrieve?: P; metadata?: Metadata },
-    ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+> =
+  model.IsLiteral<InputType, undefined> extends true
+    ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(options?: {
+        retrieve?: P
+        metadata?: Metadata
+      }) => Promise<SdkFunctionResult<OutputType, E, C, P>>
+    : <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
+        input: model.Infer<InputType>,
+        options?: { retrieve?: P; metadata?: Metadata },
+      ) => Promise<SdkFunctionResult<OutputType, E, C, P>>
 
 type SdkFunctionResult<
   O extends model.Type,

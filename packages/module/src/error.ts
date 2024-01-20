@@ -53,10 +53,10 @@ type Error<Es extends ErrorsDefinition> = {
  * }).implement({
  *   async body({ input }) {
  *     if (input === '???') {
- *       return result.fail(tooManyRequests.error({ count: 11, max: 10 }))
+ *       return result.fail(errors.tooManyRequests.error({ count: 11, max: 10 }))
  *     }
  *     //...
- *     return result.fail(unauthorized.error())
+ *     return result.fail(errors.unauthorized.error())
  *   })
  * })
  * ```
@@ -79,7 +79,7 @@ export function define<const Es extends ErrorsDefinition>(errors: Es): Error<Es>
       },
       { name: errorCode },
     )
-    //TODO: maybe do not inject
+    //TODO: maybe do not inject but extends ObjectTypeImpl?
     obj.error = (details: unknown) => ({
       [errorCode]: {
         message,
@@ -87,7 +87,7 @@ export function define<const Es extends ErrorsDefinition>(errors: Es): Error<Es>
       },
     })
     return obj
-  }) as unknown as Error<Es>
+  }) as Error<Es>
 }
 
 /**
@@ -95,7 +95,7 @@ export function define<const Es extends ErrorsDefinition>(errors: Es): Error<Es>
  * It is omittable if it is optional, nullable, literal undefined, or literal null.
  */
 //prettier-ignore
-export type IsOmittable<T extends model.Type> 
+type IsOmittable<T extends model.Type> 
   = [T] extends [model.NullableType<any>] ? true
   : [T] extends [model.OptionalType<any>] ? true
   : [T] extends [model.LiteralType<any>] ? true

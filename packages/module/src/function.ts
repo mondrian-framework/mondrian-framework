@@ -25,11 +25,11 @@ export interface FunctionInterface<
   /**
    * The type describing the possible errors returned by the function.
    */
-  readonly errors?: E
+  readonly errors: E
   /**
    * The type describing the possible errors returned by the function.
    */
-  readonly retrieve?: C
+  readonly retrieve: C
   /**
    * Function {@link FunctionOptions}
    */
@@ -318,6 +318,8 @@ export function define<
   const fi = {
     input: model.undefined() as I,
     output: model.undefined() as O,
+    errors: undefined as E,
+    retrieve: undefined as R,
     ...func,
   }
   function implement<Pv extends Providers>(providers: Pv) {

@@ -85,29 +85,30 @@ const register = functions
 Congratulations! You've just implemented your initial Mondrian function. To enhance error handling, let's explore a more advanced example where we introduce typed errors:
 
 ```typescript
-import { model, result } from '@mondrian-framework/model'
-import { functions } from '@mondrian-framework/module'
+import { model } from '@mondrian-framework/model'
+import { functions, error } from '@mondrian-framework/module'
+
+const errors = error.define({
+  weakPassword: { message: 'The password is weak', details: model.object({ reason: model.string() }) },
+  emailAlreadyUsed: { message: 'This email is already used' },
+})
 
 const register = functions
   .define({
     input: model.object({ email: model.email(), password: model.string() }),
-    output: model.object({ jwt: model.string() }),
-    errors: {
-      weakPassword: model.string(),
-      emailAlreadyUsed: model.string(),
-    },
+    output: model.object({ jwt: model.string({ minLength: 3 }) }),
+    errors,
   })
   .implement({
-    async body({ input: { email, password } }) {
-      // weak password check
-      if (password.length < 3) {
-        return result.fail({ weakPassword: 'Need at least 3 characters' })
+    async body({ input: { email, password }, errors, ok }) {
+      if (false /* weak password logic */) {
+        return errors.weakPassword({ reason: 'Some reason' })
       }
       if (false /* email check logic */) {
-        return result.fail({ emailAlreadyUsed: 'This email is already used' })
+        return errors.emailAlreadyUsed()
       }
       // register logic ...
-      return result.ok({ jwt: '...' })
+      return ok({ jwt: '...' })
     },
   })
 ```
@@ -257,7 +258,7 @@ By exposing the function as GraphQL endpoint we can navigate the relation betwee
 In this configuration, we have created a data breach. In fact, by retrieving users with the `getUsers` query, we are exposing the entire graph to every caller. To resolve this problem, we can (and in some cases should) implement a first level of security on the function that checks if the caller is an authenticated user. We can do this as follows:
 
 ```typescript
-import { result, model } from '@mondrian-framework/model'
+import { model } from '@mondrian-framework/model'
 import { functions, provider, error } from '@mondrian-framework/module'
 
 const { unauthorized } = error.define({ unauthorized: { message: 'Not authenticated!' } })
@@ -279,13 +280,13 @@ const authProvider = provider.build({
 const getUsers = functions
   .define({
     output: model.array(User),
-    errors: { unauthorized: model.string() },
+    errors: { unauthorized },
     retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
   })
   .withProviders({ auth: authProvider })
   .implement({
-    body: async ({ retrieve, auth: { userId } }) => {
-      return result.ok(await prismaClient.user.findMany(retrieve))
+    body: async ({ retrieve, auth: { userId }, ok }) => {
+      return ok(await prismaClient.user.findMany(retrieve))
     },
   })
 ```

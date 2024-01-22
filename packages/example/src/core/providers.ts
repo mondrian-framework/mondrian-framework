@@ -26,8 +26,8 @@ export const authProvider = provider.build({
 })
 
 export const optionalAuthProvider = provider.build({
-  apply: async (input: { authorization: string | undefined }, args) => {
-    const auth = await authProvider.apply(input, args)
+  apply: async (input: { authorization: string | undefined }) => {
+    const auth = await authProvider.apply(input)
     const res = auth.recover(() => ({ userId: undefined }))
     return result.ok(res)
   },

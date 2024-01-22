@@ -22,7 +22,7 @@ type RateLimitMiddlewareInput<
    * @param args The function arguments.
    * @returns The key of the group or null.
    */
-  key: (args: functions.FunctionArguments<I, O, C, Pv>) => string | null
+  key: (args: functions.FunctionArguments<I, O, E, C, Pv>) => string | null
 
   /**
    * The rate limit to apply to requests passing through this middleware.
@@ -35,7 +35,7 @@ type RateLimitMiddlewareInput<
    * @param args The function arguments.
    * @returns A function result instance.
    */
-  onLimit?: (args: functions.FunctionArguments<I, O, C, Pv>) => functions.FunctionResult<O, E, C>
+  onLimit?: (args: functions.FunctionArguments<I, O, E, C, Pv>) => functions.FunctionResult<O, E, C>
 
   /**
    * The actual implementation of the rate-limiter storage. If undefined is passed, then an {@link InMemorySlotProvider} is used.

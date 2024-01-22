@@ -1,15 +1,7 @@
 import { module } from '../../interface'
-import {
-  emailAlreadyTaken,
-  invalidLogin,
-  tooManyRequests,
-  unauthorized,
-  userNotExists,
-} from '../../interface/common/model'
 import { User } from '../../interface/user'
 import { slotProvider } from '../../rate-limiter'
 import { authProvider, dbProvider, localizationProvider } from '../providers'
-import { result } from '@mondrian-framework/model'
 import { retrieve } from '@mondrian-framework/module'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
@@ -18,12 +10,12 @@ import jsonwebtoken from 'jsonwebtoken'
 export const login = module.functions.login
   .withProviders({ db: dbProvider, localization: localizationProvider })
   .implement({
-    body: async ({ input, logger, db: { prisma } }) => {
+    body: async ({ input, logger, db: { prisma }, errors, ok }) => {
       const { email, password } = input
       const loggedUser = await prisma.user.findFirst({ where: { email, password }, select: { id: true } })
       if (!loggedUser) {
         logger.logWarn(`${input.email} failed login`)
-        return result.fail(invalidLogin.error())
+        return errors.invalidLogin()
       }
       await prisma.user.update({
         where: { id: loggedUser.id },
@@ -31,23 +23,23 @@ export const login = module.functions.login
       })
       const secret = process.env.JWT_SECRET ?? 'secret'
       const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
-      return result.ok(jwt)
+      return ok(jwt)
     },
     middlewares: [
       rateLimiter.build({
         key: ({ input }) => input.email,
         rate: '10 requests in 1 minute',
-        onLimit: async () => {
+        onLimit: async ({ errors }) => {
           //Improvement: warn the user, maybe block the account
-          return result.fail(tooManyRequests.error({ limitedBy: 'email' }))
+          return errors.tooManyRequests({ limitedBy: 'email' })
         },
         slotProvider,
       }),
       rateLimiter.build({
         key: ({ localization: { ip } }) => ip,
         rate: '10000 requests in 1 hours',
-        onLimit: async () => {
-          return result.fail(tooManyRequests.error({ limitedBy: 'ip' }))
+        onLimit: async ({ errors }) => {
+          return errors.tooManyRequests({ limitedBy: 'ip' })
         },
         slotProvider,
       }),
@@ -55,7 +47,7 @@ export const login = module.functions.login
   })
 
 export const register = module.functions.register.withProviders({ db: dbProvider }).implement({
-  body: async ({ input, db: { prisma } }) => {
+  body: async ({ input, db: { prisma }, ok, errors }) => {
     try {
       const user = await prisma.user.create({
         data: {
@@ -64,18 +56,18 @@ export const register = module.functions.register.withProviders({ db: dbProvider
           loginAt: new Date(),
         },
       })
-      return result.ok(user)
+      return ok(user)
     } catch {
       //unique index fail
-      return result.fail(emailAlreadyTaken.error())
+      return errors.emailAlreadyTaken()
     }
   },
 })
 
 export const follow = module.functions.follow.withProviders({ auth: authProvider, db: dbProvider }).implement({
-  body: async ({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma } }) => {
+  body: async ({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma }, errors, ok }) => {
     if (input.userId === userId || (await prisma.user.count({ where: { id: input.userId } })) === 0) {
-      return result.fail(userNotExists.error())
+      return errors.userNotExists()
     }
     await prisma.follower.upsert({
       create: {
@@ -96,13 +88,13 @@ export const follow = module.functions.follow.withProviders({ auth: authProvider
       thisRetrieve,
     )
     const user = await prisma.user.findFirstOrThrow(args)
-    return result.ok(user)
+    return ok(user)
   },
 })
 
 export const getUsers = module.functions.getUsers.withProviders({ auth: authProvider, db: dbProvider }).implement({
-  body: async ({ retrieve: thisRetrieve, db: { prisma } }) => {
+  body: async ({ retrieve: thisRetrieve, db: { prisma }, ok }) => {
     const users = await prisma.user.findMany(thisRetrieve)
-    return result.ok(users)
+    return ok(users)
   },
 })

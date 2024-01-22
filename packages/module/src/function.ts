@@ -54,7 +54,7 @@ export interface Function<
   /**
    * Function body.
    */
-  readonly body: (args: FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>
+  readonly body: (args: FunctionArguments<I, O, E, C, Pv>) => FunctionResult<O, E, C>
   /**
    * Function providers.
    */
@@ -125,6 +125,7 @@ export type FunctionOptions = {
 export type FunctionArguments<
   I extends model.Type,
   O extends model.Type,
+  E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Pv extends Providers,
 > = {
@@ -144,7 +145,25 @@ export type FunctionArguments<
    * Openteletry {@link Tracer} of this function.
    */
   readonly tracer: Tracer
-} & ProvidersToContext<Pv>
+} & ProvidersToContext<Pv> &
+  OkArgsUtil<O, C> &
+  ErrorArgsUtil<E>
+
+type OkArgsUtil<O extends model.Type, C extends OutputRetrieveCapabilities> = {
+  readonly ok: (result: FunctionOkResultInternal<O, C>) => result.Ok<FunctionOkResultInternal<O, C>>
+}
+
+type ErrorArgsUtil<E extends ErrorType> = [E] extends [infer E1 extends model.Types]
+  ? {
+      readonly errors: {
+        [K in keyof E1]: E1[K] extends { error: (args?: infer Args) => any }
+          ? (details?: Args) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
+          : E1[K] extends { error: (args: infer Args) => any }
+            ? (details: Args) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
+            : (details: model.Infer<E1[K]>) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
+      }
+    }
+  : { readonly errors: {} }
 
 export type FunctionApplyArguments<
   I extends model.Type,
@@ -208,8 +227,8 @@ export type Middleware<
    * @returns a value that respect function's output type and the given projection.
    */
   apply: (
-    args: FunctionArguments<I, O, C, Pv>,
-    next: (args: FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>,
+    args: FunctionArguments<I, O, E, C, Pv>,
+    next: (args: FunctionArguments<I, O, E, C, Pv>) => FunctionResult<O, E, C>,
     fn: FunctionImplementation<I, O, E, C, Pv>,
   ) => FunctionResult<O, E, C>
 }
@@ -407,7 +426,7 @@ export type FunctionResult<O extends model.Type, E extends ErrorType, C extends 
 >
 
 /**
- * Turns input/output/error into a function's result:
+ * Turns output/error into a function's result:
  * - if the error is undefined then the function is assumed to never fail and just returns the
  *   partial version of the inferred value
  * - if the error is a union then the function will return a `Result` that can fail with the given error
@@ -421,6 +440,18 @@ type FunctionResultInternal<O extends model.Type, E extends ErrorType, C extends
   :   [Exclude<E, undefined>] extends [infer E1 extends model.Types] ? result.Result<model.Infer<O>, InferErrorType<E1>>
     : [E] extends [undefined] ? result.Result<model.Infer<O>, never>
     : result.Result<never, Record<string, unknown>>
+
+//prettier-ignore
+type FunctionOkResultInternal<O extends model.Type, C extends OutputRetrieveCapabilities> 
+    = [C] extends [{ select: true }] ?
+      model.Infer<model.PartialDeep<O>>
+    : model.Infer<O>
+
+//prettier-ignore
+type FunctionFailureResultInternal<E extends ErrorType> 
+    = [Exclude<E, undefined>] extends [infer E1 extends model.Types] ?
+      InferErrorType<E1>
+    : never
 
 export type InferErrorType<Ts extends model.Types> = 0 extends 1 & Ts
   ? never

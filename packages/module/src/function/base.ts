@@ -1,6 +1,7 @@
 import { functions } from '..'
 import { ErrorType, FunctionResult, OutputRetrieveCapabilities, Tracer } from '../function'
 import { model, result } from '@mondrian-framework/model'
+import { mapObject } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
 
 /**
@@ -19,10 +20,12 @@ export class BaseFunction<
   readonly errors: E
   readonly retrieve: C
   readonly providers: Pv
-  readonly body: (args: functions.FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>
+  readonly body: (args: functions.FunctionArguments<I, O, E, C, Pv>) => FunctionResult<O, E, C>
   readonly middlewares: readonly functions.Middleware<I, O, E, C, Pv>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
   readonly tracer: Tracer
+  readonly errorsBuilder: Record<string, (error?: unknown) => result.Failure<unknown>>
+  readonly okBuilder: (value?: unknown) => result.Ok<unknown>
 
   constructor(func: functions.Function<I, O, E, C, Pv>) {
     this.input = func.input
@@ -34,25 +37,34 @@ export class BaseFunction<
     this.middlewares = func.middlewares ?? []
     this.options = func.options
     this.tracer = voidTracer
+    this.okBuilder = (v) => result.ok(v)
+    this.errorsBuilder = mapObject(func.errors ?? {}, (errorCode, errorType) => (error) => {
+      if (errorType && typeof errorType === 'object' && 'error' in errorType) {
+        return result.fail((errorType as any).error(error)) //using error (see error.ts)
+      }
+      return result.fail({ [errorCode]: error })
+    })
   }
 
   public async applyProviders(
     args: functions.FunctionApplyArguments<I, O, C, Pv>,
-  ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, unknown>> {
+  ): Promise<result.Result<functions.FunctionArguments<I, O, E, C, Pv>, unknown>> {
     const mappedArgs: Record<string, unknown> = {
       input: args.input,
       retrieve: args.retrieve,
       logger: args.logger,
       tracer: args.tracer,
+      ok: this.okBuilder,
+      errors: this.errorsBuilder,
     }
     for (const [providerName, provider] of Object.entries(this.providers)) {
-      const res = await provider.apply(args.contextInput, args)
+      const res = await provider.apply(args.contextInput)
       if (res.isFailure) {
         return res
       }
       mappedArgs[providerName] = res.value
     }
-    return result.ok(mappedArgs as functions.FunctionArguments<I, O, C, Pv>)
+    return result.ok(mappedArgs as functions.FunctionArguments<I, O, E, C, Pv>)
   }
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv>): FunctionResult<O, E, C> {
@@ -65,7 +77,7 @@ export class BaseFunction<
 
   private async execute(
     middlewareIndex: number,
-    args: functions.FunctionArguments<I, O, C, Pv>,
+    args: functions.FunctionArguments<I, O, E, C, Pv>,
   ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
       return this.body(args)

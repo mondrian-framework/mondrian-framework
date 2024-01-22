@@ -45,6 +45,7 @@ export type ModuleMiddlewareInputArgs<Fs extends functions.Functions> = {
   [K in keyof Fs]: functions.FunctionArguments<
     Fs[K]['input'],
     Fs[K]['output'],
+    Fs[K]['errors'],
     Fs[K]['retrieve'],
     Fs[K]['providers']
   > & { functionName: K }
@@ -122,7 +123,7 @@ function assertCorrectProviderErrors(functions: functions.Functions) {
 }
 
 function assertCorrectProviderNames(functions: functions.Functions) {
-  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']
+  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName', 'ok', 'errors']
   for (const [functionName, functionBody] of Object.entries(functions)) {
     for (const providerName of Object.keys(functionBody.providers)) {
       if (reservedNames.includes(providerName)) {

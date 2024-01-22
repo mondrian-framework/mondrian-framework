@@ -20,7 +20,6 @@ export type ContextProvider<
   readonly errors?: Errors
   readonly apply: (
     input: ContextInput,
-    args: GenericFunctionArgs,
   ) => [Exclude<Errors, undefined>] extends [infer E1 extends model.Types]
     ? Promise<result.Result<Context, functions.InferErrorType<E1>>>
     : Promise<result.Result<Context, never>>

@@ -84,7 +84,7 @@ export class OpentelemetryFunction<
 
   private async executeWithinSpan(
     middlewareIndex: number,
-    args: functions.FunctionArguments<I, O, C, Pv>,
+    args: functions.FunctionArguments<I, O, E, C, Pv>,
     span: Span,
   ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {

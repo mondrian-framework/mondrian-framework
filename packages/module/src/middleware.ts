@@ -117,6 +117,7 @@ export function checkPolicies(
     args: functions.FunctionArguments<
       model.Type,
       model.Type,
+      model.Types,
       functions.OutputRetrieveCapabilities,
       functions.Providers
     >,

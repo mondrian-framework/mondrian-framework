@@ -8,9 +8,9 @@ import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
 export const login = module.functions.login
-  .withProviders({ db: dbProvider, localization: localizationProvider })
+  .with({ providers: { db: dbProvider, localization: localizationProvider } })
   .implement({
-    body: async ({ input, logger, db: { prisma }, errors, ok }) => {
+    async body({ input, logger, db: { prisma }, errors, ok }) {
       const { email, password } = input
       const loggedUser = await prisma.user.findFirst({ where: { email, password }, select: { id: true } })
       if (!loggedUser) {
@@ -46,8 +46,8 @@ export const login = module.functions.login
     ],
   })
 
-export const register = module.functions.register.withProviders({ db: dbProvider }).implement({
-  body: async ({ input, db: { prisma }, ok, errors }) => {
+export const register = module.functions.register.with({ providers: { db: dbProvider } }).implement({
+  async body({ input, db: { prisma }, ok, errors }) {
     try {
       const user = await prisma.user.create({
         data: {
@@ -64,8 +64,8 @@ export const register = module.functions.register.withProviders({ db: dbProvider
   },
 })
 
-export const follow = module.functions.follow.withProviders({ auth: authProvider, db: dbProvider }).implement({
-  body: async ({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma }, errors, ok }) => {
+export const follow = module.functions.follow.with({ providers: { auth: authProvider, db: dbProvider } }).implement({
+  async body({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma }, errors, ok }) {
     if (input.userId === userId || (await prisma.user.count({ where: { id: input.userId } })) === 0) {
       return errors.userNotExists()
     }
@@ -92,9 +92,11 @@ export const follow = module.functions.follow.withProviders({ auth: authProvider
   },
 })
 
-export const getUsers = module.functions.getUsers.withProviders({ auth: authProvider, db: dbProvider }).implement({
-  body: async ({ retrieve: thisRetrieve, db: { prisma }, ok }) => {
-    const users = await prisma.user.findMany(thisRetrieve)
-    return ok(users)
-  },
-})
+export const getUsers = module.functions.getUsers
+  .with({ providers: { auth: authProvider, db: dbProvider } })
+  .implement({
+    async body({ retrieve: thisRetrieve, db: { prisma }, ok }) {
+      const users = await prisma.user.findMany(thisRetrieve)
+      return ok(users)
+    },
+  })

@@ -691,7 +691,7 @@ function makeOperation<Fs extends functions.Functions, ServerContext>(
 
           // Function call
           const applyResult = await functionBody.apply({
-            contextInput,
+            contextInput: contextInput as Record<string, unknown>,
             retrieve: retrieveValue,
             input: input as never,
             tracer: functionBody.tracer,

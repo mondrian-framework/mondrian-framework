@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto'
 import { GraphQLSchema, getIntrospectionQuery, buildClientSchema } from 'graphql'
 
 export const buildGraphQLReport = moduleInterface.functions.buildGraphQLReport
-  .withProviders({ context: contextProvider })
+  .with({ providers: { context: contextProvider } })
   .implement({
     async body({ input: { previousSchema, currentSchema, password }, context: { fileManager, serverBaseURL } }) {
       const pSchema = await parseSchema(previousSchema)

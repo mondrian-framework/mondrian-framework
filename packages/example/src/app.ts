@@ -1,11 +1,24 @@
 import { serveDirect } from './api/direct'
 import { serveGraphql } from './api/graphql'
 import { serveRest } from './api/rest'
+import { module } from './core/module'
+import { authProvider } from './core/providers'
 import cors from '@fastify/cors'
 import { fastify } from 'fastify'
 
 //Entry point of the application
 async function main() {
+  //Closed by default check
+  const publicFunctions = ['login', 'register', 'readPosts']
+  for (const [fucntionName, functionBody] of Object.entries(module.functions)) {
+    if (
+      !publicFunctions.includes(fucntionName) &&
+      (!('auth' in functionBody.providers) || functionBody.providers.auth !== authProvider) &&
+      (!('auth' in functionBody.guards) || functionBody.guards.auth !== authProvider)
+    ) {
+      throw new Error(`Function "${fucntionName}" is not public and does not have an auth provider or guard.`)
+    }
+  }
   const server = fastify()
   await server.register(cors, { origin: '*' })
   const startTime = new Date().getTime()

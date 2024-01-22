@@ -82,12 +82,13 @@ export function build<
   const E extends functions.ErrorType,
   const R extends functions.OutputRetrieveCapabilities,
   const Pv extends functions.Providers,
+  const G extends functions.Guards,
 >({
   key,
   rate,
   slotProvider,
   onLimit,
-}: RateLimitMiddlewareInput<I, O, E, R, Pv>): functions.Middleware<I, O, E, R, Pv> {
+}: RateLimitMiddlewareInput<I, O, E, R, Pv>): functions.Middleware<I, O, E, R, Pv, G> {
   const provider = new SlidingWindowProvider({
     rate: typeof rate === 'string' ? parseRate(rate) : rate,
     slotProvider: slotProvider ?? new InMemorySlotProvider(),

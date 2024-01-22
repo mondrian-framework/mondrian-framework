@@ -88,7 +88,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
             const applyResult = await functionBody.apply({
               retrieve: retrieveValue ?? {},
               input: input as never,
-              contextInput: contextInput,
+              contextInput: contextInput as Record<string, unknown>,
               tracer: functionBody.tracer,
               logger: thisLogger,
             })

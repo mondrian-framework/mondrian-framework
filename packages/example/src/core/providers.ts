@@ -1,7 +1,7 @@
 import { IdType } from '../interface/common/model'
 import { unauthorized } from '../interface/common/model'
 import { result } from '@mondrian-framework/model'
-import { provider } from '@mondrian-framework/module'
+import { guard, provider } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 

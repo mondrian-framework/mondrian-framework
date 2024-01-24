@@ -5,7 +5,7 @@ import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
 import { allUniqueTypes } from './utils'
 import { model } from '@mondrian-framework/model'
-import { UnionToIntersection, capitalise } from '@mondrian-framework/utils'
+import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
 
 /**
@@ -108,13 +108,13 @@ function assertCorrectErrors(functions: functions.Functions, what: 'providers' |
       for (const [errorName, errorType] of providerErrors) {
         if (!(errorName in functionErrors)) {
           throw new Error(
-            `${capitalise(what)} "${providerName}" use error "${errorName}" that is not defined in function "${functionName}" errors`,
+            `${what === 'providers' ? 'Provider' : 'Guard'} "${providerName}" use error "${errorName}" that is not defined in function "${functionName}" errors`,
           )
         }
         const functionErrorType = functionErrors[errorName]
         if (!model.areEqual(errorType, functionErrorType)) {
           throw new Error(
-            `${capitalise(what)} "${providerName}" use error "${errorName}" that is not equal to the function "${functionName}" error type`,
+            `${what === 'providers' ? 'Provider' : 'Guard'} "${providerName}" use error "${errorName}" that is not equal to the function "${functionName}" error type`,
           )
         }
       }
@@ -123,7 +123,7 @@ function assertCorrectErrors(functions: functions.Functions, what: 'providers' |
 }
 
 function assertCorrectProviderNames(functions: functions.Functions) {
-  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName', 'ok', 'errors']
+  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']
   for (const [functionName, functionBody] of Object.entries(functions)) {
     for (const providerName of Object.keys(functionBody.providers)) {
       if (reservedNames.includes(providerName)) {

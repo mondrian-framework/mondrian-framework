@@ -1,7 +1,7 @@
 import { IdType } from '../interface/common/model'
 import { unauthorized } from '../interface/common/model'
 import { result } from '@mondrian-framework/model'
-import { guard, provider } from '@mondrian-framework/module'
+import { provider } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
@@ -18,10 +18,10 @@ export const authProvider = provider.build({
           return result.ok({ userId })
         }
       } catch {
-        return result.fail(unauthorized.error({ reason: 'InvalidJwt' }))
+        return result.fail({ unauthorized: { details: { reason: 'InvalidJwt' } } })
       }
     }
-    return result.fail(unauthorized.error({ reason: 'AuthorizationMissing' }))
+    return result.fail({ unauthorized: { details: { reason: 'AuthorizationMissing' } } })
   },
 })
 

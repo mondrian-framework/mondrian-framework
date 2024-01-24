@@ -23,7 +23,8 @@ test('Rate limiter middleware', async () => {
     typeof LoginOutput,
     typeof LoginError,
     undefined,
-    { location: typeof locationProvider }
+    { location: typeof locationProvider },
+    {}
   >({
     key: ({ location: { ip }, input }) => (input.email === 'admin@domain.com' ? null : `${ip}-${input.email}`),
     rate: '1 requests in 1 minutes',
@@ -35,7 +36,8 @@ test('Rate limiter middleware', async () => {
     typeof LoginOutput,
     typeof LoginError,
     undefined,
-    { location: typeof locationProvider }
+    { location: typeof locationProvider },
+    {}
   >({
     key: ({ input }) => input.email,
     rate: new Rate({ requests: 1, period: 1, scale: 'hour' }),
@@ -48,7 +50,7 @@ test('Rate limiter middleware', async () => {
       errors: LoginError,
       retrieve: undefined,
     })
-    .withProviders({ location: locationProvider })
+    .with({ providers: { location: locationProvider } })
     .implement({
       body: async ({ input }) => {
         if (input.email === 'test@domain.com' && input.password === '1234') {

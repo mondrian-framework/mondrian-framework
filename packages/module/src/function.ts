@@ -155,29 +155,7 @@ export type FunctionArguments<
    * Openteletry {@link Tracer} of this function.
    */
   readonly tracer: Tracer
-} & ProvidersToContext<Pv> &
-  OkArgsUtil<O, C> &
-  ErrorArgsUtil<E>
-
-type OkArgsUtil<O extends model.Type, C extends OutputRetrieveCapabilities> = [O] extends [model.LiteralType<undefined>]
-  ? {
-      readonly ok: (result?: undefined) => result.Ok<undefined>
-    }
-  : {
-      readonly ok: <const R extends FunctionOkResultInternal<O, C>>(result: R) => result.Ok<R>
-    }
-
-type ErrorArgsUtil<E extends ErrorType> = [E] extends [infer E1 extends model.Types]
-  ? {
-      readonly errors: {
-        [K in keyof E1]: E1[K] extends { error: (args?: infer Args) => any }
-          ? (details?: Args) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
-          : E1[K] extends { error: (args: infer Args) => any }
-            ? (details: Args) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
-            : (details: model.Infer<E1[K]>) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
-      }
-    }
-  : { readonly errors: {} }
+} & ProvidersToContext<Pv>
 
 export type FunctionApplyArguments<
   I extends model.Type,
@@ -476,12 +454,6 @@ type FunctionResultInternal<O extends model.Type, E extends ErrorType, C extends
   :   [Exclude<E, undefined>] extends [infer E1 extends model.Types] ? result.Result<model.Infer<O>, InferErrorType<E1>>
     : [E] extends [undefined] ? result.Result<model.Infer<O>, never>
     : result.Result<never, Record<string, unknown>>
-
-//prettier-ignore
-type FunctionOkResultInternal<O extends model.Type, C extends OutputRetrieveCapabilities> 
-    = [C] extends [{ select: true }] ?
-      model.Infer<model.PartialDeep<O>>
-    : model.Infer<O>
 
 export type InferErrorType<Ts extends model.Types> = 0 extends 1 & Ts
   ? never

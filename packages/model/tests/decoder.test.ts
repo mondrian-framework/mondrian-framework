@@ -287,6 +287,12 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       test('can decode null as undefined', () => {
         checkValue(Model.decodeWithoutValidation(null), undefined)
       })
+
+      test('allowUndefinedValue option should decode as value if undefined is encountered', () => {
+        const l = model.literal('test', { allowUndefinedValue: true })
+        const value = l.decode(undefined)
+        expect(value.isOk && value.value).toBe('test')
+      })
     })
   })
 

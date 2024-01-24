@@ -14,7 +14,28 @@ type ApplyResult<Errors extends functions.ErrorType> = [Exclude<Errors, undefine
 
 /**
  * Utility function to build a guard.
- * A guard is a context provider that always provide an 'undefined' resource.
+ * A guard is a {@link provider.ContextProvider ContextProvider} that always provide an 'undefined' resource.
+ * If used as a guard on a function implementation the provided value will be omitted but the guard logic will run.
+ *
+ * Example:
+ * ```typescript
+ * import { functions, provider, guard } from '@mondrian-framework/module'
+ * import { result } from '@mondrian-framework/model'
+ *
+ * const authGuard = guard.build({
+ *  errors: { unauthorized },
+ *  apply: async ({ auth }: { auth: string }) => {
+ *    if (true) { // some logic
+ *      return result.fail({ ... })
+ *    }
+ * })
+ *
+ * const myFunction = functionDefinition.with({
+ *   guards: { auth: authGuard },
+ * }).implement({
+ *   //...
+ * })
+ * ```
  */
 export function build<const ContextInput extends Record<string, unknown>, const Errors extends functions.ErrorType>(
   guard: GuardDefinition<ContextInput, Errors>,

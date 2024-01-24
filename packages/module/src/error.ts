@@ -1,5 +1,5 @@
 import { model } from '@mondrian-framework/model'
-import { mapObject } from '@mondrian-framework/utils'
+import { capitalise, mapObject } from '@mondrian-framework/utils'
 
 type ErrorsDefinition = { [K in string]: { message: string; details?: model.Type } }
 /**
@@ -9,28 +9,12 @@ type ErrorsDefinition = { [K in string]: { message: string; details?: model.Type
 type Error<Es extends ErrorsDefinition> = {
   [K in keyof Es]: model.ObjectType<
     model.Mutability.Immutable,
-    {
-      message: model.LiteralType<Es[K]['message']>
-      details: [Exclude<Es[K]['details'], undefined>] extends [infer T extends model.Type]
-        ? T
-        : model.LiteralType<undefined>
-    }
-  > &
-    ([Exclude<Es[K]['details'], undefined>] extends [infer T extends model.Type]
-      ? IsOmittable<T> extends true
-        ? {
-            error(details?: model.Infer<T>): {
-              [K2 in K]: { readonly message: Es[K]['message']; readonly details: model.Infer<T> }
-            }
-          }
-        : {
-            error(details: model.Infer<T>): {
-              [K2 in K]: { readonly message: Es[K]['message']; readonly details: model.Infer<T> }
-            }
-          }
-      : {
-          error(details?: undefined): { [K2 in K]: { readonly message: Es[K]['message']; readonly details: undefined } }
-        })
+    [Exclude<Es[K]['details'], undefined>] extends [infer T extends model.Type]
+      ? {
+          details: T
+        }
+      : {}
+  >
 }
 
 /**
@@ -53,64 +37,26 @@ type Error<Es extends ErrorsDefinition> = {
  * }).implement({
  *   async body({ input }) {
  *     if (input === '???') {
- *       return result.fail(errors.tooManyRequests.error({ count: 11, max: 10 }))
+ *       return result.fail({ tooManyRequests: { details: { count: 10, max: 5 } } })
  *     }
  *     //...
- *     return result.fail(errors.unauthorized.error())
+ *     return result.fail({ unauthorized: {} })
  *   })
  * })
  * ```
  */
-export function define<const Es extends ErrorsDefinition>(errors: Es): Error<Es> {
+export function define<const Es extends ErrorsDefinition>(
+  errors: Es,
+  options?: { capitalizeErrorNames?: boolean },
+): Error<Es> {
   return mapObject(errors, (errorCode, { message, details }) => {
-    const detailsType = details ?? model.null()
-    const defaultValue = model.matcher({
-      nullable: () => null,
-      literal: ({ literalValue }) => literalValue,
-      otherwise: () => {
-        throw new Error('Type system should have prevented this.')
-      },
-    })
-    const nonOptional = !canBeOptional(detailsType)
-    const obj: any = model.object(
+    const type = model.object(
       {
-        message: model.literal(message),
-        details: detailsType,
+        message: model.literal(message, { allowUndefinedValue: true }),
+        ...(details ? { details } : {}),
       },
-      { name: errorCode },
+      { name: options?.capitalizeErrorNames ? capitalise(`${errorCode}Error`) : `${errorCode}Error` },
     )
-    //TODO: maybe do not inject but extends ObjectTypeImpl?
-    obj.error = (details: unknown) => ({
-      [errorCode]: {
-        message,
-        details: details === undefined && nonOptional ? defaultValue(detailsType) : details,
-      },
-    })
-    return obj
+    return type as any
   }) as Error<Es>
-}
-
-/**
- * Checks if a type is omittable.
- * It is omittable if it is optional, nullable, literal undefined, or literal null.
- */
-//prettier-ignore
-type IsOmittable<T extends model.Type> 
-  = [T] extends [model.NullableType<any>] ? true
-  : [T] extends [model.OptionalType<any>] ? true
-  : [T] extends [model.LiteralType<any>] ? true
-  : [T] extends [model.NullableType<infer T1>] ? IsOmittable<T1>
-  : [T] extends [(() => infer T1 extends model.Type)] ? IsOmittable<T1>
-  : false
-
-/**
- * Checks if a type contains undefined value.
- */
-function canBeOptional(type: model.Type): boolean {
-  return model.match(type, {
-    optional: () => true,
-    nullable: ({ wrappedType }) => canBeOptional(wrappedType),
-    literal: ({ literalValue }) => literalValue === undefined,
-    otherwise: () => false,
-  })
 }

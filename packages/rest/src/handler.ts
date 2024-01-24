@@ -3,7 +3,7 @@ import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generat
 import { completeRetrieve, methodFromOptions } from './utils'
 import { result, model } from '@mondrian-framework/model'
 import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
-import { http } from '@mondrian-framework/utils'
+import { http, mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
@@ -71,9 +71,12 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
             const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
             const key = Object.keys(error)[0]
             const status = key ? codes[key] ?? 400 : 400
+            const encodedError = mapObject(error, (key, value) =>
+              model.concretise((functionBody.errors ?? {})[key]).encodeWithoutValidation(value as never),
+            )
             const response: http.Response = {
               status,
-              body: JSON.stringify(error),
+              body: JSON.stringify(encodedError),
               headers: { 'Content-Type': 'application/json' },
             }
             endSpanWithResponse({ span, response })

@@ -352,6 +352,9 @@ function openapiComponents<Fs extends functions.FunctionsInterfaces>({
       }
       usedTypes.push(functionBody.input)
       usedTypes.push(functionBody.output)
+      if (functionBody.errors) {
+        usedTypes.push(...Object.values(functionBody.errors))
+      }
     }
   }
   const internalData = emptyInternalData(api.customTypeSchemas)

@@ -21,8 +21,32 @@ type ApplyResult<Context, Errors extends functions.ErrorType> = [Exclude<Errors,
   : Promise<result.Ok<Context>>
 
 /**
- * Utility function to build a context provider.
- * A provider can also be used as a guard.
+ * Utility function to build a {@link ContextProvider}.
+ * Any {@link ContextProvider} could be used as context provider or also as a guard.
+ *
+ * Example:
+ * ```typescript
+ * import { functions, provider, guard } from '@mondrian-framework/module'
+ * import { result } from '@mondrian-framework/model'
+ *
+ * const authProvider = guard.build({
+ *  errors: { unauthorized },
+ *  apply: async ({ auth }: { auth: string }) => {
+ *    if (false) { // some logic
+ *      return result.fail({ ... })
+ *    } else {
+ *      return result.ok({ userId: '...' })
+ *    }
+ * })
+ *
+ * const myFunction = functionDefinition.with({
+ *   providers: { auth: authProvider },
+ * }).implement({
+ *   async body({ input, auth: { userId } }) {
+ *     //...
+ *   }
+ * })
+ * ```
  */
 export function build<
   const ContextInput extends Record<string, unknown>,

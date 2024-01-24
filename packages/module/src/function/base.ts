@@ -26,8 +26,6 @@ export class BaseFunction<
   readonly middlewares: readonly functions.Middleware<I, O, E, C, Pv, G>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
   readonly tracer: Tracer
-  readonly errorsBuilder: Record<string, (error?: unknown) => result.Failure<unknown>>
-  readonly okBuilder: (value?: unknown) => result.Ok<unknown>
 
   constructor(func: functions.Function<I, O, E, C, Pv, G>) {
     this.input = func.input
@@ -40,13 +38,6 @@ export class BaseFunction<
     this.middlewares = func.middlewares ?? []
     this.options = func.options
     this.tracer = voidTracer
-    this.okBuilder = (v) => result.ok(v)
-    this.errorsBuilder = mapObject(func.errors ?? {}, (errorCode, errorType) => (error) => {
-      if (errorType && typeof errorType === 'object' && 'error' in errorType) {
-        return result.fail((errorType as any).error(error)) //using error (see error.ts)
-      }
-      return result.fail({ [errorCode]: error })
-    })
   }
 
   protected async applyProviders(
@@ -57,8 +48,6 @@ export class BaseFunction<
       retrieve: args.retrieve,
       logger: args.logger,
       tracer: args.tracer,
-      ok: this.okBuilder,
-      errors: this.errorsBuilder,
     }
     for (const [providerName, provider] of Object.entries(this.providers)) {
       const res = await provider.apply(args.contextInput)

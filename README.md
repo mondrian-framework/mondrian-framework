@@ -85,7 +85,7 @@ const register = functions
 Congratulations! You've just implemented your initial Mondrian function. To enhance error handling, let's explore a more advanced example where we introduce typed errors:
 
 ```typescript
-import { model } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { functions, error } from '@mondrian-framework/module'
 
 const errors = error.define({
@@ -97,18 +97,17 @@ const register = functions
   .define({
     input: model.object({ email: model.email(), password: model.string() }),
     output: model.object({ jwt: model.string({ minLength: 3 }) }),
-    errors,
   })
   .implement({
-    async body({ input: { email, password }, errors, ok }) {
+    async body({ input: { email, password } }) {
       if (false /* weak password logic */) {
-        return errors.weakPassword({ reason: 'Some reason' })
+        return result.fail({ weakPassword: { details: { reason: 'Some reason' } } })
       }
       if (false /* email check logic */) {
-        return errors.emailAlreadyUsed()
+        return result.fail({ emailAlreadyUsed: {} })
       }
       // register logic ...
-      return ok({ jwt: '...' })
+      return result.ok({ jwt: '...' })
     },
   })
 ```
@@ -258,7 +257,7 @@ By exposing the function as GraphQL endpoint we can navigate the relation betwee
 In this configuration, we have created a data breach. In fact, by retrieving users with the `getUsers` query, we are exposing the entire graph to every caller. To resolve this problem, we can (and in some cases should) implement a first level of security on the function that checks if the caller is an authenticated user. We can do this as follows:
 
 ```typescript
-import { model } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { functions, provider, error } from '@mondrian-framework/module'
 
 const { unauthorized } = error.define({ unauthorized: { message: 'Not authenticated!' } })
@@ -267,11 +266,11 @@ const authProvider = provider.build({
   errors: { unauthorized },
   body: async ({ authorization }: { authorization?: string }) => {
     if (!authorization) {
-      return result.fail(unauthorized.error())
+      return result.fail({ unauthorized: {} })
     }
     const userId = await verifyToken(authorization)
     if (!userId) {
-      return result.fail(unauthorized.error())
+      return result.fail({ unauthorized: {} })
     }
     return result.ok({ userId })
   },
@@ -283,10 +282,11 @@ const getUsers = functions
     errors: { unauthorized },
     retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
   })
-  .withProviders({ auth: authProvider })
+  .with({ providers: { auth: authProvider } })
   .implement({
-    body: async ({ retrieve, auth: { userId }, ok }) => {
-      return ok(await prismaClient.user.findMany(retrieve))
+    body: async ({ retrieve, auth: { userId } }) => {
+      const users = await prismaClient.user.findMany(retrieve)
+      return result.ok(users)
     },
   })
 ```

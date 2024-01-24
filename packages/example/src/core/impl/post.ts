@@ -1,11 +1,12 @@
 import { module } from '../../interface'
 import { PostVisibility } from '../../interface/post'
 import { authProvider, dbProvider, optionalAuthProvider } from '../providers'
+import { result } from '@mondrian-framework/model'
 
 export const writePost = module.functions.writePost
   .with({ providers: { auth: authProvider, db: dbProvider } })
   .implement({
-    async body({ input, retrieve, db: { prisma }, auth: { userId }, ok }) {
+    async body({ input, retrieve, db: { prisma }, auth: { userId } }) {
       if (PostVisibility.decode(input.visibility).isFailure) {
         throw new Error(`Invalid post visibility. Use one of ${PostVisibility.variants}`)
       }
@@ -17,23 +18,23 @@ export const writePost = module.functions.writePost
         },
         select: retrieve.select,
       })
-      return ok(post)
+      return result.ok(post)
     },
   })
 
 export const readPosts = module.functions.readPosts
   .with({ providers: { db: dbProvider, auth: optionalAuthProvider } })
   .implement({
-    async body({ db: { prisma }, retrieve, ok }) {
+    async body({ db: { prisma }, retrieve }) {
       const posts = await prisma.post.findMany(retrieve)
-      return ok(posts)
+      return result.ok(posts)
     },
   })
 
 export const likePost = module.functions.likePost
   .with({ providers: { auth: authProvider, db: dbProvider } })
   .implement({
-    async body({ input, retrieve, auth: { userId }, db: { prisma }, ok, errors }) {
+    async body({ input, retrieve, auth: { userId }, db: { prisma } }) {
       const canViewPost = await prisma.post.findFirst({
         where: {
           id: input.postId,
@@ -45,7 +46,7 @@ export const likePost = module.functions.likePost
         },
       })
       if (!canViewPost) {
-        return errors.postNotFound()
+        return result.fail({ postNotFound: {} })
       }
       await prisma.like.upsert({
         create: {
@@ -62,6 +63,6 @@ export const likePost = module.functions.likePost
         update: {},
       })
       const post = await prisma.post.findFirstOrThrow({ where: { id: input.postId }, select: retrieve.select })
-      return ok(post)
+      return result.ok(post)
     },
   })

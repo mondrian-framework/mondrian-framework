@@ -63,7 +63,7 @@ export function checkOutputType(
           handleFailure({ onFailure, functionName, logger: args.logger, result: mappedError })
           return originalResult
         }
-        return result.fail(mappedError.value as {})
+        return originalResult
       }
 
       const retrieveType = retrieve.fromType(thisFunction.output, thisFunction.retrieve)

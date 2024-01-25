@@ -1,6 +1,6 @@
 import { module } from '../../interface'
 import { User } from '../../interface/user'
-import { slotProvider } from '../../rate-limiter'
+import { store } from '../../rate-limiter'
 import { rateLimitByIpGuard } from '../guards'
 import { authProvider, dbProvider } from '../providers'
 import { result } from '@mondrian-framework/model'
@@ -11,7 +11,7 @@ import jsonwebtoken from 'jsonwebtoken'
 
 const rateLimitByEmailProvider = rateLimiter.buildProvider({
   rate: '10 requests in 1 minute',
-  slotProvider,
+  store,
 })
 
 export const login = module.functions.login

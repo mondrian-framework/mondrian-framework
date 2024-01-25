@@ -1,5 +1,5 @@
 import { Slot } from '../slot'
-import { SlotProvider } from '../slot-provider'
+import { Store } from '../store'
 import { RedisClientType } from '@redis/client'
 
 /**
@@ -77,10 +77,10 @@ class RedisSlot implements Slot {
 }
 
 /**
- * Redis slot provider. Utilizes a Redis client to offer rate limiting capabilities for any middleware.
+ * Redis store. Utilizes a Redis client to offer rate limiting capabilities.
  * It is suitable for use when a service needs to scale horizontally since the slot's counters are shared between machines.
  */
-export class RedisSlotProvider extends SlotProvider {
+export class RedisStore extends Store {
   readonly client: RedisClientType<any, any, any>
   readonly keyPrefix: string
 

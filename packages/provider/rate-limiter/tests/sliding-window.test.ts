@@ -1,18 +1,18 @@
-import { InMemorySlotProvider } from '../src/implementation/in-memory'
-import { RedisSlotProvider } from '../src/implementation/redis'
+import { InMemoryStore } from '../src/implementation/in-memory'
+import { RedisStore } from '../src/implementation/redis'
 import { Rate } from '../src/rate'
 import { SlidingWindow } from '../src/sliding-window'
 import { randomUUID } from 'crypto'
 import { describe, expect, test } from 'vitest'
 
 describe('Sliding window in memory', async () => {
-  const slotProvider = new InMemorySlotProvider()
+  const store = new InMemoryStore()
   test('errors', () => {
     expect(
       () =>
         new SlidingWindow({
           rate: new Rate({ requests: 10, period: 0.5, scale: 'second' }),
-          slotProvider,
+          store,
           key: randomUUID(),
         }),
     ).toThrowError('Sampling period must be at least 1 second')
@@ -20,7 +20,7 @@ describe('Sliding window in memory', async () => {
       () =>
         new SlidingWindow({
           rate: new Rate({ requests: -10, period: 30, scale: 'second' }),
-          slotProvider,
+          store,
           key: randomUUID(),
         }),
     ).toThrowError('Rate limit must be a positive duration')
@@ -28,7 +28,7 @@ describe('Sliding window in memory', async () => {
   test('0 rate limit', () => {
     const window = new SlidingWindow({
       rate: new Rate({ requests: 0, period: 30, scale: 'second' }),
-      slotProvider,
+      store,
       key: randomUUID(),
     })
     expect(window.isRateLimited(new Date())).toBe('rate-limited')
@@ -37,7 +37,7 @@ describe('Sliding window in memory', async () => {
     let now = new Date(100000)
     const window = new SlidingWindow({
       rate: new Rate({ requests: 10, period: 30, scale: 'second' }),
-      slotProvider,
+      store,
       key: randomUUID(),
     })
     expect(window.isRateLimited(now)).toBe('allowed')
@@ -92,12 +92,12 @@ describe('Sliding window redis', async () => {
       return
     },
   }
-  const slotProvider = new RedisSlotProvider(client as any, 'test')
+  const store = new RedisStore(client as any, 'test')
   test('rate limits', async () => {
     let now = new Date(100000)
     const window = new SlidingWindow({
       rate: new Rate({ requests: 10, period: 30, scale: 'second' }),
-      slotProvider,
+      store,
       key: randomUUID(),
     })
     expect(window.isRateLimited(now)).toBe('allowed')

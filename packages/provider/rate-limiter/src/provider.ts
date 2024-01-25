@@ -1,7 +1,7 @@
-import { InMemorySlotProvider } from './implementation/in-memory'
+import { InMemoryStore } from './implementation/in-memory'
 import { Rate, RateLiteral, parseRate } from './rate'
 import { SlidingWindowProvider } from './sliding-window-provider'
-import { SlotProvider } from './slot-provider'
+import { Store } from './store'
 import { model, result } from '@mondrian-framework/model'
 import { functions, guard, provider } from '@mondrian-framework/module'
 
@@ -14,12 +14,12 @@ type RateLimitProviderInput = {
    */
   rate: Rate | RateLiteral
   /**
-   * The actual implementation of the rate-limiter storage. If undefined is passed, then an {@link InMemorySlotProvider} is used.
-   * With {@link InMemorySlotProvider}, the counters are kept in memory only in this process.
+   * The actual implementation of the rate-limiter storage. If undefined is passed, then an {@link InMemoryStore} is used.
+   * With {@link InMemoryStore}, the counters are kept in memory only in this process.
    *
-   * If the service scales across multiple machines, a {@link RedisSlotProvider} should be used to share the {@link Slot}'s counters.
+   * If the service scales across multiple machines, a {@link RedisStore} should be used to share the {@link Slot}'s counters.
    */
-  slotProvider?: SlotProvider
+  store?: Store
 }
 
 /**
@@ -55,19 +55,19 @@ type RateLimitGuardInput<
 /**
  * Builds a guard that limits a function execution with the given logic.
  * You can group different calls together by using the key function. If the key function returns `null`, no rate limiting is applied.
- * NB: Use a {@link RedisSlotProvider} or equivalent in production if you have multiple machines serving the same services.
- * The recommendation is not to use the {@link InMemorySlotProvider} in production. If you do not specify a slotProvider, an {@link InMemorySlotProvider} will be used.
+ * NB: Use a {@link RedisStore} or equivalent in production if you have multiple machines serving the same services.
+ * The recommendation is not to use the {@link InMemoryStore} in production. If you do not specify a store, an {@link InMemoryStore} will be used.
  *
  * Example:
  * ```typescript
- * import { rateLimiter, RedisSlotProvider, SlotProvider } from '@mondrian-framework/rate-limiter'
+ * import { rateLimiter, RedisStore, Store } from '@mondrian-framework/rate-limiter'
  * import { createClient } from '@redis/client'
  *
  * //Slot provider initialization
  * const redisClient = process.env.REDIS_URL ? createClient() : undefined
  * redisClient?.on('error', (err) => console.log('Redis Client Error', err))
  * redisClient?.connect()
- * export const slotProvider: SlotProvider | undefined = redisClient && new RedisSlotProvider(redisClient)
+ * export const store: Store | undefined = redisClient && new RedisStore(redisClient)
  *
  * const rateLimitByIpEmailGuard = rateLimiter.buildGuard({
  *   errors: { tooManyRequests: model.string() },
@@ -82,11 +82,11 @@ export function buildGuard<const ContextInput extends Record<string, unknown>, c
   key,
   rate,
   onLimit,
-  slotProvider,
+  store,
 }: RateLimitGuardInput<ContextInput, Es>): provider.ContextProvider<ContextInput, undefined, Es> {
   const windowProvider = new SlidingWindowProvider({
     rate: typeof rate === 'string' ? parseRate(rate) : rate,
-    slotProvider: slotProvider ?? new InMemorySlotProvider(),
+    store: store ?? new InMemoryStore(),
   })
   return guard.build<ContextInput, Es>({
     errors,
@@ -127,14 +127,14 @@ type RateLimiter = {
 
 /**
  * Builds a provider guard that provides a rate limiter.
- * NB: Use a {@link RedisSlotProvider} or equivalent in production if you have multiple machines serving the same services.
- * The recommendation is not to use the {@link InMemorySlotProvider} in production. If you do not specify a slotProvider, an {@link InMemorySlotProvider} will be used.
+ * NB: Use a {@link RedisStore} or equivalent in production if you have multiple machines serving the same services.
+ * The recommendation is not to use the {@link InMemoryStore} in production. If you do not specify a store, an {@link InMemoryStore} will be used.
  *
  * Example:
  * ```typescript
  * const rateLimitByEmailProvider = rateLimiter.buildProvider({
  *   rate: '10 requests in 1 minute',
- *   slotProvider,
+ *   store,
  * })
  *
  * const login = functions.define({
@@ -158,11 +158,11 @@ type RateLimiter = {
  */
 export function buildProvider({
   rate,
-  slotProvider,
+  store,
 }: RateLimitProviderInput): provider.ContextProvider<{}, RateLimiter, undefined> {
   const windowProvider = new SlidingWindowProvider({
     rate: typeof rate === 'string' ? parseRate(rate) : rate,
-    slotProvider: slotProvider ?? new InMemorySlotProvider(),
+    store: store ?? new InMemoryStore(),
   })
   return provider.build<{}, any, undefined>({
     async apply(_: {}) {

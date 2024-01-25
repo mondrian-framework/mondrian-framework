@@ -1,5 +1,5 @@
 import { tooManyRequests } from '../interface/common/model'
-import { slotProvider } from '../rate-limiter'
+import { store } from '../rate-limiter'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
 
 export const rateLimitByIpGuard = rateLimiter.buildGuard({
@@ -7,5 +7,5 @@ export const rateLimitByIpGuard = rateLimiter.buildGuard({
   key: ({ ip }: { ip: string }) => ip,
   onLimit: () => ({ tooManyRequests: { details: { limitedBy: 'ip' as const } } }),
   rate: '100 requests in 1 hours',
-  slotProvider,
+  store,
 })

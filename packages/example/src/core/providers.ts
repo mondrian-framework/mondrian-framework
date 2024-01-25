@@ -39,4 +39,3 @@ export const dbProvider = provider.build({
     return result.ok({ prisma: prismaSingleton })
   },
 })
-

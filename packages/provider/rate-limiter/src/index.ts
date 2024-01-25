@@ -1,5 +1,5 @@
 export * as rateLimiter from './exports'
 export { Slot } from './slot'
-export { SlotProvider } from './slot-provider'
-export { RedisSlotProvider } from './implementation/redis'
+export { Store } from './store'
+export { RedisStore } from './implementation/redis'
 export { Rate, RateLiteral, parseRate } from './rate'

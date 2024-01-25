@@ -24,7 +24,7 @@ Then query your endpoint with graphql or rest:
 ```bash
 curl --location --globoff 'http://localhost:4000/graphql' \
 --header 'Content-Type: application/json' \
---data-raw '{"query":"mutation register { user { register(input: { email: \"john@domain.com\", password: \"12345\", firstName: \"John\", lastName: \"Wick\" }) { ... on MyUser { id } ... on RegisterFailure { errorCode errorValue } } } }" }'
+--data-raw '{"query":"mutation register { user { register(input: { email: \"john@domain.com\", password: \"12345\", firstName: \"John\", lastName: \"Wick\" }) { ... on MyUser { id } ... on RegisterFailure { code } } } }" }'
 ```
 
 ## How it works

@@ -1,5 +1,5 @@
 import { Slot } from '../slot'
-import { SlotProvider } from '../slot-provider'
+import { Store } from '../store'
 
 /**
  * This slot implementation uses a single counter.
@@ -43,7 +43,7 @@ class InMemorySlot implements Slot {
  * This class provides only {@link InMemorySlot} slots.
  * It should not be used in production.
  */
-export class InMemorySlotProvider extends SlotProvider {
+export class InMemoryStore extends Store {
   protected createSlot(args: { startingTimeSeconds: number; durationSeconds: number; key: string }): Slot {
     return new InMemorySlot(args)
   }

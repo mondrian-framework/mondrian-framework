@@ -1,7 +1,7 @@
-import { functions, logger, provider, retrieve, utils } from '.'
+import { functions, guard, logger, provider, retrieve } from '.'
 import { BaseFunction } from './function/base'
 import { result, model } from '@mondrian-framework/model'
-import { AtLeastOnePropertyOf, UnionToIntersection } from '@mondrian-framework/utils'
+import { AtLeastOnePropertyOf, Expand, UnionToIntersection } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
 import { randomInt } from 'crypto'
 
@@ -40,6 +40,10 @@ export interface FunctionInterface<
  * A map of {@link provider.ContextProvider ContextProvider}s.
  */
 export type Providers = Record<string, provider.ContextProvider<any, unknown, ErrorType>>
+/**
+ * A map of {@link provider.ContextProvider ContextProvider}s.
+ */
+export type Guards = Record<string, provider.ContextProvider<any, any, ErrorType>>
 
 /**
  * Mondrian function.
@@ -50,6 +54,7 @@ export interface Function<
   E extends ErrorType = undefined,
   C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
   Pv extends Providers = Providers,
+  G extends Guards = Guards,
 > extends FunctionInterface<I, O, E, C> {
   /**
    * Function body.
@@ -60,9 +65,13 @@ export interface Function<
    */
   readonly providers: Pv
   /**
+   * Function guards.
+   */
+  readonly guards: G
+  /**
    * Function {@link Middleware Middlewares}
    */
-  readonly middlewares?: readonly Middleware<I, O, E, C, Pv>[]
+  readonly middlewares?: readonly Middleware<I, O, E, C, Pv, G>[]
 }
 
 /**
@@ -90,11 +99,12 @@ export interface FunctionImplementation<
   E extends ErrorType = ErrorType,
   C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
   Pv extends Providers = Providers,
-> extends Function<I, O, E, C, Pv> {
+  G extends Guards = Guards,
+> extends Function<I, O, E, C, Pv, G> {
   /**
    * Function apply. This executes function's {@link Middleware} and function's body.
    */
-  readonly apply: (args: FunctionApplyArguments<I, O, C, Pv>) => FunctionResult<O, E, C>
+  readonly apply: (args: FunctionApplyArguments<I, O, C, Pv, G>) => FunctionResult<O, E, C>
   /**
    * Openteletry {@link Tracer} of this function.
    */
@@ -145,31 +155,14 @@ export type FunctionArguments<
    * Openteletry {@link Tracer} of this function.
    */
   readonly tracer: Tracer
-} & ProvidersToContext<Pv> &
-  OkArgsUtil<O, C> &
-  ErrorArgsUtil<E>
-
-type OkArgsUtil<O extends model.Type, C extends OutputRetrieveCapabilities> = {
-  readonly ok: (result: FunctionOkResultInternal<O, C>) => result.Ok<FunctionOkResultInternal<O, C>>
-}
-
-type ErrorArgsUtil<E extends ErrorType> = [E] extends [infer E1 extends model.Types]
-  ? {
-      readonly errors: {
-        [K in keyof E1]: E1[K] extends { error: (args?: infer Args) => any }
-          ? (details?: Args) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
-          : E1[K] extends { error: (args: infer Args) => any }
-            ? (details: Args) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
-            : (details: model.Infer<E1[K]>) => result.Failure<{ [K2 in K]: model.Infer<E1[K]> }>
-      }
-    }
-  : { readonly errors: {} }
+} & ProvidersToContext<Pv>
 
 export type FunctionApplyArguments<
   I extends model.Type,
   O extends model.Type,
   C extends OutputRetrieveCapabilities,
   Pv extends Providers,
+  G extends Guards,
 > = {
   /**
    * Function's input. It respects the function input {@link model.Type Type}.
@@ -182,7 +175,7 @@ export type FunctionApplyArguments<
   /**
    * Function context.
    */
-  readonly contextInput: ProvidersToContextInput<Pv>
+  readonly contextInput: FunctionContextInput<Pv, G>
   /**
    * Function logger.
    */
@@ -214,6 +207,7 @@ export type Middleware<
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Pv extends Providers,
+  G extends Guards,
 > = {
   /**
    * Middleware descriptive name.
@@ -229,7 +223,7 @@ export type Middleware<
   apply: (
     args: FunctionArguments<I, O, E, C, Pv>,
     next: (args: FunctionArguments<I, O, E, C, Pv>) => FunctionResult<O, E, C>,
-    fn: FunctionImplementation<I, O, E, C, Pv>,
+    fn: FunctionImplementation<I, O, E, C, Pv, G>,
   ) => FunctionResult<O, E, C>
 }
 
@@ -237,9 +231,9 @@ export type Middleware<
  * A map of {@link FunctionImplementation}s.
  */
 export type Functions<
-  Fs extends Record<string, FunctionImplementation<any, any, any, any, any>> = Record<
+  Fs extends Record<string, FunctionImplementation<any, any, any, any, any, any>> = Record<
     string,
-    FunctionImplementation<any, any, any, any, any>
+    FunctionImplementation<any, any, any, any, any, any>
   >,
 > = {
   [K in keyof Fs]: Fs[K]
@@ -257,6 +251,7 @@ type FunctionImplementor<
   E extends ErrorType,
   R extends OutputRetrieveCapabilities,
   Pv extends Providers,
+  G extends Guards,
 > = {
   /**
    * Implements the function definition by defining the body of the function
@@ -278,8 +273,8 @@ type FunctionImplementor<
    * ```
    */
   implement: (
-    implementation: Pick<Function<I, O, E, R, Pv>, 'body' | 'middlewares'>,
-  ) => FunctionImplementation<I, O, E, R, Pv>
+    implementation: Pick<Function<I, O, E, R, Pv, G>, 'body' | 'middlewares'>,
+  ) => FunctionImplementation<I, O, E, R, Pv, G>
 }
 
 type FunctionMocker<
@@ -304,7 +299,10 @@ type FunctionProviderer<
   /**
    * Binds some {@link provider.ContextProvider ContextProvider}s to the function.
    */
-  withProviders<const Pv extends Providers>(providers: Pv): FunctionImplementor<I, O, E, R, Pv>
+  with<const Pv extends Providers, const G extends Guards>(args: {
+    providers?: Pv
+    guards?: G
+  }): FunctionImplementor<I, O, E, R, Pv, G>
 }
 
 /**
@@ -331,7 +329,7 @@ export function define<
 >(
   func: Partial<FunctionInterface<I, O, E, R>>,
 ): FunctionInterface<I, O, E, R> &
-  FunctionImplementor<I, O, E, R, {}> &
+  FunctionImplementor<I, O, E, R, {}, {}> &
   FunctionMocker<I, O, E, R> &
   FunctionProviderer<I, O, E, R> {
   const fi = {
@@ -341,23 +339,28 @@ export function define<
     retrieve: undefined as R,
     ...func,
   }
-  function implement<Pv extends Providers>(providers: Pv) {
-    return (implementation: Pick<Function<I, O, E, R, Pv>, 'body' | 'middlewares'>) => {
+  function implement<Pv extends Providers, G extends Guards>({ providers, guards }: { providers?: Pv; guards?: G }) {
+    return (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body' | 'middlewares'>) => {
       if (func.errors) {
         const undefinedError = Object.entries(func.errors).find(([_, errorType]) => model.isOptional(errorType))
         if (undefinedError) {
           throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
         }
       }
-      return new BaseFunction<I, O, E, R, Pv>({ ...fi, providers, ...implementation })
+      return new BaseFunction<I, O, E, R, Pv, G>({
+        ...fi,
+        providers: providers ?? ({} as Pv),
+        guards: guards ?? ({} as G),
+        ...implementation,
+      })
     }
   }
   return {
     ...fi,
     mock: createMockedFunction(fi),
     implement: implement({}),
-    withProviders<const Pv extends Providers>(providers: Pv) {
-      return { implement: implement(providers) }
+    with<const Pv extends Providers = {}, const G extends Guards = {}>(args: { providers?: Pv; guards?: G }) {
+      return { implement: implement(args) }
     },
   }
 }
@@ -385,9 +388,10 @@ function createMockedFunction<
   return (options) => {
     const outputType = model.concretise(fi.output)
     const errorProbability = options?.errorProbability ?? 0
-    return new BaseFunction<I, O, E, R, {}>({
+    return new BaseFunction<I, O, E, R, {}, {}>({
       ...fi,
       providers: {},
+      guards: {},
       async body() {
         if (fi.errors && errorProbability > Math.random()) {
           const errors = Object.entries(fi.errors)
@@ -410,12 +414,22 @@ export type ProvidersToContext<Pv extends Providers> = {
   ? Context
   : {}
 
-export type ProvidersToContextInput<Pv extends functions.Providers> =
-  UnionToIntersection<
+export type FunctionContextInput<Pv extends functions.Providers, G extends functions.Guards> = Expand<
+  (UnionToIntersection<
     { [K in keyof Pv]: Pv[K] extends provider.ContextProvider<infer C, any, any> ? C : {} }[keyof Pv]
   > extends infer ContextInput extends Record<string, unknown>
-    ? ContextInput
-    : {}
+    ? 0 extends 1 & ContextInput
+      ? {}
+      : ContextInput
+    : {}) &
+    (UnionToIntersection<
+      { [K in keyof G]: G[K] extends provider.ContextProvider<infer C, any, any> ? C : {} }[keyof G]
+    > extends infer ContextInput extends Record<string, unknown>
+      ? 0 extends 1 & ContextInput
+        ? {}
+        : ContextInput
+      : {})
+>
 
 export type ErrorType = model.Types | undefined
 
@@ -440,18 +454,6 @@ type FunctionResultInternal<O extends model.Type, E extends ErrorType, C extends
   :   [Exclude<E, undefined>] extends [infer E1 extends model.Types] ? result.Result<model.Infer<O>, InferErrorType<E1>>
     : [E] extends [undefined] ? result.Result<model.Infer<O>, never>
     : result.Result<never, Record<string, unknown>>
-
-//prettier-ignore
-type FunctionOkResultInternal<O extends model.Type, C extends OutputRetrieveCapabilities> 
-    = [C] extends [{ select: true }] ?
-      model.Infer<model.PartialDeep<O>>
-    : model.Infer<O>
-
-//prettier-ignore
-type FunctionFailureResultInternal<E extends ErrorType> 
-    = [Exclude<E, undefined>] extends [infer E1 extends model.Types] ?
-      InferErrorType<E1>
-    : never
 
 export type InferErrorType<Ts extends model.Types> = 0 extends 1 & Ts
   ? never

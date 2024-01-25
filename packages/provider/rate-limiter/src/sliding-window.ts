@@ -1,6 +1,6 @@
 import { Rate } from './rate'
 import { Slot } from './slot'
-import { SlotProvider } from './slot-provider'
+import { Store } from './store'
 
 /**
  * This class keeps count of a series of requests and determines whether the current rate exceeds the defined one.
@@ -14,11 +14,11 @@ import { SlotProvider } from './slot-provider'
 export class SlidingWindow {
   private readonly samplingPeriodSeconds: number
   private readonly rateLimit: number
-  private readonly slotProvider: SlotProvider
+  private readonly store: Store
   private readonly key: string
   private rateLimitedUntilSeconds: number | null
 
-  constructor({ rate, slotProvider, key }: { rate: Rate; slotProvider: SlotProvider; key: string }) {
+  constructor({ rate, store, key }: { rate: Rate; store: Store; key: string }) {
     if (rate.periodInSeconds < 1) {
       throw new Error('Sampling period must be at least 1 second')
     }
@@ -28,12 +28,12 @@ export class SlidingWindow {
     this.rateLimitedUntilSeconds = null
     this.samplingPeriodSeconds = rate.periodInSeconds
     this.rateLimit = rate.requests
-    this.slotProvider = slotProvider
+    this.store = store
     this.key = key
   }
 
   private getSlot(slotStartingTimeSeconds: number, now: Date): Slot {
-    return this.slotProvider.getOrCreateSlot(
+    return this.store.getOrCreateSlot(
       {
         startingTimeSeconds: slotStartingTimeSeconds,
         durationSeconds: this.samplingPeriodSeconds,
@@ -62,9 +62,10 @@ export class SlidingWindow {
    * Checks if it's allowed to make another request based on the specified rate limit and the current request count.
    * If it's allowed, the passing request will be counted; otherwise, the rate-limited request will not be counted.
    * @param now The current time.
+   * @param increase Whether to count the request or not.
    * @return 'allowed' if the request can go through, 'rate-limited' otherwise.
    */
-  isRateLimited(now: Date): 'allowed' | 'rate-limited' {
+  isRateLimited(now: Date, increase = true): 'allowed' | 'rate-limited' {
     const nowSeconds = now.getTime() / 1000.0
     //check if we cached the rate-limited-until
     if (this.rateLimitedUntilSeconds !== null && nowSeconds <= this.rateLimitedUntilSeconds) {
@@ -91,11 +92,13 @@ export class SlidingWindow {
         this.samplingPeriodSeconds
     if (requests < this.rateLimit) {
       //here we are not rate limited yet
-      currentSlot.inc()
+      if (increase) {
+        currentSlot.inc()
+      }
       return 'allowed'
     } else {
       // We can predict for how much time this sliding window will block new requests.
-      // This is useful to make it more efficient when the SlotProvider is not in memory.
+      // This is useful to make it more efficient when the Store is not in memory.
       if (oldValue === 0) {
         //if the old slot is not used, this is rate limited only by the current slot, so we'll block new requests until a new slot appears
         this.rateLimitedUntilSeconds = currentSlot.startingTimeSeconds + this.samplingPeriodSeconds

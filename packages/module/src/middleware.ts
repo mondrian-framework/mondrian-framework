@@ -14,7 +14,8 @@ export function checkMaxSelectionDepth(
   model.Type,
   functions.ErrorType,
   functions.OutputRetrieveCapabilities,
-  functions.Providers
+  functions.Providers,
+  functions.Guards
 > {
   return {
     name: 'Check max selection depth',
@@ -41,7 +42,8 @@ export function checkOutputType(
   model.Type,
   functions.ErrorType,
   functions.OutputRetrieveCapabilities,
-  functions.Providers
+  functions.Providers,
+  functions.Guards
 > {
   return {
     name: 'Check output type',
@@ -61,7 +63,7 @@ export function checkOutputType(
           handleFailure({ onFailure, functionName, logger: args.logger, result: mappedError })
           return originalResult
         }
-        return result.fail(mappedError.value as {})
+        return originalResult
       }
 
       const retrieveType = retrieve.fromType(thisFunction.output, thisFunction.retrieve)
@@ -127,7 +129,8 @@ export function checkPolicies(
   model.Type,
   functions.ErrorType,
   functions.OutputRetrieveCapabilities,
-  functions.Providers
+  functions.Providers,
+  functions.Guards
 > {
   return {
     name: 'Check policies',

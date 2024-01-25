@@ -18,26 +18,11 @@ test('Rate limiter middleware', async () => {
     },
   })
   const LoginError = { invalidUsernameOrPassword: model.string(), tooManyRequests: model.string() }
-  const rateLimitByIpEmail = rateLimiter.build<
-    typeof LoginInput,
-    typeof LoginOutput,
-    typeof LoginError,
-    undefined,
-    { location: typeof locationProvider }
-  >({
-    key: ({ location: { ip }, input }) => (input.email === 'admin@domain.com' ? null : `${ip}-${input.email}`),
+  const rateLimitByIpEmail = rateLimiter.buildProvider({
     rate: '1 requests in 1 minutes',
-    onLimit: () => Promise.resolve(result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })),
   })
 
-  const rateLimitByEmail = rateLimiter.build<
-    typeof LoginInput,
-    typeof LoginOutput,
-    typeof LoginError,
-    undefined,
-    { location: typeof locationProvider }
-  >({
-    key: ({ input }) => input.email,
+  const rateLimitByEmail = rateLimiter.buildProvider({
     rate: new Rate({ requests: 1, period: 1, scale: 'hour' }),
   })
 
@@ -48,15 +33,20 @@ test('Rate limiter middleware', async () => {
       errors: LoginError,
       retrieve: undefined,
     })
-    .withProviders({ location: locationProvider })
+    .with({ providers: { location: locationProvider, rateLimitByEmail, rateLimitByIpEmail } })
     .implement({
-      body: async ({ input }) => {
+      body: async ({ input, rateLimitByEmail, rateLimitByIpEmail, location: { ip } }) => {
+        if (input.email !== 'admin@domain.com' && rateLimitByIpEmail.apply(`${ip}:${input.email}`) === 'rate-limited') {
+          return result.fail({ tooManyRequests: 'Too many requests. Retry in few minutes.' })
+        }
+        if (rateLimitByEmail.apply(input.email) === 'rate-limited') {
+          throw new Error('Too many requests')
+        }
         if (input.email === 'test@domain.com' && input.password === '1234') {
           return result.ok({ jwt: '...' })
         }
         return result.fail({ invalidUsernameOrPassword: '' })
       },
-      middlewares: [rateLimitByIpEmail, rateLimitByEmail],
     })
 
   const m = module.build({

@@ -18,10 +18,10 @@ export const authProvider = provider.build({
           return result.ok({ userId })
         }
       } catch {
-        return result.fail(unauthorized.error({ reason: 'InvalidJwt' }))
+        return result.fail({ unauthorized: { details: { reason: 'InvalidJwt' } } })
       }
     }
-    return result.fail(unauthorized.error({ reason: 'AuthorizationMissing' }))
+    return result.fail({ unauthorized: { details: { reason: 'AuthorizationMissing' } } })
   },
 })
 
@@ -37,11 +37,5 @@ const prismaSingleton = new PrismaClient()
 export const dbProvider = provider.build({
   apply: async () => {
     return result.ok({ prisma: prismaSingleton })
-  },
-})
-
-export const localizationProvider = provider.build({
-  apply: async ({ ip }: { ip: string }) => {
-    return result.ok({ ip })
   },
 })

@@ -1,5 +1,5 @@
-import { functions, provider, security } from '.'
-import { ErrorType, OutputRetrieveCapabilities, Providers, Tracer } from './function'
+import { functions, security } from '.'
+import { ErrorType, Guards, OutputRetrieveCapabilities, Providers } from './function'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
@@ -34,14 +34,14 @@ export interface Module<Fs extends functions.Functions = functions.Functions> ex
  */
 export type FunctionsToContextInput<Fs extends functions.Functions = functions.Functions> = UnionToIntersection<
   {
-    [K in keyof Fs]: functions.ProvidersToContextInput<Fs[K]['providers']>
+    [K in keyof Fs]: functions.FunctionContextInput<Fs[K]['providers'], Fs[K]['guards']>
   }[keyof Fs]
 >
 
 /**
  * Convert a map of functions to the union of possible functions arguments.
  */
-export type ModuleMiddlewareInputArgs<Fs extends functions.Functions> = {
+type ModuleMiddlewareInputArgs<Fs extends functions.Functions> = {
   [K in keyof Fs]: functions.FunctionArguments<
     Fs[K]['input'],
     Fs[K]['output'],
@@ -100,21 +100,21 @@ function assertUniqueNames(functions: functions.FunctionsInterfaces) {
 /**
  * Checks if the errors used by the providers are defined in the function errors.
  */
-function assertCorrectProviderErrors(functions: functions.Functions) {
+function assertCorrectErrors(functions: functions.Functions, what: 'providers' | 'guards') {
   for (const [functionName, functionBody] of Object.entries(functions)) {
-    for (const [providerName, provider] of Object.entries(functionBody.providers as functions.Providers)) {
+    for (const [providerName, provider] of Object.entries(functionBody[what] as functions.Providers)) {
       const providerErrors = Object.entries(provider.errors ?? {})
       const functionErrors = (functionBody.errors ?? {}) as model.Types
       for (const [errorName, errorType] of providerErrors) {
         if (!(errorName in functionErrors)) {
           throw new Error(
-            `Provider "${providerName}" use error "${errorName}" that is not defined in function "${functionName}" errors`,
+            `${what === 'providers' ? 'Provider' : 'Guard'} "${providerName}" use error "${errorName}" that is not defined in function "${functionName}" errors`,
           )
         }
         const functionErrorType = functionErrors[errorName]
         if (!model.areEqual(errorType, functionErrorType)) {
           throw new Error(
-            `Provider "${providerName}" use error "${errorName}" that is not equal to the function "${functionName}" error type`,
+            `${what === 'providers' ? 'Provider' : 'Guard'} "${providerName}" use error "${errorName}" that is not equal to the function "${functionName}" error type`,
           )
         }
       }
@@ -123,7 +123,7 @@ function assertCorrectProviderErrors(functions: functions.Functions) {
 }
 
 function assertCorrectProviderNames(functions: functions.Functions) {
-  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName', 'ok', 'errors']
+  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']
   for (const [functionName, functionBody] of Object.entries(functions)) {
     for (const providerName of Object.keys(functionBody.providers)) {
       if (reservedNames.includes(providerName)) {
@@ -152,7 +152,8 @@ function assertCorrectProviderNames(functions: functions.Functions) {
  */
 export function build<const Fs extends functions.Functions>(module: Module<Fs>): Module<Fs> {
   assertUniqueNames(module.functions)
-  assertCorrectProviderErrors(module.functions)
+  assertCorrectErrors(module.functions, 'providers')
+  assertCorrectErrors(module.functions, 'guards')
   assertCorrectProviderNames(module.functions)
 
   const maxProjectionDepthMiddleware =
@@ -172,7 +173,7 @@ export function build<const Fs extends functions.Functions>(module: Module<Fs>):
           ? [middleware.checkPolicies((args) => module.policies!({ ...args, functionName } as any))]
           : []
 
-      const func: functions.FunctionImplementation = {
+      const func = {
         ...functionBody,
         middlewares: [
           ...maxProjectionDepthMiddleware,
@@ -180,7 +181,7 @@ export function build<const Fs extends functions.Functions>(module: Module<Fs>):
           ...checkPoliciesMiddleware,
           ...checkOutputTypeMiddleware,
         ],
-      }
+      } as functions.FunctionImplementation
       if (module.options?.opentelemetry) {
         const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
@@ -191,7 +192,8 @@ export function build<const Fs extends functions.Functions>(module: Module<Fs>):
           model.Type,
           ErrorType,
           OutputRetrieveCapabilities,
-          Providers
+          Providers,
+          Guards
         > = new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
         return [functionName, wrappedFunction]
       } else {
@@ -212,7 +214,7 @@ export function define<const Fs extends functions.FunctionsInterfaces>(
 ): ModuleInterface<Fs> & {
   implement: <
     FsI extends {
-      [K in keyof Fs]: functions.FunctionImplementation<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], any, any>
+      [K in keyof Fs]: functions.FunctionImplementation<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], any, any, any>
     },
   >(
     module: Pick<Module<FsI>, 'functions' | 'policies' | 'options'>,

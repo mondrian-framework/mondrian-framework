@@ -1,21 +1,35 @@
 import { module } from '../../interface'
 import { User } from '../../interface/user'
-import { slotProvider } from '../../rate-limiter'
-import { authProvider, dbProvider, localizationProvider } from '../providers'
+import { store } from '../../rate-limiter'
+import { rateLimitByIpGuard } from '../guards'
+import { authProvider, dbProvider } from '../providers'
+import { result } from '@mondrian-framework/model'
 import { retrieve } from '@mondrian-framework/module'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
+const rateLimitByEmailProvider = rateLimiter.buildProvider({
+  rate: '10 requests in 1 minute',
+  store,
+})
+
 export const login = module.functions.login
-  .withProviders({ db: dbProvider, localization: localizationProvider })
+  .with({
+    providers: { db: dbProvider, rateLimiterByEmail: rateLimitByEmailProvider },
+    guards: { rateLimitByIpGuard },
+  })
   .implement({
-    body: async ({ input, logger, db: { prisma }, errors, ok }) => {
+    async body({ input, logger, db: { prisma }, rateLimiterByEmail }) {
       const { email, password } = input
+      if (rateLimiterByEmail.check(email) === 'rate-limited') {
+        return result.fail({ tooManyRequests: { details: { limitedBy: 'email' } } })
+      }
       const loggedUser = await prisma.user.findFirst({ where: { email, password }, select: { id: true } })
       if (!loggedUser) {
         logger.logWarn(`${input.email} failed login`)
-        return errors.invalidLogin()
+        rateLimiterByEmail.apply(email)
+        return result.fail({ invalidLogin: {} })
       }
       await prisma.user.update({
         where: { id: loggedUser.id },
@@ -23,31 +37,12 @@ export const login = module.functions.login
       })
       const secret = process.env.JWT_SECRET ?? 'secret'
       const jwt = jsonwebtoken.sign({ sub: loggedUser.id }, secret)
-      return ok(jwt)
+      return result.ok(jwt)
     },
-    middlewares: [
-      rateLimiter.build({
-        key: ({ input }) => input.email,
-        rate: '10 requests in 1 minute',
-        onLimit: async ({ errors }) => {
-          //Improvement: warn the user, maybe block the account
-          return errors.tooManyRequests({ limitedBy: 'email' })
-        },
-        slotProvider,
-      }),
-      rateLimiter.build({
-        key: ({ localization: { ip } }) => ip,
-        rate: '10000 requests in 1 hours',
-        onLimit: async ({ errors }) => {
-          return errors.tooManyRequests({ limitedBy: 'ip' })
-        },
-        slotProvider,
-      }),
-    ],
   })
 
-export const register = module.functions.register.withProviders({ db: dbProvider }).implement({
-  body: async ({ input, db: { prisma }, ok, errors }) => {
+export const register = module.functions.register.with({ providers: { db: dbProvider } }).implement({
+  async body({ input, db: { prisma } }) {
     try {
       const user = await prisma.user.create({
         data: {
@@ -56,18 +51,18 @@ export const register = module.functions.register.withProviders({ db: dbProvider
           loginAt: new Date(),
         },
       })
-      return ok(user)
+      return result.ok(user)
     } catch {
       //unique index fail
-      return errors.emailAlreadyTaken()
+      return result.fail({ emailAlreadyTaken: {} })
     }
   },
 })
 
-export const follow = module.functions.follow.withProviders({ auth: authProvider, db: dbProvider }).implement({
-  body: async ({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma }, errors, ok }) => {
+export const follow = module.functions.follow.with({ providers: { auth: authProvider, db: dbProvider } }).implement({
+  async body({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma } }) {
     if (input.userId === userId || (await prisma.user.count({ where: { id: input.userId } })) === 0) {
-      return errors.userNotExists()
+      return result.fail({ userNotExists: {} })
     }
     await prisma.follower.upsert({
       create: {
@@ -88,13 +83,15 @@ export const follow = module.functions.follow.withProviders({ auth: authProvider
       thisRetrieve,
     )
     const user = await prisma.user.findFirstOrThrow(args)
-    return ok(user)
+    return result.ok(user)
   },
 })
 
-export const getUsers = module.functions.getUsers.withProviders({ auth: authProvider, db: dbProvider }).implement({
-  body: async ({ retrieve: thisRetrieve, db: { prisma }, ok }) => {
-    const users = await prisma.user.findMany(thisRetrieve)
-    return ok(users)
-  },
-})
+export const getUsers = module.functions.getUsers
+  .with({ providers: { auth: authProvider, db: dbProvider } })
+  .implement({
+    async body({ retrieve: thisRetrieve, db: { prisma } }) {
+      const users = await prisma.user.findMany(thisRetrieve)
+      return result.ok(users)
+    },
+  })

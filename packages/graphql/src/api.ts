@@ -57,6 +57,7 @@ export type ErrorHandler<F extends functions.Functions, ServerContext> = (
     logger: logger.MondrianLogger
     functionName: keyof F
     tracer: functions.Tracer
+    //TODO: tracer & logger inside functionArgs?
     functionArgs: {
       retrieve: unknown
       input: unknown

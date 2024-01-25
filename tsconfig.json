@@ -23,7 +23,7 @@
       "@mondrian-framework/arbitrary": ["./packages/arbitrary"],
       "@mondrian-framework/module": ["./packages/module"],
       "@mondrian-framework/cli-commander": ["./packages/cli-commander"],
-      "@mondrian-framework/middleware/rate-limiter": ["./packages/middleware/rate-limiter"],
+      "@mondrian-framework/provider/rate-limiter": ["./packages/provider/rate-limiter"],
       "@mondrian-framework/direct": ["./packages/direct"],
       "@mondrian-framework/rest": ["./packages/rest"],
       "@mondrian-framework/rest-fastify": ["./packages/rest-fastify"],
@@ -52,7 +52,7 @@
       "path": "packages/cli-commander"
     },
     {
-      "path": "packages/middleware/rate-limiter"
+      "path": "packages/provider/rate-limiter"
     },
     {
       "path": "packages/rest"

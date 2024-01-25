@@ -43,11 +43,11 @@ class LiteralTypeImpl<L extends number | string | boolean | null | undefined>
     this.literalValue = literalValue
   }
 
-  protected encodeWithoutValidationInternal(value: L): JSONType {
-    if (value === undefined) {
+  protected encodeWithoutValidationInternal(_value: L): JSONType {
+    if (this.literalValue === undefined) {
       return null
     }
-    return value
+    return this.literalValue
   }
 
   protected validateInternal(_value: L): validation.Result {
@@ -55,6 +55,9 @@ class LiteralTypeImpl<L extends number | string | boolean | null | undefined>
   }
 
   protected decodeWithoutValidationInternal(value: unknown, options: Required<decoding.Options>): decoding.Result<L> {
+    if (this.options?.allowUndefinedValue && value === undefined) {
+      return decoding.succeed(this.literalValue)
+    }
     if (value === this.literalValue) {
       return decoding.succeed(this.literalValue)
     } else if (options.typeCastingStrategy === 'tryCasting' && this.literalValue === null && value === 'null') {

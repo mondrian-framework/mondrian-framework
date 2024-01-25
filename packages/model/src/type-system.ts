@@ -989,7 +989,13 @@ export type LiteralType<
 /**
  * The options that can be used to define a {@link LiteralType `LiteralType`}.
  */
-export type LiteralTypeOptions = BaseOptions
+export type LiteralTypeOptions = BaseOptions & {
+  /**
+   * This options changes the decoding process.
+   * If the value to decode is undefined, it will be decoded as the literal value.
+   */
+  readonly allowUndefinedValue?: boolean
+}
 
 /**
  * The model of a union of types in the Mondrian framework.

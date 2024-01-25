@@ -3,7 +3,7 @@ import { Slot } from './slot'
 /**
  * This is a utility class that helps create and cache {@link Slot} instances based on the starting time, duration, and the key value.
  */
-export abstract class SlotProvider {
+export abstract class Store {
   private readonly slots: Map<string, Slot> = new Map()
   /**
    * Creates an active slot for the given starting time and duration.

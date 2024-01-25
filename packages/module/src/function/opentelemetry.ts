@@ -13,14 +13,15 @@ export class OpentelemetryFunction<
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Pv extends functions.Providers,
-> extends BaseFunction<I, O, E, C, Pv> {
+  G extends functions.Guards,
+> extends BaseFunction<I, O, E, C, Pv, G> {
   private readonly name: string
   public readonly tracer: TracerWrapper
   private readonly counter: Counter
   private readonly histogram: Histogram
 
   constructor(
-    func: functions.Function<I, O, E, C, Pv>,
+    func: functions.Function<I, O, E, C, Pv, G>,
     name: string,
     opentelemetry: {
       tracer: Tracer
@@ -35,11 +36,7 @@ export class OpentelemetryFunction<
     this.histogram = opentelemetry.histogram
   }
 
-  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv>): FunctionResult<O, E, C> {
-    const mappedArgs = await this.applyProviders(args)
-    if (mappedArgs.isFailure) {
-      return mappedArgs as any
-    }
+  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): FunctionResult<O, E, C> {
     this.counter.add(1)
     const startTime = new Date().getTime()
     const spanResult = await this.tracer.startActiveSpanWithOptions(
@@ -52,6 +49,15 @@ export class OpentelemetryFunction<
       },
       async (span) => {
         try {
+          const mappedArgs = await this.applyProviders(args)
+          if (mappedArgs.isFailure) {
+            return result.ok(mappedArgs as any)
+          }
+          const guardResult = await this.applyGuards(args)
+          if (guardResult.isFailure) {
+            return result.ok(guardResult as any)
+          }
+
           const applyResult = await this.executeWithinSpan(0, mappedArgs.value, span)
           const applyResult2 = applyResult as result.Result<unknown, Record<string, unknown>>
           if (this.errors && applyResult2.isFailure) {

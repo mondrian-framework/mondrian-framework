@@ -1,1 +1,1 @@
-export { build } from './middleware'
+export { buildMiddleware, buildGuard, buildProvider } from './middleware'

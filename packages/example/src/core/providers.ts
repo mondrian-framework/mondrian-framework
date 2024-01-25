@@ -40,8 +40,3 @@ export const dbProvider = provider.build({
   },
 })
 
-export const localizationProvider = provider.build({
-  apply: async ({ ip }: { ip: string }) => {
-    return result.ok({ ip })
-  },
-})

@@ -330,6 +330,8 @@ function checkForRelations({ outputType, policies, capabilities, ...input }: Req
   for (const [key, value] of Object.entries(input.retrieve.select).filter((v) => v[1])) {
     const unwrappedField = model.unwrap(concreteType.fields[key])
     if (unwrappedField.kind === model.Kind.Entity) {
+      //TODO: inject input.retrieve.where[key] into relation retrieve
+      //Also if the where is contained in AND
       const result = checkPoliciesInternal({
         outputType: concreteType.fields[key],
         capabilities: retrieve.allCapabilities,

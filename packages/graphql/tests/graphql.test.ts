@@ -130,10 +130,10 @@ describe('graphql', () => {
 
   test('failing mutation', async () => {
     const res = await makeRequest(
-      'mutation { user { register(input: { email: "user@domain.com" }) { ... on RegisterFailure { errorCode } } } }',
+      'mutation { user { register(input: { email: "user@domain.com" }) { ... on RegisterFailure { code } } } }',
     )
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ data: { user: { register: { errorCode: 'emailAlreadyPresent' } } } })
+    expect(res.body).toEqual({ data: { user: { register: { code: 'emailAlreadyPresent' } } } })
   })
 
   test('success mutation', async () => {

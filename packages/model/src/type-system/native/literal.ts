@@ -43,7 +43,7 @@ class LiteralTypeImpl<L extends number | string | boolean | null | undefined>
     this.literalValue = literalValue
   }
 
-  protected encodeWithoutValidationInternal(_: L): JSONType {
+  protected encodeWithoutValidationInternal(_value: L): JSONType {
     if (this.literalValue === undefined) {
       return null
     }

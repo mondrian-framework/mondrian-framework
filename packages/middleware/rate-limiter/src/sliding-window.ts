@@ -62,9 +62,10 @@ export class SlidingWindow {
    * Checks if it's allowed to make another request based on the specified rate limit and the current request count.
    * If it's allowed, the passing request will be counted; otherwise, the rate-limited request will not be counted.
    * @param now The current time.
+   * @param increase Whether to count the request or not.
    * @return 'allowed' if the request can go through, 'rate-limited' otherwise.
    */
-  isRateLimited(now: Date): 'allowed' | 'rate-limited' {
+  isRateLimited(now: Date, increase = true): 'allowed' | 'rate-limited' {
     const nowSeconds = now.getTime() / 1000.0
     //check if we cached the rate-limited-until
     if (this.rateLimitedUntilSeconds !== null && nowSeconds <= this.rateLimitedUntilSeconds) {
@@ -91,7 +92,9 @@ export class SlidingWindow {
         this.samplingPeriodSeconds
     if (requests < this.rateLimit) {
       //here we are not rate limited yet
-      currentSlot.inc()
+      if (increase) {
+        currentSlot.inc()
+      }
       return 'allowed'
     } else {
       // We can predict for how much time this sliding window will block new requests.

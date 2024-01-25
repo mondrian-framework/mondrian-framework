@@ -650,6 +650,7 @@ function makeOperation<Fs extends functions.Functions, ServerContext>(
   const graphQLInputTypeName = specification.inputName ?? 'input'
 
   const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, operationName)
+  const concreteOutputType = model.concretise(outputType)
   const partialOutputType = model.concretise(model.partialDeep(outputType))
   const plainOutput = typeToGraphQLOutputType(outputType, {
     ...internalData,
@@ -711,15 +712,13 @@ function makeOperation<Fs extends functions.Functions, ServerContext>(
               span?.end()
             }
           } else {
-            const errorCode = Object.keys(applyResult.error)[0]
-            const errorValue = applyResult.error[errorCode]
+            const code = Object.keys(applyResult.error)[0]
             const mappedError = {
               '[GraphQL generation]: isError': true,
-              errorCode,
-              errorValue,
+              code,
               errors: applyResult.error,
             }
-            outputValue = partialOutputType.encodeWithoutValidation(mappedError as never)
+            outputValue = concreteOutputType.encodeWithoutValidation(mappedError as never)
           }
           endSpanWithResult(applyResult, span)
           return outputValue
@@ -811,8 +810,7 @@ function getFunctionOutputTypeWithErrors(
     .object({
       //[GraphQL generation]: isError' is used to be confident that the union ownership is inferred correctly.
       '[GraphQL generation]: isError': model.literal(true, { tags: { [IGNORE_ON_GRAPHQL_GENERATION]: true } }),
-      errorCode: model.string(),
-      errorValue: model.unknown(),
+      code: model.string(),
       errors: model
         .object(mapObject(fun.errors, (_, errorType) => model.optional(errorType)))
         .setName(`${capitalise(functionName)}Errors`),

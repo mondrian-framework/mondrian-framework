@@ -11,7 +11,7 @@ export type CustomTypeSpecifications = Record<
   ((type: model.CustomType) => OpenAPIV3_1.NonArraySchemaObject) | OpenAPIV3_1.NonArraySchemaObject
 >
 
-export function fromModule<Fs extends functions.FunctionsInterfaces>({
+export function fromModule<Fs extends functions.FunctionInterfaces>({
   api,
   version,
 }: {
@@ -323,7 +323,7 @@ function generatePathParameters({
   return result
 }
 
-function openapiComponents<Fs extends functions.FunctionsInterfaces>({
+function openapiComponents<Fs extends functions.FunctionInterfaces>({
   version,
   api,
 }: {

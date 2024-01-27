@@ -1,4 +1,4 @@
-import { functions } from '..'
+import { functions, retrieve } from '..'
 import { ErrorType, FunctionResult, OutputRetrieveCapabilities, Tracer } from '../function'
 import { model, result } from '@mondrian-framework/model'
 import { mapObject } from '@mondrian-framework/utils'
@@ -22,12 +22,13 @@ export class BaseFunction<
   readonly retrieve: C
   readonly providers: Pv
   readonly guards: G
-  readonly body: (args: functions.FunctionArguments<I, O, E, C, Pv>) => FunctionResult<O, E, C>
+  readonly body: (args: functions.FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>
   readonly middlewares: readonly functions.Middleware<I, O, E, C, Pv, G>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
   readonly tracer: Tracer
+  readonly name: string
 
-  constructor(func: functions.Function<I, O, E, C, Pv, G>) {
+  constructor(func: functions.Function<I, O, E, C, Pv, G>, name?: string) {
     this.input = func.input
     this.output = func.output
     this.errors = func.errors
@@ -38,37 +39,35 @@ export class BaseFunction<
     this.middlewares = func.middlewares ?? []
     this.options = func.options
     this.tracer = voidTracer
+    this.name = name ?? ''
   }
 
   protected async applyProviders(
     args: functions.FunctionApplyArguments<I, O, C, Pv, G>,
-  ): Promise<result.Result<functions.FunctionArguments<I, O, E, C, Pv>, unknown>> {
-    const mappedArgs: Record<string, unknown> = {
+  ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, unknown>> {
+    const mappedArgs: functions.GenericFunctionArguments = {
       input: args.input,
-      retrieve: args.retrieve,
+      retrieve: args.retrieve as retrieve.GenericRetrieve,
       logger: args.logger,
-      tracer: args.tracer,
+      tracer: args.tracer ?? this.tracer,
+      functionName: this.name,
     }
+    //Apply guards
+    for (const guard of Object.values(this.guards)) {
+      const res = await guard.apply(args.contextInput, mappedArgs)
+      if (res && res.isFailure) {
+        return res
+      }
+    }
+    //Apply providers
     for (const [providerName, provider] of Object.entries(this.providers)) {
-      const res = await provider.apply(args.contextInput)
+      const res = await provider.apply(args.contextInput, mappedArgs)
       if (res.isFailure) {
         return res
       }
       mappedArgs[providerName] = res.value
     }
-    return result.ok(mappedArgs as functions.FunctionArguments<I, O, E, C, Pv>)
-  }
-
-  protected async applyGuards(
-    args: functions.FunctionApplyArguments<I, O, C, Pv, G>,
-  ): Promise<result.Result<undefined, unknown>> {
-    for (const guard of Object.values(this.guards)) {
-      const res = await guard.apply(args.contextInput)
-      if (res && res.isFailure) {
-        return res
-      }
-    }
-    return result.ok()
+    return result.ok(mappedArgs as functions.FunctionArguments<I, O, C, Pv>)
   }
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): FunctionResult<O, E, C> {
@@ -76,16 +75,12 @@ export class BaseFunction<
     if (mappedArgs.isFailure) {
       return mappedArgs as any
     }
-    const guardResult = await this.applyGuards(args)
-    if (guardResult.isFailure) {
-      return guardResult as any
-    }
     return this.execute(0, mappedArgs.value)
   }
 
   private async execute(
     middlewareIndex: number,
-    args: functions.FunctionArguments<I, O, E, C, Pv>,
+    args: functions.FunctionArguments<I, O, C, Pv>,
   ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
       return this.body(args)

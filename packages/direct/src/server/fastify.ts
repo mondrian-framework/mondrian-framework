@@ -9,7 +9,7 @@ export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 /**
  * Attachs a Direct server to a fastify instace.
  */
-export function serveWithFastify<Fs extends functions.Functions>({
+export function serveWithFastify<Fs extends functions.FunctionImplementations>({
   server,
   api,
   context,

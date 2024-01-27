@@ -7,7 +7,7 @@ import { createYoga, Plugin, YogaServerOptions } from 'graphql-yoga'
 
 export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 
-export function serveWithFastify<Fs extends functions.Functions>({
+export function serveWithFastify<Fs extends functions.FunctionImplementations>({
   server,
   api,
   context,

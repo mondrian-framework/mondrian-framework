@@ -22,7 +22,7 @@ type FunctionSpecifications = {
   | { anyQueue: true }
 )
 
-export function build<Fs extends functions.Functions>({
+export function build<Fs extends functions.FunctionImplementations>({
   module,
   api,
   context,
@@ -59,6 +59,7 @@ export function build<Fs extends functions.Functions>({
       }
       spec = specification
       const functionBody = module.functions[functionName]
+      const tracer = functionBody.tracer.withPrefix(`mondrian:sqs-handler:${functionName}:`)
       await functionBody.tracer.startActiveSpanWithOptions(
         `mondrian:sqs-handler:${functionName}`,
         {
@@ -106,7 +107,7 @@ export function build<Fs extends functions.Functions>({
             await functionBody.apply({
               input: decoded.value as never,
               retrieve: {},
-              tracer: functionBody.tracer,
+              tracer,
               contextInput: contextInput as Record<string, unknown>,
               logger: operationLogger,
             })

@@ -40,7 +40,7 @@ export type Response = SuccessResponse | FailureResponse
 /**
  * Gets an http handler with the implementation of the Direct transport for a whole Mondrian module.
  */
-export function fromModule<Fs extends functions.Functions, ServerContext>({
+export function fromModule<Fs extends functions.FunctionImplementations, ServerContext>({
   api,
   context,
   options,
@@ -106,7 +106,7 @@ export function fromModule<Fs extends functions.Functions, ServerContext>({
   return handler
 }
 
-async function handleFunctionCall<Fs extends functions.Functions, ServerContext>({
+async function handleFunctionCall<Fs extends functions.FunctionImplementations, ServerContext>({
   functionName,
   tracer,
   requestInputTypeMap,
@@ -155,7 +155,7 @@ async function handleFunctionCall<Fs extends functions.Functions, ServerContext>
     const applyResult = await functionBody.apply({
       contextInput: contextInput as Record<string, unknown>,
       input,
-      tracer: functionBody.tracer,
+      tracer,
       retrieve: thisRetrieve,
       logger: baseLogger,
     })

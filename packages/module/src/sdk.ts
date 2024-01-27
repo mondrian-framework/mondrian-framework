@@ -164,7 +164,7 @@ class SdkBuilder<const Metadata> {
     this.metadata = metadata
   }
 
-  public build<Fs extends functions.Functions>({
+  public build<Fs extends functions.FunctionImplementations>({
     module,
     context,
   }: {
@@ -188,7 +188,7 @@ class SdkBuilder<const Metadata> {
               input: input as never,
               retrieve: options?.retrieve ?? {},
               contextInput: contextInput as Record<string, unknown>,
-              tracer: functionBody.tracer,
+              //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
               logger: thisLogger,
             })
             if (!functionBody.errors) {
@@ -217,7 +217,7 @@ export function withMetadata<const Metadata>(metadata?: Metadata): SdkBuilder<Me
   return new SdkBuilder(metadata)
 }
 
-export function build<Fs extends functions.Functions>(args: {
+export function build<Fs extends functions.FunctionImplementations>(args: {
   module: module.Module<Fs>
   context: (args: { metadata?: unknown }) => Promise<module.FunctionsToContextInput<Fs>>
 }): Sdk<Fs, unknown> {

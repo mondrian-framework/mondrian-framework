@@ -11,7 +11,7 @@ export type ContextProvider<
   Errors extends functions.ErrorType,
 > = {
   readonly errors?: Errors
-  readonly apply: (input: ContextInput) => ApplyResult<Context, Errors>
+  readonly apply: (input: ContextInput, args: functions.GenericFunctionArguments) => ApplyResult<Context, Errors>
 }
 
 type ApplyResult<Context, Errors extends functions.ErrorType> = [Exclude<Errors, undefined>] extends [

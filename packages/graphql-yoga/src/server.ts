@@ -7,7 +7,7 @@ import http from 'node:http'
 
 export type ServerContext = { req: http.IncomingMessage; res: http.ServerResponse }
 
-export function createServer<Fs extends functions.Functions>({
+export function createServer<Fs extends functions.FunctionImplementations>({
   api,
   context,
   onError,

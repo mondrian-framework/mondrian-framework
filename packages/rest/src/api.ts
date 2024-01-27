@@ -9,7 +9,7 @@ import { OpenAPIV3_1 } from 'openapi-types'
  * This contains all information needed to generate an openapi specification document.
  * It does not contains the implementation. In order to instantiate this you should use {@link define}.
  */
-export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
+export type ApiSpecification<Fs extends functions.FunctionInterfaces> = {
   /**
    * The current api version. Must be an integer greater than or quelas to 1.
    */
@@ -62,7 +62,7 @@ export type ApiSpecification<Fs extends functions.FunctionsInterfaces> = {
  * this contains also the function implementations. With an instance of {@link Api} it is possible
  * to serve the module with a rest server. In order to instantiate this you should use {@link build}.
  */
-export type Api<Fs extends functions.Functions> = ApiSpecification<Fs> & {
+export type Api<Fs extends functions.FunctionImplementations> = ApiSpecification<Fs> & {
   /**
    * Module to serve
    */
@@ -72,14 +72,14 @@ export type Api<Fs extends functions.Functions> = ApiSpecification<Fs> & {
 /**
  * Builds a REST API in order to expose the module.
  */
-export function build<Fs extends functions.Functions>(api: Api<Fs>): Api<Fs> {
+export function build<Fs extends functions.FunctionImplementations>(api: Api<Fs>): Api<Fs> {
   return { ...define(api), module: api.module }
 }
 
 /**
  * Defines the REST API with just the module interface.
  */
-export function define<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType>(
+export function define<Fs extends functions.FunctionInterfaces, E extends functions.ErrorType>(
   api: ApiSpecification<Fs>,
 ): ApiSpecification<Fs> {
   assertApiValidity(api)

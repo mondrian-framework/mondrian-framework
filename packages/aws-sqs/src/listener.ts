@@ -7,7 +7,7 @@ import { sleep } from '@mondrian-framework/utils'
 /**
  * Attaches a Mondrian module to some SQS queues.
  */
-export function listen<Fs extends functions.Functions>({
+export function listen<Fs extends functions.FunctionImplementations>({
   api,
   context,
 }: {
@@ -48,7 +48,7 @@ export function listen<Fs extends functions.Functions>({
   }
 }
 
-async function listenForMessage<Fs extends functions.Functions>({
+async function listenForMessage<Fs extends functions.FunctionImplementations>({
   alive,
   queueUrl,
   client,
@@ -102,7 +102,7 @@ async function listenForMessage<Fs extends functions.Functions>({
       await functionBody.apply({
         input: decoded.value as never,
         retrieve: {},
-        tracer: functionBody.tracer,
+        //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
         contextInput: contextInput as Record<string, unknown>,
         logger: baseLogger,
       })

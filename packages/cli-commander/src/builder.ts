@@ -25,7 +25,7 @@ const defaultOutputHandler = async (result: result.Result<unknown, unknown>) => 
   }
 }
 
-type Api<Fs extends functions.Functions> = {
+type Api<Fs extends functions.FunctionImplementations> = {
   programVersion?: string
   inputBindingStyle?: InputBindingStyle
   functions: {
@@ -42,7 +42,7 @@ type Api<Fs extends functions.Functions> = {
 /**
  * Creates a new cli program with commander from a cli api specification.
  */
-export function fromModule<Fs extends functions.Functions>({
+export function fromModule<Fs extends functions.FunctionImplementations>({
   context,
   ...api
 }: {
@@ -91,7 +91,7 @@ export function fromModule<Fs extends functions.Functions>({
             input: inputResult.value as any,
             retrieve: undefined as any,
             logger: baseLogger,
-            tracer: functionBody.tracer,
+            //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
           })
           await outputHandler(applyResult, { functionName }, () => defaultOutputHandler(applyResult))
         } catch (error) {

@@ -5,7 +5,7 @@ import { functions, sdk, retrieve } from '@mondrian-framework/module'
 import { flatMapObject, http } from '@mondrian-framework/utils'
 
 export type Sdk<
-  Fs extends functions.FunctionsInterfaces,
+  Fs extends functions.FunctionInterfaces,
   E extends functions.ErrorType,
   Exclusions extends { [K in keyof Fs]?: true },
 > = {
@@ -13,7 +13,7 @@ export type Sdk<
   withMetadata: (metadata: Record<string, string>) => Sdk<Fs, E, Exclusions>
 }
 
-type SdkFunctions<Fs extends functions.FunctionsInterfaces, E extends functions.ErrorType> = {
+type SdkFunctions<Fs extends functions.FunctionInterfaces, E extends functions.ErrorType> = {
   [K in keyof Fs]: SdkFunction<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], Fs[K]['retrieve']>
 }
 
@@ -50,7 +50,7 @@ type SdkFunctionResult<
  * Builds a new client that will connect to a Mondrian Direct endpoint.
  */
 export function build<
-  Fs extends functions.FunctionsInterfaces,
+  Fs extends functions.FunctionInterfaces,
   E extends functions.ErrorType,
   Exclusions extends { [K in keyof Fs]?: true },
 >({

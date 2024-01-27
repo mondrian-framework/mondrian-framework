@@ -7,7 +7,7 @@ import { http, mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
 
-export function fromFunction<Fs extends functions.Functions, ServerContext>({
+export function fromFunction<Fs extends functions.FunctionImplementations, ServerContext>({
   functionName,
   module,
   specification,
@@ -22,7 +22,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
   specification: FunctionSpecifications
   context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
   onError?: ErrorHandler<functions.Functions, ServerContext>
-  api: Pick<ApiSpecification<functions.FunctionsInterfaces>, 'errorCodes' | 'customTypeSchemas'>
+  api: Pick<ApiSpecification<functions.FunctionInterfaces>, 'errorCodes' | 'customTypeSchemas'>
 }): http.Handler<ServerContext> {
   const getInputFromRequest = specification.openapi
     ? specification.openapi.input
@@ -92,7 +92,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
               retrieve: retrieveValue ?? {},
               input: input as never,
               contextInput: contextInput as Record<string, unknown>,
-              tracer: functionBody.tracer,
+              tracer,
               logger: thisLogger,
             })
 
@@ -120,7 +120,7 @@ export function fromFunction<Fs extends functions.Functions, ServerContext>({
                 error: e,
                 logger: thisLogger,
                 functionName,
-                tracer: functionBody.tracer,
+                tracer,
                 functionArgs: { input, retrieve: retrieveValue },
                 ...serverContext,
               })

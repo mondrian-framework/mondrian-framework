@@ -4,7 +4,7 @@ import { rest, utils } from '@mondrian-framework/rest'
 import { http, isArray } from '@mondrian-framework/utils'
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
-export function attachRestMethods<Fs extends functions.Functions>({
+export function attachRestMethods<Fs extends functions.FunctionImplementations>({
   server,
   api,
   context,

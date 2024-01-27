@@ -12,7 +12,7 @@ import opentelemetry, { ValueType } from '@opentelemetry/api'
  * The Mondrian module interface.
  * Contains only the function signatures, module name and version.
  */
-export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = functions.FunctionsInterfaces> {
+export interface ModuleInterface<Fs extends functions.FunctionInterfaces = functions.FunctionInterfaces> {
   name: string
   description?: string
   functions: Fs
@@ -22,10 +22,18 @@ export interface ModuleInterface<Fs extends functions.FunctionsInterfaces = func
  * The Mondrian module type.
  * Contains all the module functions with also the implementation and how to build the context.
  */
-export interface Module<Fs extends functions.Functions = functions.Functions> extends ModuleInterface {
+export interface Module<Fs extends functions.FunctionImplementations = functions.FunctionImplementations>
+  extends ModuleInterface {
   name: string
   functions: Fs
-  policies?: (args: ModuleMiddlewareInputArgs<Fs>) => security.Policies
+  policies?: (args: ModuleMiddlewareInputArgs<Fs>) => security.Policies | Promise<security.Policies>
+  options?: ModuleOptions
+}
+
+export interface ModuleBuildInput<Fs extends functions.Functions = functions.Functions> extends ModuleInterface {
+  name: string
+  functions: Fs
+  policies?: (args: ModuleMiddlewareInputArgs<Fs>) => security.Policies | Promise<security.Policies>
   options?: ModuleOptions
 }
 
@@ -45,7 +53,6 @@ type ModuleMiddlewareInputArgs<Fs extends functions.Functions> = {
   [K in keyof Fs]: functions.FunctionArguments<
     Fs[K]['input'],
     Fs[K]['output'],
-    Fs[K]['errors'],
     Fs[K]['retrieve'],
     Fs[K]['providers']
   > & { functionName: K }
@@ -79,7 +86,7 @@ export type ModuleOptions = {
  * If there's at least two different types sharing the same name, this function will throw
  * an error.
  */
-function assertUniqueNames(functions: functions.FunctionsInterfaces) {
+function assertUniqueNames(functions: functions.FunctionInterfaces) {
   const functionTypes = Object.values(functions).flatMap((f) => {
     const hasError = f.errors !== undefined
     return hasError ? [f.input, f.output, ...Object.values(f.errors)] : [f.input, f.output]
@@ -150,7 +157,9 @@ function assertCorrectProviderNames(functions: functions.Functions) {
  *   })
  * ```
  */
-export function build<const Fs extends functions.Functions>(module: Module<Fs>): Module<Fs> {
+export function build<const Fs extends functions.Functions>(
+  module: ModuleBuildInput<Fs>,
+): Module<FunctionsToFunctionsImplementation<Fs>> {
   assertUniqueNames(module.functions)
   assertCorrectErrors(module.functions, 'providers')
   assertCorrectErrors(module.functions, 'guards')
@@ -161,27 +170,24 @@ export function build<const Fs extends functions.Functions>(module: Module<Fs>):
       ? [middleware.checkMaxSelectionDepth(module.options.maxSelectionDepth)]
       : []
 
+  const checkPoliciesMiddleware = module.policies != null ? [middleware.checkPolicies(module.policies as any)] : []
+
+  const checkOutputTypeMiddleware =
+    module.options?.checkOutputType == null || module.options?.checkOutputType !== 'ignore'
+      ? [middleware.checkOutputType(module.options?.checkOutputType ?? 'throw')]
+      : []
+
   const wrappedFunctions = Object.fromEntries(
     Object.entries(module.functions).map(([functionName, functionBody]) => {
-      const checkOutputTypeMiddleware =
-        module.options?.checkOutputType == null || module.options?.checkOutputType !== 'ignore'
-          ? [middleware.checkOutputType(functionName, module.options?.checkOutputType ?? 'throw')]
-          : []
-
-      const checkPoliciesMiddleware =
-        module.policies != null
-          ? [middleware.checkPolicies((args) => module.policies!({ ...args, functionName } as any))]
-          : []
-
       const func = {
         ...functionBody,
         middlewares: [
+          ...checkOutputTypeMiddleware,
           ...maxProjectionDepthMiddleware,
           ...(functionBody.middlewares ?? []),
           ...checkPoliciesMiddleware,
-          ...checkOutputTypeMiddleware,
         ],
-      } as functions.FunctionImplementation
+      }
       if (module.options?.opentelemetry) {
         const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
@@ -197,11 +203,11 @@ export function build<const Fs extends functions.Functions>(module: Module<Fs>):
         > = new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
         return [functionName, wrappedFunction]
       } else {
-        return [functionName, new BaseFunction(func)]
+        return [functionName, new BaseFunction(func, functionName)]
       }
     }),
   ) as Fs
-  return { ...module, functions: wrappedFunctions }
+  return { ...module, functions: wrappedFunctions as any }
 }
 
 /**
@@ -209,17 +215,28 @@ export function build<const Fs extends functions.Functions>(module: Module<Fs>):
  * @param module a map of {@link FunctionInterface}, module name and module version.
  * @returns the module interface
  */
-export function define<const Fs extends functions.FunctionsInterfaces>(
+export function define<const Fs extends functions.FunctionInterfaces>(
   module: ModuleInterface<Fs>,
 ): ModuleInterface<Fs> & {
   implement: <
     FsI extends {
-      [K in keyof Fs]: functions.FunctionImplementation<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], any, any, any>
+      [K in keyof Fs]: functions.Function<Fs[K]['input'], Fs[K]['output'], Fs[K]['errors'], any, any, any>
     },
   >(
-    module: Pick<Module<FsI>, 'functions' | 'policies' | 'options'>,
-  ) => Module<FsI>
+    module: Pick<ModuleBuildInput<FsI>, 'functions' | 'policies' | 'options'>,
+  ) => Module<FunctionsToFunctionsImplementation<FsI>>
 } {
   assertUniqueNames(module.functions)
   return { ...module, implement: (moduleImpl) => build({ ...module, ...moduleImpl }) }
+}
+
+type FunctionsToFunctionsImplementation<Fs extends functions.Functions> = {
+  [K in keyof Fs]: functions.FunctionImplementation<
+    Fs[K]['input'],
+    Fs[K]['output'],
+    Fs[K]['errors'],
+    Fs[K]['retrieve'],
+    Fs[K]['providers'],
+    Fs[K]['guards']
+  >
 }

@@ -15,7 +15,6 @@ export class OpentelemetryFunction<
   Pv extends functions.Providers,
   G extends functions.Guards,
 > extends BaseFunction<I, O, E, C, Pv, G> {
-  private readonly name: string
   public readonly tracer: TracerWrapper
   private readonly counter: Counter
   private readonly histogram: Histogram
@@ -29,8 +28,7 @@ export class OpentelemetryFunction<
       histogram: Histogram
     },
   ) {
-    super(func)
-    this.name = name
+    super(func, name)
     this.tracer = new TracerWrapper(opentelemetry.tracer, '')
     this.counter = opentelemetry.counter
     this.histogram = opentelemetry.histogram
@@ -52,10 +50,6 @@ export class OpentelemetryFunction<
           const mappedArgs = await this.applyProviders(args)
           if (mappedArgs.isFailure) {
             return result.ok(mappedArgs as any)
-          }
-          const guardResult = await this.applyGuards(args)
-          if (guardResult.isFailure) {
-            return result.ok(guardResult as any)
           }
 
           const applyResult = await this.executeWithinSpan(0, mappedArgs.value, span)
@@ -90,7 +84,7 @@ export class OpentelemetryFunction<
 
   private async executeWithinSpan(
     middlewareIndex: number,
-    args: functions.FunctionArguments<I, O, E, C, Pv>,
+    args: functions.FunctionArguments<I, O, C, Pv>,
     span: Span,
   ): FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {

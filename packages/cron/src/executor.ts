@@ -9,7 +9,7 @@ import { schedule, validate } from 'node-cron'
  * Starts a new cron listeners with the given configuration.
  * For each cron assigned function a new schedule is created.
  */
-export function start<Fs extends functions.Functions>({
+export function start<Fs extends functions.FunctionImplementations>({
   api,
   context,
 }: {
@@ -51,7 +51,7 @@ export function start<Fs extends functions.Functions>({
               await functionBody.apply({
                 input: input as never,
                 retrieve: {},
-                tracer: functionBody.tracer,
+                //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
                 logger: operationLogger,
                 contextInput: contextInput as Record<string, unknown>,
               })

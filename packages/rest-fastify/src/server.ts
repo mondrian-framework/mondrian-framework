@@ -11,7 +11,7 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
 
-export function serve<Fs extends functions.Functions>({
+export function serve<Fs extends functions.FunctionImplementations>({
   api,
   server,
   context,

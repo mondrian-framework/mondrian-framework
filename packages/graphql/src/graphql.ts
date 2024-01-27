@@ -491,7 +491,7 @@ function customTypeToGraphQLType(
 /**
  * Information needed to create a graphql schema from a mondrian module.
  */
-export type FromModuleInput<Fs extends functions.Functions, ServerContext> = {
+export type FromModuleInput<Fs extends functions.FunctionImplementations, ServerContext> = {
   api: Api<Fs>
   context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<module.FunctionsToContextInput<Fs>>
   setHeader: (context: ServerContext, name: string, value: string) => void
@@ -503,7 +503,7 @@ export type FromModuleInput<Fs extends functions.Functions, ServerContext> = {
  * Each function appearing in the module's API is either turned into a query or a mutation according to the
  * provided specification.
  */
-export function fromModule<Fs extends functions.Functions, ServerContext>(
+export function fromModule<Fs extends functions.FunctionImplementations, ServerContext>(
   input: FromModuleInput<Fs, ServerContext>,
 ): GraphQLSchema {
   const { api } = input
@@ -629,7 +629,7 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
  * `setHeader`, `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
  * somehow needed by the resolver implementation.
  */
-function makeOperation<Fs extends functions.Functions, ServerContext>(
+function makeOperation<Fs extends functions.FunctionImplementations, ServerContext>(
   module: module.Module<Fs>,
   specification: FunctionSpecifications,
   functionName: string,
@@ -695,7 +695,7 @@ function makeOperation<Fs extends functions.Functions, ServerContext>(
             contextInput: contextInput as Record<string, unknown>,
             retrieve: retrieveValue,
             input: input as never,
-            tracer: functionBody.tracer,
+            tracer,
             logger: thisLogger,
           })
 
@@ -729,7 +729,7 @@ function makeOperation<Fs extends functions.Functions, ServerContext>(
               functionArgs: { retrieve: retrieveValue, input },
               functionName,
               logger: thisLogger,
-              tracer: functionBody.tracer,
+              tracer,
               ...serverContext,
             })
             if (result) {

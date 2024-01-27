@@ -10,7 +10,7 @@ import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type ServerContext = { lambdaApi: { request: Request; response: Response } }
 
-export function build<Fs extends functions.Functions>({
+export function build<Fs extends functions.FunctionImplementations>({
   api,
   context,
   onError,

@@ -35,7 +35,6 @@ export function checkMaxSelectionDepth(
  * @param onFailure the action to take on failure.
  */
 export function checkOutputType(
-  functionName: string,
   onFailure: 'log' | 'throw',
 ): functions.Middleware<
   model.Type,
@@ -52,7 +51,7 @@ export function checkOutputType(
       if (originalResult.isFailure) {
         if (!thisFunction.errors) {
           throw new Error(
-            `Unexpected failure on function ${functionName}. It doesn't declare errors nor the module declares errors.`,
+            `Unexpected failure on function ${args.functionName}. It doesn't declare errors nor the module declares errors.`,
           )
         }
         const mappedError = utils.decodeFunctionFailure(originalResult.error, thisFunction.errors, {
@@ -60,7 +59,7 @@ export function checkOutputType(
           fieldStrictness: 'expectExactFields',
         })
         if (mappedError.isFailure) {
-          handleFailure({ onFailure, functionName, logger: args.logger, result: mappedError })
+          handleFailure({ onFailure, functionName: args.functionName, logger: args.logger, result: mappedError })
           return originalResult
         }
         return originalResult
@@ -76,7 +75,7 @@ export function checkOutputType(
       })
 
       if (mappedResult.isFailure) {
-        handleFailure({ onFailure, functionName, logger: args.logger, result: mappedResult })
+        handleFailure({ onFailure, functionName: args.functionName, logger: args.logger, result: mappedResult })
         return originalResult
       }
       return mappedResult as result.Ok<never>
@@ -115,15 +114,7 @@ function handleFailure({
  * In case the checks fails and {@link exception.UnauthorizedAccess} is thrown
  */
 export function checkPolicies(
-  policies: (
-    args: functions.FunctionArguments<
-      model.Type,
-      model.Type,
-      model.Types,
-      functions.OutputRetrieveCapabilities,
-      functions.Providers
-    >,
-  ) => security.Policies,
+  policies: (args: functions.GenericFunctionArguments) => security.Policies | Promise<security.Policies>,
 ): functions.Middleware<
   model.Type,
   model.Type,
@@ -134,15 +125,15 @@ export function checkPolicies(
 > {
   return {
     name: 'Check policies',
-    apply: (args, next, thisFunction) => {
+    apply: async (args, next, thisFunction) => {
       const res = checkPolicyInternal({
         outputType: thisFunction.output,
         retrieve: args.retrieve,
-        policies: policies(args),
+        policies: await policies(args),
         capabilities: thisFunction.retrieve,
         path: path.root,
       })
-      if (!res.isOk) {
+      if (res.isFailure) {
         throw new exception.UnauthorizedAccess(res.error)
       }
       return next({ ...args, retrieve: res.value ?? {} })

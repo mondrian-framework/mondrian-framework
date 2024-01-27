@@ -1,5 +1,4 @@
-import { functions, guard, logger, provider, retrieve } from '.'
-import { BaseFunction } from './function/base'
+import { functions, logger, provider, retrieve } from '.'
 import { result, model } from '@mondrian-framework/model'
 import { AtLeastOnePropertyOf, Expand, UnionToIntersection } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
@@ -59,7 +58,7 @@ export interface Function<
   /**
    * Function body.
    */
-  readonly body: (args: FunctionArguments<I, O, E, C, Pv>) => FunctionResult<O, E, C>
+  readonly body: (args: FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>
   /**
    * Function providers.
    */
@@ -129,13 +128,22 @@ export type FunctionOptions = {
   readonly operation?: 'query' | 'command' | { readonly command: 'create' | 'update' | 'delete' }
 }
 
+export type GenericFunctionArguments = {
+  readonly input: unknown
+  readonly retrieve: retrieve.GenericRetrieve
+  readonly logger: logger.MondrianLogger
+  readonly tracer: Tracer
+  readonly functionName: string
+} & {
+  [K in string]: unknown
+}
+
 /**
  * Arguments of a function invokation. The information coming from the providers are merged into the aruguments.
  */
 export type FunctionArguments<
   I extends model.Type,
   O extends model.Type,
-  E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Pv extends Providers,
 > = {
@@ -155,6 +163,10 @@ export type FunctionArguments<
    * Openteletry {@link Tracer} of this function.
    */
   readonly tracer: Tracer
+  /**
+   * Name that was assigned to the function by the module.
+   */
+  readonly functionName: string
 } & ProvidersToContext<Pv>
 
 export type FunctionApplyArguments<
@@ -183,7 +195,7 @@ export type FunctionApplyArguments<
   /**
    * Openteletry {@link Tracer} of this function.
    */
-  readonly tracer: Tracer
+  readonly tracer?: Tracer
 }
 
 /**
@@ -221,16 +233,28 @@ export type Middleware<
    * @returns a value that respect function's output type and the given projection.
    */
   apply: (
-    args: FunctionArguments<I, O, E, C, Pv>,
-    next: (args: FunctionArguments<I, O, E, C, Pv>) => FunctionResult<O, E, C>,
+    args: FunctionArguments<I, O, C, Pv>,
+    next: (args: FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>,
     fn: FunctionImplementation<I, O, E, C, Pv, G>,
   ) => FunctionResult<O, E, C>
 }
 
 /**
- * A map of {@link FunctionImplementation}s.
+ * A map of {@link Function}s.
  */
 export type Functions<
+  Fs extends Record<string, Function<any, any, any, any, any, any>> = Record<
+    string,
+    Function<any, any, any, any, any, any>
+  >,
+> = {
+  [K in keyof Fs]: Fs[K]
+}
+
+/**
+ * A map of {@link FunctionImplementation}s.
+ */
+export type FunctionImplementations<
   Fs extends Record<string, FunctionImplementation<any, any, any, any, any, any>> = Record<
     string,
     FunctionImplementation<any, any, any, any, any, any>
@@ -238,10 +262,11 @@ export type Functions<
 > = {
   [K in keyof Fs]: Fs[K]
 }
+
 /**
  * A map of {@link FunctionInterface}s.
  */
-export type FunctionsInterfaces = {
+export type FunctionInterfaces = {
   [K in string]: FunctionInterface
 }
 
@@ -272,9 +297,7 @@ type FunctionImplementor<
    * })
    * ```
    */
-  implement: (
-    implementation: Pick<Function<I, O, E, R, Pv, G>, 'body' | 'middlewares'>,
-  ) => FunctionImplementation<I, O, E, R, Pv, G>
+  implement: (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body'>) => Function<I, O, E, R, Pv, G>
 }
 
 type FunctionMocker<
@@ -284,9 +307,9 @@ type FunctionMocker<
   R extends OutputRetrieveCapabilities,
 > = {
   /**
-   * Instantiate a mocked {@link FunctionImplementation}.
+   * Instantiate a mocked {@link Function}.
    */
-  mock(options?: MockOptions): FunctionImplementation<I, O, E, R, {}>
+  mock(options?: MockOptions): Function<I, O, E, R, {}>
 }
 
 type FunctionProviderer<
@@ -340,19 +363,19 @@ export function define<
     ...func,
   }
   function implement<Pv extends Providers, G extends Guards>({ providers, guards }: { providers?: Pv; guards?: G }) {
-    return (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body' | 'middlewares'>) => {
+    return (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body'>) => {
       if (func.errors) {
         const undefinedError = Object.entries(func.errors).find(([_, errorType]) => model.isOptional(errorType))
         if (undefinedError) {
           throw new Error(`Function errors cannot be optional. Error "${undefinedError[0]}" is optional`)
         }
       }
-      return new BaseFunction<I, O, E, R, Pv, G>({
+      return {
         ...fi,
         providers: providers ?? ({} as Pv),
         guards: guards ?? ({} as G),
         ...implementation,
-      })
+      }
     }
   }
   return {
@@ -382,13 +405,11 @@ function createMockedFunction<
   const O extends model.Type = model.LiteralType<undefined>,
   const E extends ErrorType = undefined,
   R extends OutputRetrieveCapabilities = undefined,
->(
-  fi: functions.FunctionInterface<I, O, E, R>,
-): (options?: MockOptions) => functions.FunctionImplementation<I, O, E, R, {}> {
+>(fi: functions.FunctionInterface<I, O, E, R>): (options?: MockOptions) => functions.Function<I, O, E, R, {}> {
   return (options) => {
     const outputType = model.concretise(fi.output)
     const errorProbability = options?.errorProbability ?? 0
-    return new BaseFunction<I, O, E, R, {}, {}>({
+    return {
       ...fi,
       providers: {},
       guards: {},
@@ -404,7 +425,7 @@ function createMockedFunction<
         const value = outputType.example({ maxDepth: options?.maxDepth })
         return result.ok(value) as any
       },
-    })
+    }
   }
 }
 

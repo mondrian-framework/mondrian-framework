@@ -3,7 +3,7 @@ import { model, result } from '@mondrian-framework/model'
 
 type GuardDefinition<ContextInput extends Record<string, unknown>, Errors extends functions.ErrorType> = {
   readonly errors?: Errors
-  readonly apply: (input: ContextInput) => ApplyResult<Errors>
+  readonly apply: (input: ContextInput, args: functions.GenericFunctionArguments) => ApplyResult<Errors>
 }
 
 type ApplyResult<Errors extends functions.ErrorType> = [Exclude<Errors, undefined>] extends [
@@ -42,8 +42,8 @@ export function build<const ContextInput extends Record<string, unknown>, const 
 ): provider.ContextProvider<ContextInput, undefined, Errors> {
   return {
     errors: guard.errors,
-    apply: (async (input) => {
-      const res = await guard.apply(input)
+    apply: (async (input, args) => {
+      const res = await guard.apply(input, args)
       if (!res) {
         return result.ok()
       } else {

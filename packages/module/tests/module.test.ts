@@ -43,14 +43,14 @@ test('Real example', async () => {
   }
 
   const dbProvider = provider.build({
-    apply: async () => result.ok(db),
+    body: async () => result.ok(db),
   })
   const fromProvider = provider.build({
-    apply: async ({ ip }: { ip: string }) => result.ok(ip),
+    body: async ({ ip }: { ip: string }) => result.ok(ip),
   })
   const authProvider = provider.build({
     errors: { unauthorized: model.string() },
-    async apply({ authorization }: { authorization: string | undefined }) {
+    async body({ authorization }: { authorization: string | undefined }) {
       if (authorization != null) {
         const user = db.findUser({ email: authorization })
         if (user) {
@@ -244,7 +244,7 @@ describe('Unique type name', () => {
 describe('Invalid provider errors', () => {
   test('A function cannot define provider with reserved names', () => {
     const prov = provider.build({
-      apply: async () => result.ok({}),
+      body: async () => result.ok({}),
     })
     const f = functions
       .define({})
@@ -259,12 +259,12 @@ describe('Invalid provider errors', () => {
         name: 'test',
         functions: { f },
       }),
-    ).toThrowError(`Provider "input" is using a reserved name in function "f". `)
+    ).toThrowError(`Provider name "input" is reserved in function "f".`)
   })
   test('A function must define the provider error', () => {
     const prov = provider.build({
       errors: { errorName: model.string() },
-      apply: async () => result.ok({}),
+      body: async () => result.ok({}),
     })
     const f = functions
       .define({})
@@ -285,7 +285,7 @@ describe('Invalid provider errors', () => {
   test('A function must define the same provider error', () => {
     const prov = provider.build({
       errors: { errorName: model.string() },
-      apply: async () => result.ok({}),
+      body: async () => result.ok({}),
     })
     const f = functions
       .define({

@@ -13,7 +13,7 @@ export const module = moduleInterface.implement({
     opentelemetry: true,
   },
   policies(args) {
-    if ('auth' in args && args.auth.userId != null) {
+    if ('auth' in args && args.auth?.userId != null) {
       return policies.loggedUser(args.auth.userId)
     } else {
       return policies.guest

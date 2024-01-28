@@ -64,3 +64,5 @@ export function decodeFunctionFailure(
   }
   return errorDecodeResult
 }
+
+export const reservedProvidersNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']

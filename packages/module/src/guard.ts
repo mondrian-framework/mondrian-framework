@@ -1,9 +1,16 @@
 import { functions, provider } from '.'
 import { model, result } from '@mondrian-framework/model'
 
-type GuardDefinition<ContextInput extends Record<string, unknown>, Errors extends functions.ErrorType> = {
+type GuardDefinition<
+  ContextInput extends Record<string, unknown>,
+  Errors extends functions.ErrorType,
+  Pv extends provider.Providers,
+> = {
   readonly errors?: Errors
-  readonly apply: (input: ContextInput, args: functions.GenericFunctionArguments) => ApplyResult<Errors>
+  readonly body: (
+    input: ContextInput,
+    args: functions.GenericFunctionArguments & provider.ProvidersToContext<Pv>,
+  ) => ApplyResult<Errors>
 }
 
 type ApplyResult<Errors extends functions.ErrorType> = [Exclude<Errors, undefined>] extends [
@@ -38,17 +45,33 @@ type ApplyResult<Errors extends functions.ErrorType> = [Exclude<Errors, undefine
  * ```
  */
 export function build<const ContextInput extends Record<string, unknown>, const Errors extends functions.ErrorType>(
-  guard: GuardDefinition<ContextInput, Errors>,
-): provider.ContextProvider<ContextInput, undefined, Errors> {
-  return {
-    errors: guard.errors,
-    apply: (async (input, args) => {
-      const res = await guard.apply(input, args)
-      if (!res) {
-        return result.ok()
-      } else {
-        return res
-      }
-    }) as provider.ContextProvider<ContextInput, undefined, Errors>['apply'],
+  guard: GuardDefinition<ContextInput, Errors, {}>,
+): provider.ContextProvider<ContextInput, undefined, Errors, {}> {
+  return dependsOn({}).build(guard)
+}
+
+export function dependsOn<const Pv extends provider.Providers>(providers: Pv) {
+  function build<const ContextInput extends Record<string, unknown>, const Errors extends functions.ErrorType>(
+    guard: GuardDefinition<ContextInput, Errors, Pv>,
+  ): provider.ContextProvider<ContextInput, undefined, Errors, Pv> {
+    return provider.dependsOn(providers).build({
+      errors: guard.errors,
+      body: (async (input, args) => {
+        const res = await guard.body(input, args as any)
+        if (!res) {
+          return result.ok()
+        } else {
+          return res
+        }
+      }) as provider.ContextProvider<ContextInput, undefined, Errors>['body'],
+    })
   }
+  return { build }
+}
+
+/**
+ * A map of {@link provider.ContextProvider ContextProvider}s.
+ */
+export type Guards = {
+  [K in string]: provider.ContextProvider<any, any>
 }

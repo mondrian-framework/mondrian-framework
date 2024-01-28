@@ -1,5 +1,4 @@
-import { functions } from '..'
-import { ErrorType, FunctionResult, OutputRetrieveCapabilities } from '../function'
+import { functions, guard, provider } from '..'
 import { BaseFunction } from './base'
 import { result, model } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span, SpanOptions } from '@opentelemetry/api'
@@ -10,10 +9,10 @@ import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span, SpanOptions
 export class OpentelemetryFunction<
   I extends model.Type,
   O extends model.Type,
-  E extends ErrorType,
-  C extends OutputRetrieveCapabilities,
-  Pv extends functions.Providers,
-  G extends functions.Guards,
+  E extends functions.ErrorType,
+  C extends functions.OutputRetrieveCapabilities,
+  Pv extends provider.Providers,
+  G extends guard.Guards,
 > extends BaseFunction<I, O, E, C, Pv, G> {
   public readonly tracer: TracerWrapper
   private readonly counter: Counter
@@ -34,7 +33,7 @@ export class OpentelemetryFunction<
     this.histogram = opentelemetry.histogram
   }
 
-  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): FunctionResult<O, E, C> {
+  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): functions.FunctionResult<O, E, C> {
     this.counter.add(1)
     const startTime = new Date().getTime()
     const spanResult = await this.tracer.startActiveSpanWithOptions(
@@ -86,7 +85,7 @@ export class OpentelemetryFunction<
     middlewareIndex: number,
     args: functions.FunctionArguments<I, O, C, Pv>,
     span: Span,
-  ): FunctionResult<O, E, C> {
+  ): functions.FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
       return this.body(args)
     }

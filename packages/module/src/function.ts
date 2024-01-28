@@ -1,4 +1,4 @@
-import { functions, logger, provider, retrieve } from '.'
+import { guard, logger, provider, retrieve } from '.'
 import { result, model } from '@mondrian-framework/model'
 import { AtLeastOnePropertyOf, Expand, UnionToIntersection } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
@@ -36,15 +36,6 @@ export interface FunctionInterface<
 }
 
 /**
- * A map of {@link provider.ContextProvider ContextProvider}s.
- */
-export type Providers = Record<string, provider.ContextProvider<any, unknown, ErrorType>>
-/**
- * A map of {@link provider.ContextProvider ContextProvider}s.
- */
-export type Guards = Record<string, provider.ContextProvider<any, any, ErrorType>>
-
-/**
  * Mondrian function.
  */
 export interface Function<
@@ -52,8 +43,8 @@ export interface Function<
   O extends model.Type = model.Type,
   E extends ErrorType = undefined,
   C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
-  Pv extends Providers = Providers,
-  G extends Guards = Guards,
+  Pv extends provider.Providers = provider.Providers,
+  G extends guard.Guards = guard.Guards,
 > extends FunctionInterface<I, O, E, C> {
   /**
    * Function body.
@@ -97,8 +88,8 @@ export interface FunctionImplementation<
   O extends model.Type = model.Type,
   E extends ErrorType = ErrorType,
   C extends OutputRetrieveCapabilities = OutputRetrieveCapabilities,
-  Pv extends Providers = Providers,
-  G extends Guards = Guards,
+  Pv extends provider.Providers = provider.Providers,
+  G extends guard.Guards = guard.Guards,
 > extends Function<I, O, E, C, Pv, G> {
   /**
    * Function apply. This executes function's {@link Middleware} and function's body.
@@ -145,7 +136,7 @@ export type FunctionArguments<
   I extends model.Type,
   O extends model.Type,
   C extends OutputRetrieveCapabilities,
-  Pv extends Providers,
+  Pv extends provider.Providers,
 > = {
   /**
    * Function's input. It respects the function input {@link model.Type Type}.
@@ -167,14 +158,14 @@ export type FunctionArguments<
    * Name that was assigned to the function by the module.
    */
   readonly functionName: string
-} & ProvidersToContext<Pv>
+} & provider.ProvidersToContext<Pv>
 
 export type FunctionApplyArguments<
   I extends model.Type,
   O extends model.Type,
   C extends OutputRetrieveCapabilities,
-  Pv extends Providers,
-  G extends Guards,
+  Pv extends provider.Providers,
+  G extends guard.Guards,
 > = {
   /**
    * Function's input. It respects the function input {@link model.Type Type}.
@@ -218,8 +209,8 @@ export type Middleware<
   O extends model.Type,
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
-  Pv extends Providers,
-  G extends Guards,
+  Pv extends provider.Providers,
+  G extends guard.Guards,
 > = {
   /**
    * Middleware descriptive name.
@@ -275,8 +266,8 @@ type FunctionImplementor<
   O extends model.Type,
   E extends ErrorType,
   R extends OutputRetrieveCapabilities,
-  Pv extends Providers,
-  G extends Guards,
+  Pv extends provider.Providers,
+  G extends guard.Guards,
 > = {
   /**
    * Implements the function definition by defining the body of the function
@@ -297,7 +288,7 @@ type FunctionImplementor<
    * })
    * ```
    */
-  implement: (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body'>) => Function<I, O, E, R, Pv, G>
+  implement: (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body' | 'middlewares'>) => Function<I, O, E, R, Pv, G>
 }
 
 type FunctionMocker<
@@ -322,7 +313,7 @@ type FunctionProviderer<
   /**
    * Binds some {@link provider.ContextProvider ContextProvider}s to the function.
    */
-  with<const Pv extends Providers, const G extends Guards>(args: {
+  with<const Pv extends provider.Providers, const G extends guard.Guards>(args: {
     providers?: Pv
     guards?: G
   }): FunctionImplementor<I, O, E, R, Pv, G>
@@ -362,8 +353,14 @@ export function define<
     retrieve: undefined as R,
     ...func,
   }
-  function implement<Pv extends Providers, G extends Guards>({ providers, guards }: { providers?: Pv; guards?: G }) {
-    return (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body'>) => {
+  function implement<Pv extends provider.Providers, G extends guard.Guards>({
+    providers,
+    guards,
+  }: {
+    providers?: Pv
+    guards?: G
+  }) {
+    return (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body' | 'middlewares'>) => {
       if (func.errors) {
         const undefinedError = Object.entries(func.errors).find(([_, errorType]) => model.isOptional(errorType))
         if (undefinedError) {
@@ -382,7 +379,10 @@ export function define<
     ...fi,
     mock: createMockedFunction(fi),
     implement: implement({}),
-    with<const Pv extends Providers = {}, const G extends Guards = {}>(args: { providers?: Pv; guards?: G }) {
+    with<const Pv extends provider.Providers = {}, const G extends guard.Guards = {}>(args: {
+      providers?: Pv
+      guards?: G
+    }) {
       return { implement: implement(args) }
     },
   }
@@ -405,7 +405,7 @@ function createMockedFunction<
   const O extends model.Type = model.LiteralType<undefined>,
   const E extends ErrorType = undefined,
   R extends OutputRetrieveCapabilities = undefined,
->(fi: functions.FunctionInterface<I, O, E, R>): (options?: MockOptions) => functions.Function<I, O, E, R, {}> {
+>(fi: FunctionInterface<I, O, E, R>): (options?: MockOptions) => Function<I, O, E, R, {}> {
   return (options) => {
     const outputType = model.concretise(fi.output)
     const errorProbability = options?.errorProbability ?? 0
@@ -429,28 +429,10 @@ function createMockedFunction<
   }
 }
 
-export type ProvidersToContext<Pv extends Providers> = {
-  [K in keyof Pv]: Pv[K] extends provider.ContextProvider<any, infer C, any> ? C : {}
-} extends infer Context extends Record<string, unknown>
-  ? Context
-  : {}
-
-export type FunctionContextInput<Pv extends functions.Providers, G extends functions.Guards> = Expand<
-  (UnionToIntersection<
-    { [K in keyof Pv]: Pv[K] extends provider.ContextProvider<infer C, any, any> ? C : {} }[keyof Pv]
-  > extends infer ContextInput extends Record<string, unknown>
-    ? 0 extends 1 & ContextInput
-      ? {}
-      : ContextInput
-    : {}) &
-    (UnionToIntersection<
-      { [K in keyof G]: G[K] extends provider.ContextProvider<infer C, any, any> ? C : {} }[keyof G]
-    > extends infer ContextInput extends Record<string, unknown>
-      ? 0 extends 1 & ContextInput
-        ? {}
-        : ContextInput
-      : {})
->
+export type FunctionContextInput<
+  Pv extends provider.Providers,
+  G extends guard.Guards,
+> = provider.ContextProvidersContextInput<Pv> & provider.ContextProvidersContextInput<G>
 
 export type ErrorType = model.Types | undefined
 

@@ -13,7 +13,7 @@ test('Rate limiter middleware', async () => {
     .setName('LoginInput')
   const LoginOutput = model.object({ jwt: model.string() }).nullable().setName('LoginOuput')
   const locationProvider = provider.build({
-    apply: async ({ ip }: { ip: string }) => {
+    body: async ({ ip }: { ip: string }) => {
       return result.ok({ ip })
     },
   })

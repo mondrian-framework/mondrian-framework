@@ -90,7 +90,7 @@ export function buildGuard<const ContextInput extends Record<string, unknown>, c
   })
   return guard.build<ContextInput, Es>({
     errors,
-    apply(input: ContextInput) {
+    body(input: ContextInput) {
       const now = new Date()
       const k = key(input)
       if (k === null) {
@@ -165,7 +165,7 @@ export function buildProvider({
     store: store ?? new InMemoryStore(),
   })
   return provider.build<{}, any, undefined>({
-    async apply(_: {}) {
+    async body(_: {}) {
       const rateLimiter: RateLimiter = {
         apply: (k: string) => {
           const now = new Date()

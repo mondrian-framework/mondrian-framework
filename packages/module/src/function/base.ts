@@ -1,7 +1,5 @@
-import { functions, retrieve } from '..'
-import { ErrorType, FunctionResult, OutputRetrieveCapabilities, Tracer } from '../function'
+import { functions, guard, provider, retrieve } from '..'
 import { model, result } from '@mondrian-framework/model'
-import { mapObject } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
 
 /**
@@ -10,10 +8,10 @@ import { Span, SpanOptions } from '@opentelemetry/api'
 export class BaseFunction<
   I extends model.Type,
   O extends model.Type,
-  E extends ErrorType,
-  C extends OutputRetrieveCapabilities,
-  Pv extends functions.Providers,
-  G extends functions.Guards,
+  E extends functions.ErrorType,
+  C extends functions.OutputRetrieveCapabilities,
+  Pv extends provider.Providers,
+  G extends guard.Guards,
 > implements functions.FunctionImplementation<I, O, E, C, Pv, G>
 {
   readonly input: I
@@ -22,10 +20,10 @@ export class BaseFunction<
   readonly retrieve: C
   readonly providers: Pv
   readonly guards: G
-  readonly body: (args: functions.FunctionArguments<I, O, C, Pv>) => FunctionResult<O, E, C>
+  readonly body: (args: functions.FunctionArguments<I, O, C, Pv>) => functions.FunctionResult<O, E, C>
   readonly middlewares: readonly functions.Middleware<I, O, E, C, Pv, G>[]
   readonly options: { readonly namespace?: string | undefined; readonly description?: string | undefined } | undefined
-  readonly tracer: Tracer
+  readonly tracer: functions.Tracer
   readonly name: string
 
   constructor(func: functions.Function<I, O, E, C, Pv, G>, name?: string) {
@@ -42,6 +40,29 @@ export class BaseFunction<
     this.name = name ?? ''
   }
 
+  private async runProvider(
+    provider: provider.ContextProvider,
+    contextInput: any,
+    args: functions.GenericFunctionArguments,
+    cache: Map<unknown, result.Result<unknown, unknown>>,
+  ): Promise<result.Result<unknown, unknown>> {
+    const cached = cache.get(provider)
+    if (cached) {
+      return cached
+    }
+    const provided: { [K in string]: unknown } = {}
+    for (const [name, pv] of Object.entries(provider.providers)) {
+      const res = await this.runProvider(pv, contextInput, args, cache)
+      if (res.isFailure) {
+        return res
+      }
+      provided[name] = res.value
+    }
+    const res = await provider.body(contextInput, { ...args, ...provided })
+    cache.set(provider, res)
+    return res
+  }
+
   protected async applyProviders(
     args: functions.FunctionApplyArguments<I, O, C, Pv, G>,
   ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, unknown>> {
@@ -52,16 +73,17 @@ export class BaseFunction<
       tracer: args.tracer ?? this.tracer,
       functionName: this.name,
     }
+    const cache = new Map<unknown, result.Result<unknown, unknown>>()
     //Apply guards
     for (const guard of Object.values(this.guards)) {
-      const res = await guard.apply(args.contextInput, mappedArgs)
+      const res = await this.runProvider(guard, args.contextInput, mappedArgs, cache)
       if (res && res.isFailure) {
         return res
       }
     }
     //Apply providers
     for (const [providerName, provider] of Object.entries(this.providers)) {
-      const res = await provider.apply(args.contextInput, mappedArgs)
+      const res = await this.runProvider(provider, args.contextInput, mappedArgs, cache)
       if (res.isFailure) {
         return res
       }
@@ -70,7 +92,7 @@ export class BaseFunction<
     return result.ok(mappedArgs as functions.FunctionArguments<I, O, C, Pv>)
   }
 
-  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): FunctionResult<O, E, C> {
+  public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): functions.FunctionResult<O, E, C> {
     const mappedArgs = await this.applyProviders(args)
     if (mappedArgs.isFailure) {
       return mappedArgs as any
@@ -81,7 +103,7 @@ export class BaseFunction<
   private async execute(
     middlewareIndex: number,
     args: functions.FunctionArguments<I, O, C, Pv>,
-  ): FunctionResult<O, E, C> {
+  ): functions.FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
       return this.body(args)
     }
@@ -90,7 +112,7 @@ export class BaseFunction<
   }
 }
 
-class VoidTracer implements Tracer {
+class VoidTracer implements functions.Tracer {
   public withPrefix(_: string): VoidTracer {
     return this
   }

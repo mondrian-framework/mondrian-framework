@@ -5,9 +5,16 @@ import { provider } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
 import jsonwebtoken from 'jsonwebtoken'
 
-export const authProvider = provider.build({
-  errors: { unauthorized },
-  apply: async ({ authorization }: { authorization: string | undefined }) => {
+const prismaSingleton = new PrismaClient()
+export const dbProvider = provider.build({
+  body: async () => {
+    return result.ok({ prisma: prismaSingleton })
+  },
+})
+
+type AuthResult = { userId?: number } | undefined
+export const optionalAuthProvider = provider.build({
+  body: async ({ authorization }: { authorization: string | undefined }) => {
     if (authorization) {
       const secret = process.env.JWT_SECRET ?? 'secret'
       const rawJwt = authorization.replace('Bearer ', '')
@@ -15,27 +22,25 @@ export const authProvider = provider.build({
         const jwt = jsonwebtoken.verify(rawJwt, secret, { complete: true })
         if (typeof jwt.payload === 'object' && jwt.payload.sub) {
           const userId: IdType = Number(jwt.payload.sub)
-          return result.ok({ userId })
+          return result.ok<AuthResult>({ userId })
         }
       } catch {
-        return result.fail({ unauthorized: { details: { reason: 'InvalidJwt' } } })
+        return result.ok<AuthResult>({ userId: undefined })
       }
     }
-    return result.fail({ unauthorized: { details: { reason: 'AuthorizationMissing' } } })
+    return result.ok()
   },
 })
 
-export const optionalAuthProvider = provider.build({
-  apply: async (input: { authorization: string | undefined }, args) => {
-    const auth = await authProvider.apply(input, args)
-    const res = auth.recover(() => ({ userId: undefined }))
-    return result.ok(res)
-  },
-})
-
-const prismaSingleton = new PrismaClient()
-export const dbProvider = provider.build({
-  apply: async () => {
-    return result.ok({ prisma: prismaSingleton })
+export const authProvider = provider.dependsOn({ auth: optionalAuthProvider }).build({
+  errors: { unauthorized },
+  body: async (_input: {}, args) => {
+    if (args.auth?.userId != null) {
+      return result.ok({ userId: args.auth.userId })
+    } else if (args.auth) {
+      return result.fail({ unauthorized: { details: { reason: 'InvalidJwt' } } })
+    } else {
+      return result.fail({ unauthorized: { details: { reason: 'AuthorizationMissing' } } })
+    }
   },
 })

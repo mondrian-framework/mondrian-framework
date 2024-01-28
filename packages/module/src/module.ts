@@ -1,9 +1,8 @@
-import { functions, security } from '.'
-import { ErrorType, Guards, OutputRetrieveCapabilities, Providers } from './function'
+import { functions, guard, provider, security } from '.'
 import { BaseFunction } from './function/base'
 import { OpentelemetryFunction } from './function/opentelemetry'
 import * as middleware from './middleware'
-import { allUniqueTypes } from './utils'
+import { allUniqueTypes, reservedProvidersNames } from './utils'
 import { model } from '@mondrian-framework/model'
 import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType } from '@opentelemetry/api'
@@ -104,13 +103,14 @@ function assertUniqueNames(functions: functions.FunctionInterfaces) {
   })
 }
 
+//TODO: move this checks inside the function definition
 /**
  * Checks if the errors used by the providers are defined in the function errors.
  */
 function assertCorrectErrors(functions: functions.Functions, what: 'providers' | 'guards') {
   for (const [functionName, functionBody] of Object.entries(functions)) {
-    for (const [providerName, provider] of Object.entries(functionBody[what] as functions.Providers)) {
-      const providerErrors = Object.entries(provider.errors ?? {})
+    for (const [providerName, provider] of Object.entries(functionBody[what] as provider.Providers)) {
+      const providerErrors = gatherProviderErrors(provider)
       const functionErrors = (functionBody.errors ?? {}) as model.Types
       for (const [errorName, errorType] of providerErrors) {
         if (!(errorName in functionErrors)) {
@@ -129,12 +129,19 @@ function assertCorrectErrors(functions: functions.Functions, what: 'providers' |
   }
 }
 
+function gatherProviderErrors(provider: provider.ContextProvider): [string, model.Type][] {
+  const result = Object.entries(provider.errors ?? {})
+  for (const subProvider of Object.values(provider.providers)) {
+    result.push(...gatherProviderErrors(subProvider))
+  }
+  return result
+}
+
 function assertCorrectProviderNames(functions: functions.Functions) {
-  const reservedNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']
   for (const [functionName, functionBody] of Object.entries(functions)) {
     for (const providerName of Object.keys(functionBody.providers)) {
-      if (reservedNames.includes(providerName)) {
-        throw new Error(`Provider "${providerName}" is using a reserved name in function "${functionName}". `)
+      if (reservedProvidersNames.includes(providerName)) {
+        throw new Error(`Provider name "${providerName}" is reserved in function "${functionName}". `)
       }
     }
   }
@@ -196,10 +203,10 @@ export function build<const Fs extends functions.Functions>(
         const wrappedFunction: functions.FunctionImplementation<
           model.Type,
           model.Type,
-          ErrorType,
-          OutputRetrieveCapabilities,
-          Providers,
-          Guards
+          functions.ErrorType,
+          functions.OutputRetrieveCapabilities,
+          provider.Providers,
+          guard.Guards
         > = new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
         return [functionName, wrappedFunction]
       } else {

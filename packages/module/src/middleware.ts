@@ -1,4 +1,4 @@
-import { exception, functions, logger, retrieve, security, utils } from '.'
+import { exception, functions, guard, logger, provider, retrieve, security, utils } from '.'
 import { checkPolicies as checkPolicyInternal } from './security'
 import { result, model, decoding, validation, path } from '@mondrian-framework/model'
 import { buildErrorMessage } from '@mondrian-framework/utils'
@@ -14,8 +14,8 @@ export function checkMaxSelectionDepth(
   model.Type,
   functions.ErrorType,
   functions.OutputRetrieveCapabilities,
-  functions.Providers,
-  functions.Guards
+  provider.Providers,
+  guard.Guards
 > {
   return {
     name: 'Check max selection depth',
@@ -41,8 +41,8 @@ export function checkOutputType(
   model.Type,
   functions.ErrorType,
   functions.OutputRetrieveCapabilities,
-  functions.Providers,
-  functions.Guards
+  provider.Providers,
+  guard.Guards
 > {
   return {
     name: 'Check output type',
@@ -120,8 +120,8 @@ export function checkPolicies(
   model.Type,
   functions.ErrorType,
   functions.OutputRetrieveCapabilities,
-  functions.Providers,
-  functions.Guards
+  provider.Providers,
+  guard.Guards
 > {
   return {
     name: 'Check policies',

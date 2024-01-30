@@ -120,7 +120,7 @@ function clearInternalData(internalData: InternalData) {
  * Maps a mondrian {@link model.Type Type} into a {@link GraphQLOutputType}.
  */
 function typeToGraphQLOutputType(type: model.Type, internalData: InternalData): GraphQLOutputType {
-  const knownOutputType = internalData.knownOutputTypes.get(type)
+  const knownOutputType = getKnownOutputType(type, internalData)
   if (knownOutputType) {
     return knownOutputType
   }
@@ -145,7 +145,7 @@ function typeToGraphQLOutputType(type: model.Type, internalData: InternalData): 
  * Maps a mondrian {@link model.Type Type} into a {@link GraphQLInputType}.
  */
 function typeToGraphQLInputType(type: model.Type, internalData: InternalData): GraphQLInputType {
-  const knownInputType = internalData.knownInputTypes.get(type)
+  const knownInputType = getKnownInputType(type, internalData)
   if (knownInputType) {
     return knownInputType
   }
@@ -166,17 +166,54 @@ function typeToGraphQLInputType(type: model.Type, internalData: InternalData): G
   return graphQLType
 }
 
+/**
+ * Caches a Modnrian->Graphql type conversion.
+ */
 function setKnownType(
   type: model.Type,
   graphqlType: GraphQLOutputType | GraphQLInputType,
   internalData: InternalData,
 ): void {
-  if (isOutputType(graphqlType)) {
-    internalData.knownOutputTypes.set(type, graphqlType)
-  }
-  if (isInputType(graphqlType)) {
-    internalData.knownInputTypes.set(type, graphqlType)
-  }
+  do {
+    if (isOutputType(graphqlType)) {
+      internalData.knownOutputTypes.set(type, graphqlType)
+    }
+    if (isInputType(graphqlType)) {
+      internalData.knownInputTypes.set(type, graphqlType)
+    }
+    //Caches all lazy steps
+    type = typeof type === 'function' ? type() : type
+  } while (typeof type === 'function')
+}
+
+/**
+ * Gets a cached Modnrian->GraphqlOutput type conversion. If not found returns null.
+ */
+function getKnownOutputType(type: model.Type, internalData: InternalData): GraphQLOutputType | null {
+  do {
+    const knownOutputType = internalData.knownOutputTypes.get(type)
+    if (knownOutputType) {
+      return knownOutputType
+    }
+    //Searchs for all lazy steps
+    type = typeof type === 'function' ? type() : type
+  } while (typeof type === 'function')
+  return null
+}
+
+/**
+ * Gets a cached Modnrian->GraphqlInput type conversion. If not found returns null.
+ */
+function getKnownInputType(type: model.Type, internalData: InternalData): GraphQLInputType | null {
+  do {
+    const knownInputType = internalData.knownInputTypes.get(type)
+    if (knownInputType) {
+      return knownInputType
+    }
+    //Searchs for all lazy steps
+    type = typeof type === 'function' ? type() : type
+  } while (typeof type === 'function')
+  return null
 }
 
 // If the given type has a name then it is turned into a scalar

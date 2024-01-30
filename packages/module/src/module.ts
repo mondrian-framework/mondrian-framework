@@ -46,6 +46,11 @@ export type FunctionsToContextInput<Fs extends functions.Functions = functions.F
 >
 
 /**
+ * Gets the context input required by a module.
+ */
+export type ModuleContextInput<M> = M extends Module<infer Fs> ? FunctionsToContextInput<Fs> : {}
+
+/**
  * Convert a map of functions to the union of possible functions arguments.
  */
 type ModuleMiddlewareInputArgs<Fs extends functions.Functions> = {

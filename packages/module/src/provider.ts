@@ -46,7 +46,7 @@ type ApplyResult<Context, Errors extends functions.ErrorType> = [Exclude<Errors,
  *    }
  * })
  *
- * const myFunction = functionDefinition.with({
+ * const myFunction = functionDefinition.use({
  *   providers: { auth: authProvider },
  * }).implement({
  *   async body({ input, auth: { userId } }) {
@@ -62,10 +62,10 @@ export function build<
 >(
   provider: Omit<ContextProvider<ContextInput, Context, Errors, {}>, 'providers'>,
 ): ContextProvider<ContextInput, Context, Errors, {}> {
-  return dependsOn({}).build(provider)
+  return use({ providers: {} }).build(provider)
 }
 
-export function dependsOn<const Pv extends Providers>(providers: Pv) {
+export function use<const Pv extends Providers>({ providers }: { providers: Pv }) {
   for (const providerName of Object.keys(providers)) {
     if (reservedProvidersNames.includes(providerName)) {
       throw new Error(`"${providerName}" is a reserved name for dependencies.`)

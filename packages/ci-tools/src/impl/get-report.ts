@@ -4,7 +4,7 @@ import { contextProvider } from './providers'
 import { result } from '@mondrian-framework/model'
 
 export const getReport = moduleInterface.functions.getReport
-  .with({ providers: { context: contextProvider } })
+  .use({ providers: { context: contextProvider } })
   .implement({
     async body({ input: { reportId, password }, context: { fileManager } }) {
       const secret = password || DEFAULT_PASSWORD

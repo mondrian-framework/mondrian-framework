@@ -282,7 +282,7 @@ const getUsers = functions
     errors: { unauthorized },
     retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
   })
-  .with({ providers: { auth: authProvider } })
+  .use({ providers: { auth: authProvider } })
   .implement({
     body: async ({ retrieve, auth: { userId } }) => {
       const users = await prismaClient.user.findMany(retrieve)

@@ -37,7 +37,7 @@ type ApplyResult<Errors extends functions.ErrorType> = [Exclude<Errors, undefine
  *    }
  * })
  *
- * const myFunction = functionDefinition.with({
+ * const myFunction = functionDefinition.use({
  *   guards: { auth: authGuard },
  * }).implement({
  *   //...
@@ -47,14 +47,14 @@ type ApplyResult<Errors extends functions.ErrorType> = [Exclude<Errors, undefine
 export function build<const ContextInput extends Record<string, unknown>, const Errors extends functions.ErrorType>(
   guard: GuardDefinition<ContextInput, Errors, {}>,
 ): provider.ContextProvider<ContextInput, undefined, Errors, {}> {
-  return dependsOn({}).build(guard)
+  return use({ providers: {} }).build(guard)
 }
 
-export function dependsOn<const Pv extends provider.Providers>(providers: Pv) {
+export function use<const Pv extends provider.Providers>({ providers }: { providers: Pv }) {
   function build<const ContextInput extends Record<string, unknown>, const Errors extends functions.ErrorType>(
     guard: GuardDefinition<ContextInput, Errors, Pv>,
   ): provider.ContextProvider<ContextInput, undefined, Errors, Pv> {
-    return provider.dependsOn(providers).build({
+    return provider.use({ providers }).build({
       errors: guard.errors,
       body: (async (input, args) => {
         const res = await guard.body(input, args as any)

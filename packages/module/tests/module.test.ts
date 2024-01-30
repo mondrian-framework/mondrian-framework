@@ -162,7 +162,7 @@ test('Real example', async () => {
     functions: { login, register, completeProfile, noInputOrOutput },
   })
 
-  const client = sdk.useMetadata<{ ip?: string; authorization?: string }>().build({
+  const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
     module: m,
     context: async ({ metadata }) => {
       return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
@@ -206,7 +206,7 @@ test('Real example', async () => {
   expect(r1.isFailure && r1.error).toEqual({ unauthorized: 'Invalid authorization' })
 
   if (loginResult.isOk && loginResult.value) {
-    const authClient = client.useMetadata({ authorization: loginResult.value.jwt })
+    const authClient = client.withMetadata({ authorization: loginResult.value.jwt })
     const myUser = await authClient.functions.completeProfile({ firstname: 'Pieter', lastname: 'Mondriaan' }, {})
     expect(myUser.isOk && myUser.value).toEqual({
       email: 'admin@domain.com',
@@ -382,7 +382,7 @@ test('Return types', async () => {
     functions: { login },
   })
 
-  const client = sdk.useMetadata<{ ip?: string; authorization?: string }>().build({
+  const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
     module: m,
     context: async ({ metadata }) => {
       return { ip: metadata?.ip ?? 'local', authorization: metadata?.authorization }
@@ -482,7 +482,7 @@ test('Errors return', async () => {
     options: { checkOutputType: 'throw' },
   })
 
-  const client = sdk.useMetadata<{ ip?: string; authorization?: string }>().build({
+  const client = sdk.withMetadata<{ ip?: string; authorization?: string }>().build({
     module: m,
     context: async () => {
       return {}

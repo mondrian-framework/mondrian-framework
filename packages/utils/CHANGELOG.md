@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.20
+
+### Patch Changes
+
+- Provider dependencies
+
 ## 2.0.19
 
 ### Patch Changes

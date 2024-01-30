@@ -187,7 +187,7 @@ export type User = model.Infer<typeof User>
               </div>
               <div className={styles.featureColumn}>
                 <CodeBlock className={styles.codeBlock} language="ts" title="module.ts" showLineNumbers>
-                  {`import { functions } from '@mondrian-framework/module'
+                  {`import { functions, error } from '@mondrian-framework/module'
 import { model } from '@mondrian-framework/model'
 
 const register = functions
@@ -196,8 +196,7 @@ const register = functions
       email: model.email(), 
       password: model.string({ minLength: 8 }) 
     }),
-    output: model.object({ jwt: model.string() }),
-    errors: { weakPassword: model.string() },
+    output: model.object({ jwt: model.string() })
   })
   .implement({
     async body({ input: { email, password } }) {

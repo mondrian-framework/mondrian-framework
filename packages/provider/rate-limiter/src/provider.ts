@@ -145,7 +145,7 @@ type RateLimiter = {
  *   errors: {
  *     tooManyRequests: model.string()
  *   }
- * }).with({
+ * }).use({
  *   rateLimiter: rateLimitByEmailProvider
  * }).implement({
  *   async body({ input, rateLimiter }) {

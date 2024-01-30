@@ -1,5 +1,15 @@
 # @mondrian-framework/cli-commander
 
+## 2.0.20
+
+### Patch Changes
+
+- Provider dependencies
+- Updated dependencies
+  - @mondrian-framework/model@2.0.20
+  - @mondrian-framework/module@2.0.20
+  - @mondrian-framework/utils@2.0.20
+
 ## 2.0.19
 
 ### Patch Changes

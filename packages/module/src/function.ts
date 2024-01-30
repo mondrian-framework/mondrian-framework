@@ -313,7 +313,7 @@ type FunctionProviderer<
   /**
    * Binds some {@link provider.ContextProvider ContextProvider}s to the function.
    */
-  with<const Pv extends provider.Providers, const G extends guard.Guards>(args: {
+  use<const Pv extends provider.Providers, const G extends guard.Guards>(args: {
     providers?: Pv
     guards?: G
   }): FunctionImplementor<I, O, E, R, Pv, G>
@@ -379,7 +379,7 @@ export function define<
     ...fi,
     mock: createMockedFunction(fi),
     implement: implement({}),
-    with<const Pv extends provider.Providers = {}, const G extends guard.Guards = {}>(args: {
+    use<const Pv extends provider.Providers = {}, const G extends guard.Guards = {}>(args: {
       providers?: Pv
       guards?: G
     }) {

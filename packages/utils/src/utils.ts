@@ -279,13 +279,15 @@ export function toCamelCase(text: string): string {
  */
 export function groupBy<O, K extends string>(list: O[], getKey: (item: O) => K): Record<K, O[]> {
   return list.reduce(
-    (previous, currentItem) => {
-      const group = getKey(currentItem)
-      if (!previous[group]) {
-        previous[group] = []
+    (map, item) => {
+      const group = getKey(item)
+      const list = map[group]
+      if (!list) {
+        map[group] = [item]
+      } else {
+        list.push(item)
       }
-      previous[group].push(currentItem)
-      return previous
+      return map
     },
     {} as Record<K, O[]>,
   )

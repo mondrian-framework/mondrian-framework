@@ -8,7 +8,7 @@ import fs from 'fs'
 import path from 'path'
 
 export const buildOASReport = moduleInterface.functions.buildOASReport
-  .with({ providers: { context: contextProvider } })
+  .use({ providers: { context: contextProvider } })
   .implement({
     async body({ input: { previousSchema, currentSchema, password }, context: { fileManager, serverBaseURL } }) {
       const binFile = path.join(

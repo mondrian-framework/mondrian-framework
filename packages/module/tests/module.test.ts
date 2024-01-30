@@ -68,7 +68,7 @@ test('Real example', async () => {
       errors: { invalidEmailOrPassword: model.literal('Invalid email or password') },
       options: { namespace: 'authentication' },
     })
-    .with({ providers: { db: dbProvider, from: fromProvider } })
+    .use({ providers: { db: dbProvider, from: fromProvider } })
     .implement({
       body: async ({ input, db, logger }) => {
         const user = db.findUser({ email: input.email })
@@ -103,7 +103,7 @@ test('Real example', async () => {
       },
       options: { namespace: 'authentication' },
     })
-    .with({ providers: { db: dbProvider, from: fromProvider } })
+    .use({ providers: { db: dbProvider, from: fromProvider } })
     .implement({
       body: async ({ input, db, from, logger }) => {
         if (!input.email.includes('@domain.com')) {
@@ -134,7 +134,7 @@ test('Real example', async () => {
       errors: { unauthorized: model.string() },
       options: { namespace: 'business-logic' },
     })
-    .with({ providers: { db: dbProvider, auth: authProvider } })
+    .use({ providers: { db: dbProvider, auth: authProvider } })
     .implement({
       body: async ({ input, db, auth }) => {
         const user = db.findUser({ email: auth.email })
@@ -149,7 +149,7 @@ test('Real example', async () => {
     .define({
       errors: { unauthorized: model.string() },
     })
-    .with({ providers: { dbProvider } })
+    .use({ providers: { dbProvider } })
     .implement({
       body: async ({}) => {
         return result.ok(undefined)
@@ -248,7 +248,7 @@ describe('Invalid provider errors', () => {
     })
     const f = functions
       .define({})
-      .with({ providers: { input: prov } })
+      .use({ providers: { input: prov } })
       .implement({
         body: () => {
           throw 'Unreachable'
@@ -268,7 +268,7 @@ describe('Invalid provider errors', () => {
     })
     const f = functions
       .define({})
-      .with({ providers: { prov } })
+      .use({ providers: { prov } })
       .implement({
         body: () => {
           throw 'Unreachable'
@@ -291,7 +291,7 @@ describe('Invalid provider errors', () => {
       .define({
         errors: { errorName: model.number() },
       })
-      .with({ providers: { prov } })
+      .use({ providers: { prov } })
       .implement({
         body: () => {
           throw 'Unreachable'

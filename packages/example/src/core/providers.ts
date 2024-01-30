@@ -32,7 +32,7 @@ export const optionalAuthProvider = provider.build({
   },
 })
 
-export const authProvider = provider.dependsOn({ auth: optionalAuthProvider }).build({
+export const authProvider = provider.use({ providers: { auth: optionalAuthProvider } }).build({
   errors: { unauthorized },
   body: async (_input: {}, args) => {
     if (args.auth?.userId != null) {

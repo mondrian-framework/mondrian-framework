@@ -33,7 +33,7 @@ test('Rate limiter middleware', async () => {
       errors: LoginError,
       retrieve: undefined,
     })
-    .with({ providers: { location: locationProvider, rateLimitByEmail, rateLimitByIpEmail } })
+    .use({ providers: { location: locationProvider, rateLimitByEmail, rateLimitByIpEmail } })
     .implement({
       body: async ({ input, rateLimitByEmail, rateLimitByIpEmail, location: { ip } }) => {
         if (input.email !== 'admin@domain.com' && rateLimitByIpEmail.apply(`${ip}:${input.email}`) === 'rate-limited') {

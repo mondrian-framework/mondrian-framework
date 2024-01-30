@@ -15,7 +15,7 @@ const rateLimitByEmailProvider = rateLimiter.buildProvider({
 })
 
 export const login = module.functions.login
-  .with({
+  .use({
     providers: { db: dbProvider, rateLimiterByEmail: rateLimitByEmailProvider },
     guards: { rateLimitByIpGuard },
   })
@@ -41,7 +41,7 @@ export const login = module.functions.login
     },
   })
 
-export const register = module.functions.register.with({ providers: { db: dbProvider } }).implement({
+export const register = module.functions.register.use({ providers: { db: dbProvider } }).implement({
   async body({ input, db: { prisma } }) {
     try {
       const user = await prisma.user.create({
@@ -59,7 +59,7 @@ export const register = module.functions.register.with({ providers: { db: dbProv
   },
 })
 
-export const follow = module.functions.follow.with({ providers: { auth: authProvider, db: dbProvider } }).implement({
+export const follow = module.functions.follow.use({ providers: { auth: authProvider, db: dbProvider } }).implement({
   async body({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma } }) {
     if (input.userId === userId || (await prisma.user.count({ where: { id: input.userId } })) === 0) {
       return result.fail({ userNotExists: {} })
@@ -87,11 +87,9 @@ export const follow = module.functions.follow.with({ providers: { auth: authProv
   },
 })
 
-export const getUsers = module.functions.getUsers
-  .with({ providers: { auth: authProvider, db: dbProvider } })
-  .implement({
-    async body({ retrieve: thisRetrieve, db: { prisma } }) {
-      const users = await prisma.user.findMany(thisRetrieve)
-      return result.ok(users)
-    },
-  })
+export const getUsers = module.functions.getUsers.use({ providers: { auth: authProvider, db: dbProvider } }).implement({
+  async body({ retrieve: thisRetrieve, db: { prisma } }) {
+    const users = await prisma.user.findMany(thisRetrieve)
+    return result.ok(users)
+  },
+})

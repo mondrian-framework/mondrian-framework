@@ -14,21 +14,21 @@ test('provider dependencies', async () => {
       return result.ok({ a })
     },
   })
-  const pv1 = provider.dependsOn({ pv0 }).build({
+  const pv1 = provider.use({ providers: { pv0 } }).build({
     async body({ b }: { b: string }, { pv0 }) {
       expect(pv0).toEqual({ a: 'a' })
       events.push('pv1')
       return result.ok({ b })
     },
   })
-  const pv2 = provider.dependsOn({ pv1 }).build({
+  const pv2 = provider.use({ providers: { pv1 } }).build({
     async body({ c }: { c: string }, { pv1 }) {
       expect(pv1).toEqual({ b: 'b' })
       events.push('pv2')
       return result.ok({ c })
     },
   })
-  const pv3 = provider.dependsOn({ pv1, pv2 }).build({
+  const pv3 = provider.use({ providers: { pv1, pv2 } }).build({
     async body({ d }: { d: string }, { pv1, pv2 }) {
       expect(pv1).toEqual({ b: 'b' })
       expect(pv2).toEqual({ c: 'c' })
@@ -43,7 +43,7 @@ test('provider dependencies', async () => {
     },
   })
 
-  const g1 = guard.dependsOn({ g0, pv1 }).build({
+  const g1 = guard.use({ providers: { g0, pv1 } }).build({
     async body(_: { f: string }, { g0, pv1 }) {
       expect(g0).toBe(undefined)
       expect(pv1).toEqual({ b: 'b' })
@@ -52,7 +52,7 @@ test('provider dependencies', async () => {
   })
 
   expect(() =>
-    provider.dependsOn({ input: pv0 }).build({
+    provider.use({ providers: { input: pv0 } }).build({
       async body({}: {}) {
         return result.ok({})
       },
@@ -64,7 +64,7 @@ test('provider dependencies', async () => {
 
   const f = functions
     .define({ output: model.string(), errors: { invalid: model.string() } })
-    .with({ providers: { pv2, pv1, pv3 }, guards: { g1 } })
+    .use({ providers: { pv2, pv1, pv3 }, guards: { g1 } })
     .implement({
       body: async ({ pv1, pv2, pv3 }) => {
         return result.ok(pv1.b + pv2.c + pv3.d)

@@ -16,7 +16,10 @@ Mondrian Framework provides many features for building modern cloud native appli
 
 ## Development
 - 100% TypeScript
-- Business logic encapsulation using functions
+- Business logic encapsulation in functions
+- Dependency Injection using Providers
+- Dependency between providers
+- Function and module guards
 - Reusable module definition
 - Module composition
 - Context management

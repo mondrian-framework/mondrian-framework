@@ -1,5 +1,16 @@
 # @mondrian-framework/graphql-yoga
 
+## 2.0.22
+
+### Patch Changes
+
+- Improved errors, add jwt type
+- Updated dependencies
+  - @mondrian-framework/graphql@2.0.22
+  - @mondrian-framework/model@2.0.22
+  - @mondrian-framework/module@2.0.22
+  - @mondrian-framework/utils@2.0.22
+
 ## 2.0.21
 
 ### Patch Changes

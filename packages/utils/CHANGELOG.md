@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.22
+
+### Patch Changes
+
+- Improved errors, add jwt type
+
 ## 2.0.21
 
 ### Patch Changes

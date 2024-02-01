@@ -1,10 +1,10 @@
 # Implementation
 
 The implementation of a function is basically the business logic that represents its behavior. 
-Given some inputs generates expected outputs with any side effects on a context.
+Given some inputs it generates expected outputs.
 
 In Mondrian, a function is implemented by starting with its [definition](./01-definition.md) and 
-invoking the `implement` method.
+invoking the `implement` method on it.
 
 ```ts showLineNumbers
 import { result } from '@mondrian-framework/model'
@@ -17,11 +17,13 @@ const createPost = createPostDefinition.implement({
   }
 })
 ```
+This methos has a mandatory `body` parameter where you must define an asynchronous function
+(returning a Promise) containing your implementation. That function has dynamic parameters based 
+on its definition.
 
 ## Input
-
 The input parameter type depends on the respective definition, it's basically an application of 
-the [`model.Infer`](../model/02-typing.md#type-inference) utility type to the input definiton.
+the [`model.Infer`](../model/02-typing.md#type-inference) utility type to the input schema.
 
 ```ts showLineNumbers
 const PostInput = model.object({
@@ -55,59 +57,13 @@ take care of this validation and, if it does not conform, return an error to the
 Within the function, therefore, no additional checks on the conformity of the input are necessary, 
 but you can of course implement as many additional checks and related errors as you want.
 
-## Context
-
-A *pure function* is a function that has no side effect or internal state and, given a specific input, 
-always returns the same output. Pure functions are easy to test and generally produce few errors, but 
-it is not always possible or otherwise simple to design a system using only them.
-
-Many times within a function it is necessary to interact with other parts of the system, such as 
-infrastructure components (databases, queues, etc.), other modules or external systems (third-party 
-APIs as an example).
-
-In a Mondrian function all these interactions pass through an object called `context`. The context can 
-be thought of as the container of all the services, ports and adapters that a function can use to interact 
-with everything outside. It will then be the responsability to the [module](../module/index.md) and the 
-[runtime](../runtime/index.md) on which it runs to instantiate the context so that it meets the requirements 
-of all functions.
-
-In the implementation of a function in Mondrian, the context is one of the parameters, and its type can be 
-explicitly specified using a generic.
-
-```ts showLineNumbers
-// highlight-start
-type Context = { repository: Repository }
-// highlight-end
-
-// highlight-start
-const createPost = createPostDefinition.implement<Context>({
-    async body({ input, context }) {    
-// highlight-end
-      const postId = await context.repository.posts.insertOne(input)
-      return result.ok(postId)
-    },
-  })
-```
-
-:::warning
-It is extremely important that each function declare **as little context as possible** to implement its logic, 
-to avoid introducing **unnecessary dependencies**. You must remember that every dependency and every side effect 
-you introduce within a function decreases its testability and increases the possibility of creating error.
-:::
-
-:::info
-What about the **difference between context and an input**? Basically the context, from the point 
-of view of the function, is indeed an input, but unlike the others it is not provided by the caller but by the 
-module and the runtime that executes it. Also, unlike inputs that are normally immutable, context may not be, and 
-through it actions and commands can be executed.
-::::
-
 ## Output
 
-The implementation of a function must have a return value that conforms to when described in the definition, be it 
-an output or an error.
+The implementation of a function must have a return value that conforms to what described in its definition, 
+be it an output or an error.
 
-Mondrian provides a utility module named `result` to facilitate this implementation, as shown below.
+Mondrian provides an utility module named `result` to facilitate this implementation in functional style, 
+as shown below.
 
 ```ts showLineNumbers
 import { result } from '@mondrian-framework/model'

@@ -92,6 +92,7 @@ model.rgb() // CSS RGB, ex: rgb(255, 220, 200)
 model.rgba() // CSS RGBA, ex: rgba(255, 220, 200, 0.5)
 model.unknown() // any value
 model.record([type]) // Record<string, [type]>
+model.jwt({ iat: model.timestamp({ format: 'second' }), ... }, 'RS256') // jwt
 ```
 
 ## Enums

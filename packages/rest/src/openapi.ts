@@ -522,6 +522,19 @@ function customToOpenAPIComponent(
       description: type.options?.description ?? defaultDescription,
       example: (type.example({ seed: 0 }) as BigNumber).toString(opts.base),
     }
+  } else if (type.typeName === model.jwt({}, 'ES256').typeName) {
+    const options = type.options as model.JwtOptions
+    const payloadSchema = modelToSchema((type.options as model.JwtOptions).payloadType, internalData)
+    return {
+      type: 'string',
+      contentMediaType: 'application/jwt',
+      contentSchema: {
+        type: 'array',
+        minItems: 2,
+        prefixItems: [{ const: { typ: 'JWT', alg: options.algorithm } }, payloadSchema],
+      },
+      description: type.options?.description,
+    } as OpenAPIV3_1.NonArraySchemaObject
   }
 
   //TODO [Good first issue]: complete with other known custom type

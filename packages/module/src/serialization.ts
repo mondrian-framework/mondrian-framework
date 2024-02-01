@@ -25,6 +25,10 @@ const defaultCustomSerializers: CustomSerializers = {
   record: (custom: model.RecordType<model.Type>, resolve) => ({
     wrappedType: resolve(custom.options!.fieldsType),
   }),
+  jwt: (custom: model.JwtType<model.Type>, resolve) => ({
+    payloadType: resolve(custom.options!.payloadType),
+    algorithm: custom.options!.algorithm,
+  }),
   datetime: (custom: model.DateTimeType) => ({
     customOptions: {
       minimum: custom.options?.minimum?.getTime(),

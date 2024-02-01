@@ -85,9 +85,10 @@ describe('Module interface to schema', () => {
     const datetime = model.datetime().setName('DateTime')
     const timestamp = model.datetime().setName('Timestamp')
     const record = model.record(model.string()).setName('Record')
+    const jwt = model.jwt({ foo: model.string() }, 'ES256').setName('Jwt')
     const f = functions.define({
       input: model
-        .object({ str, num, bool, lit1, lit2, lit3, lit4, lit5, enumerator, datetime, timestamp, record })
+        .object({ str, num, bool, lit1, lit2, lit3, lit4, lit5, enumerator, datetime, timestamp, record, jwt })
         .setName('Input'),
       output: str.optional().setName('Output'),
       errors: { error1: str.nullable().setName('Error1'), error2: str.array().setName('Error2') },
@@ -123,11 +124,23 @@ describe('Module interface to schema', () => {
           custom: { customOptions: {} },
         },
         ANONYMOUS_TYPE_0: { type: 'string' },
+        ANONYMOUS_TYPE_1: {
+          fields: {
+            foo: 'ANONYMOUS_TYPE_0',
+          },
+          type: 'object',
+        },
         Record: {
           type: 'custom',
           typeName: 'record',
           options: { name: 'Record' },
           custom: { wrappedType: 'ANONYMOUS_TYPE_0' },
+        },
+        Jwt: {
+          custom: { payloadType: 'ANONYMOUS_TYPE_1', algorithm: 'ES256' },
+          options: { name: 'Jwt' },
+          type: 'custom',
+          typeName: 'jwt',
         },
         Input: {
           type: 'object',
@@ -144,6 +157,7 @@ describe('Module interface to schema', () => {
             datetime: 'DateTime',
             timestamp: 'Timestamp',
             record: 'Record',
+            jwt: 'Jwt',
           },
           options: { name: 'Input' },
         },

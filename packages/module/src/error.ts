@@ -1,7 +1,7 @@
 import { model } from '@mondrian-framework/model'
 import { capitalise, mapObject } from '@mondrian-framework/utils'
 
-type ErrorsDefinition = { [K in string]: { message: string; details?: model.Type } }
+type ErrorsDefinition = { [K in string]: { [F in string]: model.Type | string } }
 /**
  * Generic error type with a standard structure.
  * { message: string, details: T }
@@ -9,13 +9,13 @@ type ErrorsDefinition = { [K in string]: { message: string; details?: model.Type
 type Error<Es extends ErrorsDefinition> = {
   [K in keyof Es]: model.ObjectType<
     model.Mutability.Immutable,
-    [Exclude<Es[K]['details'], undefined>] extends [infer T extends model.Type]
-      ? {
-          details: T
-        }
-      : {}
+    Pick<Es[K], NonStringKeys<Es[K]>> extends infer Ts extends model.Types ? Ts : {}
   >
 }
+
+type NonStringKeys<T extends { [K in string]: model.Type | string }> = {
+  [K in keyof T]: T[K] extends string ? never : K
+}[keyof T]
 
 /**
  * Defines an error type in a standard way.
@@ -49,12 +49,11 @@ export function define<const Es extends ErrorsDefinition>(
   errors: Es,
   options?: { capitalizeErrorNames?: boolean },
 ): Error<Es> {
-  return mapObject(errors, (errorCode, { message, details }) => {
+  return mapObject(errors, (errorCode, fields) => {
     const type = model.object(
-      {
-        message: model.literal(message, { allowUndefinedValue: true }),
-        ...(details ? { details } : {}),
-      },
+      mapObject(fields, (_, field) =>
+        typeof field === 'string' ? model.literal(field, { allowUndefinedValue: true }) : field,
+      ),
       { name: options?.capitalizeErrorNames ? capitalise(`${errorCode}Error`) : `${errorCode}Error` },
     )
     return type as any

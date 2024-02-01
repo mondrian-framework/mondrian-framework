@@ -23,7 +23,7 @@ export const login = module.functions.login
     async body({ input, logger, db: { prisma }, rateLimiterByEmail }) {
       const { email, password } = input
       if (rateLimiterByEmail.check(email) === 'rate-limited') {
-        return result.fail({ tooManyRequests: { details: { limitedBy: 'email' } } })
+        return result.fail({ tooManyRequests: { limitedBy: 'email' } })
       }
       const loggedUser = await prisma.user.findFirst({ where: { email, password }, select: { id: true } })
       if (!loggedUser) {

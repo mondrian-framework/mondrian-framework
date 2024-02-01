@@ -376,6 +376,7 @@ export function mergeSelect(
       return mapObject(fields, (fieldName, fieldType) => {
         const leftSelect = left[fieldName]
         const rightSelect = right[fieldName]
+        //TODO: if one is undefined it means that we are selecting all root fields
         if (!leftSelect) {
           return rightSelect
         }

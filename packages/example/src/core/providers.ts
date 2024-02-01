@@ -38,9 +38,9 @@ export const authProvider = provider.use({ providers: { auth: optionalAuthProvid
     if (args.auth?.userId != null) {
       return result.ok({ userId: args.auth.userId })
     } else if (args.auth) {
-      return result.fail({ unauthorized: { details: { reason: 'InvalidJwt' } } })
+      return result.fail({ unauthorized: { reason: 'InvalidJwt' } })
     } else {
-      return result.fail({ unauthorized: { details: { reason: 'AuthorizationMissing' } } })
+      return result.fail({ unauthorized: { reason: 'AuthorizationMissing' } })
     }
   },
 })

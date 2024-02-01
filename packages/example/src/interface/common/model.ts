@@ -13,7 +13,7 @@ export const { unauthorized, emailAlreadyTaken, postNotFound, userNotExists, inv
     {
       unauthorized: {
         message: 'Unauthorised access.',
-        details: model.object({ reason: model.enumeration(['InvalidJwt', 'AuthorizationMissing']) }),
+        reason: model.enumeration(['InvalidJwt', 'AuthorizationMissing']),
       },
       postNotFound: { message: 'Post not found.' },
       emailAlreadyTaken: { message: 'Email already taken.' },
@@ -21,7 +21,7 @@ export const { unauthorized, emailAlreadyTaken, postNotFound, userNotExists, inv
       invalidLogin: { message: 'Invalid email or passowrd.' },
       tooManyRequests: {
         message: 'Too many request',
-        details: model.object({ limitedBy: model.enumeration(['ip', 'email']) }),
+        limitedBy: model.enumeration(['ip', 'email']),
       },
     },
     { capitalizeErrorNames: true },

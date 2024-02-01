@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.22
+
+### Patch Changes
+
+- Improved errors, add jwt type
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.22
+  - @mondrian-framework/cli-commander@2.0.22
+
 ## 2.0.21
 
 ### Patch Changes

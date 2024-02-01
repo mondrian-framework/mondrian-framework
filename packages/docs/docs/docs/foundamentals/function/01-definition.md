@@ -60,7 +60,7 @@ const generateRandomString = functions.define({
 
 ## Outputs
 Exactly as with inputs, Mondrian provides a second parameter to define the output 
-of a function. Again, the output can be a primitivee, an objects, an entity, an 
+of a function. Again, the output can be a primitive, an objects, an entity, an 
 array or a union.
 
 ```ts showLineNumbers

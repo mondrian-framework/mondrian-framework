@@ -1,4 +1,4 @@
-import { model, decoding, validation } from '../../index'
+import { model, decoding, validation, encoding } from '../../index'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -10,7 +10,11 @@ export type TimestampType = model.CustomType<'timestamp', TimestampOptions, Date
 /**
  * Additional options for the Timestamp `CustomType`
  */
-export type TimestampOptions = { minimum?: Date; maximum?: Date }
+export type TimestampOptions = {
+  minimum?: Date
+  maximum?: Date
+  format?: 'seconds' | 'milliseconds'
+}
 
 /**
  * @param options the options used to create the new timestamp custom type
@@ -20,8 +24,20 @@ export function timestamp(options?: model.OptionsOf<TimestampType>): TimestampTy
   return model.custom({ typeName: 'timestamp', encoder, decoder, validator, arbitrary, options })
 }
 
-function encoder(timestamp: Date): JSONType {
-  return timestamp.getTime()
+function formatToFactor(options?: TimestampOptions): number {
+  switch (options?.format) {
+    case 'seconds':
+      return 1000
+    case 'milliseconds':
+      return 1
+    default:
+      return 1
+  }
+}
+
+function encoder(timestamp: Date, _: encoding.Options, options?: model.OptionsOf<TimestampType>): JSONType {
+  const factor = formatToFactor(options)
+  return timestamp.getTime() / factor
 }
 
 function decoder(
@@ -37,8 +53,9 @@ function decoder(
       decoder(new Date(value).getTime(), decodingOptions, options),
     )
   }
-  return typeof value === 'number' && -8640000000000000 <= value && value <= 8640000000000000
-    ? decoding.succeed(new Date(value))
+  const factor = formatToFactor(options)
+  return typeof value === 'number' && -8640000000000000 <= value * factor && value * factor <= 8640000000000000
+    ? decoding.succeed(new Date(value * factor))
     : decoding.fail(`timestamp`, value)
 }
 

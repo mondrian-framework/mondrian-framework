@@ -201,11 +201,9 @@ possible to build a utility function that translates them to other libraries, ex
 ## Errors
 We believe that the best way to handle errors is to do so in a way that preserves their 
 structure and typing, just as with any other output. That is why the framework allows you to define, 
-for each function, a map of possible errors and related data structures.
+for each function, a map of possible errors and related schema types.
 
 ```ts showLineNumbers
-const User = ...
-
 const retrieveUser = functions.define({
   input: model.object({
     id: model.string()
@@ -213,30 +211,28 @@ const retrieveUser = functions.define({
   output: User,
   // highlight-start
   errors: {
-    userNotFound: model.string(),
-    invalidId: model.string()
+    userNotFound: model.literal('User not found.'),
+    invalidId: model.literal('Given ID is not valid.')
   },
   // highlight-end
 })
 ```
 
-As mentioned, the data structure attached to an error can be as complex as desired to contain 
-additional details related to it.
+The details attached to an error can be as complex as desired to contain 
+additional data better explaining it.
 
 ```ts showLineNumbers
-const User = ...
-
 const retrieveUser = functions.define({
   input: model.object({
     id: model.string()
   }),
   output: User,
   errors: {
-    userNotFound: model.string(),
-    invalidId: model.string(),
+    userNotFound: model.literal('User not found.'),
+    invalidId: model.literal('Given ID is not valid.')
     // highlight-start
     userNoLongerRegistered: model.object({
-      message: model.string(),
+      message: model.literal('User no longer registered.'),
       deregistrationDate: model.timestamp()
     })
     // highlight-end
@@ -247,6 +243,34 @@ const retrieveUser = functions.define({
 This definition will then allow you to [implement the behavior](./02-implementation.md) of the function by 
 ensuring type checking on the return of any errors as well.
 
+Mondrian also offers a utility method for a more concise definition of errors, which allows fields with default values, 
+such as a message, to be added.
+
+```typescript
+import { error } from '@mondrian-framework/module'
+
+const retrieveUser = functions.define({
+  input: model.object({
+    id: model.string()
+  }),
+  output: User,
+  errors: error.define(
+    {
+      userNotFound: { message: 'User not found.' },
+      invalidId: { message: 'Given ID is not valid.' },
+      unauthorized: {
+        message: 'Unauthorised access.',
+        reason: model.enumeration(['InvalidJwt', 'AuthorizationMissing']),
+      }
+    }
+  ),
+})
+```
+
+Using this utility we define a map of errors the function can return, and for some of them we also set default values
+of the field message. The difference between the previous example is that you in this second way, there is no need 
+to specify the message every time you want to use the error.
+
 ## Options
 
 The definition of a function provides a last optional parameter called `options` through which the developer 
@@ -254,8 +278,6 @@ can specify additional metadata that may be useful at some runtime. In any case,
 linked to the nature of the function.
 
 ```ts showLineNumbers
-const User = ...
-
 const getAllUsers = functions.define({
   output: model.array(User),
   // highlight-start

@@ -211,8 +211,8 @@ const retrieveUser = functions.define({
   output: User,
   // highlight-start
   errors: {
-    userNotFound: model.literal('User not found.'),
-    invalidId: model.literal('Given ID is not valid.')
+    userNotFound: model.literal('User not found'),
+    invalidId: model.literal('Given ID is not valid')
   },
   // highlight-end
 })
@@ -228,11 +228,11 @@ const retrieveUser = functions.define({
   }),
   output: User,
   errors: {
-    userNotFound: model.literal('User not found.'),
-    invalidId: model.literal('Given ID is not valid.')
+    userNotFound: model.literal('User not found'),
+    invalidId: model.literal('Given ID is not valid')
     // highlight-start
     userNoLongerRegistered: model.object({
-      message: model.literal('User no longer registered.'),
+      message: model.literal('User no longer registered'),
       deregistrationDate: model.timestamp()
     })
     // highlight-end
@@ -256,11 +256,11 @@ const retrieveUser = functions.define({
   output: User,
   errors: error.define(
     {
-      userNotFound: { message: 'User not found.' },
-      invalidId: { message: 'Given ID is not valid.' },
+      userNotFound: { message: 'User not found' },
+      invalidId: { message: 'Given ID is not valid' },
       unauthorized: {
-        message: 'Unauthorised access.',
-        reason: model.enumeration(['InvalidJwt', 'AuthorizationMissing']),
+        message: 'Unauthorized access',
+        reason: model.enumeration(['InvalidJWT', 'MissingJWT']),
       }
     }
   ),

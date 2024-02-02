@@ -26,7 +26,7 @@ type ApplyResult<Errors extends functions.ErrorType> = [Exclude<Errors, undefine
  *
  * Example:
  * ```typescript
- * import { functions, provider, guard } from '@mondrian-framework/module'
+ * import { functions, guard } from '@mondrian-framework/module'
  * import { result } from '@mondrian-framework/model'
  *
  * const authGuard = guard.build({

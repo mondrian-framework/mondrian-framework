@@ -33,10 +33,10 @@ type ApplyResult<Context, Errors extends functions.ErrorType> = [Exclude<Errors,
  *
  * Example:
  * ```typescript
- * import { functions, provider, guard } from '@mondrian-framework/module'
+ * import { functions, provider } from '@mondrian-framework/module'
  * import { result } from '@mondrian-framework/model'
  *
- * const authProvider = guard.build({
+ * const authProvider = provider.build({
  *  errors: { unauthorized },
  *  apply: async ({ auth }: { auth: string }) => {
  *    if (false) { // some logic

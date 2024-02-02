@@ -13,12 +13,12 @@ import { PrismaClient } from '@prisma/client'
 const prismaSingleton = new PrismaClient()
 export const prismaProvider = provider.build({
   body: async () => {
-    return result.ok({ prisma: prismaSingleton })
+    return result.ok(prismaSingleton)
   },
 })
 ```
 
-This example shows how to provide a reference to the singleton instance of [Prisma](https://www.prisma.io/), a well-known TypeScript ORM. Note that a provider is very similar to a function but does not need the definition of input and output types. This is because they will not concur to the definition of a function and to the generation of a specification, vut only at the implementation level.
+This example shows how to provide a reference to the singleton instance of [Prisma](https://www.prisma.io/), a well-known TypeScript ORM. Note that a provider is very similar to a function but does not need the definition of input and output types. This is because they will not concur to the definition of a function and to the generation of a specification, but only at the implementation level.
 
 A provider may simply provide a resource that it can create from scratch, or very often it may need some **contextual input**. These inputs are not to be confused with those of a function, which come directly from its invocation, but are inputs that the runtime and the module must construct for each invocation. They generally represent data relating to the context of the call, such as the identity of the caller, or data relating to the execution context, such as additonal details about the runtime environment.
 
@@ -37,7 +37,7 @@ export const authProvider = provider.build({
       const userId = ...
       return result.ok({ userId })
     }
-    return result.ok({})
+    return result.ok<{ userId?: string }>({})
   },
 })
 ```
@@ -84,6 +84,7 @@ export const customLoggerProvider = provider
   .build({
     async body({ callerIP }: AuditProviderContextInput, { prisma }) {
       // log the call to db using prisma client
+      const audit = ...
       return result.ok(audit)
     },
 })
@@ -91,7 +92,7 @@ export const customLoggerProvider = provider
 
 ## Errors
 
-A provider may also declare the possibility of returning errors, in the same formalism as a function. And, obviously, it an return them in the body implementation using the `result.fail` utility function.
+A provider may also declare the possibility of returning errors, in the same formalism as a function. And, obviously, it can return them in the body implementation using the `result.fail` utility function.
 
 ```typescript
 import { result } from '@mondrian-framework/model'

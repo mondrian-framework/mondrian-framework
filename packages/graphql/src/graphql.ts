@@ -1,7 +1,7 @@
 import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
 import { result, model, decoding, utils as modelUtils } from '@mondrian-framework/model'
-import { functions, logger as logging, module, utils, retrieve } from '@mondrian-framework/module'
+import { functions, logger as logging, module, utils, retrieve, exception } from '@mondrian-framework/module'
 import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { flatMapObject, groupBy, uncapitalise } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
@@ -695,10 +695,9 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
   })
   const isOutputNullable = model.isOptional(outputType) || model.isNullable(outputType)
   const output = isOutputNullable ? plainOutput : new GraphQLNonNull(plainOutput)
-
+  const inputType = mapInputType(functionBody.input)
   const capabilities = functionBody.retrieve ?? {}
   const retrieveType = retrieve.fromType(functionBody.output, capabilities)
-  const completeRetrieveType = retrieve.fromType(functionBody.output, { ...capabilities, select: true })
   const defaultType = typeFromOptions(functionBody.options)
 
   const thisLogger = logging.build({
@@ -709,77 +708,76 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
   })
 
   const resolve = (
-    _: unknown,
+    parent: unknown,
     resolverInput: Record<string, unknown>,
     serverContext: ServerContext,
     info: GraphQLResolveInfo,
   ) =>
     functionBody.tracer.startActiveSpan(`mondrian:graphql-resolver:${functionName}`, async (span) => {
       const tracer = functionBody.tracer.withPrefix(`mondrian:graphql-resolver:${functionName}:`)
+
       try {
-        // Decode all the needed bits to call the function
-        const input = decodeInput(functionBody.input, resolverInput[graphQLInputTypeName], thisLogger, tracer)
-        const retrieveValue = completeRetrieveType.isOk
-          ? decodeRetrieve(info, completeRetrieveType.value, isOutputTypeWrapped, tracer)
-          : {}
+        // Gathers all the needed bits to call the function
+        const rawInput = resolverInput[graphQLInputTypeName]
+        const rawRetrieve = gatherRawRetrieve(info, isOutputTypeWrapped)
 
-        try {
-          //Context input retieval
-          const contextInput = await fromModuleInput.context(serverContext, info)
+        //Context input retieval
+        const contextInput = await fromModuleInput.context(serverContext, info)
 
-          // Function call
-          const applyResult = await functionBody.apply({
-            contextInput: contextInput as Record<string, unknown>,
-            retrieve: retrieveValue,
-            input: input as never,
-            tracer,
-            logger: thisLogger,
-          })
+        // Function call
+        const applyResult = await functionBody.rawApply({
+          contextInput: contextInput as Record<string, unknown>,
+          rawInput,
+          rawRetrieve,
+          tracer,
+          logger: thisLogger,
+          overrides: { inputType },
+        })
 
-          //Output processing
-          let outputValue
-          if (applyResult.isOk) {
-            if (functionBody.errors) {
-              //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
-              const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
-              outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
-            } else {
-              outputValue = partialOutputType.encodeWithoutValidation(applyResult.value as never)
-              span?.setStatus({ code: SpanStatusCode.OK })
-              span?.end()
-            }
+        //Output processing
+        let outputValue
+        if (applyResult.isOk) {
+          if (functionBody.errors) {
+            //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
+            const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
+            outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
           } else {
-            const code = Object.keys(applyResult.error)[0]
-            const mappedError = {
-              '[GraphQL generation]: isError': true,
-              code,
-              errors: applyResult.error,
-            }
-            outputValue = concreteOutputType.encodeWithoutValidation(mappedError as never)
+            outputValue = partialOutputType.encodeWithoutValidation(applyResult.value as never)
+            span?.setStatus({ code: SpanStatusCode.OK })
+            span?.end()
           }
-          endSpanWithResult(applyResult, span)
-          return outputValue
-        } catch (error) {
-          if (fromModuleInput.onError) {
-            const result = await fromModuleInput.onError({
-              error,
-              functionArgs: { retrieve: retrieveValue, input },
-              functionName,
-              logger: thisLogger,
-              tracer,
-              ...serverContext,
-            })
-            if (result) {
-              span?.setStatus({ code: SpanStatusCode.ERROR, message: result.message })
-              span?.end()
-              throw createGraphQLError(result.message, result.options)
-            }
+        } else {
+          const code = Object.keys(applyResult.error)[0]
+          const mappedError = {
+            '[GraphQL generation]: isError': true,
+            code,
+            errors: applyResult.error,
           }
-          handleUnknownError(error, span)
+          outputValue = concreteOutputType.encodeWithoutValidation(mappedError as never)
         }
+        endSpanWithResult(applyResult, span)
+        return outputValue
       } catch (error) {
-        span?.end()
-        throw error
+        if (fromModuleInput.onError) {
+          const result = await fromModuleInput.onError({
+            error,
+            functionName,
+            logger: thisLogger,
+            tracer,
+            graphql: {
+              parent,
+              resolverInput,
+              info,
+              serverContext,
+            },
+          })
+          if (result) {
+            const graphqlError = createGraphQLError(result.message, result.options)
+            endSpanWithGraphQLError(graphqlError, span)
+            throw graphqlError
+          }
+        }
+        throw mapUnknownError(error, span)
       }
     })
 
@@ -811,11 +809,19 @@ function endSpanWithResult<R extends result.Result<any, any>>(res: R, span: Span
   return res
 }
 
-function handleUnknownError(error: unknown, span: Span | undefined): never {
-  if (error instanceof Error) {
-    throw endSpanWithGraphQLError(createGraphQLError(error.message, { originalError: error }), span)
+function mapUnknownError(error: unknown, span: Span | undefined): Error {
+  if (error instanceof exception.InvalidInput) {
+    return endSpanWithGraphQLError(
+      createGraphQLError(error.message, {
+        originalError: error,
+        extensions: { errors: error.errors, from: error.from },
+      }),
+      span,
+    )
+  } else if (error instanceof Error) {
+    return endSpanWithGraphQLError(createGraphQLError(error.message, { originalError: error }), span)
   } else {
-    throw endSpanWithGraphQLError(createGraphQLError(`Internal server error.`), span)
+    return endSpanWithGraphQLError(createGraphQLError(`Internal server error.`), span)
   }
 }
 
@@ -856,25 +862,6 @@ function getFunctionOutputTypeWithErrors(
   return {
     outputType: model.union({ success, error }).setName(`${capitalise(functionName)}Result`),
     isOutputTypeWrapped,
-  }
-}
-
-/**
- * Tries to decode the given raw input, throwing a graphql error if the process fails.
- * A logger is needed to perform additional logging and keep track of the decoding result.
- */
-function decodeInput(inputType: model.Type, rawInput: unknown, log: MondrianLogger, tracer: functions.Tracer): unknown {
-  const decoded = tracer.startActiveSpan(`decode-input`, (span) =>
-    endSpanWithResult(
-      model.concretise(mapInputType(inputType)).decode(rawInput, { typeCastingStrategy: 'tryCasting' }),
-      span,
-    ),
-  )
-  if (decoded.isOk) {
-    return decoded.value
-  } else {
-    log.logError('Bad request. (input)')
-    throw createGraphQLError(`Invalid input.`, { extensions: decoded.error })
   }
 }
 
@@ -923,43 +910,29 @@ function mapInputTypeInternal(inputType: model.Type): model.Type {
 }
 
 /**
- * Extracts the retrieve value by traversing the {@link GraphQLResolveInfo} and then decode it with the
- * respective retrieveType.
+ * Extracts the retrieve value by traversing the {@link GraphQLResolveInfo}.
  */
-function decodeRetrieve(
-  info: GraphQLResolveInfo,
-  retrieveType: model.Type,
-  isOutputTypeWrapped: boolean,
-  tracer: functions.Tracer,
-): retrieve.GenericRetrieve {
+function gatherRawRetrieve(info: GraphQLResolveInfo, isOutputTypeWrapped: boolean): retrieve.GenericRetrieve {
   if (info.fieldNodes.length !== 1) {
     throw createGraphQLError(
       'Invalid field nodes count. Probably you are requesting the same query or mutation multiple times.',
     )
   }
-  const result = tracer.startActiveSpan('decode-retrieve', (span) => {
-    const node = info.fieldNodes[0]
-    const retrieve = selectionNodeToRetrieve(node)
-    const rawRetrieve = retrieve[node.name.value]
-    let finalRetrieve = rawRetrieve
-    if (
-      isOutputTypeWrapped &&
-      typeof rawRetrieve === 'object' &&
-      rawRetrieve.select &&
-      typeof rawRetrieve.select[UNION_WRAP_FIELD_NAME] === 'object'
-    ) {
-      //unwrap the selection
-      const unwrappedSelect = rawRetrieve.select[UNION_WRAP_FIELD_NAME].select
-      finalRetrieve = { ...rawRetrieve, select: unwrappedSelect }
-    }
-    const result = model.concretise(retrieveType).decode(finalRetrieve === true ? {} : finalRetrieve)
-    return endSpanWithResult(result, span)
-  })
-  if (result.isOk) {
-    return result.value
-  } else {
-    throw createGraphQLError('Failed to decode query parameters', { extensions: result.error })
+  const node = info.fieldNodes[0]
+  const retrieve = selectionNodeToRetrieve(node)
+  const rawRetrieve = retrieve[node.name.value]
+  let finalRetrieve = rawRetrieve
+  if (
+    isOutputTypeWrapped &&
+    typeof rawRetrieve === 'object' &&
+    rawRetrieve.select &&
+    typeof rawRetrieve.select[UNION_WRAP_FIELD_NAME] === 'object'
+  ) {
+    //unwrap the selection
+    const unwrappedSelect = rawRetrieve.select[UNION_WRAP_FIELD_NAME].select
+    finalRetrieve = { ...rawRetrieve, select: unwrappedSelect }
   }
+  return (finalRetrieve === true ? {} : finalRetrieve) as retrieve.GenericRetrieve
 }
 
 function typeFromOptions(options?: functions.FunctionOptions): 'query' | 'mutation' {

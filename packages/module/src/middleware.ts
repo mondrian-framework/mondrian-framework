@@ -1,4 +1,4 @@
-import { exception, functions, guard, logger, provider, retrieve, security, utils } from '.'
+import { error, exception, functions, guard, logger, provider, retrieve, security, utils } from '.'
 import { checkPolicies as checkPolicyInternal } from './security'
 import { result, model, decoding, validation, path } from '@mondrian-framework/model'
 import { buildErrorMessage } from '@mondrian-framework/utils'
@@ -133,8 +133,19 @@ export function checkPolicies(
         capabilities: thisFunction.retrieve,
         path: path.root,
       })
+      const policyViolationErrorKey = Object.entries(thisFunction.errors ?? {}).find(
+        (v) => v[1] === error.standard.UnauthorizedAccess,
+      )?.[0]
       if (res.isFailure) {
-        throw new exception.UnauthorizedAccess(res.error)
+        if (policyViolationErrorKey !== undefined) {
+          const e: model.Infer<(typeof error)['standard']['UnauthorizedAccess']> = {
+            message: 'Unauthorized access.',
+            details: res.error,
+          }
+          return result.fail({ [policyViolationErrorKey]: e }) as never
+        } else {
+          throw new exception.UnauthorizedAccess(res.error)
+        }
       }
       return next({ ...args, retrieve: res.value ?? {} })
     },

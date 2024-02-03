@@ -1,5 +1,5 @@
 import { guard, logger, provider, retrieve } from '.'
-import { result, model } from '@mondrian-framework/model'
+import { result, model, decoding } from '@mondrian-framework/model'
 import { AtLeastOnePropertyOf, Expand, UnionToIntersection } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
 import { randomInt } from 'crypto'
@@ -92,7 +92,11 @@ export interface FunctionImplementation<
   G extends guard.Guards = guard.Guards,
 > extends Function<I, O, E, C, Pv, G> {
   /**
-   * Function apply. This executes function's {@link Middleware} and function's body.
+   * Function raw apply. This decodes the input and retrieve and calls the function's apply.
+   */
+  readonly rawApply: (args: FunctionRawApplyArguments<Pv, G>) => FunctionResult<O, E, C>
+  /**
+   * Function apply. This executes function's providers and function's body.
    */
   readonly apply: (args: FunctionApplyArguments<I, O, C, Pv, G>) => FunctionResult<O, E, C>
   /**
@@ -187,6 +191,47 @@ export type FunctionApplyArguments<
    * Openteletry {@link Tracer} of this function.
    */
   readonly tracer?: Tracer
+}
+
+export type FunctionRawApplyArguments<Pv extends provider.Providers, G extends guard.Guards> = {
+  /**
+   * Function's raw input. It respects the function input {@link model.Type Type}.
+   */
+  readonly rawInput: unknown
+  /**
+   * Function's raw retrieve. The return value must respects this retrieve object.
+   */
+  readonly rawRetrieve: unknown
+  /**
+   * Function context.
+   */
+  readonly contextInput: FunctionContextInput<Pv, G>
+  /**
+   * Function logger.
+   */
+  readonly logger: logger.MondrianLogger
+  /**
+   * Openteletry {@link Tracer} of this function.
+   */
+  readonly tracer?: Tracer
+  /**
+   * The decogin options to use againts raw input and raw retrieve.
+   */
+  readonly decodingOptions?: decoding.Options
+  /**
+   * Types overrides for input and retrieve.
+   */
+  readonly overrides?: {
+    readonly inputType?: model.Type
+    readonly retrieveType?: model.Type
+  }
+  /**
+   * Optional mappers for input and retrieve.
+   */
+  readonly mapper?: {
+    input?: (input: unknown) => unknown
+    retrieve?: (retr: retrieve.GenericRetrieve | undefined) => retrieve.GenericRetrieve | undefined
+  }
 }
 
 /**

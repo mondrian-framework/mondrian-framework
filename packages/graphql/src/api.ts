@@ -1,5 +1,5 @@
 import { functions, logger, module } from '@mondrian-framework/module'
-import { GraphQLErrorOptions } from 'graphql'
+import { GraphQLErrorOptions, GraphQLResolveInfo } from 'graphql'
 
 /**
  * The GraphQL API specification of a mondrian {@link module.ModuleInterface Module Interface}
@@ -51,19 +51,18 @@ export type FunctionSpecifications = {
   inputName?: string
 }
 
-export type ErrorHandler<F extends functions.Functions, ServerContext> = (
-  args: {
-    error: unknown
-    logger: logger.MondrianLogger
-    functionName: keyof F
-    tracer: functions.Tracer
-    //TODO: tracer & logger inside functionArgs?
-    functionArgs: {
-      retrieve: unknown
-      input: unknown
-    }
-  } & ServerContext,
-) => Promise<{ message: string; options?: GraphQLErrorOptions } | void>
+export type ErrorHandler<F extends functions.Functions, ServerContext> = (args: {
+  error: unknown
+  logger: logger.MondrianLogger
+  functionName: keyof F
+  tracer: functions.Tracer
+  graphql: {
+    parent: unknown
+    resolverInput: Record<string, unknown>
+    serverContext: ServerContext
+    info: GraphQLResolveInfo
+  }
+}) => Promise<{ message: string; options?: GraphQLErrorOptions } | void>
 
 /**
  * Options used by the GraphQL server

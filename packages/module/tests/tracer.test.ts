@@ -1,4 +1,4 @@
-import { voidTracer } from '../src/function/base'
+import { voidTracer } from '../src/function/tracer'
 import { expect, test } from 'vitest'
 
 test('void tracer', () => {

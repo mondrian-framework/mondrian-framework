@@ -22,7 +22,8 @@ const api = rest.build({
     loggedUser: { type: 'http', scheme: 'bearer' },
   },
   errorCodes: {
-    unauthorized: 401,
+    authenticationFailed: 401,
+    unauthorizedAccess: 403,
     tooManyRequests: 429,
   },
   options: { endpoints: ['http://localhost:4000', 'http://127.0.0.1:4000'] },

@@ -79,25 +79,21 @@ export function build<Fs extends functions.FunctionImplementations>(api: Api<Fs>
 /**
  * Defines the REST API with just the module interface.
  */
-export function define<Fs extends functions.FunctionInterfaces, E extends functions.ErrorType>(
-  api: ApiSpecification<Fs>,
-): ApiSpecification<Fs> {
+export function define<Fs extends functions.FunctionInterfaces>(api: ApiSpecification<Fs>): ApiSpecification<Fs> {
   assertApiValidity(api)
   return api
 }
 
-export type ErrorHandler<Fs extends functions.Functions, RestContext> = (
-  args: {
-    error: unknown
-    logger: logger.MondrianLogger
-    functionName: keyof Fs
-    tracer: functions.Tracer
-    functionArgs: {
-      retrieve?: retrieve.GenericRetrieve
-      input?: unknown
-    }
-  } & RestContext,
-) => Promise<http.Response | void>
+export type ErrorHandler<Fs extends functions.Functions, ServerContext> = (args: {
+  error: unknown
+  logger: logger.MondrianLogger
+  functionName: keyof Fs
+  tracer: functions.Tracer
+  http: {
+    request: http.Request
+    serverContext: ServerContext
+  }
+}) => Promise<http.Response | void>
 
 export type FunctionSpecifications<F extends functions.FunctionInterface = functions.FunctionInterface> = {
   method?: http.Method

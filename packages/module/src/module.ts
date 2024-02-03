@@ -1,6 +1,6 @@
 import { functions, guard, provider, security } from '.'
-import { BaseFunction } from './function/base'
-import { OpentelemetryFunction } from './function/opentelemetry'
+import { BaseFunction } from './function/implementation'
+import { OpentelemetryFunction } from './function/implementation'
 import * as middleware from './middleware'
 import { allUniqueTypes, reservedProvidersNames } from './utils'
 import { model } from '@mondrian-framework/model'

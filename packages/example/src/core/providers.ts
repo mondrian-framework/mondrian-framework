@@ -1,5 +1,5 @@
 import { IdType } from '../interface/common/model'
-import { unauthorized } from '../interface/common/model'
+import { authenticationFailed } from '../interface/common/model'
 import { result } from '@mondrian-framework/model'
 import { provider } from '@mondrian-framework/module'
 import { PrismaClient } from '@prisma/client'
@@ -33,14 +33,14 @@ export const optionalAuthProvider = provider.build({
 })
 
 export const authProvider = provider.use({ providers: { auth: optionalAuthProvider } }).build({
-  errors: { unauthorized },
+  errors: { authenticationFailed },
   body: async (_input: {}, args) => {
     if (args.auth?.userId != null) {
       return result.ok({ userId: args.auth.userId })
     } else if (args.auth) {
-      return result.fail({ unauthorized: { reason: 'InvalidJwt' } })
+      return result.fail({ authenticationFailed: { reason: 'InvalidJwt' } })
     } else {
-      return result.fail({ unauthorized: { reason: 'AuthorizationMissing' } })
+      return result.fail({ authenticationFailed: { reason: 'AuthorizationMissing' } })
     }
   },
 })

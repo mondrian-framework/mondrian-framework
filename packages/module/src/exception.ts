@@ -1,6 +1,16 @@
 import { security } from '.'
 import { decoding, validation } from '@mondrian-framework/model'
 
+export class InvalidInput extends Error {
+  public readonly from: 'input' | 'retrieve'
+  public readonly errors: decoding.Error[] | validation.Error[]
+  constructor(from: 'input' | 'retrieve', errors: decoding.Error[] | validation.Error[]) {
+    super(`Invalid input.`)
+    this.from = from
+    this.errors = errors
+  }
+}
+
 export class UnauthorizedAccess extends Error {
   public readonly error: security.PolicyViolation
   constructor(error: security.PolicyViolation) {

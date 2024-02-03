@@ -1,3 +1,4 @@
+import { security } from '.'
 import { model } from '@mondrian-framework/model'
 import { capitalise, mapObject } from '@mondrian-framework/utils'
 
@@ -58,4 +59,53 @@ export function define<const Es extends ErrorsDefinition>(
     )
     return type as any
   }) as Error<Es>
+}
+
+export const standard = {
+  BadInput: model.object(
+    {
+      message: model.literal('Bad input.', { allowUndefinedValue: true }),
+      from: model.enumeration(['input', 'retrieve'], { description: 'The source of the error.' }),
+      errors: model
+        .union({
+          decodingError: model.object(
+            {
+              path: model.string({ description: 'The path of the input that caused the error.' }),
+              expected: model.string({ description: 'The expected type.' }),
+              got: model.unknown({ description: 'The actual value.' }),
+            },
+            {
+              name: 'DecodingError',
+              description: "Error that occurs when the input doesn't match the expected type.",
+            },
+          ),
+          validationError: model.object(
+            {
+              path: model.string({ description: 'The path of the input that caused the error.' }),
+              assertion: model.string({ description: 'The failure reason.' }),
+              got: model.unknown({ description: 'The actual value.' }),
+            },
+            {
+              name: 'ValidationError',
+              description: "Error that occurs when the input doesn't match the expected semantic.",
+            },
+          ),
+        })
+        .array(),
+    },
+    {
+      name: 'BadInputError',
+      description: "Error that occurs when the input doesn't match the expected format.",
+    },
+  ),
+  UnauthorizedAccess: model.object(
+    {
+      message: model.literal('Unauthorized access.'),
+      details: () => security.PolicyViolation,
+    },
+    {
+      name: 'UnauthorizedAccessError',
+      description: 'Error that occurs when a subject is not authorized to access a resource.',
+    },
+  ),
 }

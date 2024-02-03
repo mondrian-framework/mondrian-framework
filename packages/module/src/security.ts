@@ -44,16 +44,25 @@ export type Result = result.Result<retrieve.GenericRetrieve | undefined, PolicyV
  * The mondrian type of a PolicyViolation error.
  */
 export const PolicyViolation = () =>
-  model.object({
-    path: model.string(),
-    reasons: model
-      .object({
-        applicable: model.boolean(),
-        policy: model.json(),
-        forbiddenAccess: model.string().array().optional(),
-      })
-      .array(),
-  })
+  model.object(
+    {
+      path: model.string({ description: 'The requested resource path that caused the failure.' }),
+      reasons: model
+        .object({
+          applicable: model.boolean({ description: 'If the policy was applicable' }),
+          policy: model.json({ description: 'The policy that was checked' }),
+          forbiddenAccess: model
+            .string()
+            .array({ description: 'The list of requested fields that was forbidden.' })
+            .optional(),
+        })
+        .array(),
+    },
+    {
+      name: 'PolicyViolationDetails',
+      description: 'The details of a policy violation.',
+    },
+  )
 export type PolicyViolation = model.Infer<typeof PolicyViolation>
 
 /**

@@ -34,7 +34,7 @@ describe('direct sdk', () => {
   })
 
   test('callign a function with no errors, no retrieve but WRONG INPUT should fail', async () => {
-    await expect(() => client.functions.ping('abc' as any)).rejects.toThrow('Error while decoding request')
+    await expect(() => client.functions.ping('abc' as any)).rejects.toThrow('Invalid input.')
   })
 
   test('callign a function with no errors, retrieve and never input should work', async () => {
@@ -105,6 +105,35 @@ describe('edge cases', () => {
       headers: {
         'Content-Type': 'application/json',
       },
+    })
+  })
+
+  test('request without malformed body should throw exception', async () => {
+    const r1 = await handler({
+      request: {
+        body: { function: 'ping', metadata: 'lol' },
+        headers: {},
+        method: 'post',
+        params: {},
+        query: {},
+        route: '/',
+      },
+      serverContext: null,
+    })
+    expect(r1).toEqual({
+      body: {
+        additionalInfo: {
+          expected: 'object or undefined',
+          got: 'lol',
+          path: '$.metadata',
+        },
+        reason: 'Error while decoding request',
+        success: false,
+      },
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
     })
   })
 

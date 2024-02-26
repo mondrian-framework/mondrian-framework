@@ -36,7 +36,7 @@ type SdkFunctionResult<
   P extends retrieve.FromType<O, C>,
 > = [Exclude<E, undefined>] extends [never]
   ? Project<O, P>
-  : result.Result<Project<O, P>, { [K in keyof Exclude<E, undefined>]: model.Infer<Exclude<E, undefined>[K]> }>
+  : result.Result<Project<O, P>, { [K in keyof Exclude<E, undefined>]?: model.Infer<Exclude<E, undefined>[K]> }>
 
 /**
  * Infer a subset of a Mondrian type `T` based on a retrieve `P`

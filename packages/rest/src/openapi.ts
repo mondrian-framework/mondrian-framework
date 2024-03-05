@@ -240,6 +240,9 @@ export function generateOpenapiInput({
               object[key] = request.query[key]
             } else {
               object[key] = decodeQueryObject(request.query, key)
+              if (object[key] !== undefined && !Array.isArray(object[key]) && model.isArray(subtype)) {
+                object[key] = [object[key]]
+              }
             }
           }
           return object

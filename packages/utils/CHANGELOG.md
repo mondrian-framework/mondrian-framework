@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.23
+
+### Patch Changes
+
+- standard errors
+
 ## 2.0.22
 
 ### Patch Changes

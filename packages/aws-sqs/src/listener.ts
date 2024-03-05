@@ -91,17 +91,10 @@ async function listenForMessage<Fs extends functions.FunctionImplementations>({
         }
         continue
       }
-      const decoded = model.concretise(functionBody.input).decode(body, { typeCastingStrategy: 'expectExactTypes' })
-      if (decoded.isFailure) {
-        if (specifications.malformedMessagePolicy === 'delete') {
-          await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
-        }
-        continue
-      }
       const contextInput = await context({ message: m })
-      await functionBody.apply({
-        input: decoded.value as never,
-        retrieve: {},
+      await functionBody.rawApply({
+        rawInput: body,
+        rawRetrieve: {},
         //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
         contextInput: contextInput as Record<string, unknown>,
         logger: baseLogger,

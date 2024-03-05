@@ -1,6 +1,6 @@
 import { Api, ServeOptions } from './api'
 import { model, result } from '@mondrian-framework/model'
-import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
+import { functions, logger, module } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -12,11 +12,11 @@ const FailureResponse = model.object({
 })
 type FailureResponse = model.Infer<typeof FailureResponse>
 
-const SuccessResponse = (functionBody: functions.FunctionInterface, retr: retrieve.GenericRetrieve | undefined) =>
+const SuccessResponse = (functionBody: functions.FunctionInterface) =>
   model.union({
     result: model.object({
       success: model.literal(true),
-      result: functionBody.retrieve ? retrieve.selectedType(functionBody.output, retr) : functionBody.output,
+      result: model.partialDeep(functionBody.output),
     }),
     failure: model.object({
       success: model.literal(true),
@@ -30,11 +30,13 @@ type SuccessResponse = {
   result: unknown
 }
 
+const Metadata = model.record(model.string()).optional()
+
 /**
  * Mondrian type a the body that will be returned for a specific function and with a specific retrieve value.
  */
-export const Response = (functionBody: functions.FunctionInterface, retr: retrieve.GenericRetrieve | undefined) =>
-  model.union({ success: SuccessResponse(functionBody, retr), failire: FailureResponse })
+export const Response = (functionBody: functions.FunctionInterface) =>
+  model.union({ success: SuccessResponse(functionBody), failire: FailureResponse })
 export type Response = SuccessResponse | FailureResponse
 
 /**
@@ -55,17 +57,7 @@ export function fromModule<Fs extends functions.FunctionImplementations, ServerC
   function wrapResponse(value: Response): http.Response<Response> {
     return { body: value, status: 200, headers: { 'Content-Type': 'application/json' } }
   }
-
   const exposedFunctions = new Set(Object.keys(api.module.functions).filter((fn) => !api.exclusions[fn]))
-  const requestInputTypeMap = mapObject(api.module.functions, (functionName, functionBody) => {
-    const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-    return model.object({
-      function: model.literal(functionName),
-      input: functionBody.input as model.UnknownType,
-      ...(retrieveType.isOk ? { retrieve: model.optional(retrieveType.value) as unknown as model.UnknownType } : {}),
-      metadata: model.record(model.string()).optional(),
-    })
-  })
   const handler: http.Handler<ServerContext, unknown, Response> = async ({ request, serverContext }) => {
     const functionNameResult = getFunctionName(request, exposedFunctions)
     if (functionNameResult.isFailure) {
@@ -90,7 +82,6 @@ export function fromModule<Fs extends functions.FunctionImplementations, ServerC
           context,
           options,
           request,
-          requestInputTypeMap,
           serverContext,
           tracer,
         })
@@ -109,7 +100,6 @@ export function fromModule<Fs extends functions.FunctionImplementations, ServerC
 async function handleFunctionCall<Fs extends functions.FunctionImplementations, ServerContext>({
   functionName,
   tracer,
-  requestInputTypeMap,
   request,
   options,
   api,
@@ -118,7 +108,6 @@ async function handleFunctionCall<Fs extends functions.FunctionImplementations, 
 }: {
   functionName: string
   tracer: functions.Tracer
-  requestInputTypeMap: Record<string, model.ConcreteType>
   request: http.Request
   options: ServeOptions
   api: Api<Fs, any>
@@ -129,35 +118,38 @@ async function handleFunctionCall<Fs extends functions.FunctionImplementations, 
   ) => Promise<module.FunctionsToContextInput<Fs>>
 }): Promise<result.Result<SuccessResponse, FailureResponse>> {
   const functionBody = api.module.functions[functionName]
-  const decodedRequest = tracer.startActiveSpan('decode-input', (span) =>
-    endSpanWithResult(
-      span,
-      requestInputTypeMap[functionName].decode(request.body, options.decodeOptions).mapError((error) => ({
-        success: false,
-        reason: 'Error while decoding request',
-        additionalInfo: error,
-      })),
-    ),
-  )
-  if (decodedRequest.isFailure) {
-    return decodedRequest
-  }
   const baseLogger = logger.build({
     moduleName: api.module.name,
     operationName: functionName,
     server: 'DIRECT',
   })
-  const { input, metadata, retrieve: thisRetrieve } = decodedRequest.value
-  const successResponse = SuccessResponse(functionBody, thisRetrieve)
+  const successResponse = SuccessResponse(functionBody)
+  const body = request.body as Record<string, unknown>
+  const rawInput = body.input
+  const rawRetrieve = body.retrieve
+  const rawMetadata = body.metadata
+  const metadataResult = Metadata.decode(rawMetadata, options.decodeOptions)
+  if (metadataResult.isFailure) {
+    return result.fail({
+      success: false,
+      reason: 'Error while decoding request',
+      additionalInfo: {
+        path: '$.metadata',
+        got: rawMetadata,
+        expected: 'object or undefined',
+      },
+    })
+  }
 
   try {
-    const contextInput = await context(serverContext, metadata)
-    const applyResult = await functionBody.apply({
+    const contextInput = await context(serverContext, metadataResult.value)
+    const applyResult = await functionBody.rawApply({
       contextInput: contextInput as Record<string, unknown>,
-      input,
+      rawInput,
+      rawRetrieve,
       tracer,
-      retrieve: thisRetrieve,
       logger: baseLogger,
+      decodingOptions: options.decodeOptions,
     })
     const response = successResponse.encodeWithoutValidation({
       success: true,

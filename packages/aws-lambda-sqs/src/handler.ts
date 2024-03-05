@@ -1,5 +1,5 @@
 import { model } from '@mondrian-framework/model'
-import { functions, logger, module } from '@mondrian-framework/module'
+import { exception, functions, logger, module } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api'
 import { Context, SQSBatchItemFailure, SQSEvent, SQSHandler } from 'aws-lambda'
@@ -87,26 +87,10 @@ export function build<Fs extends functions.FunctionImplementations>({
               batchItemFailures.push({ itemIdentifier: m.messageId })
             }
 
-            const decoded = model
-              .concretise(functionBody.input)
-              .decode(body, { typeCastingStrategy: 'expectExactTypes' })
-            if (decoded.isFailure) {
-              const message = `Bad message: ${JSON.stringify(decoded.error)}`
-              if (specification.malformedMessagePolicy === 'delete') {
-                span?.setStatus({ code: SpanStatusCode.ERROR, message })
-                span?.end()
-                return
-              }
-              if (!specification.reportBatchItemFailures) {
-                throw new Error(message)
-              }
-              batchItemFailures.push({ itemIdentifier: m.messageId })
-              return
-            }
             const contextInput = await context({ context: fContext, event, recordIndex: i })
-            await functionBody.apply({
-              input: decoded.value as never,
-              retrieve: {},
+            await functionBody.rawApply({
+              rawInput: body,
+              rawRetrieve: {},
               tracer,
               contextInput: contextInput as Record<string, unknown>,
               logger: operationLogger,
@@ -115,6 +99,10 @@ export function build<Fs extends functions.FunctionImplementations>({
           } catch (error) {
             if (error instanceof Error) {
               span?.recordException(error)
+              if (specification.malformedMessagePolicy === 'delete' && error instanceof exception.InvalidInput) {
+                span?.end()
+                return
+              }
             }
             span?.setStatus({ code: SpanStatusCode.ERROR })
             span?.end()

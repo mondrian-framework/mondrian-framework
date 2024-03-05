@@ -1,7 +1,14 @@
-import { idType, emailAlreadyTaken, unauthorized, userNotExists, invalidLogin, tooManyRequests } from '../common/model'
+import {
+  idType,
+  emailAlreadyTaken,
+  authenticationFailed,
+  userNotExists,
+  invalidLogin,
+  tooManyRequests,
+} from '../common/model'
 import { User, MyUser } from './model'
 import { model } from '@mondrian-framework/model'
-import { functions, retrieve } from '@mondrian-framework/module'
+import { error, functions, retrieve } from '@mondrian-framework/module'
 
 const LoginInput = model.object(
   {
@@ -15,7 +22,7 @@ const LoginOutput = model.string({ name: 'LoginOutput' })
 export const login = functions.define({
   input: LoginInput,
   output: LoginOutput,
-  errors: { invalidLogin, tooManyRequests },
+  errors: { invalidLogin, tooManyRequests, badInput: error.standard.BadInput },
   options: { description: `Gets the jwt of a user. This operation is rate limited` },
 })
 
@@ -32,7 +39,11 @@ export const register = functions.define({
     },
   ),
   output: MyUser,
-  errors: { emailAlreadyTaken },
+  errors: {
+    emailAlreadyTaken,
+    unauthorizedAccess: error.standard.UnauthorizedAccess,
+    badInput: error.standard.BadInput,
+  },
   retrieve: { select: true },
   options: {
     namespace: 'user',
@@ -43,7 +54,12 @@ export const register = functions.define({
 export const follow = functions.define({
   input: model.object({ userId: idType }),
   output: User,
-  errors: { unauthorized, userNotExists },
+  errors: {
+    authenticationFailed,
+    userNotExists,
+    unauthorizedAccess: error.standard.UnauthorizedAccess,
+    badInput: error.standard.BadInput,
+  },
   retrieve: { select: true },
   options: {
     namespace: 'user',
@@ -53,7 +69,11 @@ export const follow = functions.define({
 
 export const getUsers = functions.define({
   output: model.array(User),
-  errors: { unauthorized },
+  errors: {
+    authenticationFailed,
+    unauthorizedAccess: error.standard.UnauthorizedAccess,
+    badInput: error.standard.BadInput,
+  },
   retrieve: retrieve.allCapabilities,
   options: {
     namespace: 'user',

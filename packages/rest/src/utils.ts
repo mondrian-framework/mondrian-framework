@@ -115,7 +115,7 @@ export function assertApiValidity(api: ApiSpecification<functions.FunctionInterf
 }
 
 /**
- * Add all non-entity fields that was excluded in the selection will be included.
+ * Adds all non-entity fields that was excluded in the selection.
  */
 export function completeRetrieve(
   retr: retrieve.GenericRetrieve | undefined,

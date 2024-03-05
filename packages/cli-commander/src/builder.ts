@@ -86,6 +86,7 @@ export function fromModule<Fs extends functions.FunctionImplementations>({
         }
         try {
           const contextInput = await context()
+          //TODO: how to use rawApply?
           const applyResult = await functionBody.apply({
             contextInput: contextInput as Record<string, unknown>,
             input: inputResult.value as any,

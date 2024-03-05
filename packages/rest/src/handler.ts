@@ -2,7 +2,7 @@ import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
 import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve, methodFromOptions } from './utils'
 import { result, model } from '@mondrian-framework/model'
-import { functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
+import { exception, functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
@@ -24,10 +24,9 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
   onError?: ErrorHandler<functions.Functions, ServerContext>
   api: Pick<ApiSpecification<functions.FunctionInterfaces>, 'errorCodes' | 'customTypeSchemas'>
 }): http.Handler<ServerContext> {
-  const getInputFromRequest = specification.openapi
+  const gatherRawInput = specification.openapi
     ? specification.openapi.input
     : generateGetInputFromRequest({ functionBody, specification, customTypeSchemas: api.customTypeSchemas })
-  const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
   const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
   const thisLogger = logger.build({
     moduleName: module.name,
@@ -35,6 +34,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
     operationType: specification.method?.toLocaleLowerCase() ?? methodFromOptions(functionBody.options),
     server: 'REST',
   })
+  const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
 
   const handler = ({ request, serverContext }: { request: http.Request; serverContext: ServerContext }) =>
     functionBody.tracer.startActiveSpanWithOptions(
@@ -51,87 +51,74 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
         const tracer = functionBody.tracer.withPrefix(`mondrian:rest-handler:${functionName}:`)
 
         const subHandler = async () => {
-          //Decode input
-          const inputResult = decodeInput(functionBody.input, request, getInputFromRequest, tracer)
-          if (inputResult.isFailure) {
-            span?.end()
-            return inputResult.error
-          }
-          const input = inputResult.value
-
-          //Decode retrieve
-          const retrieveResult = decodeRetrieve(retrieveType, functionBody.output, request, tracer)
-          if (retrieveResult.isFailure) {
-            span?.end()
-            return retrieveResult.error
-          }
-          const retrieveValue: retrieve.GenericRetrieve | undefined = retrieveResult.value
-
-          function handleFailure(error: Record<string, unknown>) {
-            const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
-            const key = Object.keys(error)[0]
-            const status = key ? codes[key] ?? 400 : 400
-            const encodedError = mapObject(error, (key, value) =>
-              model.concretise((functionBody.errors ?? {})[key]).encodeWithoutValidation(value as never),
-            )
-            const response: http.Response = {
-              status,
-              body: JSON.stringify(encodedError),
-              headers: { 'Content-Type': 'application/json' },
-            }
-            endSpanWithResponse({ span, response })
-            return response
-          }
-
           try {
+            //Decode input
+            const rawInput = gatherRawInput(request)
+
+            //Decode retrieve
+            const rawRetrieveResult = gatherRawRetrieve(functionBody.output, request)
+            if (rawRetrieveResult.isFailure) {
+              span?.end()
+              return rawRetrieveResult.error
+            }
+            const rawRetrieve = rawRetrieveResult.value
+
             //Context input retrieval
             const contextInput = await context(serverContext)
 
             // Function call
-            const applyResult = await functionBody.apply({
-              retrieve: retrieveValue ?? {},
-              input: input as never,
+            const applyResult = await functionBody.rawApply({
+              rawRetrieve,
+              rawInput,
               contextInput: contextInput as Record<string, unknown>,
               tracer,
               logger: thisLogger,
+              decodingOptions: { typeCastingStrategy: 'tryCasting' },
+              mapper: { retrieve: (retrieve) => completeRetrieve(retrieve, functionBody.output) },
             })
 
             //Output processing
             if (applyResult.isFailure) {
-              return handleFailure(applyResult.error)
+              const key = Object.keys(applyResult.error)[0]
+              const status = key ? codes[key] ?? 400 : 400
+              const encodedError = mapObject(applyResult.error, (key, value) =>
+                model.concretise((functionBody.errors ?? {})[key]).encodeWithoutValidation(value as never),
+              )
+              const response: http.Response = {
+                status,
+                body: encodedError,
+                headers: { 'Content-Type': 'application/json' },
+              }
+              endSpanWithResponse({ span, response })
+              return response
             } else {
               const encoded = partialOutputType.encodeWithoutValidation(applyResult.value)
               const contentType = specification.contentType ?? 'application/json'
               const response: http.Response = {
                 status: 200,
-                body: contentType === 'application/json' ? JSON.stringify(encoded) : encoded,
+                body: encoded,
                 headers: { 'Content-Type': contentType },
               }
               endSpanWithResponse({ span, response })
               return response
             }
-          } catch (e) {
-            span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, 500)
-            if (e instanceof Error) {
-              span?.recordException(e)
-            }
+          } catch (error) {
             if (onError) {
               const result = await onError({
-                error: e,
+                error: error,
                 logger: thisLogger,
                 functionName,
                 tracer,
-                functionArgs: { input, retrieve: retrieveValue },
-                ...serverContext,
+                http: { request, serverContext },
               })
               if (result !== undefined) {
-                span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, result.status)
-                span?.end()
+                endSpanWithResponse({ span, response: result })
                 return result
               }
             }
-            span?.end()
-            throw e
+            const response = mapUnknownError(error)
+            endSpanWithResponse({ span, response })
+            return response
           }
         }
 
@@ -142,79 +129,31 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
   return handler
 }
 
-function decodeInput(
-  inputType: model.Type,
-  request: http.Request,
-  getInputFromRequest: (request: http.Request) => unknown,
-  tracer: functions.Tracer,
-): result.Result<unknown, http.Response> {
-  return tracer.startActiveSpan('decode-input', (span) => {
-    if (model.isLiteral(inputType, undefined)) {
-      return result.ok(undefined)
-    }
-    let rawInput
-    try {
-      rawInput = getInputFromRequest(request)
-    } catch {
-      const failure = result.fail<http.Response>({ body: 'Error while extracting input from request', status: 500 })
-      endSpanWithError({ span, failure })
-      return failure
-    }
-    const decoded = model
-      .concretise(inputType)
-      .decode(rawInput, { typeCastingStrategy: 'tryCasting' })
-      .mapError((errors) => ({
-        status: 400,
-        body: JSON.stringify({ errors, message: 'Invalid input' }),
-        headers: { 'Content-Type': 'application/json' },
-      }))
-    if (decoded.isFailure) {
-      endSpanWithError({ span, failure: decoded })
-      return result.fail(decoded.error)
-    } else {
-      span?.end()
-      return result.ok(decoded.value)
-    }
-  })
+function mapUnknownError(error: unknown): http.Response {
+  if (error instanceof exception.InvalidInput) {
+    return { status: 400, body: { message: error.message, errors: error.errors, from: error.from } }
+  } else if (error instanceof Error) {
+    return { status: 500, body: error.message }
+  } else {
+    return { status: 500, body: 'Internal server error' }
+  }
 }
 
-function decodeRetrieve(
-  retrieveType: result.Result<model.Type, unknown>,
+function gatherRawRetrieve(
   outputType: model.Type,
   request: http.Request,
-  tracer: functions.Tracer,
 ): result.Result<retrieve.GenericRetrieve | undefined, http.Response> {
-  if (retrieveType.isFailure) {
-    return result.ok(undefined)
-  }
-  return tracer.startActiveSpan('decode-retrieve', (span) => {
-    const rawRetrieve = request.headers['retrieve']
-    if (rawRetrieve && typeof rawRetrieve === 'string') {
-      let jsonRawRetrieve
-      try {
-        jsonRawRetrieve = JSON.parse(rawRetrieve)
-      } catch {
-        const failure = result.fail<http.Response>({ body: 'Invalid JSON on "retrieve" header', status: 500 })
-        endSpanWithError({ span, failure })
-        return failure
-      }
-      const decodedRetrieve = model
-        .concretise(retrieveType.value)
-        .decode(jsonRawRetrieve, { typeCastingStrategy: 'tryCasting' })
-        .mapError((errors) => ({
-          status: 400,
-          body: JSON.stringify({ errors, message: 'Invalid retrieve' }),
-          headers: { 'Content-Type': 'application/json' },
-        }))
-      if (decodedRetrieve.isFailure) {
-        endSpanWithError({ span, failure: decodedRetrieve })
-        return result.fail(decodedRetrieve.error)
-      }
-      return result.ok(completeRetrieve(decodedRetrieve.value as retrieve.GenericRetrieve, outputType))
-    } else {
-      return result.ok(completeRetrieve({}, outputType))
+  const rawRetrieve = request.headers['retrieve']
+  if (rawRetrieve && typeof rawRetrieve === 'string') {
+    try {
+      return result.ok(JSON.parse(rawRetrieve))
+    } catch {
+      const failure = result.fail<http.Response>({ body: 'Invalid JSON on "retrieve" header', status: 500 })
+      return failure
     }
-  })
+  } else {
+    return result.ok({})
+  }
 }
 
 function generateGetInputFromRequest(args: {
@@ -226,12 +165,6 @@ function generateGetInputFromRequest(args: {
   const result = generateOpenapiInput({ ...args, internalData }).input
   clearInternalData(internalData)
   return result
-}
-
-function endSpanWithError({ span, failure }: { span?: Span; failure: result.Failure<http.Response> }): void {
-  span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, failure.error.status)
-  span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(failure.error.body) })
-  span?.end()
 }
 
 function endSpanWithResponse({ span, response }: { span?: Span; response: http.Response }): void {

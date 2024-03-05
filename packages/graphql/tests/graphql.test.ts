@@ -184,11 +184,14 @@ describe('graphql', () => {
           ],
           path: ['pongUser'],
           extensions: {
-            '0': {
-              expected: "object with exactly one of this keys: 'user', 'error'",
-              got: {},
-              path: '$',
-            },
+            errors: [
+              {
+                expected: "object with exactly one of this keys: 'user', 'error'",
+                got: {},
+                path: '$',
+              },
+            ],
+            from: 'input',
           },
         },
       ],

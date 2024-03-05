@@ -8,11 +8,11 @@ export const idType = model.integer({
   description: 'an id that uniquely identifies an entity',
 })
 
-export const { unauthorized, emailAlreadyTaken, postNotFound, userNotExists, invalidLogin, tooManyRequests } =
+export const { authenticationFailed, emailAlreadyTaken, postNotFound, userNotExists, invalidLogin, tooManyRequests } =
   error.define(
     {
-      unauthorized: {
-        message: 'Unauthorised access.',
+      authenticationFailed: {
+        message: 'Authentication process has failed.',
         reason: model.enumeration(['InvalidJwt', 'AuthorizationMissing']),
       },
       postNotFound: { message: 'Post not found.' },

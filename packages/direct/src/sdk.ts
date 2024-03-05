@@ -71,7 +71,7 @@ export function build<
     const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
 
     const handler = async (input: never, options?: { retrieve?: never; metadata?: Record<string, string> }) => {
-      const responseType = Response(functionBody, options?.retrieve)
+      const responseType = Response(functionBody)
 
       const inputJson = model.concretise(functionBody.input).encodeWithoutValidation(input)
       const retrieveJson = retrieveType.isOk

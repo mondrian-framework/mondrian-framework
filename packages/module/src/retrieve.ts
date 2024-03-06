@@ -212,6 +212,7 @@ type OrderByArray<T extends model.Type>
   = [T] extends [model.OptionalType<infer T1>] ? OrderByArray<T1>
   : [T] extends [model.NullableType<infer T1>] ? OrderByArray<T1>
   : [T] extends [model.EntityType<any, any>] ? { readonly _count?: SortDirection } 
+  : [T] extends [model.ObjectType<any, any>] ? { readonly _count?: SortDirection } 
   : [T] extends [(() => infer T1 extends model.Type)] ? OrderByArray<T1>
   : SortDirection
 
@@ -220,6 +221,7 @@ function orderByArray(type: model.Type): model.Type {
     optional: ({ wrappedType }) => orderByArray(wrappedType),
     nullable: ({ wrappedType }) => orderByArray(wrappedType),
     entity: () => model.object({ _count: model.optional(SortDirection) }),
+    object: () => model.object({ _count: model.optional(SortDirection) }),
     otherwise: () => SortDirection,
   })
 }
@@ -300,12 +302,12 @@ function whereField(type: model.Type): model.Type {
 // prettier-ignore
 type WhereFieldArray<T extends model.Type> 
   = [T] extends [model.EntityType<any, any>] ? { readonly some?: Where<T>; readonly every?: Where<T>, readonly none?: Where<T> }
-  : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: readonly model.Infer<T>[], readonly isEmpty?: boolean }
+  : [T] extends [model.ObjectType<any, any>] ? { readonly equals?: model.Infer<T>[], readonly isEmpty?: boolean }
   : [T] extends [model.OptionalType<infer T1>] ? WhereFieldArray<T1>
   : [T] extends [model.NullableType<infer T1>] ? WhereFieldArray<T1>
   : [T] extends [model.UnionType<any>] ? never
   : [T] extends [(() => infer T1 extends model.Type)] ? WhereFieldArray<T1>
-  : { readonly equals?:  model.Infer<T>[], readonly isEmpty?: boolean }
+  : { readonly equals?: model.Infer<T>[], readonly isEmpty?: boolean }
 
 function whereFieldArray(type: model.Type): model.Type {
   return model.match(type, {
@@ -316,7 +318,7 @@ function whereFieldArray(type: model.Type): model.Type {
         none: model.optional(where(entity)),
       }),
     object: (_, object) =>
-      model.object({ equals: model.optional(model.array(object)), isEmpty: model.boolean().optional() }),
+      model.object({ equals: model.optional(model.mutableArray(object)), isEmpty: model.boolean().optional() }),
     optional: ({ wrappedType }) => whereFieldArray(wrappedType),
     nullable: ({ wrappedType }) => whereFieldArray(wrappedType),
     union: () => model.never(),

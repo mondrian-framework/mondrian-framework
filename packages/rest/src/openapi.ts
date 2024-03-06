@@ -239,9 +239,18 @@ export function generateOpenapiInput({
             if (model.isScalar(subtype)) {
               object[key] = request.query[key]
             } else {
-              object[key] = decodeQueryObject(request.query, key)
-              if (object[key] !== undefined && !Array.isArray(object[key]) && model.isArray(subtype)) {
-                object[key] = [object[key]]
+              const v = decodeQueryObject(request.query, key)
+              //this is in the case that the query are of kind `?key=value` and the value is an array
+              //the correct way should be ?key[0]=value but the swagger next does not suggest that way
+              if (
+                v !== undefined &&
+                !Array.isArray(v) &&
+                model.isArray(subtype) &&
+                (typeof v !== 'object' || v === null || !Object.keys(v).includes('0'))
+              ) {
+                object[key] = [v]
+              } else {
+                object[key] = v
               }
             }
           }

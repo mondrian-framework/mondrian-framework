@@ -398,6 +398,7 @@ describe('fromType', () => {
                   value: model.string().nullable(),
                 })
                 .array()
+                .mutable()
                 .optional(),
               isEmpty: model.boolean().optional(),
             })
@@ -434,7 +435,7 @@ describe('fromType', () => {
           title: model.optional(retrieve.SortDirection),
           content: model.optional(retrieve.SortDirection),
           author: model.optional(userOrderBy),
-          tags: model.optional(retrieve.SortDirection),
+          tags: model.object({ _count: model.optional(retrieve.SortDirection) }).optional(),
         },
         { name: 'PostOrderBy' },
       )

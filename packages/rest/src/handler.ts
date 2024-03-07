@@ -1,6 +1,6 @@
 import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
 import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
-import { completeRetrieve, methodFromOptions } from './utils'
+import { completeRetrieve, decodeQueryObject, methodFromOptions } from './utils'
 import { result, model } from '@mondrian-framework/model'
 import { exception, functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
@@ -56,12 +56,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
             const rawInput = gatherRawInput(request)
 
             //Decode retrieve
-            const rawRetrieveResult = gatherRawRetrieve(functionBody.output, request)
-            if (rawRetrieveResult.isFailure) {
-              span?.end()
-              return rawRetrieveResult.error
-            }
-            const rawRetrieve = rawRetrieveResult.value
+            const rawRetrieve = gatherRawRetrieve(request)
 
             //Context input retrieval
             const contextInput = await context(serverContext)
@@ -139,21 +134,13 @@ function mapUnknownError(error: unknown): http.Response {
   }
 }
 
-function gatherRawRetrieve(
-  outputType: model.Type,
-  request: http.Request,
-): result.Result<retrieve.GenericRetrieve | undefined, http.Response> {
-  const rawRetrieve = request.headers['retrieve']
-  if (rawRetrieve && typeof rawRetrieve === 'string') {
-    try {
-      return result.ok(JSON.parse(rawRetrieve))
-    } catch {
-      const failure = result.fail<http.Response>({ body: 'Invalid JSON on "retrieve" header', status: 500 })
-      return failure
-    }
-  } else {
-    return result.ok({})
-  }
+function gatherRawRetrieve(request: http.Request): retrieve.GenericRetrieve {
+  const where = decodeQueryObject(request.query, 'where')
+  const orderBy = decodeQueryObject(request.query, 'orderBy')
+  const select = decodeQueryObject(request.query, 'select')
+  const skip = request.query['skip']
+  const take = request.query['take']
+  return { where, orderBy, select, skip, take } as retrieve.GenericRetrieve
 }
 
 function generateGetInputFromRequest(args: {

@@ -130,7 +130,7 @@ export function completeRetrieve(
       retrieve.merge(type, retr, {
         select: mapObject(fields, (fieldName, fieldType) => {
           const unwrapped = model.unwrap(fieldType)
-          if (unwrapped.kind === model.Kind.Entity || unwrapped.kind === model.Kind.Object) {
+          if (unwrapped.kind === model.Kind.Entity) {
             const subRetrieve = (retr.select ?? {})[fieldName]
             if (subRetrieve && subRetrieve !== true) {
               return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)

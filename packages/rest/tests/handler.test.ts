@@ -285,8 +285,7 @@ describe('rest handler', () => {
     expect(response.body).toStrictEqual({ username: 'name', live: true })
 
     const response2 = await handler({
-      query: { input: '' },
-      headers: { retrieve: JSON.stringify({ select: { friend: true } }) },
+      query: { input: '', 'select[friend]': 'true' },
     })
     expect(response2.status).toBe(200)
     expect(response2.body).toStrictEqual({ username: 'name', live: true, friend: { username: 'name2', live: true } })
@@ -294,18 +293,13 @@ describe('rest handler', () => {
 
   test('dont works on [output with retrieve]', async () => {
     const handler = buildHandler('f5', { method: 'get', path: '/f5' })
-    const response = await handler({ query: { input: '' }, headers: { retrieve: '{ hello world }' } })
 
-    expect(response.status).toBe(500)
-    expect(response.body).toStrictEqual('Invalid JSON on "retrieve" header')
-
-    const response2 = await handler({
-      query: { input: '' },
-      headers: { retrieve: JSON.stringify({ select: { friends: true } }) },
+    const response = await handler({
+      query: { input: '', 'select[friends]': 'true' },
     })
-    expect(response2.status).toBe(400)
-    expect(response2.body).toStrictEqual({
-      errors: [{ expected: 'undefined', got: true, path: '$.select.friends' }],
+    expect(response.status).toBe(400)
+    expect(response.body).toStrictEqual({
+      errors: [{ expected: 'undefined', got: 'true', path: '$.select.friends' }],
       from: 'retrieve',
       message: 'Invalid input.',
     })

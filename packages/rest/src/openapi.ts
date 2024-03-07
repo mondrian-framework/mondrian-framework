@@ -72,20 +72,23 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
         }),
       )
       const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-      const retrieveOpenapiType = retrieveType.isOk ? modelToSchema(retrieveType.value, internalData) : null
-      const retrieveHeader: OpenAPIV3_1.ParameterObject[] = retrieveOpenapiType
-        ? [
-            {
-              name: 'retrieve',
-              in: 'header',
-              schema: retrieveOpenapiType as OpenAPIV3_1.ReferenceObject, //TODO: it's ok to put a schema here?
-              example: {},
-            },
-          ]
-        : []
+      const retrieveParameters: OpenAPIV3_1.ParameterObject[] = []
+      if (retrieveType.isOk) {
+        for (const [key, value] of Object.entries(retrieveType.value.fields)) {
+          const type = model.unwrap(value)
+          const schema = modelToSchema(type, internalData)
+          retrieveParameters.push({
+            name: key,
+            in: 'query',
+            required: false,
+            schema: schema as any,
+            style: model.isScalar(value) ? undefined : 'deepObject',
+          })
+        }
+      }
       const operationObj: OpenAPIV3_1.OperationObject = {
         ...specification.openapi?.specification.parameters,
-        parameters: parameters ? [...parameters, ...retrieveHeader] : retrieveHeader,
+        parameters: parameters ? [...parameters, ...retrieveParameters] : retrieveParameters,
         requestBody,
         responses:
           specification.openapi?.specification.responses === null

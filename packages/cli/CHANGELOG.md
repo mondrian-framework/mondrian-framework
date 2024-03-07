@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.25
+
+### Patch Changes
+
+- Retrieve on query for rest
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.25
+  - @mondrian-framework/cli-commander@2.0.25
+
 ## 2.0.24
 
 ### Patch Changes

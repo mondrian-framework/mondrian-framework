@@ -1,5 +1,13 @@
 # @mondrian-framework/model
 
+## 2.0.25
+
+### Patch Changes
+
+- Retrieve on query for rest
+- Updated dependencies
+  - @mondrian-framework/utils@2.0.25
+
 ## 2.0.24
 
 ### Patch Changes

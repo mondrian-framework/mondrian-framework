@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/aws-lambda-sqs",
-  "version": "2.0.24",
+  "version": "2.0.25",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -15,8 +15,8 @@
     "@types/aws-lambda": "8.10.131"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^2.0.24",
-    "@mondrian-framework/module": "^2.0.24",
-    "@mondrian-framework/utils": "^2.0.24"
+    "@mondrian-framework/model": "^2.0.25",
+    "@mondrian-framework/module": "^2.0.25",
+    "@mondrian-framework/utils": "^2.0.25"
   }
 }

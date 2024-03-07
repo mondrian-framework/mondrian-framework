@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.25
+
+### Patch Changes
+
+- Retrieve on query for rest
+
 ## 2.0.24
 
 ### Patch Changes

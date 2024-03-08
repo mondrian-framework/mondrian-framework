@@ -83,6 +83,7 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
             required: false,
             schema: schema as any,
             style: model.isScalar(value) ? undefined : 'deepObject',
+            example: model.isScalar(value) ? undefined : null,
           })
         }
       }

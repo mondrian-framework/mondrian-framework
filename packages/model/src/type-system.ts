@@ -153,7 +153,8 @@ export type ApplyObjectMutability<
  */
 export type OptionalKeys<T extends Types> = {
   [K in keyof T]: IsOptional<T[K]> extends true ? K : never
-}[keyof T]
+}[keyof T] &
+  string
 
 /**
  * Given a type map, returns the union of the fields whose type is not optional

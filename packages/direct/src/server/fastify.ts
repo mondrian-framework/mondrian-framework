@@ -34,7 +34,7 @@ export function serveWithFastify<Fs extends functions.FunctionImplementations>({
         method: request.method.toLowerCase() as http.Method,
         params: request.params as Record<string, string>,
         query: request.query as Record<string, string>,
-        route: request.routeOptions.url,
+        route: request.routeOptions.url ?? '',
       },
       serverContext: { request, reply },
     })

@@ -14,7 +14,7 @@
     "graphql-yoga": "^5.1.1"
   },
   "peerDependencies": {
-    "fastify": "^4.25.2",
+    "fastify": "^4.26.2",
     "@mondrian-framework/model": "^2.0.25",
     "@mondrian-framework/module": "^2.0.25",
     "@mondrian-framework/utils": "^2.0.25",

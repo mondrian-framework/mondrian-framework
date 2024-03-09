@@ -1,4 +1,4 @@
-import { error, exception, functions, guard, provider, retrieve } from '..'
+import { error, exception, functions, guard, provider, retrieve, utils } from '..'
 import { TracerWrapper, voidTracer } from './tracer'
 import { model, result } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
@@ -28,8 +28,9 @@ export class BaseFunction<
   readonly name: string
   readonly retrieveType: model.Type | undefined
   readonly badInputErrorKey: string | undefined
+  readonly resolveNestedPromises: boolean
 
-  constructor(func: functions.Function<I, O, E, C, Pv, G>, name?: string) {
+  constructor(func: functions.Function<I, O, E, C, Pv, G>, options: { name: string; resolveNestedPromises: boolean }) {
     this.input = func.input
     this.output = func.output
     this.errors = func.errors
@@ -40,7 +41,8 @@ export class BaseFunction<
     this.middlewares = func.middlewares ?? []
     this.options = func.options
     this.tracer = voidTracer
-    this.name = name ?? ''
+    this.name = options.name
+    this.resolveNestedPromises = options.resolveNestedPromises
     this.retrieveType = retrieve.fromType(this.output, this.retrieve).match(
       (t) => t,
       () => undefined,
@@ -161,7 +163,12 @@ export class BaseFunction<
     args: functions.FunctionArguments<I, O, C, Pv>,
   ): functions.FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
-      return this.body(args)
+      const res = await this.body(args)
+      if (this.resolveNestedPromises && utils.hasNestedPromises(res)) {
+        return (await utils.reolsveNestedPromises(res)) as functions.FunctionResult<O, E, C>
+      } else {
+        return res
+      }
     }
     const middleware = this.middlewares[middlewareIndex]
     return middleware.apply(args, (mappedArgs) => this.execute(middlewareIndex + 1, mappedArgs), this)
@@ -185,14 +192,14 @@ export class OpentelemetryFunction<
 
   constructor(
     func: functions.Function<I, O, E, C, Pv, G>,
-    name: string,
+    options: { name: string; resolveNestedPromises: boolean },
     opentelemetry: {
       tracer: Tracer
       counter: Counter
       histogram: Histogram
     },
   ) {
-    super(func, name)
+    super(func, options)
     this.tracer = new TracerWrapper(opentelemetry.tracer, '')
     this.counter = opentelemetry.counter
     this.histogram = opentelemetry.histogram

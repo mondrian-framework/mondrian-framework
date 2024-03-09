@@ -83,6 +83,11 @@ export type ModuleOptions = {
    * Enables opetelemetry instrumentation.
    */
   opentelemetry?: boolean
+  /**
+   * If true, the module will resolve nested promises in the output of the functions.
+   * Can have a performance impact. Default is false.
+   */
+  resolveNestedPromises?: boolean
 }
 
 /**
@@ -200,6 +205,7 @@ export function build<const Fs extends functions.Functions>(
           ...checkPoliciesMiddleware,
         ],
       }
+      const options = { name: functionName, resolveNestedPromises: module.options?.resolveNestedPromises ?? false }
       if (module.options?.opentelemetry) {
         const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
         const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
@@ -212,10 +218,10 @@ export function build<const Fs extends functions.Functions>(
           functions.OutputRetrieveCapabilities,
           provider.Providers,
           guard.Guards
-        > = new OpentelemetryFunction(func, functionName, { histogram, tracer, counter })
+        > = new OpentelemetryFunction(func, options, { histogram, tracer, counter })
         return [functionName, wrappedFunction]
       } else {
-        return [functionName, new BaseFunction(func, functionName)]
+        return [functionName, new BaseFunction(func, options)]
       }
     }),
   ) as Fs

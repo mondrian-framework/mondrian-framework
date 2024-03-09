@@ -77,7 +77,7 @@ test('Real example', async () => {
           return result.fail({ invalidEmailOrPassword: 'Invalid email or password' })
         }
         logger.logInfo(`Logged in: ${input.email}`)
-        return result.ok({ jwt: user.email, user })
+        return result.ok({ jwt: Promise.resolve(user.email) as unknown as string, user })
       },
       middlewares: [
         {
@@ -158,7 +158,7 @@ test('Real example', async () => {
 
   const m = module.build({
     name: 'test',
-    options: { maxSelectionDepth: 2 },
+    options: { maxSelectionDepth: 2, resolveNestedPromises: true },
     functions: { login, register, completeProfile, noInputOrOutput },
   })
 

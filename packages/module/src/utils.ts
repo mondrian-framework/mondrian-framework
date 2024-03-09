@@ -66,3 +66,27 @@ export function decodeFunctionFailure(
 }
 
 export const reservedProvidersNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']
+
+export function hasNestedPromises(value: unknown): unknown | Promise<unknown> {
+  if (value instanceof Promise) {
+    return true
+  } else if (Array.isArray(value)) {
+    return value.some(hasNestedPromises)
+  } else if (value && typeof value === 'object') {
+    return Object.values(value).some(hasNestedPromises)
+  }
+  return false
+}
+
+export function reolsveNestedPromises(value: unknown): unknown | Promise<unknown> {
+  if (value instanceof Promise) {
+    return value.then(reolsveNestedPromises)
+  } else if (Array.isArray(value)) {
+    return Promise.all(value.map(reolsveNestedPromises))
+  } else if (value && typeof value === 'object') {
+    return Promise.all(Object.values(value).map(reolsveNestedPromises)).then((values) => {
+      return Object.fromEntries(Object.keys(value).map((key, index) => [key, values[index]]))
+    })
+  }
+  return value
+}

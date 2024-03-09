@@ -49,7 +49,11 @@ export abstract class BaseType<T extends model.Type> {
 
   decodeWithoutValidation(value: unknown, options?: decoding.Options): decoding.Result<model.Infer<T>> {
     const decodingOptions = { ...decoding.defaultOptions, ...options }
-    return this.decodeWithoutValidationInternal(value, decodingOptions)
+    if (value === undefined && this.options?.defaultDecodeValue !== undefined) {
+      return this.decodeWithoutValidationInternal(this.options.defaultDecodeValue, decodingOptions)
+    } else {
+      return this.decodeWithoutValidationInternal(value, decodingOptions)
+    }
   }
 
   validate(value: model.Infer<T>, options?: validation.Options): validation.Result {

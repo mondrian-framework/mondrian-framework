@@ -34,8 +34,8 @@ export type Capabilities = {
   readonly where?: true
   readonly select?: true
   readonly orderBy?: true
-  readonly take?: true
-  readonly skip?: true
+  readonly take?: true | { readonly max: number }
+  readonly skip?: true | { readonly max: number }
 }
 
 export type AllCapabilities = typeof allCapabilities
@@ -98,12 +98,21 @@ function retrieve(
   entity: model.Lazy<model.EntityType<any, any>>,
   capabilities: Capabilities,
 ): model.ObjectType<model.Mutability.Immutable, model.Types> {
+  const options = model.concretise(entity).options
+  const maxSkip = typeof capabilities.skip === 'object' ? capabilities.skip.max : options?.maxSkip
+  const maxTake = typeof capabilities.take === 'object' ? capabilities.take.max : options?.maxTake ?? 20
   return model.object({
     ...(capabilities.select ? { select: model.optional(select(entity)) } : {}),
     ...(capabilities.where ? { where: model.optional(where(entity)) } : {}),
     ...(capabilities.orderBy ? { orderBy: model.array(orderBy(entity)).optional() } : {}),
-    ...(capabilities.skip ? { skip: model.integer({ minimum: 0 }).optional() } : {}),
-    ...(capabilities.take ? { take: model.integer({ minimum: 0, maximum: 20 }).optional() } : {}),
+    ...(capabilities.skip
+      ? { skip: model.integer({ minimum: 0, maximum: maxSkip }).optional({ defaultDecodeValue: 0 }) }
+      : {}),
+    ...(capabilities.take
+      ? {
+          take: model.integer({ minimum: 0, maximum: maxTake }).optional({ defaultDecodeValue: maxTake }),
+        }
+      : {}),
     //distinct: model.unknown(),
   })
 }
@@ -117,8 +126,12 @@ type WhereType<T extends model.Type, C extends Capabilities> = [C] extends [{ re
 type OrderByType<T extends model.Type, C extends Capabilities> = [C] extends [{ readonly orderBy: true }]
   ? { readonly orderBy?: OrderBy<T>[] }
   : {}
-type TakeType<C extends Capabilities> = [C] extends [{ readonly take: true }] ? { readonly take?: number } : {}
-type SkipType<C extends Capabilities> = [C] extends [{ readonly skip: true }] ? { readonly skip?: number } : {}
+type TakeType<C extends Capabilities> = [C] extends [{ readonly take: true | { readonly max: number } }]
+  ? { readonly take?: number }
+  : {}
+type SkipType<C extends Capabilities> = [C] extends [{ readonly skip: true | { readonly max: number } }]
+  ? { readonly skip?: number }
+  : {}
 
 ///////////////////
 ////////// SELECT

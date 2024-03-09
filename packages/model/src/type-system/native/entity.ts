@@ -35,7 +35,7 @@ import gen from 'fast-check'
  */
 export function entity<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: Omit<model.ObjectTypeOptions, 'fields'>,
+  options?: Omit<model.EntityTypeOptions, 'fields'>,
 ): model.EntityType<model.Mutability.Immutable, utils.RichFieldsToTypes<Ts>> {
   const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
   return new EntityTypeImpl(
@@ -47,7 +47,7 @@ export function entity<Ts extends utils.RichFields>(
 
 export function mutableEntity<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: Omit<model.ObjectTypeOptions, 'fields'>,
+  options?: Omit<model.EntityTypeOptions, 'fields'>,
 ): model.EntityType<model.Mutability.Mutable, utils.RichFieldsToTypes<Ts>> {
   const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
   return new EntityTypeImpl(

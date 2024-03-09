@@ -69,23 +69,26 @@ export type ModuleOptions = {
   /**
    * Checks (at runtime) if the output value of any function is valid.
    * It also checks if the eventual selection is respected.
-   * Default is 'throw'.
    * With 'ignore' the check is skipped (could be usefull in production environment in order to improve performance)
+   * Default is 'throw'.
    */
   checkOutputType?: 'ignore' | 'log' | 'throw'
   /**
    * Maximum selection depth allowed. If the requested selection is deeper an error is thrown.
    * The default is any depth.
    * In production it is suggested to set a limit (like 3) in order to prevent denial of service attack.
+   * Default is no limit.
    */
   maxSelectionDepth?: number
   /**
    * Enables opetelemetry instrumentation.
+   * Default is false.
    */
   opentelemetry?: boolean
   /**
    * If true, the module will resolve nested promises in the output of the functions.
-   * Can have a performance impact. Default is false.
+   * Can have a performance impact.
+   * Default is false.
    */
   resolveNestedPromises?: boolean
 }

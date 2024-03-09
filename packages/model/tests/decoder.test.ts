@@ -857,3 +857,14 @@ describe.concurrent('record value', () => {
     },
   )
 })
+
+test('decode default value', () => {
+  const Model = model.object({ a: model.number() }, { defaultDecodeValue: { a: 1 } })
+  checkValue(Model.decode(undefined), { a: 1 })
+
+  const Model2 = model.optional(Model)
+  checkValue(Model2.decode(undefined), undefined)
+
+  const Model4 = model.optional(Model, { defaultDecodeValue: { a: 2 } })
+  checkValue(Model4.decode(undefined), { a: 2 })
+})

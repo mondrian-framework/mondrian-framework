@@ -31,7 +31,7 @@ const post = () =>
       author: user,
       tags: model.array(model.object({ type: model.string(), value: model.string().nullable() })).setName('Tags'),
     },
-    { name: 'Post' },
+    { name: 'Post', maxSkip: 5, maxTake: 30 },
   )
 
 describe('selectedType', () => {
@@ -303,8 +303,8 @@ describe('fromType', () => {
       where: true,
       select: true,
       orderBy: true,
-      take: true,
-      skip: true,
+      take: { max: 10 },
+      skip: { max: 10 },
     })
 
     const userSelect = () =>
@@ -444,8 +444,8 @@ describe('fromType', () => {
       select: model.optional(userSelect),
       where: model.optional(userWhere),
       orderBy: model.mutableArray(userOrderBy).optional(),
-      skip: model.integer({ minimum: 0 }).optional(),
-      take: model.integer({ minimum: 0, maximum: 20 }).optional(),
+      skip: model.integer({ minimum: 0, maximum: 10 }).optional({ defaultDecodeValue: 0 }),
+      take: model.integer({ minimum: 0, maximum: 10 }).optional({ defaultDecodeValue: 10 }),
     })
     type ExpectedUserRetrieveType = model.Infer<typeof expectedUserRetrieve>
     type GeneratedUserRetrieve = retrieve.FromType<
@@ -463,8 +463,8 @@ describe('fromType', () => {
       select: model.optional(postSelect),
       where: model.optional(postWhere),
       orderBy: model.mutableArray(postOrderBy).optional(),
-      skip: model.integer({ minimum: 0 }).optional(),
-      take: model.integer({ minimum: 0, maximum: 20 }).optional(),
+      skip: model.integer({ minimum: 0, maximum: 5 }).optional({ defaultDecodeValue: 0 }),
+      take: model.integer({ minimum: 0, maximum: 30 }).optional({ defaultDecodeValue: 30 }),
     })
 
     expect(computedUserRetrieve.isOk).toBe(true)

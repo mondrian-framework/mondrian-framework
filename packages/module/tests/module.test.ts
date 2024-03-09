@@ -316,7 +316,7 @@ describe('Default middlewares', () => {
         retrieve: { select: true },
       })
       .implement({
-        body: async ({ input }) => {
+        body: async ({ input, retrieve }) => {
           if (input?.value === 'wrong') {
             return result.ok({}) //selection not respected sometimes!
           }

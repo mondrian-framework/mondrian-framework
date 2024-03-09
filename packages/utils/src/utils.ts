@@ -58,7 +58,8 @@ export function setTraversingValue(value: unknown, path: string, object: Record<
     object[head] = value
     return
   }
-  if (!object[head]) {
+  const root = object[head]
+  if (root == null || typeof root !== 'object') {
     object[head] = {}
   }
   setTraversingValue(value, tail.join('.'), object[head] as Record<string, unknown>)

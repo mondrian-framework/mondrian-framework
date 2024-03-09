@@ -88,6 +88,12 @@ test('decodeQueryObject', () => {
 
   const decoded3 = decodeQueryObject({ input: '1' }, 'input')
   expect(decoded3).toEqual('1')
+
+  const decoded4 = decodeQueryObject({ 'input[meta]': 'true', 'input[meta][info]': 'info' }, 'input')
+  expect(decoded4).toEqual({ meta: { info: 'info' } })
+
+  const decoded5 = decodeQueryObject({ 'input[meta][info]': 'info', 'input[meta]': 'true' }, 'input')
+  expect(decoded5).toEqual({ meta: 'true' })
 })
 
 test('encodeQueryObject', () => {

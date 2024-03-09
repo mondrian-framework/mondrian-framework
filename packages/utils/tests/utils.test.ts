@@ -34,6 +34,10 @@ test('setTraversingValue', () => {
   expect(obj).toStrictEqual({ a: 1 })
   setTraversingValue(1, 'b.a', obj)
   expect(obj).toStrictEqual({ a: 1, b: { a: 1 } })
+  setTraversingValue(1, 'b.a.a', obj)
+  expect(obj).toStrictEqual({ a: 1, b: { a: { a: 1 } } })
+  setTraversingValue(1, 'b.a', obj)
+  expect(obj).toStrictEqual({ a: 1, b: { a: 1 } })
 })
 
 test('sleep', async () => {

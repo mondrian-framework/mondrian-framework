@@ -1,4 +1,5 @@
 import { retrieve } from '../src/index'
+import { mergeCapabilities } from '../src/retrieve'
 import { test } from '@fast-check/vitest'
 import { model } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf } from 'vitest'
@@ -31,7 +32,13 @@ const post = () =>
       author: user,
       tags: model.array(model.object({ type: model.string(), value: model.string().nullable() })).setName('Tags'),
     },
-    { name: 'Post', maxSkip: 5, maxTake: 30 },
+    {
+      name: 'Post',
+      retrieve: {
+        skip: { max: 5 },
+        take: { max: 30 },
+      },
+    },
   )
 
 describe('selectedType', () => {
@@ -472,4 +479,54 @@ describe('fromType', () => {
       expect(model.areEqual(expectedUserRetrieve, computedUserRetrieve.value)).toBe(true)
     }
   })
+})
+
+test('mergeCapabilities', () => {
+  expect(mergeCapabilities({}, {}, true)).toEqual({})
+  expect(mergeCapabilities({ take: true }, {}, true)).toEqual({ take: true })
+  expect(mergeCapabilities({ take: { max: 1 } }, {}, true)).toEqual({ take: { max: 1 } })
+
+  expect(mergeCapabilities({}, { take: false }, true)).toEqual({})
+  expect(mergeCapabilities({ take: true }, { take: false }, true)).toEqual({ take: true })
+  expect(mergeCapabilities({ take: { max: 1 } }, { take: false }, true)).toEqual({ take: { max: 1 } })
+
+  expect(mergeCapabilities({}, { take: { max: 2 } }, true)).toEqual({})
+  expect(mergeCapabilities({ take: true }, { take: { max: 2 } }, true)).toEqual({ take: { max: 2 } })
+  expect(mergeCapabilities({ take: { max: 1 } }, { take: { max: 2 } }, true)).toEqual({ take: { max: 1 } })
+
+  expect(mergeCapabilities({}, {}, false)).toEqual({})
+  expect(mergeCapabilities({ take: true }, {}, false)).toEqual({ take: true })
+  expect(mergeCapabilities({ take: { max: 1 } }, {}, false)).toEqual({ take: { max: 1 } })
+
+  expect(mergeCapabilities({}, { take: false }, false)).toEqual({})
+  expect(mergeCapabilities({ take: true }, { take: false }, false)).toEqual({})
+  expect(mergeCapabilities({ take: { max: 1 } }, { take: false }, false)).toEqual({})
+
+  expect(mergeCapabilities({}, { take: { max: 2 } }, false)).toEqual({ take: { max: 2 } })
+  expect(mergeCapabilities({ take: true }, { take: { max: 2 } }, false)).toEqual({ take: { max: 2 } })
+  expect(mergeCapabilities({ take: { max: 1 } }, { take: { max: 2 } }, false)).toEqual({ take: { max: 2 } })
+
+  expect(mergeCapabilities({}, {}, true)).toEqual({})
+  expect(mergeCapabilities({ skip: true }, {}, true)).toEqual({ skip: true })
+  expect(mergeCapabilities({ skip: { max: 1 } }, {}, true)).toEqual({ skip: { max: 1 } })
+
+  expect(mergeCapabilities({}, { skip: false }, true)).toEqual({})
+  expect(mergeCapabilities({ skip: true }, { skip: false }, true)).toEqual({ skip: true })
+  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: false }, true)).toEqual({ skip: { max: 1 } })
+
+  expect(mergeCapabilities({}, { skip: { max: 2 } }, true)).toEqual({})
+  expect(mergeCapabilities({ skip: true }, { skip: { max: 2 } }, true)).toEqual({ skip: { max: 2 } })
+  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: { max: 2 } }, true)).toEqual({ skip: { max: 1 } })
+
+  expect(mergeCapabilities({}, {}, false)).toEqual({})
+  expect(mergeCapabilities({ skip: true }, {}, false)).toEqual({ skip: true })
+  expect(mergeCapabilities({ skip: { max: 1 } }, {}, false)).toEqual({ skip: { max: 1 } })
+
+  expect(mergeCapabilities({}, { skip: false }, false)).toEqual({})
+  expect(mergeCapabilities({ skip: true }, { skip: false }, false)).toEqual({})
+  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: false }, false)).toEqual({})
+
+  expect(mergeCapabilities({}, { skip: { max: 2 } }, false)).toEqual({ skip: { max: 2 } })
+  expect(mergeCapabilities({ skip: true }, { skip: { max: 2 } }, false)).toEqual({ skip: { max: 2 } })
+  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: { max: 2 } }, false)).toEqual({ skip: { max: 2 } })
 })

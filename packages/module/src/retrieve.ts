@@ -7,8 +7,8 @@ import { randomUUID } from 'crypto'
  * It should be equals to prisma args.
  */
 export type GenericRetrieve = {
-  readonly where?: GenericWhere
   readonly select?: GenericSelect
+  readonly where?: GenericWhere
   readonly orderBy?: GenericOrderBy
   readonly take?: number
   readonly skip?: number
@@ -24,15 +24,15 @@ export type GenericOrderBy = GenericOrderByInternal | GenericOrderByInternal[]
 
 /**
  * Express the retrieve capabilities of a type or a function
- *  - where: it can be filtered
  *  - select: can select a sub-type
+ *  - where: it can be filtered
  *  - orderBy: can be sorted
  *  - take: (if list) can be limited to a fixed size
  *  - skip: can skip first results
  */
 export type Capabilities = {
-  readonly where?: true
   readonly select?: true
+  readonly where?: true
   readonly orderBy?: true
   readonly take?: true | { readonly max: number }
   readonly skip?: true | { readonly max: number }
@@ -47,6 +47,48 @@ export const allCapabilities = {
   take: true,
   where: true,
 } as const satisfies Capabilities
+
+/**
+ * Merges two capabilities.
+ *
+ * @param root if true, the capabilities are merged with priority to the desiredCapabilities,
+ * otherwise the priority is to the entityCapabilities. This is true when merging the capability
+ * specified in a function with the capability specified in the type.
+ */
+export function mergeCapabilities(
+  desiredCapabilities: Capabilities,
+  entityCapabilities: model.EntityTypeOptions['retrieve'],
+  root: boolean,
+): Capabilities {
+  if (!entityCapabilities) {
+    return desiredCapabilities
+  }
+
+  //priority to desiredCapabilities
+  if (root) {
+    const take =
+      desiredCapabilities.take === true && typeof entityCapabilities.take === 'object'
+        ? entityCapabilities.take
+        : desiredCapabilities.take
+    const skip =
+      desiredCapabilities.skip === true && typeof entityCapabilities.skip === 'object'
+        ? entityCapabilities.skip
+        : desiredCapabilities.skip
+    return {
+      ...desiredCapabilities,
+      take,
+      skip,
+    }
+  } else {
+    const take = entityCapabilities.take === false ? undefined : entityCapabilities.take ?? desiredCapabilities.take
+    const skip = entityCapabilities.skip === false ? undefined : entityCapabilities.skip ?? desiredCapabilities.skip
+    return {
+      ...desiredCapabilities,
+      take,
+      skip,
+    }
+  }
+}
 
 /**
  * Builds a retrieve type of a known mondrian type.
@@ -74,7 +116,10 @@ export function fromType(
   }
   const res = model.match(type, {
     wrapper: ({ wrappedType }) => fromType(wrappedType, capabilities),
-    entity: (_, type) => result.ok(retrieve(type, capabilities)),
+    entity: ({ options }, type) => {
+      const mergedCapabilities = mergeCapabilities(capabilities, options?.retrieve, true)
+      return result.ok(retrieve(type, mergedCapabilities))
+    },
     otherwise: () => result.fail(null),
   }) as result.Result<model.Type, null>
   return res as result.Result<model.ObjectType<model.Mutability.Immutable, model.Types>, null>
@@ -98,9 +143,8 @@ function retrieve(
   entity: model.Lazy<model.EntityType<any, any>>,
   capabilities: Capabilities,
 ): model.ObjectType<model.Mutability.Immutable, model.Types> {
-  const options = model.concretise(entity).options
-  const maxSkip = typeof capabilities.skip === 'object' ? capabilities.skip.max : options?.maxSkip
-  const maxTake = typeof capabilities.take === 'object' ? capabilities.take.max : options?.maxTake ?? 20
+  const maxTake = typeof capabilities.take === 'object' ? capabilities.take.max : 20
+  const maxSkip = typeof capabilities.skip === 'object' ? capabilities.skip.max : undefined
   return model.object({
     ...(capabilities.select ? { select: model.optional(select(entity)) } : {}),
     ...(capabilities.where ? { where: model.optional(where(entity)) } : {}),
@@ -109,9 +153,7 @@ function retrieve(
       ? { skip: model.integer({ minimum: 0, maximum: maxSkip }).optional({ defaultDecodeValue: 0 }) }
       : {}),
     ...(capabilities.take
-      ? {
-          take: model.integer({ minimum: 0, maximum: maxTake }).optional({ defaultDecodeValue: maxTake }),
-        }
+      ? { take: model.integer({ minimum: 0, maximum: maxTake }).optional({ defaultDecodeValue: maxTake }) }
       : {}),
     //distinct: model.unknown(),
   })
@@ -171,7 +213,10 @@ type SelectField<T extends model.Type, C extends Capabilities>
 
 function selectField(type: model.Type, capabilities: Capabilities): model.Type {
   return model.match(type, {
-    entity: (_, entity) => model.union({ retrieve: retrieve(entity, capabilities), all: model.boolean() }),
+    entity: ({ options }, entity) => {
+      const mergedCapabilities = mergeCapabilities(capabilities, options?.retrieve, false)
+      return model.union({ retrieve: retrieve(entity, mergedCapabilities), all: model.boolean() })
+    },
     object: ({ fields }) =>
       model.union({
         fields: model.object({

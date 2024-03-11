@@ -1473,9 +1473,11 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
  * The options that can be used to define an {@link EntityType `EntityType`}.
  */
 export type EntityTypeOptions = BaseOptions & {
-  maxTake?: number
-  maxSkip?: number
-  fields?: { [K in string]?: { description?: string } }
+  readonly retrieve?: {
+    readonly take?: false | { readonly max: number }
+    readonly skip?: false | { readonly max: number }
+  }
+  readonly fields?: { readonly [K in string]?: { readonly description?: string } }
 }
 
 /**

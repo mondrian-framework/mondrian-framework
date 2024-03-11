@@ -1,5 +1,13 @@
 # @mondrian-framework/model
 
+## 2.0.26
+
+### Patch Changes
+
+- Skip & take limits
+- Updated dependencies
+  - @mondrian-framework/utils@2.0.26
+
 ## 2.0.25
 
 ### Patch Changes

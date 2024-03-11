@@ -1,5 +1,16 @@
 # @mondrian-framework/graphql-yoga
 
+## 2.0.26
+
+### Patch Changes
+
+- Skip & take limits
+- Updated dependencies
+  - @mondrian-framework/graphql@2.0.26
+  - @mondrian-framework/model@2.0.26
+  - @mondrian-framework/module@2.0.26
+  - @mondrian-framework/utils@2.0.26
+
 ## 2.0.25
 
 ### Patch Changes

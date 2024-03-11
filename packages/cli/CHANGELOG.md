@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.26
+
+### Patch Changes
+
+- Skip & take limits
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.26
+  - @mondrian-framework/cli-commander@2.0.26
+
 ## 2.0.25
 
 ### Patch Changes

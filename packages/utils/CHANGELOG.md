@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.26
+
+### Patch Changes
+
+- Skip & take limits
+
 ## 2.0.25
 
 ### Patch Changes

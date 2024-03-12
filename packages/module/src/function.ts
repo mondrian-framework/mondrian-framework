@@ -481,7 +481,7 @@ export type FunctionContextInput<
 
 export type ErrorType = model.Types | undefined
 
-export type OutputRetrieveCapabilities = retrieve.Capabilities | undefined
+export type OutputRetrieveCapabilities = retrieve.FunctionCapabilities | undefined
 
 export type FunctionResult<O extends model.Type, E extends ErrorType, C extends OutputRetrieveCapabilities> = Promise<
   FunctionResultInternal<O, E, C>

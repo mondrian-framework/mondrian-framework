@@ -1,5 +1,4 @@
 import { decoding, validation, model, result, encoding, utils } from './index'
-import { NeverType } from './types-exports'
 import { memoizeTypeTransformation, memoizeTransformation } from './utils'
 import { JSONType, areJsonsEquals, mapObject, failWithInternalError, flatMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
@@ -1473,11 +1472,15 @@ export type EntityType<M extends Mutability, Ts extends Types> = {
  * The options that can be used to define an {@link EntityType `EntityType`}.
  */
 export type EntityTypeOptions = BaseOptions & {
-  readonly retrieve?: {
-    readonly take?: false | { readonly max: number }
-    readonly skip?: false | { readonly max: number }
-  }
+  readonly retrieve?: RetrieveCapabilities
   readonly fields?: { readonly [K in string]?: { readonly description?: string } }
+}
+
+export type RetrieveCapabilities = {
+  readonly take?: true | { readonly max: number }
+  readonly skip?: true | { readonly max: number }
+  readonly where?: true | { [K in string]?: boolean }
+  readonly orderBy?: true | { [K in string]?: boolean }
 }
 
 /**

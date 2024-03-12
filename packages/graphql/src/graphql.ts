@@ -415,17 +415,17 @@ function typeToGraphQLObjectField(
 function retrieveTypeToGraphqlArgs(
   retrieveType: model.ObjectType<model.Mutability.Immutable, model.Types>,
   internalData: InternalData,
-  capabilities: retrieve.Capabilities,
+  capabilities: retrieve.FunctionCapabilities,
 ): GraphQLFieldConfigArgumentMap {
   const whereType = () => typeToGraphQLInputType(retrieveType.fields['where'], internalData)
   const orderByType = () => typeToGraphQLInputType(retrieveType.fields['orderBy'], internalData)
   const takeType = () => typeToGraphQLInputType(retrieveType.fields['take'], internalData)
   const skipType = () => typeToGraphQLInputType(retrieveType.fields['skip'], internalData)
   return {
-    ...(capabilities.where ? { where: { type: whereType() } } : {}),
-    ...(capabilities.orderBy ? { orderBy: { type: orderByType() } } : {}),
-    ...(capabilities.take ? { take: { type: takeType() } } : {}),
-    ...(capabilities.skip ? { skip: { type: skipType() } } : {}),
+    ...(capabilities.where && retrieveType.fields['where'] ? { where: { type: whereType() } } : {}),
+    ...(capabilities.orderBy && retrieveType.fields['orderBy'] ? { orderBy: { type: orderByType() } } : {}),
+    ...(capabilities.take && retrieveType.fields['take'] ? { take: { type: takeType() } } : {}),
+    ...(capabilities.skip && retrieveType.fields['skip'] ? { skip: { type: skipType() } } : {}),
   }
 }
 

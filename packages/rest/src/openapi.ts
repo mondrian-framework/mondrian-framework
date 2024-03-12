@@ -584,6 +584,8 @@ function arrayToOpenAPIComponent(
   return {
     type: 'array',
     items: schema,
+    minItems: type.options?.minItems,
+    maxItems: type.options?.maxItems,
     description: type.options?.description,
   }
 }

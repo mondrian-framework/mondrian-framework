@@ -285,7 +285,7 @@ describe('rest handler', () => {
     expect(response.body).toStrictEqual({ username: 'name', live: true })
 
     const response2 = await handler({
-      query: { input: '', 'select[friend]': 'true' },
+      query: { input: '', 'select[friend][select][username]': 'true' },
     })
     expect(response2.status).toBe(200)
     expect(response2.body).toStrictEqual({ username: 'name', live: true, friend: { username: 'name2', live: true } })

@@ -17,7 +17,14 @@ export const Post = () =>
       likes: model.array(Like),
       visibility: model.string(),
     },
-    { description: 'Post of a user.' },
+    {
+      description: 'Post of a user.',
+      retrieve: {
+        where: { OR: true, author: true, title: true },
+        orderBy: { id: true, author: true },
+        //take: true,
+      },
+    },
   )
 export const OwnPost = () => Post
 

@@ -1,5 +1,4 @@
 import { retrieve } from '../src/index'
-import { mergeCapabilities } from '../src/retrieve'
 import { test } from '@fast-check/vitest'
 import { model } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf } from 'vitest'
@@ -14,6 +13,12 @@ const user = () =>
     },
     {
       name: 'User',
+      retrieve: {
+        orderBy: true,
+        skip: { max: 10 },
+        take: { max: 10 },
+        where: true,
+      },
     },
   )
 const metadata = () =>
@@ -37,6 +42,8 @@ const post = () =>
       retrieve: {
         skip: { max: 5 },
         take: { max: 30 },
+        orderBy: true,
+        where: true,
       },
     },
   )
@@ -126,7 +133,7 @@ describe('merge', () => {
     const now = new Date()
     const result = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
       user,
-      { select: { name: true, posts: true }, where: { name: { equals: 'Mario' } } },
+      { select: { name: true, posts: { select: { tags: true } } }, where: { name: { equals: 'Mario' } } },
       {
         select: { posts: { where: { title: { equals: 'Test' } }, select: { content: true } } },
         where: { metadata: { equals: { loggedInAt: now, registeredAt: now } } },
@@ -138,54 +145,46 @@ describe('merge', () => {
         name: true,
         posts: {
           where: { title: { equals: 'Test' } },
-          select: { title: true, content: true, tags: true },
+          select: { content: true, tags: true },
         },
       },
     })
-    const resul2 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+    const result2 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
       user,
       { select: { name: true }, where: { name: { equals: 'Mario' } } },
       {},
     )
-    expect(resul2).toEqual({
+    expect(result2).toEqual({
       where: { name: { equals: 'Mario' } },
       select: { name: true },
     })
 
-    const resul3 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+    const result3 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
       user,
-      { select: { posts: true } },
-      { select: { posts: true } },
-    )
-    expect(resul3).toEqual({ select: { posts: true } })
-
-    const resul4 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
-      user,
-      { select: { posts: true } },
+      { select: { posts: {} } },
       { select: { posts: {} } },
     )
-    expect(resul4).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
-      select: {
-        posts: {
-          select: {
-            content: true,
-            tags: true,
-            title: true,
+    expect(result3).toEqual({ select: { posts: {} } })
+
+    const result4 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      {
+        select: {
+          posts: {
+            select: {
+              content: true,
+              tags: true,
+              title: true,
+            },
           },
         },
       },
-    })
-
-    const resul5 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
-      user,
-      { select: { posts: { select: { author: true } } } },
-      { select: { posts: true } },
+      { select: { posts: {} } },
     )
-    expect(resul5).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+    expect(result4).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
       select: {
         posts: {
           select: {
-            author: true,
             content: true,
             tags: true,
             title: true,
@@ -194,27 +193,42 @@ describe('merge', () => {
       },
     })
 
-    const resul6 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+    const result5 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
       user,
-      { select: { posts: { select: { author: true } } } },
+      { select: { posts: { select: { author: {} } } } },
+      { select: { posts: {} } },
+    )
+    expect(result5).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+      select: {
+        posts: {
+          select: {
+            author: {},
+          },
+        },
+      },
+    })
+
+    const result6 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: { select: {} } } },
       { select: { posts: { select: { author: {} } } } },
     )
-    expect(resul6).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+    expect(result6).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
       select: {
         posts: {
           select: {
-            author: { select: { metadata: true, name: true } },
+            author: {},
           },
         },
       },
     })
 
-    const resul7 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+    const result7 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
       user,
       { select: { metadata: { select: { registeredAt: true } } } },
       { select: { metadata: { select: { loggedInAt: true } } } },
     )
-    expect(resul7).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+    expect(result7).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
       select: { metadata: { select: { registeredAt: true, loggedInAt: true } } },
     })
   })
@@ -310,18 +324,16 @@ describe('fromType', () => {
       where: true,
       select: true,
       orderBy: true,
-      take: { max: 10 },
-      skip: { max: 10 },
+      take: true,
+      skip: true,
     })
 
     const userSelect = () =>
       model.object(
         {
           name: model.boolean().optional(),
-          bestFriend: model
-            .union({ retrieve: model.object({ select: model.optional(userSelect) }), all: model.boolean() })
-            .optional(),
-          posts: model.union({ retrieve: expectedPostRetrieve, all: model.boolean() }).optional(),
+          bestFriend: model.object({ select: model.optional(userSelect) }).optional(),
+          posts: model.optional(expectedPostRetrieve),
           metadata: model
             .union({
               fields: model.object({
@@ -344,9 +356,7 @@ describe('fromType', () => {
         {
           title: model.boolean().optional(),
           content: model.boolean().optional(),
-          author: model
-            .union({ retrieve: model.object({ select: model.optional(userSelect) }), all: model.boolean() })
-            .optional(),
+          author: model.object({ select: model.optional(userSelect) }).optional(),
           tags: model
             .union({
               fields: model.object({
@@ -365,7 +375,10 @@ describe('fromType', () => {
       model.object(
         {
           name: model
-            .object({ equals: model.string().optional(), in: model.string().array().mutable().optional() })
+            .object({
+              equals: model.string().optional(),
+              in: model.string().array({ minItems: 1, maxItems: 20 }).mutable().optional(),
+            })
             .optional(),
           bestFriend: model.optional(userWhere),
           posts: model
@@ -391,10 +404,16 @@ describe('fromType', () => {
       model.object(
         {
           title: model
-            .object({ equals: model.string().optional(), in: model.string().array().mutable().optional() })
+            .object({
+              equals: model.string().optional(),
+              in: model.string().array({ minItems: 1, maxItems: 20 }).mutable().optional(),
+            })
             .optional(),
           content: model
-            .object({ equals: model.string().optional(), in: model.string().array().mutable().optional() })
+            .object({
+              equals: model.string().optional(),
+              in: model.string().array({ minItems: 1, maxItems: 20 }).mutable().optional(),
+            })
             .optional(),
           author: model.optional(userWhere),
           tags: model
@@ -479,54 +498,4 @@ describe('fromType', () => {
       expect(model.areEqual(expectedUserRetrieve, computedUserRetrieve.value)).toBe(true)
     }
   })
-})
-
-test('mergeCapabilities', () => {
-  expect(mergeCapabilities({}, {}, true)).toEqual({})
-  expect(mergeCapabilities({ take: true }, {}, true)).toEqual({ take: true })
-  expect(mergeCapabilities({ take: { max: 1 } }, {}, true)).toEqual({ take: { max: 1 } })
-
-  expect(mergeCapabilities({}, { take: false }, true)).toEqual({})
-  expect(mergeCapabilities({ take: true }, { take: false }, true)).toEqual({ take: true })
-  expect(mergeCapabilities({ take: { max: 1 } }, { take: false }, true)).toEqual({ take: { max: 1 } })
-
-  expect(mergeCapabilities({}, { take: { max: 2 } }, true)).toEqual({})
-  expect(mergeCapabilities({ take: true }, { take: { max: 2 } }, true)).toEqual({ take: { max: 2 } })
-  expect(mergeCapabilities({ take: { max: 1 } }, { take: { max: 2 } }, true)).toEqual({ take: { max: 1 } })
-
-  expect(mergeCapabilities({}, {}, false)).toEqual({})
-  expect(mergeCapabilities({ take: true }, {}, false)).toEqual({ take: true })
-  expect(mergeCapabilities({ take: { max: 1 } }, {}, false)).toEqual({ take: { max: 1 } })
-
-  expect(mergeCapabilities({}, { take: false }, false)).toEqual({})
-  expect(mergeCapabilities({ take: true }, { take: false }, false)).toEqual({})
-  expect(mergeCapabilities({ take: { max: 1 } }, { take: false }, false)).toEqual({})
-
-  expect(mergeCapabilities({}, { take: { max: 2 } }, false)).toEqual({ take: { max: 2 } })
-  expect(mergeCapabilities({ take: true }, { take: { max: 2 } }, false)).toEqual({ take: { max: 2 } })
-  expect(mergeCapabilities({ take: { max: 1 } }, { take: { max: 2 } }, false)).toEqual({ take: { max: 2 } })
-
-  expect(mergeCapabilities({}, {}, true)).toEqual({})
-  expect(mergeCapabilities({ skip: true }, {}, true)).toEqual({ skip: true })
-  expect(mergeCapabilities({ skip: { max: 1 } }, {}, true)).toEqual({ skip: { max: 1 } })
-
-  expect(mergeCapabilities({}, { skip: false }, true)).toEqual({})
-  expect(mergeCapabilities({ skip: true }, { skip: false }, true)).toEqual({ skip: true })
-  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: false }, true)).toEqual({ skip: { max: 1 } })
-
-  expect(mergeCapabilities({}, { skip: { max: 2 } }, true)).toEqual({})
-  expect(mergeCapabilities({ skip: true }, { skip: { max: 2 } }, true)).toEqual({ skip: { max: 2 } })
-  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: { max: 2 } }, true)).toEqual({ skip: { max: 1 } })
-
-  expect(mergeCapabilities({}, {}, false)).toEqual({})
-  expect(mergeCapabilities({ skip: true }, {}, false)).toEqual({ skip: true })
-  expect(mergeCapabilities({ skip: { max: 1 } }, {}, false)).toEqual({ skip: { max: 1 } })
-
-  expect(mergeCapabilities({}, { skip: false }, false)).toEqual({})
-  expect(mergeCapabilities({ skip: true }, { skip: false }, false)).toEqual({})
-  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: false }, false)).toEqual({})
-
-  expect(mergeCapabilities({}, { skip: { max: 2 } }, false)).toEqual({ skip: { max: 2 } })
-  expect(mergeCapabilities({ skip: true }, { skip: { max: 2 } }, false)).toEqual({ skip: { max: 2 } })
-  expect(mergeCapabilities({ skip: { max: 1 } }, { skip: { max: 2 } }, false)).toEqual({ skip: { max: 2 } })
 })

@@ -35,7 +35,7 @@ import gen from 'fast-check'
  */
 export function entity<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: Omit<model.EntityTypeOptions, 'fields'>,
+  options?: SpecificOptions<Ts>,
 ): model.EntityType<model.Mutability.Immutable, utils.RichFieldsToTypes<Ts>> {
   const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
   return new EntityTypeImpl(
@@ -47,7 +47,7 @@ export function entity<Ts extends utils.RichFields>(
 
 export function mutableEntity<Ts extends utils.RichFields>(
   fields: Ts,
-  options?: Omit<model.EntityTypeOptions, 'fields'>,
+  options?: SpecificOptions<Ts>,
 ): model.EntityType<model.Mutability.Mutable, utils.RichFieldsToTypes<Ts>> {
   const { fields: fieldsOptions, types } = utils.richFieldsToTypes(fields)
   return new EntityTypeImpl(
@@ -55,6 +55,17 @@ export function mutableEntity<Ts extends utils.RichFields>(
     types,
     fieldsOptions ? { ...options, fields: fieldsOptions } : options,
   )
+}
+
+type SpecificOptions<Ts extends utils.RichFields> = Omit<model.EntityTypeOptions, 'fields' | 'retrieve'> & {
+  readonly retrieve?: SpecificRetrieveCapabilities<Ts>
+}
+
+type SpecificRetrieveCapabilities<Ts extends utils.RichFields> = {
+  readonly take?: true | { readonly max: number }
+  readonly skip?: true | { readonly max: number }
+  readonly where?: true | { [K in keyof Ts | 'AND' | 'OR' | 'NOT']?: boolean }
+  readonly orderBy?: true | { [K in keyof Ts | 'AND' | 'OR' | 'NOT']?: boolean }
 }
 
 class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>

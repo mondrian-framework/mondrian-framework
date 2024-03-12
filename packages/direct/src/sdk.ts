@@ -21,7 +21,7 @@ type SdkFunction<
   InputType extends model.Type,
   OutputType extends model.Type,
   E extends functions.ErrorType,
-  C extends retrieve.Capabilities | undefined,
+  C extends retrieve.FunctionCapabilities | undefined,
 > =
   model.IsLiteral<InputType, undefined> extends true
     ? <const P extends retrieve.FromType<OutputType, Exclude<C, undefined>>>(
@@ -40,7 +40,7 @@ type SdkFunction<
 type SdkFunctionResult<
   O extends model.Type,
   E extends functions.ErrorType,
-  C extends retrieve.Capabilities | undefined,
+  C extends retrieve.FunctionCapabilities | undefined,
   P extends retrieve.FromType<O, C>,
 > = [Exclude<E, undefined>] extends [never]
   ? sdk.Project<O, P>

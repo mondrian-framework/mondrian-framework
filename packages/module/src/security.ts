@@ -72,7 +72,7 @@ export type PolicyCheckInput = {
   readonly outputType: model.Type
   readonly policies: Policies
   readonly retrieve?: retrieve.GenericRetrieve
-  readonly capabilities?: retrieve.Capabilities
+  readonly capabilities?: retrieve.FunctionCapabilities
   readonly path: path.Path
 }
 

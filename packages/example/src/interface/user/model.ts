@@ -17,7 +17,13 @@ export const User = () =>
       registeredAt: model.datetime(),
       loginAt: model.datetime(),
     },
-    { description: 'User of the system' },
+    {
+      description: 'User of the system',
+      retrieve: {
+        orderBy: { id: true, posts: true },
+        where: { id: true },
+      },
+    },
   )
 
 export const MyUser = () => User

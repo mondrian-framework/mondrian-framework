@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.27
+
+### Patch Changes
+
+- Entity retrieve capabilities
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.27
+  - @mondrian-framework/cli-commander@2.0.27
+
 ## 2.0.26
 
 ### Patch Changes

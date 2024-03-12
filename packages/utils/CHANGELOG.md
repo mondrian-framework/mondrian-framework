@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.27
+
+### Patch Changes
+
+- Entity retrieve capabilities
+
 ## 2.0.26
 
 ### Patch Changes

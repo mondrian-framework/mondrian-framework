@@ -1,5 +1,16 @@
 # @mondrian-framework/rest-fastify
 
+## 2.0.27
+
+### Patch Changes
+
+- Entity retrieve capabilities
+- Updated dependencies
+  - @mondrian-framework/model@2.0.27
+  - @mondrian-framework/module@2.0.27
+  - @mondrian-framework/rest@2.0.27
+  - @mondrian-framework/utils@2.0.27
+
 ## 2.0.26
 
 ### Patch Changes

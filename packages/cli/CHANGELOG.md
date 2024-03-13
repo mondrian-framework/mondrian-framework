@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.28
+
+### Patch Changes
+
+- Add \_count Prisma support
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.28
+  - @mondrian-framework/cli-commander@2.0.28
+
 ## 2.0.27
 
 ### Patch Changes

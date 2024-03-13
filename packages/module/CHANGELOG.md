@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.28
+
+### Patch Changes
+
+- Add \_count Prisma support
+- Updated dependencies
+  - @mondrian-framework/model@2.0.28
+
 ## 2.0.27
 
 ### Patch Changes

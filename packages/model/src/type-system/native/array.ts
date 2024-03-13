@@ -164,7 +164,12 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     if (errors.length > 0) {
       return decoding.failWithErrors(errors)
     } else {
-      return decoding.succeed(results)
+      if (this.options?.distinct) {
+        const distinct = Array.from(new Set(results))
+        return decoding.succeed(distinct)
+      } else {
+        return decoding.succeed(results)
+      }
     }
   }
 
@@ -183,6 +188,7 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
       throw new Error('Impossible to generate an arbitrary value with the given max depth')
     }
     const concreteType = model.concretise(this.wrappedType)
+
     return gen.array(concreteType.arbitrary(maxDepth - 1), {
       minLength: this.options?.minItems,
       maxLength: this.options?.maxItems,

@@ -1632,6 +1632,7 @@ export type ArrayType<M extends Mutability, T extends Type> = {
 export type ArrayTypeOptions = BaseOptions & {
   readonly maxItems?: number
   readonly minItems?: number
+  readonly distinct?: boolean
 }
 
 /**

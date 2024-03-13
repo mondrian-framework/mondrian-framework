@@ -466,6 +466,18 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
           checkValue(result, record)
         },
       )
+
+      test('distinct', () => {
+        const Model = model.array(model.number(), { distinct: true, minItems: 2 })
+        const result1 = Model.decodeWithoutValidation([1, 2, 3, 1, 2, 3], options)
+        checkValue(result1, [1, 2, 3])
+
+        const result2 = Model.decodeWithoutValidation([2, 3, 3, 1, 2, 3, 1, 2, 3, 3, 3], options)
+        checkValue(result2, [2, 3, 1])
+
+        const result3 = Model.decodeWithoutValidation([1, 1, 1, 1], options)
+        checkValue(result3, [1])
+      })
     })
   })
 

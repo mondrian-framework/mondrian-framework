@@ -138,6 +138,9 @@ export function completeRetrieve(
               return undefined
             }
           }
+          if (fieldName.startsWith('_')) {
+            return undefined
+          }
           return true
         }),
       }) as retrieve.GenericRetrieve,

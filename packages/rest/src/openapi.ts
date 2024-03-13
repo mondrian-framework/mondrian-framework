@@ -642,8 +642,10 @@ function recordToOpenAPIComponent(
   internalData: InternalData,
 ): OpenAPIV3_1.NonArraySchemaObject {
   const fields = Object.entries(type.fields).map(([fieldName, fieldType]) => {
-    const hasToBeOptional = model.unwrap(fieldType).kind === model.Kind.Entity && !model.isOptional(fieldType)
-    const schema = modelToSchema(hasToBeOptional ? model.optional(fieldType) : fieldType, internalData)
+    const hasToBeOptional =
+      (model.unwrap(fieldType).kind === model.Kind.Entity || fieldName.startsWith('_')) && !model.isOptional(fieldType)
+    const mappedFieldType = fieldName.startsWith('_') ? model.partialDeep(fieldType) : fieldType
+    const schema = modelToSchema(hasToBeOptional ? model.optional(mappedFieldType) : mappedFieldType, internalData)
     //here we use the field description, if there is not description then we fallback to the type description
     const descriptedSchema = {
       ...schema,

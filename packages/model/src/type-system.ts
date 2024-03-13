@@ -2079,15 +2079,33 @@ export function partialDeep<T extends Type>(type: T): PartialDeep<T> {
 }
 const partialDeepInternal = memoizeTypeTransformation(
   matcher({
-    nullable: ({ wrappedType }) => model.nullable(partialDeep(wrappedType)),
-    optional: ({ wrappedType }) => model.optional(partialDeep(wrappedType)),
-    array: ({ wrappedType }) => model.array(partialDeep(wrappedType)),
-    union: ({ variants }) => model.union(mapObject(variants, (_, fieldValue) => partialDeep(fieldValue))),
-    object: ({ fields }) => model.object(mapObject(fields, (_, fieldValue) => model.optional(partialDeep(fieldValue)))),
-    entity: ({ fields }) => model.entity(mapObject(fields, (_, fieldValue) => model.optional(partialDeep(fieldValue)))),
+    nullable: ({ wrappedType, options }) => model.nullable(partialDeep(wrappedType), copyOptionsPartialDeep(options)),
+    optional: ({ wrappedType, options }) => model.optional(partialDeep(wrappedType), copyOptionsPartialDeep(options)),
+    array: ({ wrappedType, options }) => model.array(partialDeep(wrappedType), copyOptionsPartialDeep(options)),
+    union: ({ variants, options }) =>
+      model.union(
+        mapObject(variants, (_, fieldValue) => partialDeep(fieldValue)),
+        copyOptionsPartialDeep(options),
+      ),
+    object: ({ fields, options }) =>
+      model.object(
+        mapObject(fields, (_, fieldValue) => model.optional(partialDeep(fieldValue))),
+        copyOptionsPartialDeep(options),
+      ),
+    entity: ({ fields, options }) =>
+      model.entity(
+        mapObject(fields, (_, fieldValue) => model.optional(partialDeep(fieldValue))),
+        copyOptionsPartialDeep(options),
+      ),
     otherwise: (_, t) => t,
   }),
 )
+function copyOptionsPartialDeep(options: BaseOptions | undefined): BaseOptions | undefined {
+  if (!options) {
+    return undefined
+  }
+  return { ...options, name: options.name ? `${options.name}Partial` : undefined }
+}
 
 /**
  * Compares two Mondrian {@link Type} by value.

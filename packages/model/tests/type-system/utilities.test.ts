@@ -95,6 +95,18 @@ describe('partialDeep', () => {
     const p5 = model.partialDeep(() => () => () => model.string())
     expect(p5().kind === model.Kind.String)
   })
+
+  test('respects options', () => {
+    const m = model.partialDeep(model.array(model.string(), { minItems: 1, name: 'MyArray' }))
+    expect(m.options).toEqual({ minItems: 1, name: 'MyArrayPartial' })
+
+    const MyArray = () => model.array(model.string(), { minItems: 1 })
+    const m1 = model.partialDeep(MyArray)
+    expect(m1().options).toEqual({ minItems: 1, name: 'MyArrayPartial' })
+
+    const m2 = model.partialDeep(model.nullable(model.string(), { sensitive: true }))
+    expect(m2.options).toEqual({ sensitive: true })
+  })
 })
 
 describe('pick', () => {

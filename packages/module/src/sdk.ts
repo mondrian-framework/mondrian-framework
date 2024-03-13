@@ -51,7 +51,7 @@ export type Project<T extends model.Type, R extends retrieve.GenericRetrieve>
 // prettier-ignore
 type InferSelection<T extends model.Type, S extends retrieve.GenericSelect> 
   = [S] extends [{ readonly [K in string]?: retrieve.GenericRetrieve | boolean }] ? InferSelectionInternal<T, S>
-  : InferReturn<T>
+  : InferReturn<T> //TODO: in cases of field starting with _ we should add optionality (example _count)
 
 // prettier-ignore
 type InferSelectionInternal<T extends model.Type, P extends { readonly [K in string]?: retrieve.GenericRetrieve | boolean }>

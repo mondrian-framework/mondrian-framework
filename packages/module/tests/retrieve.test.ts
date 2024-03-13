@@ -10,6 +10,7 @@ const user = () =>
       bestFriend: model.optional(user),
       posts: model.array(model.optional(post)),
       metadata,
+      _count: model.object({ posts: model.integer() }),
     },
     {
       name: 'User',
@@ -119,6 +120,15 @@ describe('selectedType', () => {
       .concretise(type2)
       .decode({ metadata: { registeredAt: now } }, { fieldStrictness: 'allowAdditionalFields' })
     expect(res2.isOk).toBe(false)
+  })
+
+  test('select _count', () => {
+    const type1 = retrieve.selectedType(user, { select: { _count: true } })
+    const res1 = model.concretise(type1).decode({ _count: { posts: 1 } })
+    expect(res1.isOk && res1.value).toEqual({ _count: { posts: 1 } })
+
+    const res2 = model.concretise(type1).decode({ _count: {} })
+    expect(res2.isFailure).toBe(true)
   })
 })
 
@@ -343,6 +353,14 @@ describe('fromType', () => {
                     loggedInAt: model.boolean().optional(),
                   })
                   .optional(),
+              }),
+              all: model.boolean(),
+            })
+            .optional(),
+          _count: model
+            .union({
+              fields: model.object({
+                select: model.object({ posts: model.boolean().optional() }).optional(),
               }),
               all: model.boolean(),
             })

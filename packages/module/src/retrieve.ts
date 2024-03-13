@@ -227,6 +227,9 @@ function orderByFields(
 }
 
 function orderByFieldIsApplicable(fieldName: string, capabilities: model.RetrieveCapabilities | undefined): boolean {
+  if (fieldName.startsWith('_')) {
+    return false
+  }
   if (!capabilities?.orderBy) {
     return false
   }
@@ -295,6 +298,9 @@ function whereInternal(type: model.Type): model.Type {
 }
 
 function whereFieldIsApplicable(fieldName: string, capabilities: model.RetrieveCapabilities | undefined): boolean {
+  if (fieldName.startsWith('_')) {
+    return false
+  }
   if (!capabilities?.where) {
     return false
   }
@@ -513,11 +519,15 @@ export function selectedType<T extends model.Type>(type: T, retrieve: GenericRet
  */
 function optionalizeEmbeddedEntities(type: model.Type): model.Type {
   function optionalizeEntityFields(fields: model.Types): model.Types {
-    return flatMapObject(fields, (fieldName, fieldType) =>
-      model.unwrap(fieldType).kind === model.Kind.Entity
-        ? [[fieldName, model.optional(fieldType)]]
-        : [[fieldName, fieldType]],
-    )
+    return mapObject(fields, (fieldName, fieldType) => {
+      if (fieldName.startsWith('_')) {
+        return model.optional(model.partialDeep(fieldType))
+      } else if (model.unwrap(fieldType).kind === model.Kind.Entity) {
+        return model.optional(fieldType)
+      } else {
+        return fieldType
+      }
+    })
   }
   return model.match(type, {
     optional: ({ wrappedType }) => model.optional(optionalizeEmbeddedEntities(wrappedType)),

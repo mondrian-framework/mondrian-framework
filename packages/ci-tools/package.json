@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/ci-tools",
-  "version": "2.0.29",
+  "version": "2.0.30",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -18,10 +18,10 @@
     "fastify": "^4.26.2"
   },
   "peerDependencies": {
-    "@mondrian-framework/aws-lambda-rest": "^2.0.29",
-    "@mondrian-framework/model": "^2.0.29",
-    "@mondrian-framework/module": "^2.0.29",
-    "@mondrian-framework/rest": "^2.0.29",
-    "@mondrian-framework/rest-fastify": "^2.0.29"
+    "@mondrian-framework/aws-lambda-rest": "^2.0.30",
+    "@mondrian-framework/model": "^2.0.30",
+    "@mondrian-framework/module": "^2.0.30",
+    "@mondrian-framework/rest": "^2.0.30",
+    "@mondrian-framework/rest-fastify": "^2.0.30"
   }
 }

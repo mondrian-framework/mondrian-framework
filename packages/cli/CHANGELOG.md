@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.30
+
+### Patch Changes
+
+- Add distinct option on array
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.30
+  - @mondrian-framework/cli-commander@2.0.30
+
 ## 2.0.29
 
 ### Patch Changes

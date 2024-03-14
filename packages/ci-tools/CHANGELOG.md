@@ -1,5 +1,17 @@
 # @mondrian-framework/ci-tools
 
+## 2.0.30
+
+### Patch Changes
+
+- Add distinct option on array
+- Updated dependencies
+  - @mondrian-framework/aws-lambda-rest@2.0.30
+  - @mondrian-framework/model@2.0.30
+  - @mondrian-framework/module@2.0.30
+  - @mondrian-framework/rest@2.0.30
+  - @mondrian-framework/rest-fastify@2.0.30
+
 ## 2.0.29
 
 ### Patch Changes

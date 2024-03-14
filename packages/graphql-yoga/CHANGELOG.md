@@ -1,5 +1,16 @@
 # @mondrian-framework/graphql-yoga
 
+## 2.0.30
+
+### Patch Changes
+
+- Add distinct option on array
+- Updated dependencies
+  - @mondrian-framework/graphql@2.0.30
+  - @mondrian-framework/model@2.0.30
+  - @mondrian-framework/module@2.0.30
+  - @mondrian-framework/utils@2.0.30
+
 ## 2.0.29
 
 ### Patch Changes

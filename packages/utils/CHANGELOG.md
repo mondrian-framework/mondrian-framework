@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.30
+
+### Patch Changes
+
+- Add distinct option on array
+
 ## 2.0.29
 
 ### Patch Changes

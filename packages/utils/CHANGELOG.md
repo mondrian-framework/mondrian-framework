@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.31
+
+### Patch Changes
+
+- Type workaround for tsc bug
+
 ## 2.0.30
 
 ### Patch Changes

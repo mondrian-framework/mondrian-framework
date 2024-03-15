@@ -1,5 +1,15 @@
 # @mondrian-framework/direct
 
+## 2.0.31
+
+### Patch Changes
+
+- Type workaround for tsc bug
+- Updated dependencies
+  - @mondrian-framework/model@2.0.31
+  - @mondrian-framework/module@2.0.31
+  - @mondrian-framework/utils@2.0.31
+
 ## 2.0.30
 
 ### Patch Changes

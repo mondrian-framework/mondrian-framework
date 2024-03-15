@@ -196,7 +196,7 @@ type OrderBy<T extends model.Type>
   : [T] extends [model.OptionalType<infer T1>] ? OrderBy<T1>
   : [T] extends [model.NullableType<infer T1>] ? OrderBy<T1>
   : [T] extends [(() => infer T1 extends model.Type)] ? OrderBy<T1>
-  : SortDirection
+  : any //TODO: should be SortDirection but typescript has a bug https://github.com/microsoft/TypeScript/issues/53614
 
 const orderBy = utils.memoizeTypeTransformation(orderByInternal)
 function orderByInternal(type: model.Type): model.Type {
@@ -246,7 +246,7 @@ type OrderByArray<T extends model.Type>
   : [T] extends [model.EntityType<any, any>] ? { readonly _count?: SortDirection } 
   : [T] extends [model.ObjectType<any, any>] ? { readonly _count?: SortDirection } 
   : [T] extends [(() => infer T1 extends model.Type)] ? OrderByArray<T1>
-  : SortDirection
+  : any //TODO: should be SortDirection but typescript has a bug https://github.com/microsoft/TypeScript/issues/53614
 
 function orderByArray(type: model.Type): model.Type {
   return model.match(type, {

@@ -174,19 +174,24 @@ class SdkBuilder<const Metadata> {
     const presetLogger = mondrianLogger.build({ moduleName: module.name, server: 'LOCAL' })
     const fs = Object.fromEntries(
       Object.entries(module.functions).map(([functionName, functionBody]) => {
-        const wrapper = async (
-          input: unknown,
-          options?: {
+        const wrapper = async (p1: unknown, p2: unknown) => {
+          let input: unknown = undefined
+          let options: {
             retrieve?: retrieve.GenericRetrieve
             metadata?: Metadata
-          },
-        ) => {
+          } = {}
+          if (model.isLiteral(functionBody.input, undefined)) {
+            options = p1 as { retrieve?: retrieve.GenericRetrieve; metadata?: Metadata }
+          } else {
+            input = p1
+            options = p2 as { retrieve?: retrieve.GenericRetrieve; metadata?: Metadata }
+          }
           const thisLogger = presetLogger.updateContext({ operationName: functionName })
           try {
             const contextInput = await context({ metadata: options?.metadata ?? this.metadata })
-            const result = await functionBody.apply({
-              input: input as never,
-              retrieve: options?.retrieve ?? {},
+            const result = await functionBody.rawApply({
+              rawInput: input as never,
+              rawRetrieve: options?.retrieve ?? {},
               contextInput: contextInput as Record<string, unknown>,
               //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
               logger: thisLogger,

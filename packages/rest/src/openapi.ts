@@ -487,7 +487,7 @@ function literalToOpenAPIComponent(type: model.LiteralType): OpenAPIV3_1.NonArra
   if (type.literalValue === null || type.literalValue === undefined) {
     return {
       type: 'null',
-      const: 'null',
+      const: null,
       description: type.options?.description,
     }
   }
@@ -601,10 +601,11 @@ function optionalToOpenAPIComponent(
   if (internalData.ignoreFirstLevelOptionality) {
     return schema
   }
-  const optionalSchema: OpenAPIV3_1.NonArraySchemaObject = { type: 'null', description: 'optional' }
-  return {
-    anyOf: [schema, optionalSchema],
-    description: type.options?.description,
+  const optionalSchema: OpenAPIV3_1.NonArraySchemaObject = { type: 'null' }
+  if ('anyOf' in schema && schema.anyOf && (!schema.description || !type.options?.description)) {
+    return { anyOf: [...schema.anyOf, optionalSchema], description: schema.description ?? type.options?.description }
+  } else {
+    return { anyOf: [schema, optionalSchema], description: type.options?.description }
   }
 }
 
@@ -619,10 +620,11 @@ function nullableToOpenAPIComponent(
   if (internalData.ignoreFirstLevelOptionality) {
     return schema
   }
-  const optionalSchema: OpenAPIV3_1.NonArraySchemaObject = { const: null }
-  return {
-    anyOf: [schema, optionalSchema],
-    description: type.options?.description,
+  const optionalSchema: OpenAPIV3_1.NonArraySchemaObject = { type: 'null', const: null }
+  if ('anyOf' in schema && schema.anyOf && (!schema.description || !type.options?.description)) {
+    return { anyOf: [...schema.anyOf, optionalSchema], description: schema.description ?? type.options?.description }
+  } else {
+    return { anyOf: [schema, optionalSchema], description: type.options?.description }
   }
 }
 
@@ -655,10 +657,23 @@ function recordToOpenAPIComponent(
   })
   const isOptional: (
     type: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject,
-  ) => { optional: true; subtype: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } | false = (type) =>
-    'anyOf' in type && type.anyOf && type.anyOf.length === 2 && type.anyOf[1].description === 'optional'
-      ? { optional: true, subtype: { ...type.anyOf[0], description: type.anyOf[0].description ?? type.description } }
-      : false
+  ) => { optional: true; subtype: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject } | false = (type) => {
+    if ('anyOf' in type && type.anyOf?.some((v) => 'type' in v && v.type === 'null' && v.const !== null)) {
+      const internalTypes = type.anyOf.filter((v) => !('type' in v && v.type === 'null' && v.const !== null))
+      return {
+        optional: true,
+        subtype:
+          internalTypes.length === 1
+            ? {
+                ...internalTypes[0],
+                description: internalTypes[0].description ?? type.description,
+              }
+            : { anyOf: internalTypes },
+      }
+    } else {
+      return false
+    }
+  }
   const schema: OpenAPIV3_1.SchemaObject = {
     type: 'object',
     required: fields.filter(([_, type]) => isOptional(type) === false).map((v) => v[0]),

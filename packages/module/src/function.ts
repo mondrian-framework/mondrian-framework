@@ -127,7 +127,7 @@ export type GenericFunctionArguments = {
   readonly input: unknown
   readonly retrieve: retrieve.GenericRetrieve
   readonly logger: logger.MondrianLogger
-  readonly tracer: Tracer
+  readonly tracer?: Tracer
   readonly functionName: string
 } & {
   [K in string]: unknown

@@ -115,35 +115,39 @@ export function assertApiValidity(api: ApiSpecification<functions.FunctionInterf
 }
 
 /**
- * Adds all non-entity fields that was excluded in the selection.
+ * Adds all non-entity fields that was excluded in the selection only on first level.
  */
 export function completeRetrieve(
   retr: retrieve.GenericRetrieve | undefined,
   type: model.Type,
+  isRoot = true,
 ): retrieve.GenericRetrieve | undefined {
   if (!retr) {
     return undefined
   }
   return model.match(type, {
-    wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
+    wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType, isRoot),
     record: ({ fields }) =>
-      retrieve.merge(type, retr, {
-        select: mapObject(fields, (fieldName, fieldType) => {
-          const unwrapped = model.unwrap(fieldType)
-          if (unwrapped.kind === model.Kind.Entity) {
-            const subRetrieve = (retr.select ?? {})[fieldName]
-            if (subRetrieve && subRetrieve !== true) {
-              return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)
-            } else {
-              return undefined
-            }
-          }
-          if (fieldName.startsWith('_')) {
-            return undefined
-          }
-          return true
-        }),
-      }) as retrieve.GenericRetrieve,
+      isRoot
+        ? (retrieve.merge(type, retr, {
+            select: mapObject(fields, (fieldName, fieldType) => {
+              const unwrapped = model.unwrap(fieldType)
+              if (unwrapped.kind === model.Kind.Entity) {
+                const subRetrieve = (retr.select ?? {})[fieldName]
+                if (subRetrieve && subRetrieve !== true) {
+                  return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType, false)
+                } else {
+                  return undefined
+                }
+              }
+              if (fieldName.startsWith('_')) {
+                //avoid adding _count to default selection
+                return undefined
+              }
+              return true
+            }),
+          }) as retrieve.GenericRetrieve)
+        : retr,
     otherwise: () => retr,
   })
 }

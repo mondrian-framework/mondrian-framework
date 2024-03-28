@@ -1,7 +1,9 @@
 import { error, exception, functions, guard, provider, retrieve, utils } from '..'
+import { OpentelemetryOptions } from '../module'
 import { TracerWrapper, voidTracer } from './tracer'
 import { model, result } from '@mondrian-framework/model'
 import { SpanKind, SpanStatusCode, Counter, Histogram, Tracer, Span } from '@opentelemetry/api'
+import { SEMATTRS_CODE_FUNCTION, SEMATTRS_CODE_NAMESPACE } from '@opentelemetry/semantic-conventions'
 
 /**
  * Basic function implementation.
@@ -102,8 +104,8 @@ export class BaseFunction<
     provider: provider.ContextProvider,
     contextInput: any,
     args: functions.GenericFunctionArguments,
-    cache: Map<unknown, result.Result<unknown, unknown>>,
-  ): Promise<result.Result<unknown, unknown>> {
+    cache: Map<unknown, result.Result<unknown, Record<string, unknown>>>,
+  ): Promise<result.Result<unknown, Record<string, unknown>>> {
     const cached = cache.get(provider)
     if (cached) {
       return cached
@@ -123,7 +125,7 @@ export class BaseFunction<
 
   protected async applyProviders(
     args: functions.FunctionApplyArguments<I, O, C, Pv, G>,
-  ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, unknown>> {
+  ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, Record<string, unknown>>> {
     const mappedArgs: functions.GenericFunctionArguments = {
       input: args.input,
       retrieve: args.retrieve as retrieve.GenericRetrieve,
@@ -131,7 +133,7 @@ export class BaseFunction<
       tracer: args.tracer ?? this.tracer,
       functionName: this.name,
     }
-    const cache = new Map<unknown, result.Result<unknown, unknown>>()
+    const cache = new Map<unknown, result.Result<unknown, Record<string, unknown>>>()
     //Apply guards
     for (const guard of Object.values(this.guards)) {
       const res = await this.runProvider(guard, args.contextInput, mappedArgs, cache)
@@ -189,10 +191,12 @@ export class OpentelemetryFunction<
   public readonly tracer: TracerWrapper
   private readonly counter: Counter
   private readonly histogram: Histogram
+  readonly opentelemetryOptions: Required<OpentelemetryOptions>
+  readonly spanName: string
 
   constructor(
     func: functions.Function<I, O, E, C, Pv, G>,
-    options: { name: string; resolveNestedPromises: boolean },
+    options: { name: string; resolveNestedPromises: boolean; openteletry: OpentelemetryOptions | undefined },
     opentelemetry: {
       tracer: Tracer
       counter: Counter
@@ -203,30 +207,128 @@ export class OpentelemetryFunction<
     this.tracer = new TracerWrapper(opentelemetry.tracer, '')
     this.counter = opentelemetry.counter
     this.histogram = opentelemetry.histogram
+    this.opentelemetryOptions = {
+      attributes: (args) => ({ retrieve: JSON.stringify(args.retrieve) }),
+      spanName: (name) => `mondrian:module:${name}`,
+      ...options.openteletry,
+    }
+    this.spanName = this.opentelemetryOptions.spanName(this.name, this)
+  }
+
+  public async rawApply({
+    rawInput,
+    rawRetrieve,
+    decodingOptions,
+    overrides,
+    mapper,
+    ...args
+  }: functions.FunctionRawApplyArguments<Pv, G>): functions.FunctionResult<O, E, C> {
+    //decode input
+    const decodedInput = this.tracer.startActiveSpanWithOptions(
+      `${this.spanName}:decode-input`,
+      { kind: SpanKind.INTERNAL },
+      (span) => {
+        const decodedInput = model.concretise(overrides?.inputType ?? this.input).decode(rawInput, decodingOptions)
+        if (decodedInput.isFailure) {
+          span.setStatus({ code: SpanStatusCode.ERROR })
+          span.setAttribute('error.json', JSON.stringify(decodedInput.error))
+          span.setAttribute('input.json', JSON.stringify(rawInput))
+          span.end()
+          if (this.badInputErrorKey !== undefined) {
+            const e: model.Infer<(typeof error)['standard']['BadInput']> = {
+              message: 'Bad input.',
+              from: 'input',
+              errors: decodedInput.error,
+            }
+            return result.fail({ [this.badInputErrorKey]: e }) as Awaited<functions.FunctionResult<O, E, C>>
+          } else {
+            throw new exception.InvalidInput('input', decodedInput.error)
+          }
+        } else {
+          span.end()
+          return decodedInput
+        }
+      },
+    )
+    if (decodedInput.isFailure) {
+      return decodedInput
+    }
+
+    //decode retrieve
+    const decodedRetrieve = this.retrieveType
+      ? this.tracer.startActiveSpanWithOptions(
+          `${this.spanName}:decode-retrieve`,
+          { kind: SpanKind.INTERNAL },
+          (span) => {
+            const decodedRetrieve = model
+              .concretise(overrides?.retrieveType ?? this.retrieveType!)
+              .decode(rawRetrieve, decodingOptions)
+
+            if (decodedRetrieve.isFailure) {
+              span.setStatus({ code: SpanStatusCode.ERROR })
+              span.setAttribute('error.json', JSON.stringify(decodedRetrieve.error))
+              span.setAttribute('retrieve.json', JSON.stringify(rawRetrieve))
+              span.end()
+              if (this.badInputErrorKey !== undefined) {
+                const e: model.Infer<(typeof error)['standard']['BadInput']> = {
+                  message: 'Bad input.',
+                  from: 'retrieve',
+                  errors: decodedRetrieve.error,
+                }
+                return result.fail({ [this.badInputErrorKey]: e }) as Awaited<functions.FunctionResult<O, E, C>>
+              } else {
+                throw new exception.InvalidInput('retrieve', decodedRetrieve.error)
+              }
+            } else {
+              span.end()
+              return decodedRetrieve
+            }
+          },
+        )
+      : result.ok()
+    if (decodedRetrieve.isFailure) {
+      return decodedRetrieve
+    }
+
+    //apply mappers
+    const mappedInput = mapper?.input ? mapper.input(decodedInput.value) : decodedInput.value
+    const mappedRetrieve = mapper?.retrieve ? mapper.retrieve(decodedRetrieve.value) : decodedRetrieve.value
+    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve }
+
+    //run function apply
+    return this.apply(applyArgs)
   }
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): functions.FunctionResult<O, E, C> {
+    const mappedArgs = await this.tracer.startActiveSpanWithOptions(
+      `${this.spanName}:provision`,
+      { kind: SpanKind.INTERNAL },
+      async (span) => {
+        const mappedArgs = await this.applyProviders(args)
+        if (mappedArgs.isFailure) {
+          this.addInputToSpanAttribute(span, args.input)
+          this.addErrorsToSpanAttribute(span, mappedArgs.error)
+          span.setStatus({ code: SpanStatusCode.ERROR })
+        }
+        span.end()
+        return mappedArgs
+      },
+    )
+    if (mappedArgs.isFailure) {
+      return mappedArgs as any
+    }
     this.counter.add(1)
     const startTime = new Date().getTime()
+    const attributes = {
+      [SEMATTRS_CODE_FUNCTION]: this.name,
+      [SEMATTRS_CODE_NAMESPACE]: this.options?.namespace,
+      ...this.opentelemetryOptions.attributes({ ...args, functionName: this.name }, this),
+    }
     const spanResult = await this.tracer.startActiveSpanWithOptions(
-      `mondrian:function-apply:${this.name}`,
-      {
-        kind: SpanKind.INTERNAL,
-        attributes: {
-          retrieve: JSON.stringify(args.retrieve),
-        },
-      },
+      `${this.spanName}:apply`,
+      { kind: SpanKind.INTERNAL, attributes },
       async (span) => {
         try {
-          //TODO: add active span for providers and input decoding?
-          const mappedArgs = await this.applyProviders(args)
-          if (mappedArgs.isFailure) {
-            this.addInputToSpanAttribute(span, args.input)
-            span.setStatus({ code: SpanStatusCode.ERROR })
-            span.end()
-            return result.ok(mappedArgs as any)
-          }
-
           const applyResult = (await super.execute(0, mappedArgs.value)) as result.Result<
             unknown,
             Record<string, unknown>
@@ -256,7 +358,7 @@ export class OpentelemetryFunction<
     if (spanResult.isFailure) {
       throw spanResult.error
     }
-    return spanResult.value
+    return spanResult.value as any
   }
 
   private addErrorsToSpanAttribute(span: Span, failure: Record<string, unknown>) {

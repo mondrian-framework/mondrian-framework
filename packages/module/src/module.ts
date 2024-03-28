@@ -5,7 +5,7 @@ import * as middleware from './middleware'
 import { allUniqueTypes, reservedProvidersNames } from './utils'
 import { model } from '@mondrian-framework/model'
 import { UnionToIntersection } from '@mondrian-framework/utils'
-import opentelemetry, { ValueType } from '@opentelemetry/api'
+import opentelemetry, { ValueType, Attributes } from '@opentelemetry/api'
 
 /**
  * The Mondrian module interface.
@@ -84,13 +84,18 @@ export type ModuleOptions = {
    * Enables opetelemetry instrumentation.
    * Default is false.
    */
-  opentelemetry?: boolean
+  opentelemetry?: boolean | OpentelemetryOptions
   /**
    * If true, the module will resolve nested promises in the output of the functions.
    * Can have a performance impact.
    * Default is false.
    */
   resolveNestedPromises?: boolean
+}
+
+export type OpentelemetryOptions = {
+  attributes?: (args: functions.GenericFunctionArguments, fn: functions.FunctionInterface) => Attributes
+  spanName?: (functionName: string, fn: functions.FunctionInterface) => string
 }
 
 /**
@@ -221,7 +226,14 @@ export function build<const Fs extends functions.Functions>(
           functions.OutputRetrieveCapabilities,
           provider.Providers,
           guard.Guards
-        > = new OpentelemetryFunction(func, options, { histogram, tracer, counter })
+        > = new OpentelemetryFunction(
+          func,
+          {
+            ...options,
+            openteletry: typeof module.options.opentelemetry === 'object' ? module.options.opentelemetry : undefined,
+          },
+          { histogram, tracer, counter },
+        )
         return [functionName, wrappedFunction]
       } else {
         return [functionName, new BaseFunction(func, options)]

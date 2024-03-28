@@ -53,7 +53,7 @@ export const register = functions.define({
 
 export const follow = functions.define({
   input: model.object({ userId: idType }),
-  output: User,
+  output: MyUser,
   errors: {
     authenticationFailed,
     userNotExists,

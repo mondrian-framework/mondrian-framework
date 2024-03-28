@@ -1,11 +1,15 @@
 import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
 import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
 import { completeRetrieve, decodeQueryObject, methodFromOptions } from './utils'
-import { result, model } from '@mondrian-framework/model'
-import { exception, functions, logger, module, retrieve, utils } from '@mondrian-framework/module'
+import { model } from '@mondrian-framework/model'
+import { exception, functions, logger, module, retrieve } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
-import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
+import {
+  SEMATTRS_HTTP_METHOD,
+  SEMATTRS_HTTP_ROUTE,
+  SEMATTRS_HTTP_STATUS_CODE,
+} from '@opentelemetry/semantic-conventions'
 
 export function fromFunction<Fs extends functions.FunctionImplementations, ServerContext>({
   functionName,
@@ -38,17 +42,17 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
 
   const handler = ({ request, serverContext }: { request: http.Request; serverContext: ServerContext }) =>
     functionBody.tracer.startActiveSpanWithOptions(
-      `mondrian:rest-handler:${functionName}`,
+      `${request.method.toUpperCase()} ${request.route}`,
       {
         attributes: {
-          [SemanticAttributes.HTTP_METHOD]: request.method,
-          [SemanticAttributes.HTTP_ROUTE]: request.route,
+          [SEMATTRS_HTTP_METHOD]: request.method,
+          [SEMATTRS_HTTP_ROUTE]: request.route,
         },
         kind: SpanKind.SERVER,
       },
       async (span) => {
         //Setup logging
-        const tracer = functionBody.tracer.withPrefix(`mondrian:rest-handler:${functionName}:`)
+        const tracer = functionBody.tracer.withPrefix(`mondrian:rest:${functionName}:`)
 
         const subHandler = async () => {
           try {
@@ -155,7 +159,7 @@ function generateGetInputFromRequest(args: {
 }
 
 function endSpanWithResponse({ span, response }: { span?: Span; response: http.Response }): void {
-  span?.setAttribute(SemanticAttributes.HTTP_STATUS_CODE, response.status)
+  span?.setAttribute(SEMATTRS_HTTP_STATUS_CODE, response.status)
   const responseHasSuccessStatusCode = 200 <= response.status && response.status <= 299
   const spanStatusCode = responseHasSuccessStatusCode ? SpanStatusCode.OK : SpanStatusCode.ERROR
   span?.setStatus({ code: spanStatusCode })

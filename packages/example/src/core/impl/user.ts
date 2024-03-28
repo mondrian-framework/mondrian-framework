@@ -61,7 +61,7 @@ export const register = module.functions.register.use({ providers: { db: dbProvi
 
 export const follow = module.functions.follow.use({ providers: { auth: authProvider, db: dbProvider } }).implement({
   async body({ input, retrieve: thisRetrieve, auth: { userId }, db: { prisma } }) {
-    if (input.userId === userId || (await prisma.user.count({ where: { id: input.userId } })) === 0) {
+    if ((await prisma.user.count({ where: { id: input.userId } })) === 0) {
       return result.fail({ userNotExists: {} })
     }
     await prisma.follower.upsert({

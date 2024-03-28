@@ -19,6 +19,6 @@
     "@mondrian-framework/model": "^2.0.31",
     "@mondrian-framework/module": "^2.0.31",
     "@mondrian-framework/utils": "^2.0.31",
-    "@opentelemetry/sdk-node": "^0.47.0"
+    "@opentelemetry/sdk-node": "^0.49.1"
   }
 }

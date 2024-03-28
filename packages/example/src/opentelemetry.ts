@@ -2,7 +2,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { Resource } from '@opentelemetry/resources'
 import { SimpleLogRecordProcessor, LogRecordExporter } from '@opentelemetry/sdk-logs'
 import * as opentelemetry from '@opentelemetry/sdk-node'
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
+import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from '@opentelemetry/semantic-conventions'
 import { PrismaInstrumentation } from '@prisma/instrumentation'
 
 class MyConsoleLogRecordExporter implements LogRecordExporter {
@@ -28,8 +28,8 @@ const logRecordProcessor = new SimpleLogRecordProcessor(new MyConsoleLogRecordEx
 const sdk = new opentelemetry.NodeSDK({
   serviceName: process.env.MODULE_NAME,
   resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: process.env.MODULE_NAME,
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.ENVIRONMENT,
+    [SEMRESATTRS_SERVICE_NAME]: process.env.MODULE_NAME,
+    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: process.env.ENVIRONMENT,
   }),
   traceExporter,
   logRecordProcessor,

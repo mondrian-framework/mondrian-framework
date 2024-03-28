@@ -44,6 +44,8 @@ export const loggedUser: (userId: number) => security.Policies = (userId) =>
     .allows({ selection: true })
     .on(OwnPost)
     .allows({ selection: true })
+    .on(MyUser)
+    .allows({ selection: true })
 
 export const guest: security.Policies = security
 

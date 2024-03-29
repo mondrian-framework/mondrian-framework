@@ -30,10 +30,8 @@ export function start<Fs extends functions.FunctionImplementations>({
       options.cron,
       async () => {
         return await functionBody.tracer.startActiveSpanWithOptions(
-          `mondrian:cron-handler:${functionName}`,
-          {
-            kind: SpanKind.INTERNAL,
-          },
+          `CRON ${options.cron}`,
+          { kind: SpanKind.INTERNAL },
           async (span) => {
             const operationLogger = baseLogger.updateContext({
               operationType: options.cron,
@@ -48,8 +46,6 @@ export function start<Fs extends functions.FunctionImplementations>({
             }
             try {
               const contextInput = await context({ cron: options.cron })
-              //TODO: use rawApply?
-              //TODO: add opentelemetry istrumentation
               await functionBody.apply({
                 input: input as never,
                 retrieve: {},

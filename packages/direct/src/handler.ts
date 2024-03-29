@@ -64,33 +64,19 @@ export function fromModule<Fs extends functions.FunctionImplementations, ServerC
       return wrapResponse(functionNameResult.error)
     }
     const functionName = functionNameResult.value
-    const functionBody = api.module.functions[functionName]
-    return functionBody.tracer.startActiveSpanWithOptions(
-      `mondrian:direct:${functionName}`,
-      {
-        attributes: {
-          [SEMATTRS_HTTP_METHOD]: request.method,
-          [SEMATTRS_HTTP_ROUTE]: request.route,
-        },
-        kind: SpanKind.SERVER,
-      },
-      async (span) => {
-        const result = await handleFunctionCall({
-          functionName,
-          api,
-          context,
-          options,
-          request,
-          serverContext,
-        })
-        endSpanWithResult(span, result)
-        const response = result.match(
-          (v) => v,
-          (e) => e,
-        )
-        return wrapResponse(response)
-      },
+    const result = await handleFunctionCall({
+      functionName,
+      api,
+      context,
+      options,
+      request,
+      serverContext,
+    })
+    const response = result.match(
+      (v) => v,
+      (e) => e,
     )
+    return wrapResponse(response)
   }
   return handler
 }
@@ -185,15 +171,4 @@ function getFunctionName(
     })
   }
   return result.ok(functionName)
-}
-
-function endSpanWithResult<A, E>(span: Span | undefined, result: result.Result<A, E>): result.Result<A, E> {
-  if (result.isOk) {
-    span?.setStatus({ code: SpanStatusCode.OK })
-    span?.end()
-  } else {
-    span?.setStatus({ code: SpanStatusCode.ERROR, message: JSON.stringify(result.error) })
-    span?.end()
-  }
-  return result
 }

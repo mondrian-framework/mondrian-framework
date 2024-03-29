@@ -40,7 +40,7 @@ const sdk = new opentelemetry.NodeSDK({
     new HttpInstrumentation(),
     new FastifyInstrumentation(),
     ...(process.env.PRISMA_INTRUMENTATION === 'true' ? [new PrismaInstrumentation()] : []),
-    new GraphQLInstrumentation()
+    new GraphQLInstrumentation(),
   ],
 })
 

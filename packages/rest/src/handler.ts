@@ -4,12 +4,6 @@ import { completeRetrieve, decodeQueryObject, methodFromOptions } from './utils'
 import { model } from '@mondrian-framework/model'
 import { exception, functions, logger, module, retrieve } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
-import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
-import {
-  SEMATTRS_HTTP_METHOD,
-  SEMATTRS_HTTP_ROUTE,
-  SEMATTRS_HTTP_STATUS_CODE,
-} from '@opentelemetry/semantic-conventions'
 
 export function fromFunction<Fs extends functions.FunctionImplementations, ServerContext>({
   functionName,
@@ -40,87 +34,71 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
   })
   const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
 
-  const handler = ({ request, serverContext }: { request: http.Request; serverContext: ServerContext }) =>
-    functionBody.tracer.startActiveSpanWithOptions(
-      `${request.method.toUpperCase()} ${request.route}`,
-      {
-        attributes: {
-          [SEMATTRS_HTTP_METHOD]: request.method,
-          [SEMATTRS_HTTP_ROUTE]: request.route,
-        },
-        kind: SpanKind.SERVER,
-      },
-      async (span) => {
-        const subHandler = async () => {
-          try {
-            //Decode input
-            const rawInput = gatherRawInput(request)
+  const handler = async ({ request, serverContext }: { request: http.Request; serverContext: ServerContext }) => {
+    const subHandler = async () => {
+      try {
+        //Decode input
+        const rawInput = gatherRawInput(request)
 
-            //Decode retrieve
-            const rawRetrieve = gatherRawRetrieve(request)
+        //Decode retrieve
+        const rawRetrieve = gatherRawRetrieve(request)
 
-            //Context input retrieval
-            const contextInput = await context(serverContext)
+        //Context input retrieval
+        const contextInput = await context(serverContext)
 
-            // Function call
-            const applyResult = await functionBody.rawApply({
-              rawRetrieve,
-              rawInput,
-              contextInput: contextInput as Record<string, unknown>,
-              logger: thisLogger,
-              decodingOptions: { typeCastingStrategy: 'tryCasting' },
-              mapper: { retrieve: (retrieve) => completeRetrieve(retrieve, functionBody.output) },
-            })
+        // Function call
+        const applyResult = await functionBody.rawApply({
+          rawRetrieve,
+          rawInput,
+          contextInput: contextInput as Record<string, unknown>,
+          logger: thisLogger,
+          decodingOptions: { typeCastingStrategy: 'tryCasting' },
+          mapper: { retrieve: (retrieve) => completeRetrieve(retrieve, functionBody.output) },
+        })
 
-            //Output processing
-            if (applyResult.isFailure) {
-              const key = Object.keys(applyResult.error)[0]
-              const status = key ? codes[key] ?? 400 : 400
-              const encodedError = mapObject(applyResult.error, (key, value) =>
-                model.concretise((functionBody.errors ?? {})[key]).encodeWithoutValidation(value as never),
-              )
-              const response: http.Response = {
-                status,
-                body: encodedError,
-                headers: { 'Content-Type': 'application/json' },
-              }
-              endSpanWithResponse({ span, response })
-              return response
-            } else {
-              const encoded = partialOutputType.encodeWithoutValidation(applyResult.value)
-              const contentType = specification.contentType ?? 'application/json'
-              const response: http.Response = {
-                status: 200,
-                body: encoded,
-                headers: { 'Content-Type': contentType },
-              }
-              endSpanWithResponse({ span, response })
-              return response
-            }
-          } catch (error) {
-            if (onError) {
-              const result = await onError({
-                error: error,
-                logger: thisLogger,
-                functionName,
-                tracer: functionBody.tracer,
-                http: { request, serverContext },
-              })
-              if (result !== undefined) {
-                endSpanWithResponse({ span, response: result })
-                return result
-              }
-            }
-            const response = mapUnknownError(error)
-            endSpanWithResponse({ span, response })
-            return response
+        //Output processing
+        if (applyResult.isFailure) {
+          const key = Object.keys(applyResult.error)[0]
+          const status = key ? codes[key] ?? 400 : 400
+          const encodedError = mapObject(applyResult.error, (key, value) =>
+            model.concretise((functionBody.errors ?? {})[key]).encodeWithoutValidation(value as never),
+          )
+          const response: http.Response = {
+            status,
+            body: encodedError,
+            headers: { 'Content-Type': 'application/json' },
+          }
+          return response
+        } else {
+          const encoded = partialOutputType.encodeWithoutValidation(applyResult.value)
+          const contentType = specification.contentType ?? 'application/json'
+          const response: http.Response = {
+            status: 200,
+            body: encoded,
+            headers: { 'Content-Type': contentType },
+          }
+          return response
+        }
+      } catch (error) {
+        if (onError) {
+          const result = await onError({
+            error: error,
+            logger: thisLogger,
+            functionName,
+            tracer: functionBody.tracer,
+            http: { request, serverContext },
+          })
+          if (result !== undefined) {
+            return result
           }
         }
-
-        const response = await subHandler()
-        return { ...response, headers: { ...response.headers } }
-      },
-    )
+        const response = mapUnknownError(error)
+        return response
+      }
+    }
+    const response = await subHandler()
+    return { ...response, headers: { ...response.headers } }
+  }
   return handler
 }
 
@@ -152,12 +130,4 @@ function generateGetInputFromRequest(args: {
   const result = generateOpenapiInput({ ...args, internalData }).input
   clearInternalData(internalData)
   return result
-}
-
-function endSpanWithResponse({ span, response }: { span?: Span; response: http.Response }): void {
-  span?.setAttribute(SEMATTRS_HTTP_STATUS_CODE, response.status)
-  const responseHasSuccessStatusCode = 200 <= response.status && response.status <= 299
-  const spanStatusCode = responseHasSuccessStatusCode ? SpanStatusCode.OK : SpanStatusCode.ERROR
-  span?.setStatus({ code: spanStatusCode })
-  span?.end()
 }

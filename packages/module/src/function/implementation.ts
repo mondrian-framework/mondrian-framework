@@ -212,10 +212,10 @@ export class OpentelemetryFunction<
     this.histogram = opentelemetry.histogram
     this.opentelemetryOptions = {
       attributes: (args) => ({ 'retrieve.json': JSON.stringify(args.retrieve) }),
-      spanName: (name) => name,
+      spanNamePrefix: (name) => name,
       ...options.openteletry,
     }
-    this.spanName = this.opentelemetryOptions.spanName(this.name, this)
+    this.spanName = this.opentelemetryOptions.spanNamePrefix(this.name, this)
   }
 
   public async rawApply({
@@ -226,80 +226,104 @@ export class OpentelemetryFunction<
     mapper,
     ...args
   }: functions.FunctionRawApplyArguments<Pv, G>): functions.FunctionResult<O, E, C> {
-    //decode input
-    const decodedInput = this.tracer.startActiveSpanWithOptions(
-      `${this.spanName} - decode input`,
-      { kind: SpanKind.INTERNAL },
-      (span) => {
-        const decodedInput = model.concretise(overrides?.inputType ?? this.input).decode(rawInput, decodingOptions)
-        if (decodedInput.isFailure) {
-          span.setStatus({ code: SpanStatusCode.ERROR })
-          span.setAttribute('error.json', JSON.stringify(decodedInput.error))
-          span.setAttribute('input.json', JSON.stringify(rawInput))
-          span.end()
-          if (this.badInputErrorKey !== undefined) {
-            const e: model.Infer<(typeof error)['standard']['BadInput']> = {
-              message: 'Bad input.',
-              from: 'input',
-              errors: decodedInput.error,
-            }
-            return result.fail({ [this.badInputErrorKey]: e }) as Awaited<functions.FunctionResult<O, E, C>>
-          } else {
-            throw new exception.InvalidInput('input', decodedInput.error)
+    return await this.tracer.startActiveSpanWithOptions(
+      this.spanName,
+      {
+        kind: SpanKind.INTERNAL,
+        attributes: { [SEMATTRS_CODE_FUNCTION]: this.name, [SEMATTRS_CODE_NAMESPACE]: this.options?.namespace },
+      },
+      async (span) => {
+        try {
+          //decode input
+          const decodedInput = this.tracer.startActiveSpanWithOptions(
+            `${this.spanName} - decode input`,
+            { kind: SpanKind.INTERNAL },
+            (span) => {
+              const decodedInput = model
+                .concretise(overrides?.inputType ?? this.input)
+                .decode(rawInput, decodingOptions)
+              if (decodedInput.isFailure) {
+                span.setStatus({ code: SpanStatusCode.ERROR })
+                span.setAttribute('error.json', JSON.stringify(decodedInput.error))
+                span.setAttribute('input.json', JSON.stringify(rawInput))
+                span.end()
+                if (this.badInputErrorKey !== undefined) {
+                  const e: model.Infer<(typeof error)['standard']['BadInput']> = {
+                    message: 'Bad input.',
+                    from: 'input',
+                    errors: decodedInput.error,
+                  }
+                  return result.fail({ [this.badInputErrorKey]: e }) as Awaited<functions.FunctionResult<O, E, C>>
+                } else {
+                  throw new exception.InvalidInput('input', decodedInput.error)
+                }
+              } else {
+                span.end()
+                return decodedInput
+              }
+            },
+          )
+          if (decodedInput.isFailure) {
+            span.end()
+            return decodedInput
           }
-        } else {
+
+          //decode retrieve
+          const decodedRetrieve = this.retrieveType
+            ? this.tracer.startActiveSpanWithOptions(
+                `${this.spanName} - decode retrieve`,
+                { kind: SpanKind.INTERNAL },
+                (span) => {
+                  const decodedRetrieve = model
+                    .concretise(overrides?.retrieveType ?? this.retrieveType!)
+                    .decode(rawRetrieve, decodingOptions)
+
+                  if (decodedRetrieve.isFailure) {
+                    span.setStatus({ code: SpanStatusCode.ERROR })
+                    span.setAttribute('error.json', JSON.stringify(decodedRetrieve.error))
+                    span.setAttribute('retrieve.json', JSON.stringify(rawRetrieve))
+                    span.end()
+                    if (this.badInputErrorKey !== undefined) {
+                      const e: model.Infer<(typeof error)['standard']['BadInput']> = {
+                        message: 'Bad input.',
+                        from: 'retrieve',
+                        errors: decodedRetrieve.error,
+                      }
+                      return result.fail({ [this.badInputErrorKey]: e }) as Awaited<functions.FunctionResult<O, E, C>>
+                    } else {
+                      throw new exception.InvalidInput('retrieve', decodedRetrieve.error)
+                    }
+                  } else {
+                    span.end()
+                    return decodedRetrieve
+                  }
+                },
+              )
+            : result.ok()
+          if (decodedRetrieve.isFailure) {
+            span.end()
+            return decodedRetrieve
+          }
+
+          //apply mappers
+          const mappedInput = mapper?.input ? mapper.input(decodedInput.value) : decodedInput.value
+          const mappedRetrieve = mapper?.retrieve ? mapper.retrieve(decodedRetrieve.value) : decodedRetrieve.value
+          const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve, tracer: this.tracer }
+
+          //run function apply
+          const applyResult = await this.apply(applyArgs)
           span.end()
-          return decodedInput
+          return applyResult
+        } catch (error) {
+          span.setStatus({ code: SpanStatusCode.ERROR })
+          if (error instanceof Error) {
+            span.recordException(error)
+          }
+          span.end()
+          throw error
         }
       },
     )
-    if (decodedInput.isFailure) {
-      return decodedInput
-    }
-
-    //decode retrieve
-    const decodedRetrieve = this.retrieveType
-      ? this.tracer.startActiveSpanWithOptions(
-          `${this.spanName} - decode retrieve`,
-          { kind: SpanKind.INTERNAL },
-          (span) => {
-            const decodedRetrieve = model
-              .concretise(overrides?.retrieveType ?? this.retrieveType!)
-              .decode(rawRetrieve, decodingOptions)
-
-            if (decodedRetrieve.isFailure) {
-              span.setStatus({ code: SpanStatusCode.ERROR })
-              span.setAttribute('error.json', JSON.stringify(decodedRetrieve.error))
-              span.setAttribute('retrieve.json', JSON.stringify(rawRetrieve))
-              span.end()
-              if (this.badInputErrorKey !== undefined) {
-                const e: model.Infer<(typeof error)['standard']['BadInput']> = {
-                  message: 'Bad input.',
-                  from: 'retrieve',
-                  errors: decodedRetrieve.error,
-                }
-                return result.fail({ [this.badInputErrorKey]: e }) as Awaited<functions.FunctionResult<O, E, C>>
-              } else {
-                throw new exception.InvalidInput('retrieve', decodedRetrieve.error)
-              }
-            } else {
-              span.end()
-              return decodedRetrieve
-            }
-          },
-        )
-      : result.ok()
-    if (decodedRetrieve.isFailure) {
-      return decodedRetrieve
-    }
-
-    //apply mappers
-    const mappedInput = mapper?.input ? mapper.input(decodedInput.value) : decodedInput.value
-    const mappedRetrieve = mapper?.retrieve ? mapper.retrieve(decodedRetrieve.value) : decodedRetrieve.value
-    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve, tracer: this.tracer }
-
-    //run function apply
-    return this.apply(applyArgs)
   }
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): functions.FunctionResult<O, E, C> {
@@ -324,11 +348,10 @@ export class OpentelemetryFunction<
     }
     this.counter.add(1)
     const startTime = new Date().getTime()
-    const attributes = {
-      [SEMATTRS_CODE_FUNCTION]: this.name,
-      [SEMATTRS_CODE_NAMESPACE]: this.options?.namespace,
-      ...this.opentelemetryOptions.attributes({ ...args, functionName: this.name, tracer: this.tracer }, this),
-    }
+    const attributes = this.opentelemetryOptions.attributes(
+      { ...args, functionName: this.name, tracer: this.tracer },
+      this,
+    )
     const spanResult = await this.tracer.startActiveSpanWithOptions(
       `${this.spanName} - apply`,
       { kind: SpanKind.INTERNAL, attributes },

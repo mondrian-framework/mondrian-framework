@@ -711,77 +711,70 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
     ? `${operationType} ${functionBody.options.namespace}.${operationName}`
     : `${operationType} ${operationName}`
 
-  const resolve = (
+  const resolve = async (
     parent: unknown,
     resolverInput: Record<string, unknown>,
     serverContext: ServerContext,
     info: GraphQLResolveInfo,
-  ) =>
-    functionBody.tracer.startActiveSpanWithOptions(spanName, { kind: SpanKind.SERVER }, async (span) => {
-      try {
-        // Gathers all the needed bits to call the function
-        const rawInput = resolverInput[graphQLInputTypeName]
-        const rawRetrieve = gatherRawRetrieve(info, isOutputTypeWrapped)
-        span?.setAttribute('retrieve.json', JSON.stringify(rawRetrieve))
+  ) => {
+    try {
+      // Gathers all the needed bits to call the function
+      const rawInput = resolverInput[graphQLInputTypeName]
+      const rawRetrieve = gatherRawRetrieve(info, isOutputTypeWrapped)
 
-        //Context input retieval
-        const contextInput = await fromModuleInput.context(serverContext, info)
+      //Context input retieval
+      const contextInput = await fromModuleInput.context(serverContext, info)
 
-        // Function call
-        const applyResult = await functionBody.rawApply({
-          contextInput: contextInput as Record<string, unknown>,
-          rawInput,
-          rawRetrieve,
-          logger: thisLogger,
-          overrides: { inputType },
-        })
+      // Function call
+      const applyResult = await functionBody.rawApply({
+        contextInput: contextInput as Record<string, unknown>,
+        rawInput,
+        rawRetrieve,
+        logger: thisLogger,
+        overrides: { inputType },
+      })
 
-        //Output processing
-        let outputValue
-        if (applyResult.isOk) {
-          if (functionBody.errors) {
-            //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
-            const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
-            outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
-          } else {
-            outputValue = partialOutputType.encodeWithoutValidation(applyResult.value as never)
-            span?.setStatus({ code: SpanStatusCode.OK })
-            span?.end()
-          }
+      //Output processing
+      let outputValue
+      if (applyResult.isOk) {
+        if (functionBody.errors) {
+          //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
+          const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
+          outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
         } else {
-          const code = Object.keys(applyResult.error)[0]
-          const mappedError = {
-            '[GraphQL generation]: isError': true,
-            code,
-            errors: applyResult.error,
-          }
-          outputValue = concreteOutputType.encodeWithoutValidation(mappedError as never)
+          outputValue = partialOutputType.encodeWithoutValidation(applyResult.value as never)
         }
-        endSpanWithResult(applyResult, span)
-        return outputValue
-      } catch (error) {
-        if (fromModuleInput.onError) {
-          const result = await fromModuleInput.onError({
-            error,
-            functionName,
-            logger: thisLogger,
-            tracer: functionBody.tracer,
-            graphql: {
-              parent,
-              resolverInput,
-              info,
-              serverContext,
-            },
-          })
-          if (result) {
-            const graphqlError = createGraphQLError(result.message, result.options)
-            endSpanWithGraphQLError(graphqlError, span)
-            throw graphqlError
-          }
+      } else {
+        const code = Object.keys(applyResult.error)[0]
+        const mappedError = {
+          '[GraphQL generation]: isError': true,
+          code,
+          errors: applyResult.error,
         }
-        throw mapUnknownError(error, span)
+        outputValue = concreteOutputType.encodeWithoutValidation(mappedError as never)
       }
-    })
+      return outputValue
+    } catch (error) {
+      if (fromModuleInput.onError) {
+        const result = await fromModuleInput.onError({
+          error,
+          functionName,
+          logger: thisLogger,
+          tracer: functionBody.tracer,
+          graphql: {
+            parent,
+            resolverInput,
+            info,
+            serverContext,
+          },
+        })
+        if (result) {
+          throw createGraphQLError(result.message, result.options)
+        }
+      }
+      throw mapUnknownError(error)
+    }
+  }
 
   const retrieveArgs = retrieveType.isOk
     ? retrieveTypeToGraphqlArgs(retrieveType.value, internalData, capabilities)
@@ -797,33 +790,16 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
   ]
 }
 
-function endSpanWithGraphQLError(error: GraphQLError, span: Span | undefined): GraphQLError {
-  span?.setStatus({ code: SpanStatusCode.ERROR, message: error.message })
-  span?.end()
-  return error
-}
-
-function endSpanWithResult<R extends result.Result<any, any>>(res: R, span: Span | undefined): R {
-  const spanStatusCode = res.isOk ? SpanStatusCode.OK : SpanStatusCode.ERROR
-  const message = res.isOk ? undefined : JSON.stringify(res.error)
-  span?.setStatus({ code: spanStatusCode, message })
-  span?.end()
-  return res
-}
-
-function mapUnknownError(error: unknown, span: Span | undefined): Error {
+function mapUnknownError(error: unknown): Error {
   if (error instanceof exception.InvalidInput) {
-    return endSpanWithGraphQLError(
-      createGraphQLError(error.message, {
-        originalError: error,
-        extensions: { errors: error.errors, from: error.from },
-      }),
-      span,
-    )
+    return createGraphQLError(error.message, {
+      originalError: error,
+      extensions: { errors: error.errors, from: error.from },
+    })
   } else if (error instanceof Error) {
-    return endSpanWithGraphQLError(createGraphQLError(error.message, { originalError: error }), span)
+    return createGraphQLError(error.message, { originalError: error })
   } else {
-    return endSpanWithGraphQLError(createGraphQLError(`Internal server error.`), span)
+    return createGraphQLError(`Internal server error.`)
   }
 }
 

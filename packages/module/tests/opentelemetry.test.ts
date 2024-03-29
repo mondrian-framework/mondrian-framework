@@ -72,7 +72,7 @@ describe('Opentelemetry', () => {
     await expect(client.functions.dummy('')).rejects.toThrow('Invalid string')
 
     const spans = spanExporter.getFinishedSpans()
-    expect(spans.length).toBe(9)
+    expect(spans.length).toBe(12)
 
     //await exporter.shutdown()
 

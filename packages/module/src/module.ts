@@ -93,9 +93,20 @@ export type ModuleOptions = {
   resolveNestedPromises?: boolean
 }
 
+/**
+ * Opentelemetry instrumentation options.
+ */
 export type OpentelemetryOptions = {
+  /**
+   * Attributes that will be added on apply span.
+   * By default only "retrieve.json" is added.
+   */
   attributes?: (args: functions.GenericFunctionArguments, fn: functions.FunctionInterface) => Attributes
-  spanName?: (functionName: string, fn: functions.FunctionInterface) => string
+  /**
+   * Prefix for the various spans.
+   * By default the prefix is the function name.
+   */
+  spanNamePrefix?: (functionName: string, fn: functions.FunctionInterface) => string
 }
 
 /**

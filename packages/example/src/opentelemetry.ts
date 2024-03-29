@@ -1,4 +1,7 @@
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { FastifyInstrumentation } from '@opentelemetry/instrumentation-fastify'
+import { GraphQLInstrumentation } from '@opentelemetry/instrumentation-graphql'
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http'
 import { Resource } from '@opentelemetry/resources'
 import { SimpleLogRecordProcessor, LogRecordExporter } from '@opentelemetry/sdk-logs'
 import * as opentelemetry from '@opentelemetry/sdk-node'
@@ -33,7 +36,12 @@ const sdk = new opentelemetry.NodeSDK({
   }),
   traceExporter,
   logRecordProcessor,
-  instrumentations: process.env.PRISMA_INTRUMENTATION === 'true' ? [new PrismaInstrumentation()] : [],
+  instrumentations: [
+    new HttpInstrumentation(),
+    new FastifyInstrumentation(),
+    ...(process.env.PRISMA_INTRUMENTATION === 'true' ? [new PrismaInstrumentation()] : []),
+    new GraphQLInstrumentation()
+  ],
 })
 
 sdk.start()

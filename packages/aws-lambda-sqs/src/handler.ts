@@ -59,12 +59,9 @@ export function build<Fs extends functions.FunctionImplementations>({
       }
       spec = specification
       const functionBody = module.functions[functionName]
-      const tracer = functionBody.tracer.withPrefix(`mondrian:sqs-handler:${functionName}:`)
       await functionBody.tracer.startActiveSpanWithOptions(
-        `mondrian:sqs-handler:${functionName}`,
-        {
-          kind: SpanKind.INTERNAL,
-        },
+        `mondrian:sqs:${functionName}`,
+        { kind: SpanKind.INTERNAL },
         async (span) => {
           const operationLogger = baseLogger.updateContext({
             operationType: url,
@@ -91,7 +88,6 @@ export function build<Fs extends functions.FunctionImplementations>({
             await functionBody.rawApply({
               rawInput: body,
               rawRetrieve: {},
-              tracer,
               contextInput: contextInput as Record<string, unknown>,
               logger: operationLogger,
             })

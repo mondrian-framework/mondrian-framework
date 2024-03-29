@@ -87,12 +87,12 @@ export function fromModule<Fs extends functions.FunctionImplementations>({
         try {
           const contextInput = await context()
           //TODO: how to use rawApply?
+          //TODO: add opentelemetry istrumentation
           const applyResult = await functionBody.apply({
             contextInput: contextInput as Record<string, unknown>,
             input: inputResult.value as any,
             retrieve: undefined as any,
             logger: baseLogger,
-            //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
           })
           await outputHandler(applyResult, { functionName }, () => defaultOutputHandler(applyResult))
         } catch (error) {

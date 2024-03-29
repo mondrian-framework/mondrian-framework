@@ -3,7 +3,7 @@ import { model, result } from '@mondrian-framework/model'
 import { functions, logger, module } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
-import { SemanticAttributes } from '@opentelemetry/semantic-conventions'
+import { SEMATTRS_HTTP_METHOD, SEMATTRS_HTTP_ROUTE } from '@opentelemetry/semantic-conventions'
 
 const FailureResponse = model.object({
   success: model.literal(false),
@@ -65,13 +65,12 @@ export function fromModule<Fs extends functions.FunctionImplementations, ServerC
     }
     const functionName = functionNameResult.value
     const functionBody = api.module.functions[functionName]
-    const tracer = functionBody.tracer.withPrefix(`mondrian:direct-handler:${functionName}:`)
     return functionBody.tracer.startActiveSpanWithOptions(
-      `mondrian:direct-handler:${functionName}`,
+      `mondrian:direct:${functionName}`,
       {
         attributes: {
-          [SemanticAttributes.HTTP_METHOD]: request.method,
-          [SemanticAttributes.HTTP_ROUTE]: request.route,
+          [SEMATTRS_HTTP_METHOD]: request.method,
+          [SEMATTRS_HTTP_ROUTE]: request.route,
         },
         kind: SpanKind.SERVER,
       },
@@ -83,7 +82,6 @@ export function fromModule<Fs extends functions.FunctionImplementations, ServerC
           options,
           request,
           serverContext,
-          tracer,
         })
         endSpanWithResult(span, result)
         const response = result.match(
@@ -99,7 +97,6 @@ export function fromModule<Fs extends functions.FunctionImplementations, ServerC
 
 async function handleFunctionCall<Fs extends functions.FunctionImplementations, ServerContext>({
   functionName,
-  tracer,
   request,
   options,
   api,
@@ -107,7 +104,6 @@ async function handleFunctionCall<Fs extends functions.FunctionImplementations, 
   serverContext,
 }: {
   functionName: string
-  tracer: functions.Tracer
   request: http.Request
   options: ServeOptions
   api: Api<Fs, any>
@@ -147,7 +143,6 @@ async function handleFunctionCall<Fs extends functions.FunctionImplementations, 
       contextInput: contextInput as Record<string, unknown>,
       rawInput,
       rawRetrieve,
-      tracer,
       logger: baseLogger,
       decodingOptions: options.decodeOptions,
     })

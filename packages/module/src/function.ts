@@ -68,10 +68,6 @@ export interface Function<
  * Opentelemetry Tracer extension where the span can also be undefined.
  */
 export interface Tracer {
-  /**
-   * Sets a prefix value for the name parameter for all the `startActiveSpan` calls.
-   */
-  withPrefix(name: string): Tracer
   startActiveSpan<F extends (span?: Span) => unknown>(name: string, fn: F): ReturnType<F>
   startActiveSpanWithOptions<F extends (span?: Span) => unknown>(
     name: string,
@@ -127,7 +123,7 @@ export type GenericFunctionArguments = {
   readonly input: unknown
   readonly retrieve: retrieve.GenericRetrieve
   readonly logger: logger.MondrianLogger
-  readonly tracer?: Tracer
+  readonly tracer: Tracer
   readonly functionName: string
 } & {
   [K in string]: unknown
@@ -187,10 +183,6 @@ export type FunctionApplyArguments<
    * Function logger.
    */
   readonly logger: logger.MondrianLogger
-  /**
-   * Openteletry {@link Tracer} of this function.
-   */
-  readonly tracer?: Tracer
 }
 
 export type FunctionRawApplyArguments<Pv extends provider.Providers, G extends guard.Guards> = {
@@ -210,10 +202,6 @@ export type FunctionRawApplyArguments<Pv extends provider.Providers, G extends g
    * Function logger.
    */
   readonly logger: logger.MondrianLogger
-  /**
-   * Openteletry {@link Tracer} of this function.
-   */
-  readonly tracer?: Tracer
   /**
    * The decogin options to use againts raw input and raw retrieve.
    */

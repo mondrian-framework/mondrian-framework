@@ -48,10 +48,11 @@ export function start<Fs extends functions.FunctionImplementations>({
             }
             try {
               const contextInput = await context({ cron: options.cron })
+              //TODO: use rawApply?
+              //TODO: add opentelemetry istrumentation
               await functionBody.apply({
                 input: input as never,
                 retrieve: {},
-                //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
                 logger: operationLogger,
                 contextInput: contextInput as Record<string, unknown>,
               })

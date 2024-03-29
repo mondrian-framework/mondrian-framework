@@ -118,7 +118,7 @@ describe('rest handler', () => {
           params: {},
           query: {},
           ...request,
-          method: null as any,
+          method: specification.method ?? 'get',
           route: null as any,
         },
         serverContext: {},

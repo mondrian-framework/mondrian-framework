@@ -51,9 +51,6 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
         kind: SpanKind.SERVER,
       },
       async (span) => {
-        //Setup logging
-        const tracer = functionBody.tracer.withPrefix(`mondrian:rest:${functionName}:`)
-
         const subHandler = async () => {
           try {
             //Decode input
@@ -70,7 +67,6 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
               rawRetrieve,
               rawInput,
               contextInput: contextInput as Record<string, unknown>,
-              tracer,
               logger: thisLogger,
               decodingOptions: { typeCastingStrategy: 'tryCasting' },
               mapper: { retrieve: (retrieve) => completeRetrieve(retrieve, functionBody.output) },
@@ -107,7 +103,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
                 error: error,
                 logger: thisLogger,
                 functionName,
-                tracer,
+                tracer: functionBody.tracer,
                 http: { request, serverContext },
               })
               if (result !== undefined) {

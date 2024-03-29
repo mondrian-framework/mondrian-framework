@@ -2,10 +2,9 @@ import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
 import { result, model, decoding, utils as modelUtils } from '@mondrian-framework/model'
 import { functions, logger as logging, module, utils, retrieve, exception } from '@mondrian-framework/module'
-import { MondrianLogger } from '@mondrian-framework/module/src/logger'
 import { flatMapObject, groupBy, uncapitalise } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
-import { SpanStatusCode, Span } from '@opentelemetry/api'
+import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import {
   GraphQLScalarType,
   GraphQLObjectType,
@@ -699,13 +698,18 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
   const capabilities = functionBody.retrieve ?? {}
   const retrieveType = retrieve.fromType(functionBody.output, capabilities)
   const defaultType = typeFromOptions(functionBody.options)
+  const operationType = specification.type ?? defaultType
 
   const thisLogger = logging.build({
     moduleName: module.name,
-    operationType: specification.type ?? defaultType,
+    operationType,
     operationName,
     server: 'GQL',
   })
+
+  const spanName = functionBody.options?.namespace
+    ? `${operationType} ${functionBody.options.namespace}.${operationName}`
+    : `${operationType} ${operationName}`
 
   const resolve = (
     parent: unknown,
@@ -713,13 +717,12 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
     serverContext: ServerContext,
     info: GraphQLResolveInfo,
   ) =>
-    functionBody.tracer.startActiveSpan(`mondrian:graphql-resolver:${functionName}`, async (span) => {
-      const tracer = functionBody.tracer.withPrefix(`mondrian:graphql-resolver:${functionName}:`)
-
+    functionBody.tracer.startActiveSpanWithOptions(spanName, { kind: SpanKind.SERVER }, async (span) => {
       try {
         // Gathers all the needed bits to call the function
         const rawInput = resolverInput[graphQLInputTypeName]
         const rawRetrieve = gatherRawRetrieve(info, isOutputTypeWrapped)
+        span?.setAttribute('retrieve.json', JSON.stringify(rawRetrieve))
 
         //Context input retieval
         const contextInput = await fromModuleInput.context(serverContext, info)
@@ -729,7 +732,6 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
           contextInput: contextInput as Record<string, unknown>,
           rawInput,
           rawRetrieve,
-          tracer,
           logger: thisLogger,
           overrides: { inputType },
         })
@@ -763,7 +765,7 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
             error,
             functionName,
             logger: thisLogger,
-            tracer,
+            tracer: functionBody.tracer,
             graphql: {
               parent,
               resolverInput,

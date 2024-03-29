@@ -94,7 +94,7 @@ export class BaseFunction<
     //apply mappers
     const mappedInput = mapper?.input ? mapper.input(decodedInput.value) : decodedInput.value
     const mappedRetrieve = mapper?.retrieve ? mapper.retrieve(decodedRetrieve.value) : decodedRetrieve.value
-    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve }
+    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve, tracer: undefined }
 
     //run function apply
     return this.apply(applyArgs)
@@ -105,6 +105,7 @@ export class BaseFunction<
     contextInput: any,
     args: functions.GenericFunctionArguments,
     cache: Map<unknown, result.Result<unknown, Record<string, unknown>>>,
+    runnedProviders: string[],
   ): Promise<result.Result<unknown, Record<string, unknown>>> {
     const cached = cache.get(provider)
     if (cached) {
@@ -112,38 +113,40 @@ export class BaseFunction<
     }
     const provided: { [K in string]: unknown } = {}
     for (const [name, pv] of Object.entries(provider.providers)) {
-      const res = await this.runProvider(pv, contextInput, args, cache)
+      const res = await this.runProvider(pv, contextInput, args, cache, runnedProviders)
+      runnedProviders.push(name)
       if (res.isFailure) {
         return res
       }
       provided[name] = res.value
     }
-    const res = await provider.body(contextInput, { ...args, ...provided })
+    const res = await provider.body(contextInput, { ...args, ...provided, tracer: this.tracer })
     cache.set(provider, res)
     return res
   }
 
   protected async applyProviders(
     args: functions.FunctionApplyArguments<I, O, C, Pv, G>,
+    runnedProviders: string[],
   ): Promise<result.Result<functions.FunctionArguments<I, O, C, Pv>, Record<string, unknown>>> {
     const mappedArgs: functions.GenericFunctionArguments = {
       input: args.input,
       retrieve: args.retrieve as retrieve.GenericRetrieve,
       logger: args.logger,
-      tracer: args.tracer ?? this.tracer,
+      tracer: this.tracer,
       functionName: this.name,
     }
     const cache = new Map<unknown, result.Result<unknown, Record<string, unknown>>>()
     //Apply guards
     for (const guard of Object.values(this.guards)) {
-      const res = await this.runProvider(guard, args.contextInput, mappedArgs, cache)
+      const res = await this.runProvider(guard, args.contextInput, mappedArgs, cache, runnedProviders)
       if (res && res.isFailure) {
         return res
       }
     }
     //Apply providers
     for (const [providerName, provider] of Object.entries(this.providers)) {
-      const res = await this.runProvider(provider, args.contextInput, mappedArgs, cache)
+      const res = await this.runProvider(provider, args.contextInput, mappedArgs, cache, runnedProviders)
       if (res.isFailure) {
         return res
       }
@@ -153,7 +156,7 @@ export class BaseFunction<
   }
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): functions.FunctionResult<O, E, C> {
-    const mappedArgs = await this.applyProviders(args)
+    const mappedArgs = await this.applyProviders(args, [])
     if (mappedArgs.isFailure) {
       return mappedArgs as any
     }
@@ -208,8 +211,8 @@ export class OpentelemetryFunction<
     this.counter = opentelemetry.counter
     this.histogram = opentelemetry.histogram
     this.opentelemetryOptions = {
-      attributes: (args) => ({ retrieve: JSON.stringify(args.retrieve) }),
-      spanName: (name) => `mondrian:module:${name}`,
+      attributes: (args) => ({ 'retrieve.json': JSON.stringify(args.retrieve) }),
+      spanName: (name) => name,
       ...options.openteletry,
     }
     this.spanName = this.opentelemetryOptions.spanName(this.name, this)
@@ -225,7 +228,7 @@ export class OpentelemetryFunction<
   }: functions.FunctionRawApplyArguments<Pv, G>): functions.FunctionResult<O, E, C> {
     //decode input
     const decodedInput = this.tracer.startActiveSpanWithOptions(
-      `${this.spanName}:decode-input`,
+      `${this.spanName} - decode input`,
       { kind: SpanKind.INTERNAL },
       (span) => {
         const decodedInput = model.concretise(overrides?.inputType ?? this.input).decode(rawInput, decodingOptions)
@@ -257,7 +260,7 @@ export class OpentelemetryFunction<
     //decode retrieve
     const decodedRetrieve = this.retrieveType
       ? this.tracer.startActiveSpanWithOptions(
-          `${this.spanName}:decode-retrieve`,
+          `${this.spanName} - decode retrieve`,
           { kind: SpanKind.INTERNAL },
           (span) => {
             const decodedRetrieve = model
@@ -293,7 +296,7 @@ export class OpentelemetryFunction<
     //apply mappers
     const mappedInput = mapper?.input ? mapper.input(decodedInput.value) : decodedInput.value
     const mappedRetrieve = mapper?.retrieve ? mapper.retrieve(decodedRetrieve.value) : decodedRetrieve.value
-    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve }
+    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve, tracer: this.tracer }
 
     //run function apply
     return this.apply(applyArgs)
@@ -301,10 +304,12 @@ export class OpentelemetryFunction<
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): functions.FunctionResult<O, E, C> {
     const mappedArgs = await this.tracer.startActiveSpanWithOptions(
-      `${this.spanName}:provision`,
+      `${this.spanName} - provision`,
       { kind: SpanKind.INTERNAL },
       async (span) => {
-        const mappedArgs = await this.applyProviders(args)
+        const runnedProviders: string[] = []
+        const mappedArgs = await this.applyProviders(args, runnedProviders)
+        span.setAttribute('providers', runnedProviders)
         if (mappedArgs.isFailure) {
           this.addInputToSpanAttribute(span, args.input)
           this.addErrorsToSpanAttribute(span, mappedArgs.error)
@@ -322,10 +327,10 @@ export class OpentelemetryFunction<
     const attributes = {
       [SEMATTRS_CODE_FUNCTION]: this.name,
       [SEMATTRS_CODE_NAMESPACE]: this.options?.namespace,
-      ...this.opentelemetryOptions.attributes({ ...args, functionName: this.name }, this),
+      ...this.opentelemetryOptions.attributes({ ...args, functionName: this.name, tracer: this.tracer }, this),
     }
     const spanResult = await this.tracer.startActiveSpanWithOptions(
-      `${this.spanName}:apply`,
+      `${this.spanName} - apply`,
       { kind: SpanKind.INTERNAL, attributes },
       async (span) => {
         try {

@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.32
+
+### Patch Changes
+
+- Improve performance
+
 ## 2.0.31
 
 ### Patch Changes

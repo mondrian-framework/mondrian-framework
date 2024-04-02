@@ -1,6 +1,7 @@
 import { decoding, path, model, validation, encoding, utils } from '../..'
 import { assertSafeObjectFields } from '../../utils'
 import { BaseType } from './base'
+import { ObjectTypeImpl } from './object'
 import { JSONType, filterMapObject } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
@@ -75,6 +76,7 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
   readonly kind = model.Kind.Entity
   readonly mutability: M
   readonly fields: Ts
+  private readonly obj: ObjectTypeImpl<M, Ts>
 
   protected getThis = () => this
   protected fromOptions = (options: model.EntityTypeOptions) =>
@@ -85,112 +87,33 @@ class EntityTypeImpl<M extends model.Mutability, Ts extends model.Types>
 
   constructor(mutability: M, fields: Ts, options?: model.EntityTypeOptions) {
     super(options)
-    assertSafeObjectFields(fields)
     this.mutability = mutability
     this.fields = fields
+    this.obj = new ObjectTypeImpl(mutability, fields, options)
   }
 
   protected encodeWithoutValidationInternal(
     value: model.Infer<model.EntityType<M, Ts>>,
     options: Required<encoding.Options>,
   ): JSONType {
-    const entity = value as Record<string, model.Type>
-    return filterMapObject(this.fields, (fieldName, fieldType) => {
-      const concreteFieldType = model.concretise(fieldType)
-      const fieldIsOptional = model.isOptional(concreteFieldType) || model.isLiteral(concreteFieldType, undefined)
-      const rawField = entity[fieldName]
-      return fieldIsOptional && rawField === undefined
-        ? undefined
-        : concreteFieldType.encodeWithoutValidation(rawField as never, options)
-    })
+    return this.obj.encodeWithoutValidationInternal(value, options)
   }
 
   protected validateInternal(
     value: model.Infer<model.EntityType<M, Ts>>,
     options: Required<validation.Options>,
   ): validation.Result {
-    const entries = Object.entries(value)
-    const errors: validation.Error[] = []
-    for (const [fieldName, fieldValue] of entries) {
-      if (errors.length > 0 && options.errorReportingStrategy === 'stopAtFirstError') {
-        break
-      }
-      const concreteFieldType = model.concretise(this.fields[fieldName])
-      const result = concreteFieldType.validate(fieldValue as never, options)
-      if (result.isFailure) {
-        errors.push(...path.prependFieldToAll(result.error, fieldName))
-      }
-    }
-    if (errors.length > 0) {
-      return validation.failWithErrors(errors)
-    } else {
-      return validation.succeed()
-    }
+    return this.obj.validateInternal(value, options)
   }
 
   protected decodeWithoutValidationInternal(
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.EntityType<M, Ts>>> {
-    return castToEntity(value, options).chain((entity) => decodeEntityProperties(this.fields, entity, options))
+    return this.obj.decodeWithoutValidation(value, options)
   }
 
   arbitraryInternal(maxDepth: number): gen.Arbitrary<model.Infer<model.ObjectType<M, Ts>>> {
-    const entriesGenerators = Object.fromEntries(
-      Object.entries(this.fields).map(
-        ([fieldName, fieldType]: [string, model.Type]) =>
-          [fieldName, model.concretise(fieldType).arbitrary(maxDepth - 1)] as const,
-      ),
-    )
-    return gen.record(entriesGenerators) as gen.Arbitrary<model.Infer<model.ObjectType<M, Ts>>>
-  }
-}
-
-function castToEntity(value: unknown, options: Required<decoding.Options>): decoding.Result<Record<string, unknown>> {
-  if (typeof value !== 'object') {
-    return decoding.fail('entity', value)
-  }
-  if (value === null && options.typeCastingStrategy === 'expectExactTypes') {
-    return decoding.fail('entity', null)
-  } else {
-    return decoding.succeed((value ?? {}) as Record<string, unknown>)
-  }
-}
-
-function decodeEntityProperties(
-  fields: model.Types,
-  entity: Record<string, unknown>,
-  options: Required<decoding.Options>,
-): decoding.Result<any> {
-  const keySet = new Set([...Object.keys(fields), ...Object.keys(entity)])
-  const errors: decoding.Error[] = []
-  const result: Record<string, unknown> = {}
-  for (const key of keySet) {
-    if (errors.length > 0 && options.errorReportingStrategy === 'stopAtFirstError') {
-      break
-    }
-    const type = fields[key]
-    const value = entity[key]
-    if (type === undefined && value === undefined) {
-      continue
-    } else if (!type && options.fieldStrictness === 'expectExactFields') {
-      errors.push({ expected: 'undefined', got: value, path: path.ofField(key) })
-      continue
-    } else if (!type) {
-      continue
-    }
-    const decodedValue = model.concretise(type).decodeWithoutValidation(value, options)
-    if (decodedValue.isOk) {
-      if (decodedValue.value !== undefined) {
-        result[key] = decodedValue.value
-      }
-    } else {
-      errors.push(...path.prependFieldToAll(decodedValue.error, key))
-    }
-  }
-  if (errors.length > 0) {
-    return decoding.failWithErrors(errors)
-  } else {
-    return decoding.succeed(result)
+    return this.obj.arbitraryInternal(maxDepth)
   }
 }

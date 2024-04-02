@@ -138,8 +138,11 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
       //Checks if some keys are not in the object fields
       const notInFields = objectKeys.find((key) => !this.fieldsSet.has(key))
       if (notInFields != null) {
-        errors.push({ expected: 'undefined', got: object[notInFields], path: path.ofField(notInFields) })
-        return decoding.failWithErrors(errors)
+        const got = object[notInFields]
+        if (got !== undefined) {
+          errors.push({ expected: 'undefined', got, path: path.ofField(notInFields) })
+          return decoding.failWithErrors(errors)
+        }
       }
     }
     const keySet = expectExactFields ? new Set([...this.fieldsSet, ...objectKeys]) : this.fieldsSet

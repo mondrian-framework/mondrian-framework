@@ -633,10 +633,7 @@ function unionToOpenAPIComponent(
   internalData: InternalData,
 ): OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.SchemaObject {
   const anyOf = Object.values(type.variants).map((t) => modelToSchema(t, internalData))
-  return {
-    anyOf,
-    description: type.options?.description,
-  }
+  return { anyOf, description: type.options?.description }
 }
 
 function recordToOpenAPIComponent(
@@ -664,10 +661,7 @@ function recordToOpenAPIComponent(
         optional: true,
         subtype:
           internalTypes.length === 1
-            ? {
-                ...internalTypes[0],
-                description: internalTypes[0].description ?? type.description,
-              }
+            ? { ...internalTypes[0], description: internalTypes[0].description ?? type.description }
             : { anyOf: internalTypes },
       }
     } else {

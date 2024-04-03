@@ -97,6 +97,7 @@ const register = functions
   .define({
     input: model.object({ email: model.email(), password: model.string() }),
     output: model.object({ jwt: model.string({ minLength: 3 }) }),
+    errors,
   })
   .implement({
     async body({ input: { email, password } }) {
@@ -123,7 +124,6 @@ import { module } from '@mondrian-framework/module'
 //instantiate the Mondrian module
 const moduleInstance = module.build({
   name: 'my-module',
-  version: '0.0.0',
   functions: { register },
 })
 ```

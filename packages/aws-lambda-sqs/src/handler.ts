@@ -1,4 +1,3 @@
-import { model } from '@mondrian-framework/model'
 import { exception, functions, logger, module } from '@mondrian-framework/module'
 import { isArray } from '@mondrian-framework/utils'
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api'

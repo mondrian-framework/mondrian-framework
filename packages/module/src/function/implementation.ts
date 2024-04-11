@@ -264,6 +264,7 @@ export class OpentelemetryFunction<
             },
           )
           if (decodedInput.isFailure) {
+            span.setStatus({ code: SpanStatusCode.ERROR })
             span.end()
             return decodedInput
           }
@@ -301,6 +302,7 @@ export class OpentelemetryFunction<
               )
             : result.ok()
           if (decodedRetrieve.isFailure) {
+            span.setStatus({ code: SpanStatusCode.ERROR })
             span.end()
             return decodedRetrieve
           }
@@ -312,6 +314,13 @@ export class OpentelemetryFunction<
 
           //run function apply
           const applyResult = await this.apply(applyArgs)
+          if (applyResult.isFailure) {
+            span.setStatus({ code: SpanStatusCode.ERROR })
+            this.addInputToSpanAttribute(span, applyArgs.input)
+            this.addErrorsToSpanAttribute(span, applyResult.error)
+            span.setStatus({ code: SpanStatusCode.ERROR })
+            span.setAttribute('error.json', JSON.stringify(applyResult.error))
+          }
           span.end()
           return applyResult
         } catch (error) {

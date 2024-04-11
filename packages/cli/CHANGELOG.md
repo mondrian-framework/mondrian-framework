@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.34
+
+### Patch Changes
+
+- Improve opentelemetry instrumentation
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.34
+  - @mondrian-framework/cli-commander@2.0.34
+
 ## 2.0.33
 
 ### Patch Changes

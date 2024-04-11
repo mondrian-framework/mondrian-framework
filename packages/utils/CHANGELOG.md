@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.34
+
+### Patch Changes
+
+- Improve opentelemetry instrumentation
+
 ## 2.0.33
 
 ### Patch Changes

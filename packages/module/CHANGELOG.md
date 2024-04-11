@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.34
+
+### Patch Changes
+
+- Improve opentelemetry instrumentation
+- Updated dependencies
+  - @mondrian-framework/model@2.0.34
+
 ## 2.0.33
 
 ### Patch Changes

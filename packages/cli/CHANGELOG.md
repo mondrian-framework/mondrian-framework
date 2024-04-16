@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.35
+
+### Patch Changes
+
+- Fix dependencies
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.35
+  - @mondrian-framework/cli-commander@2.0.35
+
 ## 2.0.34
 
 ### Patch Changes

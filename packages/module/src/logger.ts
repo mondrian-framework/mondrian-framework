@@ -48,6 +48,5 @@ type MondrianLoggerContext = {
 }
 
 export function build(context: MondrianLoggerContext): MondrianLogger {
-  //TODO: always use 'default' logger?
-  return new MondrianLogger(logs.getLogger('default'), context)
+  return new MondrianLogger(logs.getLogger(`@mondrian-framework/module`), context)
 }

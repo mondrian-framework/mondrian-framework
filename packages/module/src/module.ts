@@ -226,8 +226,8 @@ export function build<const Fs extends functions.Functions>(
       }
       const options = { name: functionName, resolveNestedPromises: module.options?.resolveNestedPromises ?? false }
       if (module.options?.opentelemetry) {
-        const tracer = opentelemetry.trace.getTracer(`${module.name}:${functionName}-tracer`)
-        const myMeter = opentelemetry.metrics.getMeter(`${module.name}:${functionName}-meter`)
+        const tracer = opentelemetry.trace.getTracer(`@mondrian-framework/module`)
+        const myMeter = opentelemetry.metrics.getMeter(`@mondrian-framework/module`)
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
         const counter = myMeter.createCounter('task.invocation')
         const wrappedFunction: functions.FunctionImplementation<

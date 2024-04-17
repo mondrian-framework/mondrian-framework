@@ -67,7 +67,7 @@ export function decodeFunctionFailure(
 
 export const reservedProvidersNames = ['input', 'retrieve', 'logger', 'tracer', 'functionName']
 
-export function hasNestedPromises(value: unknown): unknown | Promise<unknown> {
+export function hasNestedPromises(value: unknown): boolean {
   if (value instanceof Promise) {
     return true
   } else if (Array.isArray(value)) {
@@ -79,6 +79,10 @@ export function hasNestedPromises(value: unknown): unknown | Promise<unknown> {
 }
 
 export function reolsveNestedPromises(value: unknown): unknown | Promise<unknown> {
+  //TODO: not very efficient but in order to avoid process object like Set, Date, ecc we need to perform this check every time
+  if (!hasNestedPromises(value)) {
+    return value
+  }
   if (value instanceof Promise) {
     return value.then(reolsveNestedPromises)
   } else if (Array.isArray(value)) {

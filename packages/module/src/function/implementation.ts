@@ -169,7 +169,7 @@ export class BaseFunction<
   ): functions.FunctionResult<O, E, C> {
     if (middlewareIndex >= this.middlewares.length) {
       const res = await this.body(args)
-      if (this.resolveNestedPromises && utils.hasNestedPromises(res)) {
+      if (this.resolveNestedPromises) {
         return (await utils.reolsveNestedPromises(res)) as functions.FunctionResult<O, E, C>
       } else {
         return res

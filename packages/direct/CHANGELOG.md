@@ -1,5 +1,15 @@
 # @mondrian-framework/direct
 
+## 2.0.36
+
+### Patch Changes
+
+- Minor improvements
+- Updated dependencies
+  - @mondrian-framework/model@2.0.36
+  - @mondrian-framework/module@2.0.36
+  - @mondrian-framework/utils@2.0.36
+
 ## 2.0.35
 
 ### Patch Changes

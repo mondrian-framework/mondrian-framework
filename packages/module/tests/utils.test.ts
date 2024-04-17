@@ -7,7 +7,7 @@ test('reolsveNestedPromises', async () => {
     a: Promise.resolve(1),
     b: Promise.resolve([Promise.resolve(2), Promise.resolve(3)]),
     c: Promise.resolve({ d: Promise.resolve(4), e: Promise.resolve(5) }),
-    d: now
+    d: now,
   })
   expect(r1).toEqual({ a: 1, b: [2, 3], c: { d: 4, e: 5 }, d: now })
 

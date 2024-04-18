@@ -45,7 +45,7 @@ class BooleanTypeImpl extends BaseType<model.BooleanType> implements model.Boole
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<boolean> {
-    if (typeof value === 'boolean') {
+    if (value === true || value === false) {
       return decoding.succeed(value)
     } else if (options.typeCastingStrategy === 'tryCasting') {
       if (value === 'true') {

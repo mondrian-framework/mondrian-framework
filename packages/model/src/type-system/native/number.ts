@@ -47,7 +47,7 @@ export function integer(options?: model.NumberTypeOptions): model.NumberType {
 
 class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberType {
   readonly kind = model.Kind.Number
-  private readonly validator: validation.Validator<number>
+  private readonly validator: validation.Validator<number> | undefined
 
   protected getThis = () => this
   protected fromOptions = number
@@ -96,7 +96,6 @@ class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberT
     this.validator = new validation.Validator(
       //prettier-ignore
       {
-        ['Number must be differnt to NaN or Infinity)']: (value) => Number.isNaN(value) || !Number.isFinite(value),
         ...(maximum != null ? { [`number must be less than or equal to ${maximum}`]: (value) => !(value <= maximum) } : {}),
         ...(exclusiveMaximum != null ? { [`number must be less than to ${exclusiveMaximum}`]: (value) => !(value < exclusiveMaximum) } : {}),
         ...(minimum != null ? { [`number must be greater than or equal to ${minimum}`]: (value) => !(value >= minimum) } : {}),
@@ -104,6 +103,9 @@ class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberT
         ...(isInteger === true ? { [`number must be an integer`]: (value) => !Number.isInteger(value) } : {})
       },
     )
+    if (this.validator.isEmpty()) {
+      this.validator = undefined
+    }
   }
 
   protected encodeWithoutValidationInternal(value: number): JSONType {
@@ -111,6 +113,12 @@ class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberT
   }
 
   protected validateInternal(value: number, options: Required<validation.Options>): validation.Result {
+    if (Number.isNaN(value) || !Number.isFinite(value)) {
+      return validation.fail(`Number must be different to NaN or Infinity`, value)
+    }
+    if (!this.validator) {
+      return validation.succeed()
+    }
     return this.validator.apply(value, options)
   }
 

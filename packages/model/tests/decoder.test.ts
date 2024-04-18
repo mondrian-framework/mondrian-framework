@@ -880,3 +880,10 @@ test('decode default value', () => {
   const Model4 = model.optional(Model, { defaultDecodeValue: { a: 2 } })
   checkValue(Model4.decode(undefined), { a: 2 })
 })
+
+test('Decoding array as object', () => {
+  const Model = model.object({ a: model.number() })
+  const value = [{ a: 1 }]
+  const res = Model.decode(value)
+  checkError(res as any, [{ expected: 'object', got: value, path: path.root }])
+})

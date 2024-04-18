@@ -26,7 +26,7 @@ export function string(options?: model.StringTypeOptions): model.StringType {
 
 class StringTypeImpl extends BaseType<model.StringType> implements model.StringType {
   readonly kind = model.Kind.String
-  private readonly validator: validation.Validator<string>
+  private readonly validator: validation.Validator<string> | undefined
 
   protected fromOptions = string
   protected getThis = () => this
@@ -56,6 +56,9 @@ class StringTypeImpl extends BaseType<model.StringType> implements model.StringT
         ...( regex ? {[`string regex mismatch (${regex.source})`]: (value) => !regex.test(value) } : {}),
       },
     )
+    if (this.validator.isEmpty()) {
+      this.validator = undefined
+    }
   }
 
   protected encodeWithoutValidationInternal(value: string): JSONType {
@@ -63,6 +66,9 @@ class StringTypeImpl extends BaseType<model.StringType> implements model.StringT
   }
 
   protected validateInternal(value: string, options: Required<validation.Options>): validation.Result {
+    if (!this.validator) {
+      return validation.succeed()
+    }
     return this.validator.apply(value, options)
   }
 

@@ -28,6 +28,23 @@ export const defaultOptions: Required<Options> = {
 }
 
 /**
+ * Fills the given options with the default values for the missing fields.
+ */
+export function fillOptions(options: Options | undefined): Required<Options> {
+  if (!options) {
+    return defaultOptions
+  }
+  if (
+    options.errorReportingStrategy != null &&
+    options.fieldStrictness != null &&
+    options.typeCastingStrategy != null
+  ) {
+    return options as Required<Options>
+  }
+  return { ...defaultOptions, ...options }
+}
+
+/**
  * The result of the process of decoding: it can either hold a value `A` or an array of
  * {@link Error decoding errors}
  */

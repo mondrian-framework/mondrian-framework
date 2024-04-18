@@ -1,8 +1,7 @@
-import { decoding, path, model, validation, encoding, utils } from '../..'
-import { assertSafeObjectFields } from '../../utils'
+import { decoding, model, validation, encoding, utils } from '../..'
 import { BaseType } from './base'
 import { ObjectTypeImpl } from './object'
-import { JSONType, filterMapObject } from '@mondrian-framework/utils'
+import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
 /**

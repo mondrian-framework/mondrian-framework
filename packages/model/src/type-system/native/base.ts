@@ -1,6 +1,6 @@
 import { decoding, encoding, result, model, validation } from '../..'
 import { JSONType } from '@mondrian-framework/utils'
-import gen from 'fast-check'
+import gen, { func } from 'fast-check'
 import prand from 'pure-rand'
 
 export abstract class BaseType<T extends model.Type> {
@@ -39,7 +39,7 @@ export abstract class BaseType<T extends model.Type> {
   }
 
   encodeWithoutValidation(value: model.Infer<T>, options?: encoding.Options): JSONType {
-    const encodingOptions = { ...encoding.defaultOptions, ...options }
+    const encodingOptions = encoding.fillOptions(options)
     if (encodingOptions.sensitiveInformationStrategy === 'hide' && this.options?.sensitive === true) {
       return null
     } else {
@@ -48,7 +48,7 @@ export abstract class BaseType<T extends model.Type> {
   }
 
   decodeWithoutValidation(value: unknown, options?: decoding.Options): decoding.Result<model.Infer<T>> {
-    const decodingOptions = { ...decoding.defaultOptions, ...options }
+    const decodingOptions = decoding.fillOptions(options)
     if (value === undefined && this.options?.defaultDecodeValue !== undefined) {
       return this.decodeWithoutValidationInternal(this.options.defaultDecodeValue, decodingOptions)
     } else {
@@ -57,7 +57,7 @@ export abstract class BaseType<T extends model.Type> {
   }
 
   validate(value: model.Infer<T>, options?: validation.Options): validation.Result {
-    const validateOptions = { ...validation.defaultOptions, ...options }
+    const validateOptions = validation.fillOptions(options)
     return this.validateInternal(value, validateOptions)
   }
 

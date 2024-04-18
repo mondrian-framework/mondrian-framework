@@ -11,3 +11,13 @@ export type Options = {
 export const defaultOptions: Required<Options> = {
   sensitiveInformationStrategy: 'keep',
 }
+
+/**
+ * Fills the given options with the default values for the missing fields.
+ */
+export function fillOptions(options: Options | undefined): Required<Options> {
+  if (options?.sensitiveInformationStrategy != null) {
+    return options as Required<Options>
+  }
+  return defaultOptions
+}

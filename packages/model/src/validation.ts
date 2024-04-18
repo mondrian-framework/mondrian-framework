@@ -20,6 +20,16 @@ export const defaultOptions: Required<Options> = {
 }
 
 /**
+ * Fills the given options with the default values for the missing fields.
+ */
+export function fillOptions(options: Options | undefined): Required<Options> {
+  if (options?.errorReportingStrategy != null) {
+    return options as Required<Options>
+  }
+  return defaultOptions
+}
+
+/**
  * The result of the validation process: it could either be `true` in case of success or
  * an array of {@link Error validation errors} in case of failure.
  */
@@ -108,16 +118,20 @@ export function buildValidator<T>(
  * @returns a validation result
  */
 export class Validator<T> {
-  private readonly errorMap: Record<string, (value: T) => unknown>
+  private readonly errorMap: [string, (value: T) => unknown][]
 
   constructor(errorMap: Record<string, (value: T) => unknown>) {
-    this.errorMap = errorMap
+    this.errorMap = Object.entries(errorMap)
+  }
+
+  isEmpty() {
+    return this.errorMap.length === 0
   }
 
   apply(value: T, options: Required<Options>) {
     if (options.errorReportingStrategy === 'allErrors') {
       const errors: Error[] = []
-      for (const [errorMessage, condition] of Object.entries(this.errorMap)) {
+      for (const [errorMessage, condition] of this.errorMap) {
         if (condition(value)) {
           errors.push(...fail(errorMessage, value).error)
         }
@@ -128,7 +142,7 @@ export class Validator<T> {
         return succeed()
       }
     } else {
-      for (const [errorMessage, condition] of Object.entries(this.errorMap)) {
+      for (const [errorMessage, condition] of this.errorMap) {
         if (condition(value)) {
           return fail(errorMessage, value)
         }

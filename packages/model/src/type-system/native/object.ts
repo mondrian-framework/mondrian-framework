@@ -64,6 +64,7 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
   readonly kind = model.Kind.Object
   readonly mutability: M
   readonly fields: Ts
+  readonly concretizedFields: Record<string, model.ConcreteType>
   readonly fieldsSet: Set<string>
 
   protected getThis = () => this
@@ -79,6 +80,7 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     this.mutability = mutability
     this.fields = fields
     this.fieldsSet = new Set(Object.keys(fields))
+    this.concretizedFields = {}
   }
 
   public encodeWithoutValidationInternal(
@@ -101,12 +103,16 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     options: Required<validation.Options>,
   ): validation.Result {
     const errors: validation.Error[] = []
-    for (const fieldName of this.fieldsSet) {
-      const fieldValue = (value as Record<string, any>)[fieldName]
-      const concreteFieldType = model.concretise(this.fields[fieldName])
+    for (const key of this.fieldsSet) {
+      const fieldValue = (value as Record<string, any>)[key]
+      let concreteFieldType = this.concretizedFields[key]
+      if (!concreteFieldType) {
+        concreteFieldType = model.concretise(this.fields[key])
+        this.concretizedFields[key] = concreteFieldType
+      }
       const result = concreteFieldType.validate(fieldValue as never, options)
       if (result.isFailure) {
-        errors.push(...path.prependFieldToAll(result.error, fieldName))
+        errors.push(...path.prependFieldToAll(result.error, key))
         if (options.errorReportingStrategy === 'stopAtFirstError') {
           return validation.failWithErrors(errors)
         }
@@ -123,7 +129,7 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.ObjectType<M, Ts>>> {
-    if (typeof value !== 'object') {
+    if (typeof value !== 'object' || Array.isArray(value)) {
       return decoding.fail('object', value)
     }
     if (value === null && options.typeCastingStrategy === 'expectExactTypes') {
@@ -132,37 +138,30 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     const object = (value ?? {}) as Record<string, unknown>
     const expectExactFields = options.fieldStrictness === 'expectExactFields'
     const stopAtFirstError = options.errorReportingStrategy === 'stopAtFirstError'
-    const objectKeys = Object.keys(object)
     const errors: decoding.Error[] = []
-    if (stopAtFirstError && expectExactFields) {
-      //Checks if some keys are not in the object fields
-      const notInFields = objectKeys.find((key) => !this.fieldsSet.has(key))
-      if (notInFields != null) {
-        const got = object[notInFields]
-        if (got !== undefined) {
-          errors.push({ expected: 'undefined', got, path: path.ofField(notInFields) })
-          return decoding.failWithErrors(errors)
+    if (expectExactFields) {
+      for (const key of Object.keys(object)) {
+        const value = object[key]
+        if (value !== undefined && !this.fieldsSet.has(key)) {
+          errors.push({ expected: 'undefined', got: value, path: path.ofField(key) })
+          if (stopAtFirstError) {
+            return decoding.failWithErrors(errors)
+          } else {
+            continue
+          }
         }
       }
     }
-    const keySet = expectExactFields ? new Set([...this.fieldsSet, ...objectKeys]) : this.fieldsSet
+
     const result: Record<string, unknown> = {}
-    for (const key of keySet) {
-      const type = this.fields[key]
-      const value = object[key]
-      if (type === undefined && value === undefined) {
-        continue
-      } else if (!type && expectExactFields) {
-        errors.push({ expected: 'undefined', got: value, path: path.ofField(key) })
-        if (stopAtFirstError) {
-          return decoding.failWithErrors(errors)
-        } else {
-          continue
-        }
-      } else if (!type) {
-        continue
+    for (const key of this.fieldsSet) {
+      let concreteFieldType = this.concretizedFields[key]
+      if (!concreteFieldType) {
+        concreteFieldType = model.concretise(this.fields[key])
+        this.concretizedFields[key] = concreteFieldType
       }
-      const decodedValue = model.concretise(type).decodeWithoutValidation(value, options)
+      const value = object[key]
+      const decodedValue = concreteFieldType.decodeWithoutValidation(value, options)
       if (decodedValue.isOk) {
         if (decodedValue.value !== undefined) {
           result[key] = decodedValue.value
@@ -174,6 +173,7 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
         }
       }
     }
+
     if (errors.length > 0) {
       return decoding.failWithErrors(errors)
     } else {

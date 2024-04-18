@@ -1,5 +1,17 @@
 # @mondrian-framework/ci-tools
 
+## 2.0.37
+
+### Patch Changes
+
+- Improve performance
+- Updated dependencies
+  - @mondrian-framework/aws-lambda-rest@2.0.37
+  - @mondrian-framework/model@2.0.37
+  - @mondrian-framework/module@2.0.37
+  - @mondrian-framework/rest@2.0.37
+  - @mondrian-framework/rest-fastify@2.0.37
+
 ## 2.0.36
 
 ### Patch Changes

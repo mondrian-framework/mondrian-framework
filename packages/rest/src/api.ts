@@ -100,10 +100,7 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   path?: string
   inputName?: string
   version?: { min?: number; max?: number }
-  openapi?: {
-    specification: NullableOperationObject
-    input: (request: http.Request) => unknown
-  }
+  responseHeaders?: { [header: string]: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.HeaderObject }
   errorCodes?: { [K in keyof Exclude<F['errors'], undefined>]?: number }
   namespace?: string | null
   security?: OpenAPIV3_1.SecurityRequirementObject[]

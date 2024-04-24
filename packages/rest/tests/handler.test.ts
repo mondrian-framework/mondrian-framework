@@ -153,20 +153,6 @@ describe('rest handler', () => {
     expect(response.body).toBe(123)
   })
 
-  test('works on [scalar input on custom]', async () => {
-    const handler = buildHandler('f1', {
-      method: 'post',
-      path: '/f1',
-      openapi: {
-        specification: {},
-        input: (request) => request.headers.value,
-      },
-    })
-    const response = await handler({ headers: { value: '123' } })
-    expect(response.status).toBe(200)
-    expect(response.body).toBe(123)
-  })
-
   test('dont works on [scalar input on query]', async () => {
     const handler = buildHandler('f1', { method: 'get' })
     const response = await handler({})
@@ -266,16 +252,9 @@ describe('rest handler', () => {
     const handler = buildHandler('f4', {
       method: 'post',
       path: '/f4/{ping}',
-      openapi: {
-        specification: {},
-        input(request) {
-          throw new Error('Fail')
-        },
-      },
     })
     const response = await handler({ headers: { ping: 'ping' } })
-    expect(response.status).toBe(500)
-    expect(response.body).toStrictEqual('Fail')
+    expect(response.status).toBe(400)
   })
 
   test('works on [output with retrieve]', async () => {

@@ -22,9 +22,11 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
   onError?: ErrorHandler<functions.Functions, ServerContext>
   api: Pick<ApiSpecification<functions.FunctionInterfaces>, 'errorCodes' | 'customTypeSchemas'>
 }): http.Handler<ServerContext> {
-  const gatherRawInput = specification.openapi
-    ? specification.openapi.input
-    : generateGetInputFromRequest({ functionBody, specification, customTypeSchemas: api.customTypeSchemas })
+  const gatherRawInput = generateGetInputFromRequest({
+    functionBody,
+    specification,
+    customTypeSchemas: api.customTypeSchemas,
+  })
   const partialOutputType = model.concretise(model.partialDeep(functionBody.output))
   const thisLogger = logger.build({
     moduleName: module.name,

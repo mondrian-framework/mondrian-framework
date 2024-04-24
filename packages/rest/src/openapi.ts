@@ -88,32 +88,23 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
         }
       }
       const operationObj: OpenAPIV3_1.OperationObject = {
-        ...specification.openapi?.specification.parameters,
         parameters: parameters ? [...parameters, ...retrieveParameters] : retrieveParameters,
         requestBody,
-        responses:
-          specification.openapi?.specification.responses === null
-            ? undefined
-            : specification.openapi?.specification.responses ?? {
-                '200': {
-                  description: 'Success',
-                  content: { [specification.contentType ?? 'application/json']: { schema } },
-                },
-                ...errorSchemas,
-              },
-        description:
-          specification.openapi?.specification.description === null
-            ? undefined
-            : specification.openapi?.specification.description ??
-              functionBody.options?.description?.replaceAll('\n', '</br>'),
+        responses: {
+          '200': {
+            description: 'Success',
+            content: { [specification.contentType ?? 'application/json']: { schema } },
+            headers: specification.responseHeaders,
+          },
+          ...errorSchemas,
+        },
+        description: functionBody.options?.description?.replaceAll('\n', '</br>'),
         tags:
-          specification.openapi?.specification.tags === null
-            ? undefined
-            : specification.openapi?.specification.tags ?? specification.namespace === null
-              ? []
-              : functionBody.options?.namespace ?? specification.namespace
-                ? [functionBody.options?.namespace ?? specification.namespace ?? '']
-                : [],
+          specification.namespace === null
+            ? []
+            : functionBody.options?.namespace ?? specification.namespace
+              ? [functionBody.options?.namespace ?? specification.namespace ?? '']
+              : [],
         security: specification.security,
       }
       const method = specification.method?.toLocaleLowerCase() ?? methodFromOptions(functionBody.options)
@@ -160,19 +151,6 @@ export function generateOpenapiInput({
   requestBody?: OpenAPIV3_1.ReferenceObject | OpenAPIV3_1.RequestBodyObject
   input: (request: http.Request) => unknown
 } {
-  if (specification.openapi) {
-    return {
-      parameters:
-        specification.openapi.specification.parameters === null
-          ? undefined
-          : specification.openapi.specification.parameters,
-      requestBody:
-        specification.openapi.specification.requestBody === null
-          ? undefined
-          : specification.openapi.specification.requestBody,
-      input: specification.openapi.input,
-    }
-  }
   const parametersInPath = specification.path
     ? [...(specification.path.match(/{(.*?)}/g) ?? [])].map((v) => v.replace('{', '').replace('}', '')).filter((v) => v)
     : []

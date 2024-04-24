@@ -194,18 +194,7 @@ describe('module to openapi', () => {
             { method: 'get', path: '/new_users', version: { min: 3 } },
           ],
           createUser: [
-            { method: 'post', errorCodes: {} },
-            {
-              method: 'put',
-              openapi: { specification: {}, input: ({ body }) => body },
-            },
-            {
-              method: 'put',
-              openapi: {
-                specification: { parameters: null, requestBody: null },
-                input: ({ body }) => body,
-              },
-            },
+            { method: 'post', errorCodes: {}, responseHeaders: { 'X-Total-Count': { schema: { type: 'integer' } } } },
           ],
           getAll: { method: 'post' },
         },
@@ -283,46 +272,7 @@ describe('module to openapi', () => {
               '200': {
                 description: 'Success',
                 content: { 'application/json': { schema: { $ref: '#/components/schemas/user' } } },
-              },
-              '400': {
-                description: 'Error',
-                content: {
-                  'application/json': {
-                    schema: {
-                      anyOf: [
-                        {
-                          type: 'object',
-                          required: ['invalidInput'],
-                          properties: { invalidInput: { type: 'string' } },
-                        },
-                        { type: 'object', required: ['notLoggedIn'], properties: { notLoggedIn: { type: 'string' } } },
-                      ],
-                    },
-                  },
-                },
-              },
-              '429': {
-                description: 'Error',
-                content: {
-                  'application/json': {
-                    schema: {
-                      type: 'object',
-                      required: ['tooManyRequests'],
-                      properties: { tooManyRequests: { type: 'string' } },
-                    },
-                  },
-                },
-              },
-            },
-            description: 'Creates a new user',
-            tags: ['Managment'],
-          },
-          put: {
-            parameters: [],
-            responses: {
-              '200': {
-                description: 'Success',
-                content: { 'application/json': { schema: { $ref: '#/components/schemas/user' } } },
+                headers: { 'X-Total-Count': { schema: { type: 'integer' } } },
               },
               '400': {
                 description: 'Error',

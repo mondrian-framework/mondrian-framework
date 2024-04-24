@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.38
+
+### Patch Changes
+
+- Response header in openapi
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.38
+  - @mondrian-framework/cli-commander@2.0.38
+
 ## 2.0.37
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.38
+
+### Patch Changes
+
+- Response header in openapi
+- Updated dependencies
+  - @mondrian-framework/model@2.0.38
+
 ## 2.0.37
 
 ### Patch Changes

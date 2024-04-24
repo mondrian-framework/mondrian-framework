@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/rest",
-  "version": "2.0.37",
+  "version": "2.0.38",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -16,9 +16,9 @@
     "swagger-ui-dist": "^5.11.10"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^2.0.37",
-    "@mondrian-framework/module": "^2.0.37",
-    "@mondrian-framework/utils": "^2.0.37",
+    "@mondrian-framework/model": "^2.0.38",
+    "@mondrian-framework/module": "^2.0.38",
+    "@mondrian-framework/utils": "^2.0.38",
     "@opentelemetry/sdk-node": "^0.49.1 || ^0.50.0"
   }
 }

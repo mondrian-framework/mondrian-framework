@@ -1,5 +1,15 @@
 # @mondrian-framework/rate-limiter
 
+## 2.0.38
+
+### Patch Changes
+
+- Response header in openapi
+- Updated dependencies
+  - @mondrian-framework/model@2.0.38
+  - @mondrian-framework/module@2.0.38
+  - @mondrian-framework/utils@2.0.38
+
 ## 2.0.37
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.38
+
+### Patch Changes
+
+- Response header in openapi
+
 ## 2.0.37
 
 ### Patch Changes

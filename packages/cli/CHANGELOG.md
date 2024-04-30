@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.39
+
+### Patch Changes
+
+- Add preferred decoding options
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.39
+  - @mondrian-framework/cli-commander@2.0.39
+
 ## 2.0.38
 
 ### Patch Changes

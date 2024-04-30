@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.39
+
+### Patch Changes
+
+- Add preferred decoding options
+
 ## 2.0.38
 
 ### Patch Changes

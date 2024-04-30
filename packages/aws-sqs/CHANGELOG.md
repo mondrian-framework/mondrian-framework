@@ -1,5 +1,15 @@
 # @mondrian-framework/aws-sqs
 
+## 2.0.40
+
+### Patch Changes
+
+- Minor improvements
+- Updated dependencies
+  - @mondrian-framework/model@2.0.40
+  - @mondrian-framework/module@2.0.40
+  - @mondrian-framework/utils@2.0.40
+
 ## 2.0.39
 
 ### Patch Changes

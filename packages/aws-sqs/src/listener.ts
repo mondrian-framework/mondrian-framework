@@ -98,6 +98,7 @@ async function listenForMessage<Fs extends functions.FunctionImplementations>({
         //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
         contextInput: contextInput as Record<string, unknown>,
         logger: baseLogger,
+        decodingOptions: { typeCastingStrategy: 'tryCasting', ...module.options?.preferredDecodingOptions },
       })
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
     } catch (error) {

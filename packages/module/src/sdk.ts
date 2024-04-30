@@ -195,6 +195,7 @@ class SdkBuilder<const Metadata> {
               contextInput: contextInput as Record<string, unknown>,
               //tracer: functionBody.tracer, //TODO: add opentelemetry istrumentation
               logger: thisLogger,
+              decodingOptions: module.options?.preferredDecodingOptions,
             })
             if (!functionBody.errors) {
               if (result.isOk) {

@@ -72,7 +72,7 @@ export const standard = {
             {
               path: model.string({ description: 'The path of the input that caused the error.' }),
               expected: model.string({ description: 'The expected type.' }),
-              got: model.unknown({ description: 'The actual value.' }),
+              got: model.unknown({ description: 'The actual value.' }).optional(),
             },
             {
               name: 'DecodingError',
@@ -83,7 +83,7 @@ export const standard = {
             {
               path: model.string({ description: 'The path of the input that caused the error.' }),
               assertion: model.string({ description: 'The failure reason.' }),
-              got: model.unknown({ description: 'The actual value.' }),
+              got: model.unknown({ description: 'The actual value.' }).optional(),
             },
             {
               name: 'ValidationError',

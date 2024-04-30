@@ -732,6 +732,7 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
         rawRetrieve,
         logger: thisLogger,
         overrides: { inputType },
+        decodingOptions: { typeCastingStrategy: 'tryCasting', ...module.options?.preferredDecodingOptions },
       })
 
       //Output processing

@@ -99,6 +99,7 @@ async function handleFunctionCall<Fs extends functions.FunctionImplementations, 
     metadata: Record<string, string> | undefined,
   ) => Promise<module.FunctionsToContextInput<Fs>>
 }): Promise<result.Result<SuccessResponse, FailureResponse>> {
+  const decodingOptions = { ...api.module.options?.preferredDecodingOptions, ...options.decodeOptions }
   const functionBody = api.module.functions[functionName]
   const baseLogger = logger.build({
     moduleName: api.module.name,
@@ -110,7 +111,7 @@ async function handleFunctionCall<Fs extends functions.FunctionImplementations, 
   const rawInput = body.input
   const rawRetrieve = body.retrieve
   const rawMetadata = body.metadata
-  const metadataResult = Metadata.decode(rawMetadata, options.decodeOptions)
+  const metadataResult = Metadata.decode(rawMetadata, decodingOptions)
   if (metadataResult.isFailure) {
     return result.fail({
       success: false,
@@ -130,7 +131,7 @@ async function handleFunctionCall<Fs extends functions.FunctionImplementations, 
       rawInput,
       rawRetrieve,
       logger: baseLogger,
-      decodingOptions: options.decodeOptions,
+      decodingOptions,
     })
     const response = successResponse.encodeWithoutValidation({
       success: true,

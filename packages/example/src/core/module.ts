@@ -11,6 +11,9 @@ export const module = moduleInterface.implement({
     maxSelectionDepth: 4,
     checkOutputType: 'throw',
     opentelemetry: true,
+    preferredDecodingOptions: {
+      errorReportingStrategy: 'allErrors',
+    },
   },
   policies(args) {
     if ('auth' in args && args.auth?.userId != null) {

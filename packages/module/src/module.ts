@@ -3,7 +3,7 @@ import { BaseFunction } from './function/implementation'
 import { OpentelemetryFunction } from './function/implementation'
 import * as middleware from './middleware'
 import { allUniqueTypes, reservedProvidersNames } from './utils'
-import { model } from '@mondrian-framework/model'
+import { decoding, model } from '@mondrian-framework/model'
 import { UnionToIntersection } from '@mondrian-framework/utils'
 import opentelemetry, { ValueType, Attributes } from '@opentelemetry/api'
 
@@ -91,6 +91,10 @@ export type ModuleOptions = {
    * Default is false.
    */
   resolveNestedPromises?: boolean
+  /**
+   * Preferred decoding options that can be used by the server implementations while decoding requests.
+   */
+  preferredDecodingOptions?: decoding.Options
 }
 
 /**

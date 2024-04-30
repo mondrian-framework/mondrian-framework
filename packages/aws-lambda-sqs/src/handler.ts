@@ -89,6 +89,7 @@ export function build<Fs extends functions.FunctionImplementations>({
               rawRetrieve: {},
               contextInput: contextInput as Record<string, unknown>,
               logger: operationLogger,
+              decodingOptions: { typeCastingStrategy: 'tryCasting', ...module.options?.preferredDecodingOptions },
             })
             span?.end()
           } catch (error) {

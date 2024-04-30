@@ -207,6 +207,10 @@ export type FunctionRawApplyArguments<Pv extends provider.Providers, G extends g
    */
   readonly decodingOptions?: decoding.Options
   /**
+   * The decogin options to use againts retrieve, will override the decodingOptions.
+   */
+  readonly retrieveDecodingOptions?: decoding.Options
+  /**
    * Types overrides for input and retrieve.
    */
   readonly overrides?: {

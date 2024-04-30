@@ -55,6 +55,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
           contextInput: contextInput as Record<string, unknown>,
           logger: thisLogger,
           decodingOptions: { typeCastingStrategy: 'tryCasting', ...module.options?.preferredDecodingOptions },
+          retrieveDecodingOptions: { ...module.options?.preferredDecodingOptions, typeCastingStrategy: 'tryCasting' },
           mapper: { retrieve: (retrieve) => completeRetrieve(retrieve, functionBody.output) },
         })
 

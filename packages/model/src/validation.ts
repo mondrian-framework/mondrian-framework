@@ -9,7 +9,7 @@ import { result, path } from './index'
  *     as possible before failing
  */
 export type Options = {
-  readonly errorReportingStrategy: 'allErrors' | 'stopAtFirstError'
+  readonly errorReportingStrategy?: 'allErrors' | 'stopAtFirstError'
 }
 
 /**

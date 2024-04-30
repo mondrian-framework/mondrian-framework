@@ -56,12 +56,15 @@ export class BaseFunction<
     rawInput,
     rawRetrieve,
     decodingOptions,
+    retrieveDecodingOptions,
     overrides,
     mapper,
     ...args
   }: functions.FunctionRawApplyArguments<Pv, G>): functions.FunctionResult<O, E, C> {
     //decode input
-    const decodedInput = model.concretise(overrides?.inputType ?? this.input).decode(rawInput, decodingOptions)
+    const decodedInput = model
+      .concretise(overrides?.inputType ?? this.input)
+      .decode(rawInput, decodingOptions, { errorReportingStrategy: decodingOptions?.errorReportingStrategy })
     if (decodedInput.isFailure) {
       if (this.badInputErrorKey !== undefined) {
         const e: model.Infer<(typeof error)['standard']['BadInput']> = {
@@ -77,7 +80,11 @@ export class BaseFunction<
 
     //decode retrieve
     const decodedRetrieve = this.retrieveType
-      ? model.concretise(overrides?.retrieveType ?? this.retrieveType).decode(rawRetrieve, decodingOptions)
+      ? model
+          .concretise(overrides?.retrieveType ?? this.retrieveType)
+          .decode(rawRetrieve, retrieveDecodingOptions ?? decodingOptions, {
+            errorReportingStrategy: (retrieveDecodingOptions ?? decodingOptions)?.errorReportingStrategy,
+          })
       : result.ok()
     if (decodedRetrieve.isFailure) {
       if (this.badInputErrorKey !== undefined) {
@@ -222,6 +229,7 @@ export class OpentelemetryFunction<
     rawInput,
     rawRetrieve,
     decodingOptions,
+    retrieveDecodingOptions,
     overrides,
     mapper,
     ...args
@@ -241,7 +249,7 @@ export class OpentelemetryFunction<
             (span) => {
               const decodedInput = model
                 .concretise(overrides?.inputType ?? this.input)
-                .decode(rawInput, decodingOptions)
+                .decode(rawInput, decodingOptions, { errorReportingStrategy: decodingOptions?.errorReportingStrategy })
               if (decodedInput.isFailure) {
                 span.setStatus({ code: SpanStatusCode.ERROR })
                 span.setAttribute('error.json', JSON.stringify(decodedInput.error))
@@ -277,7 +285,9 @@ export class OpentelemetryFunction<
                 (span) => {
                   const decodedRetrieve = model
                     .concretise(overrides?.retrieveType ?? this.retrieveType!)
-                    .decode(rawRetrieve, decodingOptions)
+                    .decode(rawRetrieve, retrieveDecodingOptions ?? decodingOptions, {
+                      errorReportingStrategy: (retrieveDecodingOptions ?? decodingOptions)?.errorReportingStrategy,
+                    })
 
                   if (decodedRetrieve.isFailure) {
                     span.setStatus({ code: SpanStatusCode.ERROR })

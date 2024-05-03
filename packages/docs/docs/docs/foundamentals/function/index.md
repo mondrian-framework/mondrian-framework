@@ -1,33 +1,33 @@
 # Function
 
 The second and most important construct of Mondrian is the function.
-A function is the fundamental container of application logic produced by the 
-developer. Everything contained in a function enjoys the decoupling and reusability
-that the framework provides. Referring to a Clean Architecture model, a function is the 
-implementation of a use case. 
+A function, produced by the developer, is the fundamental container of application logic.
+Everything contained in a function benefits from the decoupling and reusability
+that the framework provides. Referring to a Clean Architecture model, a function is the
+implementation of a use case.
 
-The developer's main responsibility should be to produce functions.
+The main responsibility of the developer should be to produce functions.
 
 Basically a function:
-- has a **definition**, that includes *inputs*, *outputs* and *errors* formally defined using 
+
+- has a **definition**, that includes _inputs_, _outputs_ and _errors_ formally defined using
   a [domain model schema](../model/index.md).
-- has an **implementation**, containing the business logic that receive the inputs and must 
+- has an **implementation**, containing the business logic that receive the inputs and must
   return the defined outputs.
 
-The clear division between definition and implementation is critical to allow only the definitions 
-to be published to possible clients while keeping implementation details private. It, in addition 
-to being a good separation practice, allows multiple implementations of the same function 
-to be defined.
+The clear division between definition and implementation is critical, as it allows only the
+definitions to be published to potential clients, keeping the implementation details private.
+In addition to being a good practice for separation of concerns, it allows for multiple
+implementations of the same function to be defined.
 
 ## Example
 
-The following function implements the business logic to create a post
-in a blogging platform:
+The following function implements the business logic for creating a post on a blogging platform:
 
 ```ts showLineNumbers
+import { Repository } from '../repository'
 import { model, result } from '@mondrian-framework/model'
 import { functions } from '@mondrian-framework/module'
-import { Repository } from '../repository'
 
 const PostInput = model.object({
   title: model.string({ maxLength: 200 }),
@@ -42,7 +42,7 @@ const createPost = functions
     output: model.string(),
   })
   .implement({
-    async body({ input }) {    
+    async body({ input }) {
       // const postId = ...
       return result.ok(postId)
     },

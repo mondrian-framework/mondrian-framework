@@ -1,9 +1,10 @@
 # Provider
 
-Quite often the implementation of a function requires data, connections, or more generally resources, that do not depend on an input but on the context in which it is executed. To inject these dependencies within a function and be able to use them for the development of application logic, Mondrian provides the provider construct.
+Quite often the implementation of a function requires data, connections, or more generally resources, that do not depend on an input but on the context in which it is executed. To inject these dependencies within a function and be able to use them for the development of application logic, Mondrian offers a construct called 'provider'.
 
 ## Definition
-To define a provider, a module of the same name is made available in the `@mondrian-framework/module` package.
+
+To define a provider, you can use a module of the same name available in the `@mondrian-framework/module` package.
 
 ```typescript
 import { result } from '@mondrian-framework/model'
@@ -18,9 +19,9 @@ export const prismaProvider = provider.build({
 })
 ```
 
-This example shows how to provide a reference to the singleton instance of [Prisma](https://www.prisma.io/), a well-known TypeScript ORM. Note that a provider is very similar to a function but does not need the definition of input and output types. This is because they will not concur to the definition of a function and to the generation of a specification, but only at the implementation level.
+This example shows how to provide a reference to the singleton instance of [Prisma](https://www.prisma.io/), a well-known TypeScript ORM. Note that a provider is very similar to a function but does not need the definition of input and output types. This is because they do not contribute to the definition of a function or the generation of a specification, but only to the implementation.
 
-A provider may simply provide a resource that it can create from scratch, or very often it may need some **contextual input**. These inputs are not to be confused with those of a function, which come directly from its invocation, but are inputs that the runtime and the module must construct for each invocation. They generally represent data relating to the context of the call, such as the identity of the caller, or data relating to the execution context, such as additonal details about the runtime environment.
+A provider may simply provide a resource that it can create from scratch, but it often requires some **contextual input**. These inputs are not to be confused with those of a function, which come directly from its invocation, but are inputs that the runtime and the module must construct for each invocation. They generally represent data relating to the context of the call, such as the identity of the caller, or data relating to the execution context, such as additonal details about the runtime environment.
 
 A provider may declare these inputs freely, specifying them as parameters of the body function. It will then be the responsibility of the module and the runtime to provide all the data required by all providers.
 
@@ -41,9 +42,11 @@ export const authProvider = provider.build({
   },
 })
 ```
-In this example the `authProvider` needs an optional `token` as input, validates it and returns an optional user ID as an additional input for functions that need it. 
+
+In this example the `authProvider` needs an optional `token` as input, validates it and returns an optional user ID as an additional input for functions that need it.
 
 ## Usage
+
 To use one or more providers, you must pass them to the function implementation.
 
 ```typescript
@@ -60,6 +63,7 @@ const readPosts = readPostDefinition
     },
   })
 ```
+
 Thanks to Mondrian's typing engine, the input parameter to the body function is enriched with the object returned by each provider so that there is strict typing between the declared providers and the resources that can be used in the implementation.
 
 A provider can be shared by several functions, it is typical that it be so. It is **invoked at each execution** of each function that declares its use. This is important and to be considered when deciding how to construct the resources returned by it. If you wish to define a provider that works as a singleton, i.e. an identical object for each execution of each function, simply implement it as in the first example in this page.

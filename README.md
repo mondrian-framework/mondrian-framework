@@ -301,7 +301,7 @@ const moduleInstance = module.build({
   name: 'my-module',
   version: '0.0.0',
   functions: myFunctions,
-  policies({ auth: { userId } }) {
+  policies({ auth: { userId } }: { auth: { userId?: string } }) {
     if (userId != null) {
       return (
         security

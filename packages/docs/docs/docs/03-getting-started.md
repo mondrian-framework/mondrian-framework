@@ -4,35 +4,35 @@ sidebar_position: 2
 
 # Getting started
 
-This tutorial will show how to set up a basic back-end application with Mondrian Framework 
+This tutorial will show how to set up a basic back-end application with Mondrian Framework
 that serve a simple API both as a REST service and a GraphQL query.
 
 ## Installing Mondrian Framework
 
-Create a new directory `myproject`, and from there follow this steps to initialize a standard 
+Create a new directory `myproject`, and from there follow these steps to initialize a standard
 Node.JS project with TypeScript:
 
 - Run: `cd myproject`, this goes into the created project folder.
 - Run: `npm init` and follow the prompts to setup a new Node.js project. This will generate a package.json file for you.
 - Run: `npm install typescript --save-dev` to add TypeScript as a dev dependency
-- Run: `npx tsc --init` to initialize you TypeScript project with a default tsconfig.json
+- Run: `npx tsc --init` to initialize your TypeScript project with a default tsconfig.json
 
-You are now ready to install Mondrian Framework on your project. The framework is highly modular 
-and you can choose the right modules for your project base on your needs. In this example we want 
+You are now ready to install Mondrian Framework on your project. The framework is highly modular
+and you can choose the right modules for your project base on your needs. In this example we want
 to create a simple backend server that exposes a REST API.
 
 ```
-> npm i @mondrian-framework/model 
-      @mondrian-framework/module 
-      @mondrian-framework/rest-fastify 
+> npm i @mondrian-framework/model
+      @mondrian-framework/module
+      @mondrian-framework/rest-fastify
       @mondrian-framework/graphql-yoga
       fastify
 ```
 
 ## Writing your first API
 
-Mondrian Framework promotes the decoupling of the parts of an application by well-defined abstractions, 
-which is why creating an API requires defining a function, a module that contains it and some runtimes 
+Mondrian Framework promotes the decoupling of the parts of an application by well-defined abstractions,
+which is why creating an API requires defining a function, a module that contains it and some runtimes
 to execute the application.
 
 Let's start by writing a very simple echo API.
@@ -64,13 +64,14 @@ const echoFunction = functions
     output: Output,
   })
   .implement({
-    async body({ input }) {    
+    async body({ input }) {
       return result.ok(input)
     },
   })
 ```
 
 ### The module
+
 At this point we define the module, in this case with only one function.
 
 ```ts showLineNumbers
@@ -80,18 +81,18 @@ import { module } from '@mondrian-framework/module'
 
 const echoModule = module.build({
   name: 'echo',
-  functions: { echo: echoFunction }
+  functions: { echo: echoFunction },
 })
 ```
 
 ### The runtimes
 
-In this example, to demonstrate the power of the framework, we will run the module on two 
+In this example, to demonstrate the power of the framework, we will run the module on two
 different runtimes, one as the Rest API and the other as the GraphQL operation.
 
 ```ts showLineNumbers
-import { serve as serveREST, rest } from '@mondrian-framework/rest-fastify'
 import { serveWithFastify as serveGraphQL, graphql } from '@mondrian-framework/graphql-yoga'
+import { serve as serveREST, rest } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
 
 //...
@@ -122,10 +123,10 @@ server.listen({ port: 4000 }).then((address) => {
 Below is the union of the previous pieces into easily executable code.
 
 ```ts showLineNumbers
+import { serveWithFastify as serveGraphQL, graphql } from '@mondrian-framework/graphql-yoga'
 import { model } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 import { serve as serveREST, rest } from '@mondrian-framework/rest-fastify'
-import { serveWithFastify as serveGraphQL, graphql } from '@mondrian-framework/graphql-yoga'
 import { fastify } from 'fastify'
 
 const Input = model.string()
@@ -137,14 +138,14 @@ const echoFunction = functions
     output: Output,
   })
   .implement({
-    async body({ input }) {    
+    async body({ input }) {
       return result.ok(input)
     },
   })
 
 const echoModule = module.build({
   name: 'echo',
-  functions: { echo: echoFunction }
+  functions: { echo: echoFunction },
 })
 
 const server = fastify()
@@ -170,7 +171,7 @@ server.listen({ port: 4000 }).then((address) => {
 
 ## Building
 
-The building of the application is nothing more than the normal build of a 
+The building of the application is nothing more than the normal build of a
 TypeScript project, thus requiring simple compilation:
 
 ```
@@ -179,8 +180,9 @@ TypeScript project, thus requiring simple compilation:
 
 ## Running
 
-Similarly, you can start it as a normal Node.js application. Assuming that the 
+Similarly, you can start it as a normal Node.js application. Assuming that the
 sources have been compiled into the `/build/app.js` file:
+
 ```
 > node build/app.js
 ```

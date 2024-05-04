@@ -16,7 +16,7 @@
     "@mondrian-framework/utils": "^2.0.40"
   },
   "dependencies": {
-    "fast-check": "^3.16.0",
+    "fast-check": "^3.18.0",
     "jsonwebtoken": "^9.0.2",
     "bignumber.js": "^9.1.2",
     "@types/jsonwebtoken": "^9.0.6"

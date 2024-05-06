@@ -35,7 +35,7 @@ Mondrian Framework combines elements of **FP (Functional Programming)** and FRP 
 
 ## Languages and JavaScript runtimes
 
-Its current implementation is 100% written in [TypeScript](https://www.typescriptlang.org/) ancd can be executed on [Node.js](https://nodejs.org/) ([Deno](https://deno.land/) and [Bun](https://bun.sh/) compatibility is still in progress). While it is fully interoperable with any JavaScript package, it heavily relies on TypeScript typing to leverage its full potential and provide developers with user-friendly types.
+Its current implementation is 100% written in [TypeScript](https://www.typescriptlang.org/) and can be executed on [Node.js](https://nodejs.org/) ([Deno](https://deno.land/) and [Bun](https://bun.sh/) compatibility is still in progress). While it is fully interoperable with any JavaScript package, it heavily relies on TypeScript typing to leverage its full potential and provide developers with user-friendly types.
 
 ## Foundations
 

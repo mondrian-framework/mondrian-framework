@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.41
+
+### Patch Changes
+
+- Update deps
+- Updated dependencies
+  - @mondrian-framework/model@2.0.41
+
 ## 2.0.40
 
 ### Patch Changes

@@ -229,7 +229,8 @@ export function build<const Fs extends functions.Functions>(
         ],
       }
       const options = { name: functionName, resolveNestedPromises: module.options?.resolveNestedPromises ?? false }
-      if (module.options?.opentelemetry) {
+      const otEnabled = functionBody.options?.opentelemetry ?? module.options?.opentelemetry
+      if (otEnabled) {
         const tracer = opentelemetry.trace.getTracer(`@mondrian-framework/module`)
         const myMeter = opentelemetry.metrics.getMeter(`@mondrian-framework/module`)
         const histogram = myMeter.createHistogram('task.duration', { unit: 'milliseconds', valueType: ValueType.INT })
@@ -245,7 +246,7 @@ export function build<const Fs extends functions.Functions>(
           func,
           {
             ...options,
-            openteletry: typeof module.options.opentelemetry === 'object' ? module.options.opentelemetry : undefined,
+            openteletry: typeof module.options?.opentelemetry === 'object' ? module.options.opentelemetry : undefined,
           },
           { histogram, tracer, counter },
         )

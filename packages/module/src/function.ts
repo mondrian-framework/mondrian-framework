@@ -1,6 +1,6 @@
 import { guard, logger, provider, retrieve } from '.'
 import { result, model, decoding } from '@mondrian-framework/model'
-import { AtLeastOnePropertyOf, Expand, UnionToIntersection } from '@mondrian-framework/utils'
+import { AtLeastOnePropertyOf } from '@mondrian-framework/utils'
 import { Span, SpanOptions } from '@opentelemetry/api'
 import { randomInt } from 'crypto'
 
@@ -117,6 +117,10 @@ export type FunctionOptions = {
    * Describes the function semantc: query or command
    */
   readonly operation?: 'query' | 'command' | { readonly command: 'create' | 'update' | 'delete' }
+  /**
+   * Overrides the default opentelemetry configuration in the module.
+   */
+  readonly opentelemetry?: boolean
 }
 
 export type GenericFunctionArguments = {

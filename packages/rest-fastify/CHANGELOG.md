@@ -1,5 +1,16 @@
 # @mondrian-framework/rest-fastify
 
+## 2.0.42
+
+### Patch Changes
+
+- Minor fixes
+- Updated dependencies
+  - @mondrian-framework/model@2.0.42
+  - @mondrian-framework/module@2.0.42
+  - @mondrian-framework/rest@2.0.42
+  - @mondrian-framework/utils@2.0.42
+
 ## 2.0.41
 
 ### Patch Changes

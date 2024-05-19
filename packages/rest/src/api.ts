@@ -107,15 +107,12 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
   contentType?: 'application/json' | 'text/plain' | 'text/html' | 'text/csv'
 }
 
-type NullableOperationObject = {
-  [K in keyof OpenAPIV3_1.OperationObject]: OpenAPIV3_1.OperationObject[K] | null
-}
-
 /**
  * Options used by the REST server
  */
 export type ServeOptions = {
   readonly introspection?: { path: string } | false
+  readonly introspectionUI?: 'swagger' | 'scalar' | 'redoc' | 'none'
 }
 
 /**

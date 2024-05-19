@@ -3,10 +3,7 @@ import { functions, module } from '@mondrian-framework/module'
 import { rest, utils } from '@mondrian-framework/rest'
 import { replaceLast } from '@mondrian-framework/utils'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
-import fs from 'fs'
 import lambdaApi, { Request, Response, API } from 'lambda-api'
-import path from 'path'
-import { getAbsoluteFSPath } from 'swagger-ui-dist'
 
 export type ServerContext = { lambdaApi: { request: Request; response: Response } }
 
@@ -20,7 +17,7 @@ export function build<Fs extends functions.FunctionImplementations>({
   api: rest.Api<Fs>
   context: (serverContext: ServerContext) => Promise<module.FunctionsToContextInput<Fs>>
   onError?: rest.ErrorHandler<Fs, ServerContext>
-  options: Partial<rest.ServeOptions>
+  options?: rest.ServeOptions
   customize?: (server: API) => void
 }): APIGatewayProxyHandlerV2 {
   utils.assertApiValidity(api)
@@ -30,14 +27,18 @@ export function build<Fs extends functions.FunctionImplementations>({
     const introspectionPath = options.introspection.path.endsWith('/')
       ? options.introspection.path
       : `${options.introspection.path}/`
-    const indexContent = fs
-      .readFileSync(path.join(getAbsoluteFSPath(), 'swagger-initializer.js'))
-      .toString()
-      .replace('https://petstore.swagger.io/v2/swagger.json', `${introspectionPath}v${api.version}/schema.json`)
-    server.get(`${introspectionPath}swagger-initializer.js`, (_: Request, res: Response) => res.send(indexContent))
-    server.get(`${introspectionPath}`, (_: Request, res: Response) => {
-      res.redirect(`${introspectionPath}index.html`)
-    })
+    if (options.introspectionUI !== 'none') {
+      server.get(`${introspectionPath}index.html`, (_: Request, res: Response) => {
+        res.header('Content-Type', 'text/html')
+        res.send(rest.openapi.ui({ api, options }))
+      })
+      if (introspectionPath !== '/') {
+        server.get(replaceLast(introspectionPath, '/', ''), (_: Request, res: Response) => {
+          res.redirect(`${introspectionPath}index.html`)
+        })
+      }
+    }
+
     const cache: Map<string, unknown> = new Map()
     server.get(`${introspectionPath}:v/schema.json`, (req: Request, res: Response) => {
       const v = (req.params as Record<string, string>).v
@@ -53,17 +54,6 @@ export function build<Fs extends functions.FunctionImplementations>({
       const schema = rest.openapi.fromModule({ api, version })
       cache.set(v, schema)
       return schema
-    })
-    // file deepcode ignore NoRateLimitingForExpensiveWebOperation: could disable this by disabling introspection in production environment
-    server.get(`${introspectionPath}*`, (req: Request, res: Response) => {
-      //avoid path traversal
-      if (req.path.match(/\.\.\//g) !== null) {
-        res.status(404)
-        return
-      }
-      const file = `${getAbsoluteFSPath()}/${req.path}`
-      const path = replaceLast(file, `${introspectionPath}`, '')
-      res.sendFile(path)
     })
   }
   attachRestMethods({ api, context, server, onError })

@@ -22,7 +22,7 @@ export function serveWithFastify<Fs extends functions.FunctionImplementations>({
     YogaServerOptions<ServerContext, module.FunctionsToContextInput<Fs>>,
     'schema' | 'context' | 'graphqlEndpoint'
   > &
-    Partial<graphql.ServeOptions>
+    graphql.ServeOptions
 }): void {
   const schema = graphql.fromModule({
     api,

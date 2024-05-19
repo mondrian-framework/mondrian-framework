@@ -20,7 +20,7 @@ export function createServer<Fs extends functions.FunctionImplementations>({
     YogaServerOptions<ServerContext, module.FunctionsToContextInput<Fs>>,
     'schema' | 'context' | 'graphqlEndpoint'
   > &
-    Partial<graphql.ServeOptions>
+    graphql.ServeOptions
 }): http.Server {
   const schema = graphql.fromModule({
     api,

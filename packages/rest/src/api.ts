@@ -111,8 +111,12 @@ export type FunctionSpecifications<F extends functions.FunctionInterface = funct
  * Options used by the REST server
  */
 export type ServeOptions = {
-  readonly introspection?: { path: string } | false
-  readonly introspectionUI?: 'swagger' | 'scalar' | 'redoc' | 'none'
+  readonly introspection?:
+    | {
+        readonly path: string
+        readonly ui: 'swagger' | 'scalar' | 'redoc' | 'none'
+      }
+    | false
 }
 
 /**

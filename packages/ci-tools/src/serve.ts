@@ -10,7 +10,7 @@ serve({
   context: async () => ({}),
   server,
   options: {
-    introspection: { path: '/specs' },
+    introspection: { path: '/specs', ui: 'swagger' },
   },
 })
 

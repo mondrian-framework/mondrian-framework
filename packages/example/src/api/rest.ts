@@ -54,6 +54,8 @@ export function serveRest(server: FastifyInstance) {
         return { status: 500, body: 'Internal server error' }
       }
     },
-    options: { introspection: { path: '/openapi' } },
+    options: {
+      introspection: { path: '/openapi', ui: 'swagger' },
+    },
   })
 }

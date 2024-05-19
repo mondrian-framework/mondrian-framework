@@ -12,7 +12,7 @@ export function ui<Fs extends functions.FunctionInterfaces>({
   api: ApiSpecification<Fs>
   options: ServeOptions
 }): string {
-  const introspectionUI = !options.introspection ? 'none' : options.introspectionUI ?? 'swagger'
+  const introspectionUI = !options.introspection ? 'none' : options.introspection.ui
   const introspectionPath = !options.introspection
     ? ''
     : options.introspection.path.endsWith('/')

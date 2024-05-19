@@ -27,7 +27,7 @@ export function build<Fs extends functions.FunctionImplementations>({
     const introspectionPath = options.introspection.path.endsWith('/')
       ? options.introspection.path
       : `${options.introspection.path}/`
-    if (options.introspectionUI !== 'none') {
+    if (options.introspection.ui !== 'none') {
       server.get(`${introspectionPath}index.html`, (_: Request, res: Response) => {
         res.header('Content-Type', 'text/html')
         res.send(rest.openapi.ui({ api, options }))

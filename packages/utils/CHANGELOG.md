@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.43
+
+### Patch Changes
+
+- Improve OpenApi UI serving
+
 ## 2.0.42
 
 ### Patch Changes

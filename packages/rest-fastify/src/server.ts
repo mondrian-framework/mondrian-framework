@@ -27,14 +27,27 @@ export function serve<Fs extends functions.FunctionImplementations>({
       ? options.introspection.path
       : `${options.introspection.path}/`
     if (options.introspection.ui !== 'none') {
-      server.get(`${introspectionPath}index.html`, (_, res) => {
-        res.header('Content-Type', 'text/html')
-        res.send(rest.openapi.ui({ api, options }))
-      })
+      const introspection = options.introspection
+      server.get(`${introspectionPath}index.html`, (_, res) =>
+        res.header('Content-Type', 'text/html').send(rest.openapi.ui({ api, options })),
+      )
+      server.get(`${introspectionPath}swagger.html`, (_, res) =>
+        res
+          .header('Content-Type', 'text/html')
+          .send(rest.openapi.ui({ api, options: { introspection: { ...introspection, ui: 'swagger' } } })),
+      )
+      server.get(`${introspectionPath}redoc.html`, (_, res) =>
+        res
+          .header('Content-Type', 'text/html')
+          .send(rest.openapi.ui({ api, options: { introspection: { ...introspection, ui: 'redoc' } } })),
+      )
+      server.get(`${introspectionPath}scalar.html`, (_, res) =>
+        res
+          .header('Content-Type', 'text/html')
+          .send(rest.openapi.ui({ api, options: { introspection: { ...introspection, ui: 'scalar' } } })),
+      )
       if (introspectionPath !== '/') {
-        server.get(replaceLast(introspectionPath, '/', ''), (_, res) => {
-          res.redirect(`${introspectionPath}index.html`)
-        })
+        server.get(replaceLast(introspectionPath, '/', ''), (_, res) => res.redirect(`${introspectionPath}index.html`))
       }
     }
 

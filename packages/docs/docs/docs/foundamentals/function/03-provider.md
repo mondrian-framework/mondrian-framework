@@ -58,7 +58,7 @@ const readPosts = readPostDefinition
     // highlight-start
     async body({ input, prisma }) {
     // highlight-end
-      const posts = // retrieve posts using the prisma client
+      const posts = await prisma.posts.findMany({ ... }) // retrieve posts using the prisma client
       return result.ok(posts)
     },
   })
@@ -70,7 +70,7 @@ A provider can be shared by several functions, it is typical that it be so. It i
 
 ## Dependency
 
-A provider may also depend on another providers, thus forming chains of providers. In this way, useful logic can be reused for a set of functions, but also for other providers, without duplication of code.
+A provider may also depend on other providers, thus forming chains of providers. In this way, useful logic can be reused for a set of functions, but also for other providers, without duplication of code.
 
 Similar to what you can do for a function, you can declare a dependency between providers using the `use` method. In this case, the data provided by the parent provider are accessible as part of a second parameter of the `body` function.
 
@@ -88,7 +88,7 @@ export const customLoggerProvider = provider
   .build({
     async body({ callerIP }: AuditProviderContextInput, { prisma }) {
       // log the call to db using prisma client
-      const audit = ...
+      const audit = await prisma.audit.create({ data: { callerIP, ... } })
       return result.ok(audit)
     },
 })
@@ -133,3 +133,49 @@ export const authProvider = provider.build({
 :::info
 The errors returned by a provider must also be present in the **declaration of each of the function** that use it. Indeed, at each invocation, these errors may be generated in the execution of the provider, and are automatically returned by the function, which must then declare them in order to produce a consistent specification.
 :::
+
+## Mondrian Providers
+
+Mondrian provides a set of built-in providers that can be used in your functions. These providers are:
+
+- `@mondrian-framework/rate-limiter`
+
+### Rate Limiter
+
+The rate limiter provider allows you to limit the number of requests that can be made to a function in a given time window. This is useful to prevent abuse of your API and to protect your resources.
+
+To use the rate limiter provider, you need to define a rate limiter configuration and pass it to the provider as shown below:
+
+```typescript
+import { rateLimiter } from '@mondrian-framework/rate-limiter'
+
+// highlight-start
+const rateLimitByEmailProvider = rateLimiter.buildProvider({
+  rate: '10 requests in 1 minute',
+  // store: new RedisStore(redisClient) // optional, on production environments it is recommended to use a redis store
+})
+// highlight-end
+
+export const login = module.functions.login
+  .use({
+    providers: { rateLimiterByEmail: rateLimitByEmailProvider },
+  })
+  .implement({
+    async body({ input: { email, password }, rateLimiterByEmail }) {
+      //check if this email is rate limited
+
+      // highlight-start
+      const rateLimiterKey = `login:${email}`
+      if (rateLimiterByEmail.check(rateLimiterKey) === 'rate-limited') {
+        return result.fail({ tooManyRequests: { limitedBy: 'email' } })
+      }
+      rateLimiterByEmail.apply(email) // Count failure on rate limiter
+      // highlight-end
+
+      // ... login logic
+      return result.ok(jwt)
+    },
+  })
+```
+
+The rate-limiter feature comes also in the form of a guard, which can be used to protect a function from being called too many times in a given time window. The guard is used in the same way as the provider, but it is applied to the function using the `guards` field. More on this on the [Guards](./04-guard.md) page.

@@ -207,6 +207,37 @@ Nothing precludes that, given a formal definition of the output model and these 
 possible to build a utility function that translates them to other libraries, existing or future.
 :::
 
+#### Narrowing retrieve capabilities
+
+The capabilities of the `retrieve` parameter can be specified in a more detailed way in every entity of the model:
+
+```ts showLineNumbers
+const User = model.entity(
+  {
+    id: model.number(),
+    firstName: model.string(),
+    lastName: model.string(),
+  },
+  {
+    // highlight-start
+    retrieve: {
+      where: { id: true, firstName: true }, //can only be filtered by `id` and `firstName`
+      orderBy: { id: true }, //can obly be sorted by `id`
+      take: { max: 10 }, // or true
+      skip: { max: 1000 }, //or true
+    },
+    // highlight-end
+  },
+)
+
+const retrieveUsers = functions.define({
+  output: model.array(User),
+  retrieve: { where: true, select: true, orderBy: true, take: true, skip: true },
+})
+```
+
+Every time we encounter a `User` entity in a function return or while traversing the graph, the retrieve capabilities will be limited to the specified ones.
+
 ## Errors
 
 We believe that the best way to handle errors is to do so in a way that preserves their
@@ -292,6 +323,8 @@ const getAllUsers = functions.define({
   options: {
     namespace: 'registry',
     description: 'Returns all the user already registered to the system registry.',
+    operation: 'query',
+    opentelemetry: false,
   },
   // highlight-end
 })
@@ -300,9 +333,17 @@ const getAllUsers = functions.define({
 #### Namespace
 
 The `namespace` parameter represent an optional logical subgrouping of a module that can be useful to further subdivide a set of functions.
-
 This option is used by some runtimes, for example [@mondrian-framework/rest](../runtime//API/01-REST-OpenAPI.md) and [@mondrian-framework/graphql](../runtime/API/02-GraphQL-API.md), where there is a concept of API grouping in the respective specifications.
 
 #### Description
 
 The `description` parameter is a simple plain string where you can describe the function business logic and behaviour in natual language. This value is added to API specifications and generally reported on the documentation produced from this definition.
+
+#### Operation
+
+The `operation` parameter describes the semantic of the function. It can be one of the following values: `'query'`, `'mutation'`, or an object `{ command: 'create' }`, `{ command: 'update' }`, `{ command: 'delete' }`.
+This information is used by some runtimes to generate the API specification and to provide a more accurate documentation. It can be overridden by the runtime if it is not specified or it's incosistent with the runtime capabilities.
+
+#### OpenTelemetry
+
+The `opentelemetry` parameter is a boolean that indicates whether the function should be traced by the OpenTelemetry instrumentation. This option is used by the runtime to enable or disable the tracing of the specific function. By default it is `true`, so if the instrumentation is available it will be traced.

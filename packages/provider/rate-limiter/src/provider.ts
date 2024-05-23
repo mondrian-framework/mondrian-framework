@@ -74,6 +74,7 @@ type RateLimitGuardInput<
  *   key: ({ ip }: { ip: string }) => ip,
  *   rate: '10 requests in 5 minutes',
  *   onLimit: () => ({ tooManyRequests: 'Too many requests. Retry in a few minutes.' }),
+ *   store,
  * })
  * ```
  */

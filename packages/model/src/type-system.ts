@@ -2030,7 +2030,13 @@ export type CustomType<Name extends string = string, Options extends Record<stri
 /**
  * The options used to define a {@link CustomTypeOptions `CustomTypeOptions`}.
  */
-export type CustomTypeOptions<AdditionalOptions extends Record<string, unknown>> = BaseOptions & AdditionalOptions
+export type CustomTypeOptions<AdditionalOptions extends Record<string, unknown>> = BaseOptions &
+  AdditionalOptions & {
+    /**
+     * Specify how the various runtime should interpret this type
+     */
+    readonly apiType?: Type
+  }
 
 /**
  * Given a {@link Type} returns a new type where all the fields of object types are turned into

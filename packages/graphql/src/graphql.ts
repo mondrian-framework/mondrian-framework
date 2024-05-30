@@ -129,7 +129,7 @@ function typeToGraphQLOutputType(type: model.Type, internalData: InternalData): 
     boolean: (type) => scalarOrDefault(type, GraphQLBoolean, internalData),
     literal: (type) => literalToGraphQLType(type, internalData),
     enum: (type) => enumToGraphQLType(type, internalData),
-    custom: (type) => customTypeToGraphQLType(type, internalData),
+    custom: (type) => customTypeToGraphQLOutputType(type, internalData),
     union: (type) => unionToGraphQLType(type, internalData),
     object: (type) => objectToGraphQLType(type, internalData),
     entity: (type) => entityToGraphQLType(type, internalData),
@@ -154,7 +154,7 @@ function typeToGraphQLInputType(type: model.Type, internalData: InternalData): G
     boolean: (type) => scalarOrDefault(type, GraphQLBoolean, internalData),
     literal: (type) => literalToGraphQLType(type, internalData),
     enum: (type) => enumToGraphQLType(type, internalData),
-    custom: (type) => customTypeToGraphQLType(type, internalData),
+    custom: (type) => customTypeToGraphQLInputType(type, internalData),
     union: (type) => unionToInputGraphQLType(type, internalData),
     object: (type) => objectToInputGraphQLType(type, internalData),
     entity: (type) => entityToInputGraphQLType(type, internalData),
@@ -506,14 +506,38 @@ function typeToGraphQLInputUnionVariant(
   }
 }
 
-function customTypeToGraphQLType(
+function customTypeToGraphQLInputType(
   type: model.CustomType<string, any, any>,
   internalData: InternalData,
-): GraphQLScalarType {
+): GraphQLInputType {
   const { knownCustomTypes } = internalData
   const knownType = knownCustomTypes.get(type.typeName)
   if (knownType) {
     return knownType
+  }
+  if (type.options?.apiType) {
+    return typeToGraphQLInputType(type.options.apiType, internalData)
+  } else {
+    const scalar = scalarFromType(type, {
+      ...internalData,
+      defaultName: capitalise(type.typeName),
+    })
+    knownCustomTypes.set(type.typeName, scalar)
+    return scalar
+  }
+}
+
+function customTypeToGraphQLOutputType(
+  type: model.CustomType<string, {}, any>,
+  internalData: InternalData,
+): GraphQLOutputType {
+  const { knownCustomTypes } = internalData
+  const knownType = knownCustomTypes.get(type.typeName)
+  if (knownType) {
+    return knownType
+  }
+  if (type.options?.apiType) {
+    return typeToGraphQLOutputType(type.options.apiType, internalData)
   } else {
     const scalar = scalarFromType(type, {
       ...internalData,

@@ -1,6 +1,7 @@
 import { rest } from '../src'
-import { model } from '@mondrian-framework/model'
+import { decoding, model, validation } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
+import gen from 'fast-check'
 import { describe, expect, test } from 'vitest'
 
 describe('module to openapi', () => {
@@ -174,6 +175,28 @@ describe('module to openapi', () => {
             timestapm: model.timestamp(),
             never: model.never(),
             union: model.union({ a: model.string(), b: model.number() }),
+            custom1: model.custom<'custom1', {}, string>({
+              typeName: 'custom1',
+              encoder: (value) => value,
+              decoder: (value) => decoding.succeed(value as string),
+              validator: () => validation.succeed(),
+              arbitrary: () => gen.constant('custom1'),
+              options: {
+                description: 'a',
+                apiType: model.string({ minLength: 1, description: 'b' }),
+              },
+            }),
+            custom2: model.custom<'custom2', {}, string>({
+              typeName: 'custom2',
+              encoder: (value) => value,
+              decoder: (value) => decoding.succeed(value as string),
+              validator: () => validation.succeed(),
+              arbitrary: () => gen.constant('custom2'),
+              options: {
+                description: 'a',
+                apiType: () => model.string({ minLength: 1, description: 'b', name: 'ApiCustom2' }),
+              },
+            }),
           }),
         }),
       },
@@ -333,6 +356,8 @@ describe('module to openapi', () => {
                         'timestapm',
                         'never',
                         'union',
+                        'custom1',
+                        'custom2',
                       ],
                       properties: {
                         boolean: { type: 'boolean' },
@@ -353,6 +378,15 @@ describe('module to openapi', () => {
                         timestapm: { type: 'integer', description: 'unix timestamp' },
                         never: {},
                         union: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+                        custom1: {
+                          description: 'a',
+                          example: 'custom1',
+                          minLength: 1,
+                          type: 'string',
+                        },
+                        custom2: {
+                          $ref: '#/components/schemas/ApiCustom2',
+                        },
                       },
                     },
                   },
@@ -365,6 +399,11 @@ describe('module to openapi', () => {
       },
       components: {
         schemas: {
+          ApiCustom2: {
+            description: 'b',
+            minLength: 1,
+            type: 'string',
+          },
           user: {
             type: 'object',
             required: ['username', 'registeredAt'],

@@ -198,6 +198,7 @@ function serializeType(
               name: concreteType.options.name,
               description: concreteType.options.description,
               sensitive: concreteType.options.sensitive,
+              apiType: concreteType.options.apiType ? resolve(concreteType.options.apiType) : undefined,
             }
           : undefined,
         custom: customSerialization,
@@ -320,7 +321,7 @@ const unionTypeSchema = model.object({
 const customTypeSchema = model.object({
   type: model.literal('custom'),
   typeName: model.string(),
-  options: model.object(baseOptionsFields).optional(),
+  options: model.object({ ...baseOptionsFields, apiType: model.string().optional() }).optional(),
   custom: model.json().optional(),
 })
 const TypeSchema = model

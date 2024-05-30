@@ -483,7 +483,7 @@ function literalToOpenAPIComponent(type: model.LiteralType): OpenAPIV3_1.NonArra
 function customToOpenAPIComponent(
   type: model.CustomType,
   internalData: InternalData,
-): OpenAPIV3_1.NonArraySchemaObject {
+): OpenAPIV3_1.NonArraySchemaObject | OpenAPIV3_1.SchemaObject {
   const anyValue = { description: type.options?.description }
   //convert known types based on name
   if (type.typeName === model.record(model.unknown()).typeName) {
@@ -543,6 +543,19 @@ function customToOpenAPIComponent(
     return {
       example: type.encodeWithoutValidation(type.example({ seed: 0 })),
       ...concreteSchema,
+    }
+  }
+
+  if (type.options?.apiType) {
+    const schema = modelToSchema(type.options.apiType, internalData)
+    if ('$ref' in schema) {
+      return schema
+    } else {
+      return {
+        ...schema,
+        description: type.options?.description,
+        example: type.encodeWithoutValidation(type.example({ seed: 0 })),
+      }
     }
   }
 

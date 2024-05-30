@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.44
+
+### Patch Changes
+
+- Add "apiType" on custom type options
+- Updated dependencies
+  - @mondrian-framework/model@2.0.44
+
 ## 2.0.43
 
 ### Patch Changes

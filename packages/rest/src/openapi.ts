@@ -359,7 +359,8 @@ function openapiComponents<Fs extends functions.FunctionInterfaces>({
   for (const [name, type] of internalData.typeMap.entries()) {
     schemas[name] = type
   }
-  return { components: { schemas }, internalData }
+  const sortedSchemas = Object.fromEntries(Object.entries(schemas).sort(([a], [b]) => a.localeCompare(b)))
+  return { components: { schemas: sortedSchemas }, internalData }
 }
 
 export function emptyInternalData(customTypeSchemas: CustomTypeSpecifications | undefined): InternalData {

@@ -11,10 +11,10 @@
     "build": "tsc"
   },
   "peerDependencies": {
-    "@redis/client": "^1.5.14",
+    "@redis/client": "^1.5.16",
     "@mondrian-framework/model": "^2.0.44",
     "@mondrian-framework/module": "^2.0.44",
     "@mondrian-framework/utils": "^2.0.44",
-    "@opentelemetry/sdk-node": "^0.51.0"
+    "@opentelemetry/sdk-node": "^0.51.1"
   }
 }

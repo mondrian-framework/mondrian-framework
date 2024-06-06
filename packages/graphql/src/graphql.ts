@@ -1,10 +1,9 @@
 import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
-import { result, model, decoding, utils as modelUtils } from '@mondrian-framework/model'
+import { model, decoding, utils as modelUtils } from '@mondrian-framework/model'
 import { functions, logger as logging, module, utils, retrieve, exception } from '@mondrian-framework/module'
 import { flatMapObject, groupBy, uncapitalise } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
-import { SpanKind, SpanStatusCode, Span } from '@opentelemetry/api'
 import {
   GraphQLScalarType,
   GraphQLObjectType,
@@ -30,10 +29,15 @@ import {
   SelectionNode,
   Kind,
   valueFromASTUntyped,
-  GraphQLError,
 } from 'graphql'
 
+//this tag will prevent the field generation
 const IGNORE_ON_GRAPHQL_GENERATION = 'ignore_on_graphql_generation'
+
+//this tag (on object or entity) will prevent the retrieve generation on each field
+const IGNORE_RETRIEVE_INPUT_FIELD_GENERATION = 'ignore_retrieve_input_field_generation'
+
+//default name when wrapping the result in an union for the error (eg: { value: Entity[] } | { error1: { ... } })
 const UNION_WRAP_FIELD_NAME = 'value'
 
 /**
@@ -300,7 +304,10 @@ function objectToGraphQLType(
 ): GraphQLObjectType {
   const objectName = generateName(object, internalData)
   const fields = () =>
-    flatMapObject(object.fields, typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, objectName))
+    flatMapObject(
+      object.fields,
+      typeToGraphQLObjectField({ ...internalData, defaultName: undefined }, objectName, object.options),
+    )
   return new GraphQLObjectType({
     name: checkNameOccurencies(objectName, internalData),
     fields,
@@ -348,7 +355,10 @@ function entityToInputGraphQLType(
 ): GraphQLInputObjectType {
   const entityName = generateInputName(entity, internalData)
   const fields = () =>
-    mapObject(entity.fields, typeToGraphQLInputObjectField({ ...internalData, defaultName: undefined }, entityName))
+    mapObject(
+      entity.fields,
+      typeToGraphQLInputObjectField({ ...internalData, defaultName: undefined }, entityName, entity.options),
+    )
   return new GraphQLInputObjectType({
     name: checkNameOccurencies(entityName, internalData),
     fields,
@@ -385,7 +395,10 @@ function typeToGraphQLObjectField(
       defaultName: fieldDefaultName,
     })
     const unwrappedFieldType = model.unwrap(fieldType)
-    const canBeRetrieved = unwrappedFieldType.kind === model.Kind.Entity && model.isArray(fieldType)
+
+    const ignoreRetrieveFields = (objectOptions?.tags ?? {})[IGNORE_RETRIEVE_INPUT_FIELD_GENERATION] === true
+    const canBeRetrieved =
+      unwrappedFieldType.kind === model.Kind.Entity && model.isArray(fieldType) && !ignoreRetrieveFields
     let graphqlRetrieveArgs: GraphQLFieldConfigArgumentMap | undefined = undefined
     if (canBeRetrieved) {
       const retrieveType = retrieve.fromType(fieldType, { where: true, skip: true, take: true, orderBy: true })
@@ -731,10 +744,6 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
     server: 'GQL',
   })
 
-  const spanName = functionBody.options?.namespace
-    ? `${operationType} ${functionBody.options.namespace}.${operationName}`
-    : `${operationType} ${operationName}`
-
   const resolve = async (
     parent: unknown,
     resolverInput: Record<string, unknown>,
@@ -843,8 +852,11 @@ function getFunctionOutputTypeWithErrors(
     return { outputType: fun.output, isOutputTypeWrapped: false }
   }
   const isOutputTypeWrapped = !model.isEntity(fun.output) && !model.isObject(fun.output)
+
   const success = isOutputTypeWrapped
-    ? model.object({ [UNION_WRAP_FIELD_NAME]: fun.output }).setName(`${capitalise(functionName)}Success`)
+    ? model
+        .object({ [UNION_WRAP_FIELD_NAME]: fun.output }, { tags: { [IGNORE_RETRIEVE_INPUT_FIELD_GENERATION]: true } })
+        .setName(`${capitalise(functionName)}Success`)
     : fun.output
   if (Object.keys(fun.errors).includes('code')) {
     throw new Error("[GraphQL generation] 'code' is reserved as error code")

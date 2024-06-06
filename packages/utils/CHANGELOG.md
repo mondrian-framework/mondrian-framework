@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.45
+
+### Patch Changes
+
+- Minor graphql fix
+
 ## 2.0.44
 
 ### Patch Changes

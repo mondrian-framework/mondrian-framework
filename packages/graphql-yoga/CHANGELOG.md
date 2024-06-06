@@ -1,5 +1,16 @@
 # @mondrian-framework/graphql-yoga
 
+## 2.0.45
+
+### Patch Changes
+
+- Minor graphql fix
+- Updated dependencies
+  - @mondrian-framework/graphql@2.0.45
+  - @mondrian-framework/model@2.0.45
+  - @mondrian-framework/module@2.0.45
+  - @mondrian-framework/utils@2.0.45
+
 ## 2.0.44
 
 ### Patch Changes

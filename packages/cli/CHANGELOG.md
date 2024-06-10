@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.46
+
+### Patch Changes
+
+- Fix graphql context generation
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.46
+  - @mondrian-framework/cli-commander@2.0.46
+
 ## 2.0.45
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.46
+
+### Patch Changes
+
+- Fix graphql context generation
+
 ## 2.0.45
 
 ### Patch Changes

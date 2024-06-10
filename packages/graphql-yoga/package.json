@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/graphql-yoga",
-  "version": "2.0.45",
+  "version": "2.0.46",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -15,10 +15,10 @@
   },
   "peerDependencies": {
     "fastify": "^4.27.0",
-    "@mondrian-framework/model": "^2.0.45",
-    "@mondrian-framework/module": "^2.0.45",
-    "@mondrian-framework/utils": "^2.0.45",
-    "@mondrian-framework/graphql": "^2.0.45"
+    "@mondrian-framework/model": "^2.0.46",
+    "@mondrian-framework/module": "^2.0.46",
+    "@mondrian-framework/utils": "^2.0.46",
+    "@mondrian-framework/graphql": "^2.0.46"
   },
   "peerDependenciesMeta": {
     "fastify": {

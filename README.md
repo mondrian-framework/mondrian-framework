@@ -5,9 +5,20 @@
 
 [Homepage](https://mondrianframework.com/)
 
-[CI Tools](https://ci-tools.mondrianframework.com)
+Mondrian is a groundbreaking framework designed for developers who demand type safety, functional programming paradigms, and seamless compliance with modern API standards. Unlike traditional frameworks, Mondrian requires no code generation. Define your data models and services in an intuitive, human-readable format, and instantly gain OpenAPI, GraphQL, and Protobuf (coming soon) specifications and servers for your backend. Mondrian's robust type system and functional approach ensure that your applications are both scalable and maintainable, providing a powerful toolset for building next-generation software.
 
-## 1 minute spinup example
+Some cool features:
+ - **Decoding / Encoding of the Data Model**: Data decoding and encoding is handled automatically by the framework, ensuring that the input always respects its format when a service is called.
+ - **Specification for errors**: Define errors as part of your model, ensuring robust and predictable error handling without the use of imperative exceptions.
+ - **Providers Instead of Context:** Utilize providers for dependency injection and context management, simplifying the flow and accessibility of shared resources.
+ - **Instant Standard Compliance**: Automatically generate compliant APIs for OpenAPI, GraphQL, and Protobuf from your models and functions.
+- **Native OpenTelemetry Support**: Built-in support for OpenTelemetry ensures you can monitor and trace your applications effortlessly.
+ - **Type-Safe and Functional**: Benefit from strong typing and functional programming principles to build reliable and maintainable applications.
+ - **No Code Generation**: Embrace the Typescript power by using all it's type-system features.
+
+
+
+## Try it in under 1 minute
 
 Prerequisite:
 
@@ -16,16 +27,20 @@ Prerequisite:
 ```
 git clone https://github.com/mondrian-framework/mondrian-framework.git
 cd mondrian-framework
+
 npm run spinup
 ```
 
-Then query your endpoint with graphql or rest:
+Navigate to http://localhost:4000/graphql to see the graphql playground then query your endpoint:
 
 ```bash
 curl --location --globoff 'http://localhost:4000/graphql' \
 --header 'Content-Type: application/json' \
 --data-raw '{"query":"mutation register { user { register(input: { email: \"john@domain.com\", password: \"12345\", firstName: \"John\", lastName: \"Wick\" }) { ... on MyUser { id } ... on RegisterFailure { code } } } }" }'
 ```
+
+Navigate to http://localhost:4000/openapi to see the swagger documentation and try some requests.
+
 
 ## How it works
 

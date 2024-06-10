@@ -14,7 +14,7 @@ Some cool features:
  - **Instant Standard Compliance**: Automatically generate compliant APIs for OpenAPI, GraphQL, and Protobuf from your models and functions.
 - **Native OpenTelemetry Support**: Built-in support for OpenTelemetry ensures you can monitor and trace your applications effortlessly.
  - **Type-Safe and Functional**: Benefit from strong typing and functional programming principles to build reliable and maintainable applications.
- - **No Code Generation**: Embrace the Typescript power by using all it's type-system features.
+ - **No Code Generation**: Embrace the power of TypeScript by using all its type-system features without relying on code generation.
 
 
 

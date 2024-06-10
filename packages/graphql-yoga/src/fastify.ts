@@ -5,7 +5,7 @@ import { GraphQLResolveInfo } from 'graphql'
 import { NoSchemaIntrospectionCustomRule } from 'graphql'
 import { createYoga, Plugin, YogaServerOptions } from 'graphql-yoga'
 
-export type ServerContext = { request: FastifyRequest; reply: FastifyReply }
+export type ServerContext = { fastify: { request: FastifyRequest; reply: FastifyReply } }
 
 export function serveWithFastify<Fs extends functions.FunctionImplementations>({
   server,
@@ -27,9 +27,6 @@ export function serveWithFastify<Fs extends functions.FunctionImplementations>({
   const schema = graphql.fromModule({
     api,
     context,
-    setHeader: ({ reply }, name, value) => {
-      reply.header(name, value)
-    },
     onError,
   })
   const disableIntrospection: Plugin = {
@@ -49,7 +46,7 @@ export function serveWithFastify<Fs extends functions.FunctionImplementations>({
     method: ['GET', 'POST', 'OPTIONS'],
     handler: async (request, reply) => {
       const ctx = { request, reply }
-      const response = await yoga.handleNodeRequest(request, ctx)
+      const response = await yoga.handleNodeRequest(request, { fastify: ctx })
       response.headers.forEach((value, key) => {
         reply.header(key, value)
       })

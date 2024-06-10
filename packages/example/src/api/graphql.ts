@@ -21,7 +21,7 @@ export function serveGraphql(server: FastifyInstance) {
   serve({
     server,
     api,
-    context: async ({ request }) => ({
+    context: async ({ fastify: { request } }) => ({
       authorization: request.headers.authorization,
       ip: request.ip,
     }),

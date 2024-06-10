@@ -25,7 +25,6 @@ export function createServer<Fs extends functions.FunctionImplementations>({
   const schema = graphql.fromModule({
     api,
     context,
-    setHeader: (ctx, name, value) => ctx.res.setHeader(name, value),
     onError,
   })
   const disableIntrospection: Plugin = {

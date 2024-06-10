@@ -111,7 +111,6 @@ const schema = fromModule({
     },
   }),
   context: async (_: ServerContext) => ({}),
-  setHeader: (ctx, name, value) => ctx.res.setHeader(name, value),
 })
 
 const yoga = createYoga<ServerContext>({ schema })

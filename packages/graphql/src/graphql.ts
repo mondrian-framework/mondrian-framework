@@ -567,7 +567,6 @@ function customTypeToGraphQLOutputType(
 export type FromModuleInput<Fs extends functions.FunctionImplementations, ServerContext> = {
   api: Api<Fs>
   context: (context: ServerContext, info: GraphQLResolveInfo) => Promise<module.FunctionsToContextInput<Fs>>
-  setHeader: (context: ServerContext, name: string, value: string) => void
   onError?: ErrorHandler<Fs, ServerContext>
 }
 
@@ -699,7 +698,7 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
  * Creates a tuple with the operation name and a configuration for a resolver for the given operation.
  *
  * The operation is created according to the given function's input and output types.
- * `setHeader`, `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
+ * `getContextInput`, `getModuleContext` and `errorHanlder` are all functions that are
  * somehow needed by the resolver implementation.
  */
 function makeOperation<Fs extends functions.FunctionImplementations, ServerContext>(

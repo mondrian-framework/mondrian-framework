@@ -101,7 +101,7 @@ export class BaseFunction<
     //apply mappers
     const mappedInput = mapper?.input ? mapper.input(decodedInput.value) : decodedInput.value
     const mappedRetrieve = mapper?.retrieve ? mapper.retrieve(decodedRetrieve.value) : decodedRetrieve.value
-    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve, tracer: undefined }
+    const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve }
 
     //run function apply
     return this.apply(applyArgs)
@@ -241,6 +241,7 @@ export class OpentelemetryFunction<
         attributes: { [SEMATTRS_CODE_FUNCTION]: this.name, [SEMATTRS_CODE_NAMESPACE]: this.options?.namespace },
       },
       async (span) => {
+        let errorCatched = false
         try {
           //decode input
           const decodedInput = this.tracer.startActiveSpanWithOptions(
@@ -320,23 +321,30 @@ export class OpentelemetryFunction<
           //apply mappers
           const mappedInput = mapper?.input ? mapper.input(decodedInput.value) : decodedInput.value
           const mappedRetrieve = mapper?.retrieve ? mapper.retrieve(decodedRetrieve.value) : decodedRetrieve.value
-          const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve, tracer: this.tracer }
+          const applyArgs = { ...args, input: mappedInput, retrieve: mappedRetrieve }
 
           //run function apply
-          const applyResult = await this.apply(applyArgs)
-          if (applyResult.isFailure) {
-            span.setStatus({ code: SpanStatusCode.ERROR })
-            this.addInputToSpanAttribute(span, applyArgs.input)
-            this.addErrorsToSpanAttribute(span, applyResult.error)
-            span.setStatus({ code: SpanStatusCode.ERROR })
-            span.setAttribute('error.json', JSON.stringify(applyResult.error))
+          try {
+            const applyResult = await this.apply(applyArgs)
+            if (applyResult.isFailure) {
+              span.setStatus({ code: SpanStatusCode.ERROR })
+              this.addInputToSpanAttribute(span, applyArgs.input)
+              this.addErrorsToSpanAttribute(span, applyResult.error)
+              span.setStatus({ code: SpanStatusCode.ERROR })
+              span.setAttribute('error.json', JSON.stringify(applyResult.error))
+            }
+            span.end()
+            return applyResult
+          } catch (error) {
+            errorCatched = true
+            throw error
           }
-          span.end()
-          return applyResult
         } catch (error) {
-          span.setStatus({ code: SpanStatusCode.ERROR })
-          if (error instanceof Error) {
-            span.recordException(error)
+          if (!errorCatched) {
+            span.setStatus({ code: SpanStatusCode.ERROR })
+            if (error instanceof Error) {
+              span.recordException(error)
+            }
           }
           span.end()
           throw error

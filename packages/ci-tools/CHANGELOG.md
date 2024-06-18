@@ -1,5 +1,17 @@
 # @mondrian-framework/ci-tools
 
+## 2.0.47
+
+### Patch Changes
+
+- Implement concurrency limit in sqs handler
+- Updated dependencies
+  - @mondrian-framework/aws-lambda-rest@2.0.47
+  - @mondrian-framework/model@2.0.47
+  - @mondrian-framework/module@2.0.47
+  - @mondrian-framework/rest@2.0.47
+  - @mondrian-framework/rest-fastify@2.0.47
+
 ## 2.0.46
 
 ### Patch Changes

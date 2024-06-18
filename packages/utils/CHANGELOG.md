@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.47
+
+### Patch Changes
+
+- Implement concurrency limit in sqs handler
+
 ## 2.0.46
 
 ### Patch Changes

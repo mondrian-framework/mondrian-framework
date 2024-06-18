@@ -1,5 +1,15 @@
 # @mondrian-framework/cli-commander
 
+## 2.0.47
+
+### Patch Changes
+
+- Implement concurrency limit in sqs handler
+- Updated dependencies
+  - @mondrian-framework/model@2.0.47
+  - @mondrian-framework/module@2.0.47
+  - @mondrian-framework/utils@2.0.47
+
 ## 2.0.46
 
 ### Patch Changes

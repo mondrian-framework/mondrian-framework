@@ -12,11 +12,11 @@
     "coverage": "vitest run --coverage"
   },
   "peerDependencies": {
-    "fastify": "^4.27.0",
+    "fastify": "^4.28.1",
     "@mondrian-framework/model": "^2.0.47",
     "@mondrian-framework/module": "^2.0.47",
     "@mondrian-framework/utils": "^2.0.47",
-    "@opentelemetry/sdk-node": "^0.51.1"
+    "@opentelemetry/sdk-node": "^0.52.1"
   },
   "peerDependenciesMeta": {
     "fastify": {

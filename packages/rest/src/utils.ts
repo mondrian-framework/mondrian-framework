@@ -121,6 +121,27 @@ export function completeRetrieve(
   retr: retrieve.GenericRetrieve | undefined,
   type: model.Type,
 ): retrieve.GenericRetrieve | undefined {
+  function removeUndefinedFields<T extends JSONType | undefined>(obj: T): T {
+    if (obj === undefined) {
+      return obj
+    }
+    if (typeof obj !== 'object' || obj === null) {
+      return obj
+    }
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([, value]) => value !== undefined)
+        .map(([field, value]) => [field, removeUndefinedFields(value as any)]),
+    ) as T
+  }
+
+  return removeUndefinedFields(completeRetrieveInternal(retr, type))
+}
+
+export function completeRetrieveInternal(
+  retr: retrieve.GenericRetrieve | undefined,
+  type: model.Type,
+): retrieve.GenericRetrieve | undefined {
   if (!retr) {
     return undefined
   }

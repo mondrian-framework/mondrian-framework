@@ -15,6 +15,7 @@ describe('completeRetrieve', () => {
       name: model.string(),
       tags: model.string().array(),
       friend: model.optional(user),
+      _asd: model.string(),
     })
   test('works with empty retrieve', async () => {
     const p = completeRetrieve({}, user)

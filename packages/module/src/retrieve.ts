@@ -178,6 +178,7 @@ function selectField(type: model.Type, capabilities: FunctionCapabilities): mode
         }),
         all: model.boolean(),
       }),
+    custom: ({ options }) => (options?.apiType ? selectField(options.apiType, capabilities) : model.boolean()),
     array: ({ wrappedType }) => selectField(wrappedType, allCapabilities),
     wrapper: ({ wrappedType }) => selectField(wrappedType, capabilities),
     otherwise: () => model.boolean(),

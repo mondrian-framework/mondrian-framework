@@ -1,6 +1,6 @@
 import { retrieve } from '../src/index'
 import { test } from '@fast-check/vitest'
-import { model } from '@mondrian-framework/model'
+import { model, validation } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf } from 'vitest'
 
 const user = () =>
@@ -517,3 +517,79 @@ describe('fromType', () => {
     }
   })
 })
+
+test('retrieve type on custom with apiType', () => {
+  const RegistryItem = addValidationLogic(
+    'RegistryItem',
+    model.object(
+      {
+        id: model.string(),
+        taxId: model.string(),
+        description: model.string(),
+      },
+      {
+        name: 'RegistryItem',
+        description: 'Basic description of a TeamSystem registry item. Information gathered from Digital',
+      },
+    ),
+    () => validation.succeed(),
+  )
+  const entity = model.entity(
+    {
+      registryItem: RegistryItem,
+    },
+    { name: 'Entity' },
+  )
+  const retrievedType = retrieve.fromType(entity, { select: true })
+  expect(retrievedType.isOk).toBe(true)
+  const expectedModel = model.object({
+    select: model.optional(
+      model.object(
+        {
+          registryItem: model.optional(
+            model.union({
+              fields: model.object({
+                select: model.optional(
+                  model.object({
+                    id: model.boolean().optional(),
+                    taxId: model.boolean().optional(),
+                    description: model.boolean().optional(),
+                  }),
+                ),
+              }),
+              all: model.boolean(),
+            }),
+          ),
+        },
+        { name: 'EntitySelect' },
+      ),
+    ),
+  })
+  if (retrievedType.isOk) {
+    expect(model.areEqual(retrievedType.value, expectedModel)).toBe(true)
+  }
+})
+
+function addValidationLogic<K extends string, T extends model.Type>(
+  typeName: K,
+  type: T,
+  validator: (value: model.Infer<T>) => validation.Result,
+): model.CustomType<K, {}, model.Infer<T>> {
+  return model.custom<K, {}, any>({
+    typeName,
+    decoder(value, decodingOptions) {
+      return model.concretise(type).decodeWithoutValidation(value, decodingOptions)
+    },
+    arbitrary(maxDepth) {
+      return model.concretise(type).arbitrary(maxDepth)
+    },
+    encoder(value, encodingOptions) {
+      return model.concretise(type).encodeWithoutValidation(value as never, encodingOptions) as any
+    },
+    validator(value, validationOptions) {
+      const validation = model.concretise(type).validate(value as never, validationOptions)
+      return validation.chain(() => validator(value as never))
+    },
+    options: { apiType: type },
+  })
+}

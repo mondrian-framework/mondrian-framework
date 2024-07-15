@@ -915,10 +915,14 @@ const mapInputType = modelUtils.memoizeTypeTransformation(mapInputTypeInternal)
 function mapInputTypeInternal(inputType: model.Type): model.Type {
   return model.match(inputType, {
     union: (union) => taggedUnion(union),
-    object: ({ fields }) => model.object(mapObject(fields, (_, fieldType) => mapInputType(fieldType))),
-    array: ({ wrappedType }) => model.array(mapInputType(wrappedType)),
-    optional: ({ wrappedType }) => model.optional(mapInputType(wrappedType)),
-    nullable: ({ wrappedType }) => model.nullable(mapInputType(wrappedType)),
+    object: ({ fields, options }) =>
+      model.object(
+        mapObject(fields, (_, fieldType) => mapInputType(fieldType)),
+        options,
+      ),
+    array: ({ wrappedType, options }) => model.array(mapInputType(wrappedType), options),
+    optional: ({ wrappedType, options }) => model.optional(mapInputType(wrappedType), options),
+    nullable: ({ wrappedType, options }) => model.nullable(mapInputType(wrappedType), options),
     otherwise: (_, t) => t,
   })
 }

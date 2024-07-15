@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/cron",
-  "version": "2.0.49",
+  "version": "2.0.50",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -15,9 +15,9 @@
     "node-cron": "3.0.3"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^2.0.49",
-    "@mondrian-framework/module": "^2.0.49",
-    "@mondrian-framework/utils": "^2.0.49"
+    "@mondrian-framework/model": "^2.0.50",
+    "@mondrian-framework/module": "^2.0.50",
+    "@mondrian-framework/utils": "^2.0.50"
   },
   "devDependencies": {
     "@types/node-cron": "3.0.11"

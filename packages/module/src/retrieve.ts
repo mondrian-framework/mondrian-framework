@@ -494,7 +494,8 @@ export function selectedType<T extends model.Type>(type: T, retrieve: GenericRet
     return optionalizeEmbeddedEntities(type)
   }
   return model.match(type, {
-    wrapper: ({ wrappedType }) => model.optional(selectedType(wrappedType, retrieve)),
+    optional: ({ wrappedType }) => model.optional(selectedType(wrappedType, retrieve)),
+    nullable: ({ wrappedType }) => model.nullable(selectedType(wrappedType, retrieve)),
     array: ({ wrappedType }) => model.array(selectedType(wrappedType, retrieve)),
     record: ({ fields }) => {
       const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {

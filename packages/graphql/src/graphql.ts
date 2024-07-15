@@ -850,7 +850,10 @@ function getFunctionOutputTypeWithErrors(
   if (!fun.errors) {
     return { outputType: fun.output, isOutputTypeWrapped: false }
   }
-  const isOutputTypeWrapped = !model.isEntity(fun.output) && !model.isObject(fun.output)
+  const isOutputTypeWrapped =
+    (!model.isEntity(fun.output) && !model.isObject(fun.output)) ||
+    model.isOptional(fun.output) ||
+    model.isNullable(fun.output)
 
   const success = isOutputTypeWrapped
     ? model

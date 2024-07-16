@@ -682,6 +682,9 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
       .filter((n) => n.kind !== Kind.INLINE_FRAGMENT || !n.typeCondition?.name.value.includes('Failure')) //TODO: weak check
       .map(selectionNodeToRetrieve)
     const select = selections?.length ? selections.reduce((p, c) => ({ ...p, ...c })) : undefined
+    if (info.name.value === '__typename') {
+      return {}
+    }
     if (!select) {
       return { [info.name.value]: true }
     }

@@ -1,5 +1,15 @@
 # @mondrian-framework/direct
 
+## 2.0.51
+
+### Patch Changes
+
+- Minor fix
+- Updated dependencies
+  - @mondrian-framework/model@2.0.51
+  - @mondrian-framework/module@2.0.51
+  - @mondrian-framework/utils@2.0.51
+
 ## 2.0.50
 
 ### Patch Changes

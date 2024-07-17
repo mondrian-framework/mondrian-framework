@@ -159,7 +159,7 @@ export class BaseFunction<
       }
       mappedArgs[providerName] = res.value
     }
-    return result.ok(mappedArgs as functions.FunctionArguments<I, O, C, Pv>)
+    return result.ok(mappedArgs as unknown as functions.FunctionArguments<I, O, C, Pv>)
   }
 
   public async apply(args: functions.FunctionApplyArguments<I, O, C, Pv, G>): functions.FunctionResult<O, E, C> {

@@ -104,7 +104,7 @@ export interface FunctionImplementation<
 /**
  * Mondrian {@link Function} options.
  */
-export type FunctionOptions = {
+export interface FunctionOptions {
   /**
    * Namespace of a function. It's used as documentation.
    */
@@ -123,14 +123,13 @@ export type FunctionOptions = {
   readonly opentelemetry?: boolean
 }
 
-export type GenericFunctionArguments = {
+export interface GenericFunctionArguments {
   readonly input: unknown
   readonly retrieve: retrieve.GenericRetrieve
   readonly logger: logger.MondrianLogger
   readonly tracer: Tracer
   readonly functionName: string
-} & {
-  [K in string]: unknown
+  [k: string]: unknown
 }
 
 /**
@@ -141,7 +140,7 @@ export type FunctionArguments<
   O extends model.Type,
   C extends OutputRetrieveCapabilities,
   Pv extends provider.Providers,
-> = {
+> = provider.ProvidersToContext<Pv> & {
   /**
    * Function's input. It respects the function input {@link model.Type Type}.
    */
@@ -162,15 +161,15 @@ export type FunctionArguments<
    * Name that was assigned to the function by the module.
    */
   readonly functionName: string
-} & provider.ProvidersToContext<Pv>
+}
 
-export type FunctionApplyArguments<
+export interface FunctionApplyArguments<
   I extends model.Type,
   O extends model.Type,
   C extends OutputRetrieveCapabilities,
   Pv extends provider.Providers,
   G extends guard.Guards,
-> = {
+> {
   /**
    * Function's input. It respects the function input {@link model.Type Type}.
    */
@@ -189,7 +188,7 @@ export type FunctionApplyArguments<
   readonly logger: logger.MondrianLogger
 }
 
-export type FunctionRawApplyArguments<Pv extends provider.Providers, G extends guard.Guards> = {
+export interface FunctionRawApplyArguments<Pv extends provider.Providers, G extends guard.Guards> {
   /**
    * Function's raw input. It respects the function input {@link model.Type Type}.
    */
@@ -245,14 +244,14 @@ export type FunctionRawApplyArguments<Pv extends provider.Providers, G extends g
  * }
  * ```
  */
-export type Middleware<
+export interface Middleware<
   I extends model.Type,
   O extends model.Type,
   E extends ErrorType,
   C extends OutputRetrieveCapabilities,
   Pv extends provider.Providers,
   G extends guard.Guards,
-> = {
+> {
   /**
    * Middleware descriptive name.
    */
@@ -298,18 +297,18 @@ export type FunctionImplementations<
 /**
  * A map of {@link FunctionInterface}s.
  */
-export type FunctionInterfaces = {
-  [K in string]: FunctionInterface
+export interface FunctionInterfaces {
+  [k: string]: FunctionInterface
 }
 
-type FunctionImplementor<
+export interface FunctionImplementor<
   I extends model.Type,
   O extends model.Type,
   E extends ErrorType,
   R extends OutputRetrieveCapabilities,
   Pv extends provider.Providers,
   G extends guard.Guards,
-> = {
+> {
   /**
    * Implements the function definition by defining the body of the function
    * @param implementation the body, and optionally the middlewares of the function.
@@ -332,24 +331,24 @@ type FunctionImplementor<
   implement: (implementation: Pick<Function<I, O, E, R, Pv, G>, 'body' | 'middlewares'>) => Function<I, O, E, R, Pv, G>
 }
 
-type FunctionMocker<
+export interface FunctionMocker<
   I extends model.Type,
   O extends model.Type,
   E extends ErrorType,
   R extends OutputRetrieveCapabilities,
-> = {
+> {
   /**
    * Instantiate a mocked {@link Function}.
    */
   mock(options?: MockOptions): Function<I, O, E, R, {}>
 }
 
-type FunctionProviderer<
+export interface FunctionProviderer<
   I extends model.Type,
   O extends model.Type,
   E extends ErrorType,
   R extends OutputRetrieveCapabilities,
-> = {
+> {
   //TODO: how to limit providers errors to be a subset of function interface errors?
   /**
    * Binds some {@link provider.ContextProvider ContextProvider}s to the function.

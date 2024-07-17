@@ -671,16 +671,19 @@ function splitIntoNamespaces(
 /**
  * Gathers retrieve infomartion by traversing the graphql nodes of the request.
  */
-function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericSelect, null> {
+function selectionNodeToRetrieve(
+  info: SelectionNode,
+  variables: Record<string, unknown>,
+): Exclude<retrieve.GenericSelect, null> {
   if (info.kind === Kind.FIELD) {
     const argumentEntries = info.arguments?.map((arg) => {
-      const value = valueFromASTUntyped(arg.value)
+      const value = valueFromASTUntyped(arg.value, variables)
       return [arg.name.value, value]
     })
     const args = argumentEntries ? Object.fromEntries(argumentEntries) : undefined
     const selections = info.selectionSet?.selections
       .filter((n) => n.kind !== Kind.INLINE_FRAGMENT || !n.typeCondition?.name.value.includes('Failure')) //TODO: weak check
-      .map(selectionNodeToRetrieve)
+      .map((v) => selectionNodeToRetrieve(v, variables))
     const select = selections?.length ? selections.reduce((p, c) => ({ ...p, ...c })) : undefined
     if (info.name.value === '__typename') {
       return {}
@@ -690,7 +693,7 @@ function selectionNodeToRetrieve(info: SelectionNode): Exclude<retrieve.GenericS
     }
     return { [info.name.value]: { select, where: args.where, orderBy: args.orderBy, take: args.take, skip: args.skip } }
   } else if (info.kind === Kind.INLINE_FRAGMENT) {
-    const results = info.selectionSet.selections.map(selectionNodeToRetrieve)
+    const results = info.selectionSet.selections.map((v) => selectionNodeToRetrieve(v, variables))
     return results.reduce((p, c) => ({ ...p, ...c }))
   } else {
     throw new Error(`Invalid GraphQL field type: ${info.kind}`)
@@ -943,7 +946,7 @@ function gatherRawRetrieve(info: GraphQLResolveInfo, isOutputTypeWrapped: boolea
     )
   }
   const node = info.fieldNodes[0]
-  const retrieve = selectionNodeToRetrieve(node)
+  const retrieve = selectionNodeToRetrieve(node, info.variableValues)
   const rawRetrieve = retrieve[node.name.value]
   let finalRetrieve = rawRetrieve
   if (

@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.53
+
+### Patch Changes
+
+- Improve inference performance
+
 ## 2.0.52
 
 ### Patch Changes

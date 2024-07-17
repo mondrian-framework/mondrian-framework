@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.53
+
+### Patch Changes
+
+- Improve inference performance
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.53
+  - @mondrian-framework/cli-commander@2.0.53
+
 ## 2.0.52
 
 ### Patch Changes

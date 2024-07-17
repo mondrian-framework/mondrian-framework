@@ -1,5 +1,15 @@
 # @mondrian-framework/aws-lambda-sqs
 
+## 2.0.53
+
+### Patch Changes
+
+- Improve inference performance
+- Updated dependencies
+  - @mondrian-framework/model@2.0.53
+  - @mondrian-framework/module@2.0.53
+  - @mondrian-framework/utils@2.0.53
+
 ## 2.0.52
 
 ### Patch Changes

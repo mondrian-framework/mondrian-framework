@@ -1,5 +1,15 @@
 # @mondrian-framework/rest
 
+## 2.0.52
+
+### Patch Changes
+
+- Minor fix
+- Updated dependencies
+  - @mondrian-framework/model@2.0.52
+  - @mondrian-framework/module@2.0.52
+  - @mondrian-framework/utils@2.0.52
+
 ## 2.0.51
 
 ### Patch Changes

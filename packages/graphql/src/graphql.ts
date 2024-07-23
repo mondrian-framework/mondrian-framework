@@ -1,8 +1,8 @@
 import { FunctionSpecifications, Api, ErrorHandler } from './api'
 import { createGraphQLError } from '@graphql-tools/utils'
 import { model, decoding, utils as modelUtils } from '@mondrian-framework/model'
-import { functions, logger as logging, module, utils, retrieve, exception } from '@mondrian-framework/module'
-import { flatMapObject, groupBy, uncapitalise } from '@mondrian-framework/utils'
+import { functions, logger as logging, module, retrieve, exception } from '@mondrian-framework/module'
+import { assertNever, flatMapObject, groupBy, uncapitalise } from '@mondrian-framework/utils'
 import { JSONType, capitalise, isArray, mapObject } from '@mondrian-framework/utils'
 import {
   GraphQLScalarType,
@@ -29,6 +29,7 @@ import {
   SelectionNode,
   Kind,
   valueFromASTUntyped,
+  FragmentDefinitionNode,
 } from 'graphql'
 
 //this tag will prevent the field generation
@@ -674,6 +675,7 @@ function splitIntoNamespaces(
 function selectionNodeToRetrieve(
   info: SelectionNode,
   variables: Record<string, unknown>,
+  fragments: Record<string, FragmentDefinitionNode>,
 ): Exclude<retrieve.GenericSelect, null> {
   if (info.kind === Kind.FIELD) {
     const argumentEntries = info.arguments?.map((arg) => {
@@ -683,7 +685,7 @@ function selectionNodeToRetrieve(
     const args = argumentEntries ? Object.fromEntries(argumentEntries) : undefined
     const selections = info.selectionSet?.selections
       .filter((n) => n.kind !== Kind.INLINE_FRAGMENT || !n.typeCondition?.name.value.includes('Failure')) //TODO: weak check
-      .map((v) => selectionNodeToRetrieve(v, variables))
+      .map((v) => selectionNodeToRetrieve(v, variables, fragments))
     const select = selections?.length ? selections.reduce((p, c) => ({ ...p, ...c })) : undefined
     if (info.name.value === '__typename') {
       return {}
@@ -693,10 +695,17 @@ function selectionNodeToRetrieve(
     }
     return { [info.name.value]: { select, where: args.where, orderBy: args.orderBy, take: args.take, skip: args.skip } }
   } else if (info.kind === Kind.INLINE_FRAGMENT) {
-    const results = info.selectionSet.selections.map((v) => selectionNodeToRetrieve(v, variables))
+    const results = info.selectionSet.selections.map((v) => selectionNodeToRetrieve(v, variables, fragments))
+    return results.reduce((p, c) => ({ ...p, ...c }))
+  } else if (info.kind === Kind.FRAGMENT_SPREAD) {
+    const fragment = fragments[info.name.value]
+    if (!fragment) {
+      throw new Error(`Fragment ${info.name.value} not found.`)
+    }
+    const results = fragment.selectionSet.selections.map((v) => selectionNodeToRetrieve(v, variables, fragments))
     return results.reduce((p, c) => ({ ...p, ...c }))
   } else {
-    throw new Error(`Invalid GraphQL field type: ${info.kind}`)
+    assertNever(info, 'Invalid GraphQL field type')
   }
 }
 
@@ -946,7 +955,7 @@ function gatherRawRetrieve(info: GraphQLResolveInfo, isOutputTypeWrapped: boolea
     )
   }
   const node = info.fieldNodes[0]
-  const retrieve = selectionNodeToRetrieve(node, info.variableValues)
+  const retrieve = selectionNodeToRetrieve(node, info.variableValues, info.fragments)
   const rawRetrieve = retrieve[node.name.value]
   let finalRetrieve = rawRetrieve
   if (

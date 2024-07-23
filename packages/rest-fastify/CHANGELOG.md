@@ -1,5 +1,16 @@
 # @mondrian-framework/rest-fastify
 
+## 2.0.54
+
+### Patch Changes
+
+- Add support for FRAGMENT_SPREAD
+- Updated dependencies
+  - @mondrian-framework/model@2.0.54
+  - @mondrian-framework/module@2.0.54
+  - @mondrian-framework/rest@2.0.54
+  - @mondrian-framework/utils@2.0.54
+
 ## 2.0.53
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.54
+
+### Patch Changes
+
+- Add support for FRAGMENT_SPREAD
+
 ## 2.0.53
 
 ### Patch Changes

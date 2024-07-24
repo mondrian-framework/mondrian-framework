@@ -33,13 +33,16 @@ import {
 } from 'graphql'
 
 //this tag will prevent the field generation
-const IGNORE_ON_GRAPHQL_GENERATION = 'ignore_on_graphql_generation'
+const IGNORE_ON_GRAPHQL_GENERATION = 'ignore_on_graphql_generation' as const
 
 //this tag (on object or entity) will prevent the retrieve generation on each field
-const IGNORE_RETRIEVE_INPUT_FIELD_GENERATION = 'ignore_retrieve_input_field_generation'
+const IGNORE_RETRIEVE_INPUT_FIELD_GENERATION = 'ignore_retrieve_input_field_generation' as const
 
 //default name when wrapping the result in an union for the error (eg: { value: Entity[] } | { error1: { ... } })
-const UNION_WRAP_FIELD_NAME = 'value'
+const UNION_WRAP_FIELD_NAME = 'value' as const
+
+//default name when wrapping the result in an object (eg: { value: Entity[], totalCount: number })
+const TOTAL_COUNT_FIELD_NAME = 'totalCount' as const
 
 /**
  * Generates a name for the given type with the following algorithm:
@@ -788,7 +791,7 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
       if (applyResult.isOk) {
         const totalCounts = isTotalCountArray
           ? {
-              totalCount:
+              [TOTAL_COUNT_FIELD_NAME]:
                 (applyResult.value as any) instanceof model.TotalCountArray
                   ? (applyResult.value as any).totalCount
                   : (applyResult.value as any).length,
@@ -882,8 +885,8 @@ function getFunctionOutputType(
     model.isNullable(fun.output) ||
     isTotalCountArray
 
-  const totalCountFields: { totalCount: model.NumberType } | {} = isTotalCountArray
-    ? { totalCount: model.integer({ minimum: 0 }) }
+  const totalCountFields: { [K in typeof TOTAL_COUNT_FIELD_NAME]: model.NumberType } | {} = isTotalCountArray
+    ? { [TOTAL_COUNT_FIELD_NAME]: model.integer({ minimum: 0 }) }
     : {}
   const success = isOutputTypeWrapped
     ? model

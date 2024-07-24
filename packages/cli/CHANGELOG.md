@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.55
+
+### Patch Changes
+
+- Add TotalCountArray
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.55
+  - @mondrian-framework/cli-commander@2.0.55
+
 ## 2.0.54
 
 ### Patch Changes

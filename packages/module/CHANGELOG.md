@@ -1,5 +1,13 @@
 # @mondrian-framework/module
 
+## 2.0.55
+
+### Patch Changes
+
+- Add TotalCountArray
+- Updated dependencies
+  - @mondrian-framework/model@2.0.55
+
 ## 2.0.54
 
 ### Patch Changes

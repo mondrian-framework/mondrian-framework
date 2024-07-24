@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.55
+
+### Patch Changes
+
+- Add TotalCountArray
+
 ## 2.0.54
 
 ### Patch Changes

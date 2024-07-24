@@ -74,7 +74,7 @@ export function fromType(
   }
   const res = model.match(type, {
     wrapper: ({ wrappedType }) => fromType(wrappedType, functionCapabilities),
-    entity: (_, type) => result.ok(retrieve(type, functionCapabilities)),
+    entity: (_, type) => result.ok(retrieve(type, functionCapabilities, true)),
     otherwise: () => result.fail(null),
   }) as result.Result<model.Type, null>
   return res as result.Result<model.ObjectType<model.Mutability.Immutable, model.Types>, null>
@@ -97,6 +97,7 @@ type Retrieve<T extends model.Lazy<model.EntityType<any, any>>, C extends Functi
 function retrieve(
   entity: model.Lazy<model.EntityType<any, any>>,
   capabilities: FunctionCapabilities,
+  isRoot = false,
 ): model.ObjectType<model.Mutability.Immutable, model.Types> {
   const options = model.concretise(entity).options?.retrieve
   const maxSkip = typeof options?.skip === 'object' ? options.skip.max : undefined
@@ -105,10 +106,10 @@ function retrieve(
     ...(capabilities.select ? { select: model.optional(select(entity)) } : {}),
     ...(capabilities.where && options?.where ? { where: model.optional(where(entity)) } : {}),
     ...(capabilities.orderBy && options?.orderBy ? { orderBy: model.array(orderBy(entity)).optional() } : {}),
-    ...(capabilities.skip && options?.skip
+    ...(capabilities.skip && (isRoot || options?.skip)
       ? { skip: model.integer({ minimum: 0, maximum: maxSkip }).optional({ defaultDecodeValue: 0 }) }
       : {}),
-    ...(capabilities.take && options?.take
+    ...(capabilities.take && (isRoot || options?.take)
       ? { take: model.integer({ minimum: 0, maximum: maxTake }).optional({ defaultDecodeValue: maxTake }) }
       : {}),
   })
@@ -494,10 +495,10 @@ export function selectedType<T extends model.Type>(type: T, retrieve: GenericRet
     return optionalizeEmbeddedEntities(type)
   }
   return model.match(type, {
-    optional: ({ wrappedType }) => model.optional(selectedType(wrappedType, retrieve)),
-    nullable: ({ wrappedType }) => model.nullable(selectedType(wrappedType, retrieve)),
-    array: ({ wrappedType }) => model.array(selectedType(wrappedType, retrieve)),
-    record: ({ fields }) => {
+    optional: ({ wrappedType, options }) => model.optional(selectedType(wrappedType, retrieve), options),
+    nullable: ({ wrappedType, options }) => model.nullable(selectedType(wrappedType, retrieve), options),
+    array: ({ wrappedType, options }) => model.array(selectedType(wrappedType, retrieve), options),
+    record: ({ fields, options }) => {
       const selectedFields = flatMapObject(fields, (fieldName, fieldType) => {
         const selection = select[fieldName]
         if (selection === true) {
@@ -510,7 +511,7 @@ export function selectedType<T extends model.Type>(type: T, retrieve: GenericRet
           return []
         }
       })
-      return model.object(selectedFields)
+      return model.object(selectedFields, options)
     },
     otherwise: (_, t) => t,
   })
@@ -532,13 +533,16 @@ function optionalizeEmbeddedEntities(type: model.Type): model.Type {
     })
   }
   return model.match(type, {
-    optional: ({ wrappedType }) => model.optional(optionalizeEmbeddedEntities(wrappedType)),
-    nullable: ({ wrappedType }) => model.nullable(optionalizeEmbeddedEntities(wrappedType)),
-    array: ({ wrappedType }) => model.array(optionalizeEmbeddedEntities(wrappedType)),
-    entity: ({ fields }) => model.entity(optionalizeEntityFields(fields)),
-    object: ({ fields }) => model.object(optionalizeEntityFields(fields)),
-    union: ({ variants }) =>
-      model.union(mapObject(variants, (_, variantType) => optionalizeEmbeddedEntities(variantType))),
+    optional: ({ wrappedType, options }) => model.optional(optionalizeEmbeddedEntities(wrappedType), options),
+    nullable: ({ wrappedType, options }) => model.nullable(optionalizeEmbeddedEntities(wrappedType), options),
+    array: ({ wrappedType, options }) => model.array(optionalizeEmbeddedEntities(wrappedType), options),
+    entity: ({ fields, options }) => model.entity(optionalizeEntityFields(fields), options),
+    object: ({ fields, options }) => model.object(optionalizeEntityFields(fields), options),
+    union: ({ variants, options }) =>
+      model.union(
+        mapObject(variants, (_, variantType) => optionalizeEmbeddedEntities(variantType)),
+        options,
+      ),
     otherwise: (_, t) => t,
   })
 }

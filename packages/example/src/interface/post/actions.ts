@@ -19,7 +19,7 @@ export const writePost = functions.define({
 })
 
 export const readPosts = functions.define({
-  output: model.array(Post),
+  output: model.array(Post, { totalCount: true }),
   retrieve: retrieve.allCapabilities,
   errors: {
     unauthorizedAccess: error.standard.UnauthorizedAccess,

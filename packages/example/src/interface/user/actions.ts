@@ -68,7 +68,7 @@ export const follow = functions.define({
 })
 
 export const getUsers = functions.define({
-  output: model.array(User),
+  output: model.array(User, { totalCount: true }),
   errors: {
     authenticationFailed,
     unauthorizedAccess: error.standard.UnauthorizedAccess,

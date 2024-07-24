@@ -3,6 +3,20 @@ import { BaseType } from './base'
 import { JSONType } from '@mondrian-framework/utils'
 import gen from 'fast-check'
 
+export class TotalCountArray<T> extends Array<T> {
+  private _totalCount: number
+  constructor(totalCount: number, items: readonly T[]) {
+    super(...items)
+    this._totalCount = totalCount
+  }
+  public get totalCount(): number {
+    return this._totalCount
+  }
+  static get [Symbol.species]() {
+    return Array
+  }
+}
+
 /**
  * @param wrappedType the {@link model.Type} describing the items held by the new `ArrayType`
  * @param options the {@link model.ArrayTypeOptions} used to define the new `ArrayType`
@@ -63,7 +77,12 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     options: Required<encoding.Options>,
   ): JSONType {
     const concreteItemType = model.concretise(this.wrappedType)
-    return value.map((item) => concreteItemType.encodeWithoutValidation(item as never, options))
+    const encoded = value.map((item) => concreteItemType.encodeWithoutValidation(item as never, options))
+    if (this.options?.totalCount && value instanceof TotalCountArray) {
+      return new TotalCountArray(value.totalCount, encoded as Array<model.Infer<T>>) as JSONType
+    } else {
+      return encoded
+    }
   }
 
   protected validateInternal(
@@ -134,12 +153,18 @@ class ArrayTypeImpl<M extends model.Mutability, T extends model.Type>
     value: unknown,
     options: Required<decoding.Options>,
   ): decoding.Result<model.Infer<model.ArrayType<M, T>>> {
+    let res: decoding.Result<model.Infer<model.ArrayType<M, T>>>
     if (value instanceof Array) {
-      return this.decodeArrayValues(value, options)
+      res = this.decodeArrayValues(value, options)
     } else if (options.typeCastingStrategy === 'tryCasting' && value instanceof Object) {
-      return this.decodeObjectAsArray(value, options)
+      res = this.decodeObjectAsArray(value, options)
     } else {
-      return decoding.fail('array', value)
+      res = decoding.fail('array', value)
+    }
+    if (this.options?.totalCount && res.isOk && value instanceof TotalCountArray) {
+      return decoding.succeed(new TotalCountArray(value.totalCount, res.value))
+    } else {
+      return res
     }
   }
 

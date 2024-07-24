@@ -57,7 +57,8 @@ export function testTypeEncodingAndDecoding<T extends model.Type>(
       const { raw } = rawValueAndExpectedValueFromUnknown(rawValue)
       const decoded = model.concretise(type).decode(raw)
       if (decoded.isOk) {
-        expect(model.concretise(type).encodeWithoutValidation(decoded.value as never)).toEqual(raw)
+        const encoded = model.concretise(type).encodeWithoutValidation(decoded.value as never)
+        expect(encoded).toEqual(raw)
       } else {
         // If the decoding fails I fail the test, it doesn't make sense to check for inverse in that case
         return expect.fail(

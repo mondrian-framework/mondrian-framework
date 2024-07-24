@@ -22,7 +22,6 @@ export const Post = () =>
       retrieve: {
         where: { OR: true, author: true, title: true },
         orderBy: { id: true, author: true },
-        //take: true,
       },
     },
   )

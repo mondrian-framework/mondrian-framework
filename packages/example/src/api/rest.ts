@@ -15,14 +15,8 @@ const api = rest.build({
     login: { method: 'post', path: '/login', errorCodes: { invalidLogin: 401 } },
     follow: { method: 'put', path: '/user/{userId}/follow', security: [{ loggedUser: [] }] },
     writePost: { method: 'post', path: '/post', security: [{ loggedUser: [] }] },
-    readPosts: [
-      {
-        method: 'get',
-        path: '/user/{userId}/posts',
-        security: [{ loggedUser: [] }],
-        responseHeaders: { 'x-total-count': { schema: { type: 'integer' } } },
-      },
-    ],
+    readPosts: [{ method: 'get', path: '/user/posts', security: [{ loggedUser: [] }] }],
+    getUsers: { method: 'get', path: '/users', security: [{ loggedUser: [] }] },
     likePost: { method: 'put', path: '/post/{postId}/like', security: [{ loggedUser: [] }] },
   },
   securities: {

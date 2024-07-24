@@ -1633,6 +1633,7 @@ export type ArrayTypeOptions = BaseOptions & {
   readonly maxItems?: number
   readonly minItems?: number
   readonly distinct?: boolean
+  readonly totalCount?: boolean
 }
 
 /**
@@ -2273,6 +2274,14 @@ export function isNullable(type: Type): type is NullableType<Type> {
  */
 export function isArray(type: Type): type is ArrayType<Mutability, Type> {
   return hasWrapper(type, Kind.Array)
+}
+
+/**
+ * @param type the type to check
+ * @returns true if the type is a total count array type
+ */
+export function isTotalCountArray(type: Type): type is ArrayType<Mutability, Type> {
+  return isArray(type) && model.concretise(type).options?.totalCount === true
 }
 
 /**

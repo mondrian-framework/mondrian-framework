@@ -3,7 +3,7 @@ import { User } from '../../interface/user'
 import { store } from '../../rate-limiter'
 import { rateLimitByIpGuard } from '../guards'
 import { authProvider, dbProvider } from '../providers'
-import { result } from '@mondrian-framework/model'
+import { model, result } from '@mondrian-framework/model'
 import { retrieve } from '@mondrian-framework/module'
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
 import { Prisma } from '@prisma/client'
@@ -88,8 +88,11 @@ export const follow = module.functions.follow.use({ providers: { auth: authProvi
 })
 
 export const getUsers = module.functions.getUsers.use({ providers: { auth: authProvider, db: dbProvider } }).implement({
-  async body({ retrieve: thisRetrieve, db: { prisma } }) {
-    const users = await prisma.user.findMany(thisRetrieve)
-    return result.ok(users)
+  async body({ retrieve, db: { prisma } }) {
+    const [users, totalCount] = await prisma.$transaction([
+      prisma.user.findMany(retrieve),
+      prisma.user.count({ where: retrieve.where }),
+    ])
+    return result.ok(new model.TotalCountArray(totalCount, users))
   },
 })

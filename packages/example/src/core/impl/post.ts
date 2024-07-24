@@ -1,7 +1,7 @@
 import { module } from '../../interface'
 import { PostVisibility } from '../../interface/post'
 import { authProvider, dbProvider, optionalAuthProvider } from '../providers'
-import { result } from '@mondrian-framework/model'
+import { result, model } from '@mondrian-framework/model'
 
 export const writePost = module.functions.writePost
   .use({ providers: { auth: authProvider, db: dbProvider } })
@@ -26,8 +26,11 @@ export const readPosts = module.functions.readPosts
   .use({ providers: { db: dbProvider, auth: optionalAuthProvider } })
   .implement({
     async body({ db: { prisma }, retrieve }) {
-      const posts = await prisma.post.findMany(retrieve)
-      return result.ok(posts)
+      const [posts, totalCount] = await prisma.$transaction([
+        prisma.post.findMany(retrieve),
+        prisma.post.count({ where: retrieve.where }),
+      ])
+      return result.ok(new model.TotalCountArray(totalCount, posts))
     },
   })
 

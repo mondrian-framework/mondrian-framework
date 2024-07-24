@@ -35,6 +35,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
     server: 'REST',
   })
   const codes = { ...api.errorCodes, ...specification.errorCodes } as Record<string, number>
+  const isTotalCountArray = model.isTotalCountArray(functionBody.output)
 
   const handler = async ({ request, serverContext }: { request: http.Request; serverContext: ServerContext }) => {
     const subHandler = async () => {
@@ -75,11 +76,14 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
         } else {
           const encoded = partialOutputType.encodeWithoutValidation(applyResult.value)
           const contentType = specification.contentType ?? 'application/json'
-          const response: http.Response = {
-            status: 200,
-            body: encoded,
-            headers: { 'Content-Type': contentType },
+          const headers: Record<string, string> = { 'Content-Type': contentType }
+          if (isTotalCountArray) {
+            headers['x-total-count'] =
+              (applyResult.value as any) instanceof model.TotalCountArray
+                ? (applyResult.value as any).totalCount.toString()
+                : (applyResult.value as any).length.toString()
           }
+          const response: http.Response = { status: 200, body: encoded, headers }
           return response
         }
       } catch (error) {

@@ -87,6 +87,7 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
           })
         }
       }
+      const isTotalCountArray = model.isTotalCountArray(functionBody.output)
       const operationObj: OpenAPIV3_1.OperationObject = {
         parameters: parameters ? [...parameters, ...retrieveParameters] : retrieveParameters,
         requestBody,
@@ -94,7 +95,13 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
           '200': {
             description: 'Success',
             content: { [specification.contentType ?? 'application/json']: { schema } },
-            headers: specification.responseHeaders,
+            headers:
+              specification.responseHeaders || isTotalCountArray
+                ? {
+                    ...(isTotalCountArray ? { 'x-total-count': { schema: { type: 'integer', minimum: 0 } } } : {}),
+                    ...specification.responseHeaders,
+                  }
+                : undefined,
           },
           ...errorSchemas,
         },

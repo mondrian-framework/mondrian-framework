@@ -736,7 +736,8 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
   }
   const graphQLInputTypeName = specification.inputName ?? 'input'
 
-  const { outputType, isOutputTypeWrapped } = getFunctionOutputTypeWithErrors(functionBody, operationName)
+  const isTotalCountArray = model.isTotalCountArray(functionBody.output)
+  const { outputType, isOutputTypeWrapped } = getFunctionOutputType(functionBody, operationName)
   const concreteOutputType = model.concretise(outputType)
   const partialOutputType = model.concretise(model.partialDeep(outputType))
   const plainOutput = typeToGraphQLOutputType(outputType, {
@@ -785,9 +786,17 @@ function makeOperation<Fs extends functions.FunctionImplementations, ServerConte
       //Output processing
       let outputValue
       if (applyResult.isOk) {
-        if (functionBody.errors) {
-          //wrap in an object if the output was wrapped by getFunctionOutputTypeWithErrors function
-          const objectValue = isOutputTypeWrapped ? { value: applyResult.value } : applyResult.value
+        const totalCounts = isTotalCountArray
+          ? {
+              totalCount:
+                (applyResult.value as any) instanceof model.TotalCountArray
+                  ? (applyResult.value as any).totalCount
+                  : (applyResult.value as any).length,
+            }
+          : {}
+        if (isOutputTypeWrapped) {
+          //wrap in an object if the output was wrapped by getFunctionOutputType function
+          const objectValue = isOutputTypeWrapped ? { value: applyResult.value, ...totalCounts } : applyResult.value
           outputValue = partialOutputType.encodeWithoutValidation(objectValue as never)
         } else {
           outputValue = partialOutputType.encodeWithoutValidation(applyResult.value as never)
@@ -853,46 +862,58 @@ function mapUnknownError(error: unknown): Error {
 
 /**
  * Gets the function output type based on errors support and function output type.
- * If function.errors is not set -> the function output is returned and not wrapped
+ * If function.errors is not set and is not a total count array -> the function output is returned and not wrapped
+ * If function.errors is not set but is a total count array -> The function output type is wrapped in an object.
  * If function.erros is defined -> returns a output that is the union between function output type
  *   and the function errors. The function output type is wrapped in an object if it's not an object
  *   nor an entity.
  */
-function getFunctionOutputTypeWithErrors(
+function getFunctionOutputType(
   fun: functions.FunctionInterface,
   functionName: string,
 ): { outputType: model.Type; isOutputTypeWrapped: boolean } {
-  if (!fun.errors) {
+  const isTotalCountArray = model.isTotalCountArray(fun.output)
+  if (!fun.errors && !isTotalCountArray) {
     return { outputType: fun.output, isOutputTypeWrapped: false }
   }
   const isOutputTypeWrapped =
     (!model.isEntity(fun.output) && !model.isObject(fun.output)) ||
     model.isOptional(fun.output) ||
-    model.isNullable(fun.output)
+    model.isNullable(fun.output) ||
+    isTotalCountArray
 
+  const totalCountFields: { totalCount: model.NumberType } | {} = isTotalCountArray
+    ? { totalCount: model.integer({ minimum: 0 }) }
+    : {}
   const success = isOutputTypeWrapped
     ? model
-        .object({ [UNION_WRAP_FIELD_NAME]: fun.output }, { tags: { [IGNORE_RETRIEVE_INPUT_FIELD_GENERATION]: true } })
-        .setName(`${capitalise(functionName)}Success`)
+        .object(
+          { [UNION_WRAP_FIELD_NAME]: fun.output, ...totalCountFields },
+          { tags: { [IGNORE_RETRIEVE_INPUT_FIELD_GENERATION]: true } },
+        )
+        .setName(fun.errors ? `${capitalise(functionName)}Success` : `${capitalise(functionName)}TotalCount`)
     : fun.output
-  if (Object.keys(fun.errors).includes('code')) {
+
+  if (fun.errors && Object.keys(fun.errors).includes('code')) {
     throw new Error("[GraphQL generation] 'code' is reserved as error code")
   }
-  if (Object.keys(fun.errors).includes('value')) {
+  if (fun.errors && Object.keys(fun.errors).includes('value')) {
     throw new Error("[GraphQL generation] 'value' is reserved as error code")
   }
-  const error = model
-    .object({
-      //[GraphQL generation]: isError' is used to be confident that the union ownership is inferred correctly.
-      '[GraphQL generation]: isError': model.literal(true, { tags: { [IGNORE_ON_GRAPHQL_GENERATION]: true } }),
-      code: model.string(),
-      errors: model
-        .object(mapObject(fun.errors, (_, errorType) => model.optional(errorType)))
-        .setName(`${capitalise(functionName)}Errors`),
-    })
-    .setName(`${capitalise(functionName)}Failure`)
+  const error = fun.errors
+    ? model
+        .object({
+          //[GraphQL generation]: isError' is used to be confident that the union ownership is inferred correctly.
+          '[GraphQL generation]: isError': model.literal(true, { tags: { [IGNORE_ON_GRAPHQL_GENERATION]: true } }),
+          code: model.string(),
+          errors: model
+            .object(mapObject(fun.errors, (_, errorType) => model.optional(errorType)))
+            .setName(`${capitalise(functionName)}Errors`),
+        })
+        .setName(`${capitalise(functionName)}Failure`)
+    : undefined
   return {
-    outputType: model.union({ success, error }).setName(`${capitalise(functionName)}Result`),
+    outputType: error ? model.union({ success, error }).setName(`${capitalise(functionName)}Result`) : success,
     isOutputTypeWrapped,
   }
 }
@@ -967,6 +988,9 @@ function gatherRawRetrieve(info: GraphQLResolveInfo, isOutputTypeWrapped: boolea
     //unwrap the selection
     const unwrappedSelect = rawRetrieve.select[UNION_WRAP_FIELD_NAME].select
     finalRetrieve = { ...rawRetrieve, select: unwrappedSelect }
+  } else if (isOutputTypeWrapped && typeof rawRetrieve === 'object' && rawRetrieve.select) {
+    //selecting only totalCount
+    finalRetrieve = { ...rawRetrieve, select: undefined }
   }
   return (finalRetrieve === true ? {} : finalRetrieve) as retrieve.GenericRetrieve
 }

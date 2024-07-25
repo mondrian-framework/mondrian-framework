@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.56
+
+### Patch Changes
+
+- Minor fixes
+
 ## 2.0.55
 
 ### Patch Changes

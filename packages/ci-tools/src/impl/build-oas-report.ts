@@ -69,7 +69,7 @@ export const buildOASReport = moduleInterface.functions.buildOASReport
       return result.ok({
         breakingChanges: report?.reportSummary?.components?.breakingChanges ?? 0,
         reportId: reportId,
-        reportUrl: serverBaseURL ? new URL(`${serverBaseURL}/v1/reports/${reportId}`) : undefined,
+        reportUrl: serverBaseURL ? `${serverBaseURL}/v1/reports/${reportId}` : undefined,
         info: report,
       })
     },

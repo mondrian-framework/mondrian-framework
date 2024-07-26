@@ -43,7 +43,7 @@ export const buildGraphQLReport = moduleInterface.functions.buildGraphQLReport
       return result.ok({
         breakingChanges: changes.filter((c) => c.criticality.level === CriticalityLevel.Breaking).length,
         reportId,
-        reportUrl: serverBaseURL ? new URL(`${serverBaseURL}/v1/reports/${reportId}`) : undefined,
+        reportUrl: serverBaseURL ? `${serverBaseURL}/v1/reports/${reportId}` : undefined,
         info: changes,
       })
     },

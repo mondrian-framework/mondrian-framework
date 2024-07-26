@@ -20,7 +20,7 @@ function decode<T extends model.Type>(
   value: string,
   headers: Record<string, string> | undefined,
   schemaType: model.Type,
-): result.Result<{ url: URL; headers: Record<string, string> | undefined } | model.Infer<T>, unknown> {
+): result.Result<{ url: string; headers: Record<string, string> | undefined } | model.Infer<T>, unknown> {
   const asUrl = model.url().decode(value)
   if (asUrl.isOk) {
     return result.ok({ url: asUrl.value, headers })

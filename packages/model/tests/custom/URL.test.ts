@@ -3,13 +3,14 @@ import { testTypeEncodingAndDecoding, testWithArbitrary } from './property-helpe
 import { fc as gen } from '@fast-check/vitest'
 import { describe } from 'vitest'
 
-const validValues = gen.webUrl().map((urlString) => ({ raw: urlString, expected: new URL(urlString) }))
+const validValues = gen.webUrl().map((urlString) => ({ raw: urlString, expected: urlString }))
 const knownValidValues = [
-  { raw: 'http://www.google.com', expected: new URL('http://www.google.com') },
-  { raw: 'https://www.google.com', expected: new URL('https://www.google.com') },
+  { raw: 'http://www.google.com/', expected: 'http://www.google.com/' },
+  { raw: 'https://www.google.com', expected: 'https://www.google.com' },
 ]
 
 const knownInvalidValues = [
+  'smtp://www.google.com/',
   'www.google.com',
   'google.com',
   'google',
@@ -26,7 +27,7 @@ const knownInvalidValues = [
 describe(
   'standard property based tests',
   testTypeEncodingAndDecoding(
-    model.url(),
+    model.url({ allowedProtocols: ['http', 'https'] }),
     {
       validValues,
       knownValidValues,

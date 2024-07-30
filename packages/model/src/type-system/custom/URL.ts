@@ -1,9 +1,11 @@
 import { decoding, model, validation } from '../..'
 import gen from 'fast-check'
 
-export type URLType = model.CustomType<'URL', { allowedProtocols?: string[] }, string>
+type URLOptions = { allowedProtocols?: string[]; maxLength?: number }
 
-export function url(options?: model.BaseOptions & { allowedProtocols?: string[] }): URLType {
+export type URLType = model.CustomType<'URL', URLOptions, string>
+
+export function url(options?: model.BaseOptions & URLOptions): URLType {
   return model.custom({ typeName: 'URL', encoder, decoder, validator, arbitrary, options })
 }
 
@@ -21,12 +23,15 @@ function decoder(value: unknown): decoding.Result<string> {
   return decoding.fail('url', value)
 }
 
-function validator(value: string, _: validation.Options, options?: { allowedProtocols?: string[] }): validation.Result {
+function validator(value: string, _: validation.Options, options?: URLOptions): validation.Result {
   try {
     const url = new URL(value)
     const protocol = url.protocol.slice(0, -1)
     if (options?.allowedProtocols && !options.allowedProtocols.includes(protocol)) {
       return validation.fail(`Invalid protocol, expected one of ${options.allowedProtocols.join(', ')}`, value)
+    }
+    if (options?.maxLength != null && value.length > options.maxLength) {
+      return validation.fail(`URL is too long, max length is ${options.maxLength}`, value)
     }
     return validation.succeed()
   } catch {

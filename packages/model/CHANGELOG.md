@@ -1,5 +1,13 @@
 # @mondrian-framework/model
 
+## 2.0.57
+
+### Patch Changes
+
+- Improve url type
+- Updated dependencies
+  - @mondrian-framework/utils@2.0.57
+
 ## 2.0.56
 
 ### Patch Changes

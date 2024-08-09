@@ -109,7 +109,7 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
         tags:
           specification.namespace === null
             ? []
-            : functionBody.options?.namespace ?? specification.namespace
+            : (functionBody.options?.namespace ?? specification.namespace)
               ? [functionBody.options?.namespace ?? specification.namespace ?? '']
               : [],
         security: specification.security,

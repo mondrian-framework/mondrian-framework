@@ -27,7 +27,7 @@
     "rest": "2.0.0",
     "@opentelemetry/sdk-node": "0.52.1",
     "@opentelemetry/api-logs": "0.52.1",
-    "@redis/client": "1.5.17",
+    "@redis/client": "1.6.0",
     "@fastify/cors": "9.0.1",
     "@opentelemetry/instrumentation-http": "0.52.1",
     "@opentelemetry/instrumentation-fastify": "0.38.0",

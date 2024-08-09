@@ -405,10 +405,10 @@ export function merge<const T extends GenericRetrieve>(
   const orderBy =
     options?.orderByOrder === 'right-before' ? [...rightOrderBy, ...leftOrderBy] : [...leftOrderBy, ...rightOrderBy]
   return {
-    where: left.where && right.where ? { AND: [left.where, right.where] } : left.where ?? right.where,
+    where: left.where && right.where ? { AND: [left.where, right.where] } : (left.where ?? right.where),
     orderBy: orderBy.length === 0 ? undefined : orderBy,
-    skip: options?.skipOrder === 'right-before' ? right.skip ?? left.skip : left.skip ?? right.skip,
-    take: options?.takeOrder === 'right-before' ? right.take ?? left.take : left.take ?? right.take,
+    skip: options?.skipOrder === 'right-before' ? (right.skip ?? left.skip) : (left.skip ?? right.skip),
+    take: options?.takeOrder === 'right-before' ? (right.take ?? left.take) : (left.take ?? right.take),
     select: mergeSelect(type, left.select, right.select, options),
   } as unknown as T
 }

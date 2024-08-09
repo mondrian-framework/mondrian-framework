@@ -55,8 +55,8 @@ class NumberTypeImpl extends BaseType<model.NumberType> implements model.NumberT
   constructor(options?: model.NumberTypeOptions) {
     super(options)
     const { maximum, minimum, exclusiveMaximum, exclusiveMinimum, isInteger } = options ?? {}
-    const lowerBound = minimum && exclusiveMinimum ? Math.max(minimum, exclusiveMinimum) : minimum ?? exclusiveMinimum
-    const upperBound = maximum && exclusiveMaximum ? Math.min(maximum, exclusiveMaximum) : maximum ?? exclusiveMaximum
+    const lowerBound = minimum && exclusiveMinimum ? Math.max(minimum, exclusiveMinimum) : (minimum ?? exclusiveMinimum)
+    const upperBound = maximum && exclusiveMaximum ? Math.min(maximum, exclusiveMaximum) : (maximum ?? exclusiveMaximum)
     const exclude = lowerBound === exclusiveMinimum || upperBound === exclusiveMaximum
     if (
       Number.isNaN(maximum ?? 0) ||

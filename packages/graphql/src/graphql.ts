@@ -54,7 +54,7 @@ function generateName(type: model.Type, internalData: InternalData): string {
   const concreteType = model.concretise(type)
   const name = concreteType.options?.name
     ? capitalise(concreteType.options.name)
-    : internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`
+    : (internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`)
   return name
 }
 
@@ -65,7 +65,7 @@ function generateInputName(type: model.Type, internalData: InternalData): string
   const concreteType = model.concretise(type)
   const name = concreteType.options?.name
     ? capitalise(concreteType.options.name)
-    : internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`
+    : (internalData.defaultName ?? `ANONYMPUS_TYPE_${internalData.usedNames.size}`)
   if (name.toLocaleLowerCase().endsWith('input')) {
     const result = name.slice(0, name.length - 5)
     return `${result}Input`

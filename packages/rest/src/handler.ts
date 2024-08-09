@@ -63,7 +63,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
         //Output processing
         if (applyResult.isFailure) {
           const key = Object.keys(applyResult.error)[0]
-          const status = key ? codes[key] ?? 400 : 400
+          const status = key ? (codes[key] ?? 400) : 400
           const encodedError = mapObject(applyResult.error, (key, value) =>
             model.concretise((functionBody.errors ?? {})[key]).encodeWithoutValidation(value as never),
           )

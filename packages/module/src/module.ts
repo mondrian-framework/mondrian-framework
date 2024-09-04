@@ -25,14 +25,18 @@ export interface Module<Fs extends functions.FunctionImplementations = functions
   extends ModuleInterface {
   name: string
   functions: Fs
-  policies?: (args: ModuleMiddlewareInputArgs<Fs>) => security.Policies | Promise<security.Policies>
+  policies?: (
+    args: ModuleMiddlewareInputArgs<Fs>,
+  ) => 'skip' | Promise<'skip'> | security.Policies | Promise<security.Policies>
   options?: ModuleOptions
 }
 
 export interface ModuleBuildInput<Fs extends functions.Functions = functions.Functions> extends ModuleInterface {
   name: string
   functions: Fs
-  policies?: (args: ModuleMiddlewareInputArgs<Fs>) => security.Policies | Promise<security.Policies>
+  policies?: (
+    args: ModuleMiddlewareInputArgs<Fs>,
+  ) => 'skip' | Promise<'skip'> | security.Policies | Promise<security.Policies>
   options?: ModuleOptions
 }
 

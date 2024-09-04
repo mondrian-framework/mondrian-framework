@@ -114,7 +114,9 @@ function handleFailure({
  * In case the checks fails and {@link exception.UnauthorizedAccess} is thrown
  */
 export function checkPolicies(
-  policies: (args: functions.GenericFunctionArguments) => security.Policies | Promise<security.Policies>,
+  policies: (
+    args: functions.GenericFunctionArguments,
+  ) => 'skip' | Promise<'skip'> | security.Policies | Promise<security.Policies>,
 ): functions.Middleware<
   model.Type,
   model.Type,
@@ -126,10 +128,14 @@ export function checkPolicies(
   return {
     name: 'Check policies',
     apply: async (args, next, thisFunction) => {
+      const givenPolicies = await policies(args)
+      if (givenPolicies === 'skip') {
+        return next(args)
+      }
       const res = checkPolicyInternal({
         outputType: thisFunction.output,
         retrieve: args.retrieve,
-        policies: await policies(args),
+        policies: givenPolicies,
         capabilities: thisFunction.retrieve,
         path: path.root,
       })

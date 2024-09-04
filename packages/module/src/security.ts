@@ -183,7 +183,7 @@ function intersectRetrieveSelection(
             originalSelect[fieldName] as any,
             currentSelect[fieldName] as any,
           )
-        } else {
+        } else if (originalSelect[fieldName] !== undefined) {
           selection[fieldName] = originalSelect[fieldName]
         }
       }

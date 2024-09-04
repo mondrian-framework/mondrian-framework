@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.58
+
+### Patch Changes
+
+- Improve policies mechanism
+
 ## 2.0.57
 
 ### Patch Changes

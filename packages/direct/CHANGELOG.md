@@ -1,5 +1,15 @@
 # @mondrian-framework/direct
 
+## 2.0.58
+
+### Patch Changes
+
+- Improve policies mechanism
+- Updated dependencies
+  - @mondrian-framework/model@2.0.58
+  - @mondrian-framework/module@2.0.58
+  - @mondrian-framework/utils@2.0.58
+
 ## 2.0.57
 
 ### Patch Changes

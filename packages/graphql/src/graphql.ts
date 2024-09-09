@@ -689,6 +689,8 @@ function selectionNodeToRetrieve(
     const selections = info.selectionSet?.selections
       .filter((n) => n.kind !== Kind.INLINE_FRAGMENT || !n.typeCondition?.name.value.includes('Failure')) //TODO: weak check
       .map((v) => selectionNodeToRetrieve(v, variables, fragments))
+    //TODO: some selections could be double, thats because on graphql we can select the same field multiple times
+    //we could throw an exception, or better, if there is only "select" we could merge them
     const select = selections?.length ? selections.reduce((p, c) => ({ ...p, ...c })) : undefined
     if (info.name.value === '__typename') {
       return {}

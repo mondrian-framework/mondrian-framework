@@ -15,6 +15,9 @@ export class TotalCountArray<T> extends Array<T> {
   static get [Symbol.species]() {
     return Array
   }
+  public map<K>(fn: (value: T, index: number, array: T[]) => K, thisArg?: any): TotalCountArray<K> {
+    return new TotalCountArray(this.totalCount, super.map(fn, thisArg))
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/model",
-  "version": "2.0.59",
+  "version": "2.0.60",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -13,7 +13,7 @@
     "prerelease": "tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
-    "@mondrian-framework/utils": "^2.0.59"
+    "@mondrian-framework/utils": "^2.0.60"
   },
   "dependencies": {
     "fast-check": "^3.21.0",

@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.60
+
+### Patch Changes
+
+- Add map to TotalCountArray
+
 ## 2.0.59
 
 ### Patch Changes

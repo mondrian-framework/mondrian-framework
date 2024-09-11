@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.60
+
+### Patch Changes
+
+- Add map to TotalCountArray
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.60
+  - @mondrian-framework/cli-commander@2.0.60
+
 ## 2.0.59
 
 ### Patch Changes

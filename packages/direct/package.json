@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/direct",
-  "version": "2.0.58",
+  "version": "2.0.59",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -13,9 +13,9 @@
   },
   "peerDependencies": {
     "fastify": "^4.28.1",
-    "@mondrian-framework/model": "^2.0.58",
-    "@mondrian-framework/module": "^2.0.58",
-    "@mondrian-framework/utils": "^2.0.58",
+    "@mondrian-framework/model": "^2.0.59",
+    "@mondrian-framework/module": "^2.0.59",
+    "@mondrian-framework/utils": "^2.0.59",
     "@opentelemetry/sdk-node": "^0.52.1"
   },
   "peerDependenciesMeta": {

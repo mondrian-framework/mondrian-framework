@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.59
+
+### Patch Changes
+
+- Add mapper policy
+
 ## 2.0.58
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @mondrian-framework/aws-lambda-rest
 
+## 2.0.59
+
+### Patch Changes
+
+- Add mapper policy
+- Updated dependencies
+  - @mondrian-framework/model@2.0.59
+  - @mondrian-framework/module@2.0.59
+  - @mondrian-framework/rest@2.0.59
+  - @mondrian-framework/utils@2.0.59
+
 ## 2.0.58
 
 ### Patch Changes

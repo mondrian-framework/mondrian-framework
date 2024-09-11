@@ -19,7 +19,9 @@ import { isDeepStrictEqual } from 'util'
  *   .allows({ ... })
  * ```
  */
-export type Policy<T extends model.Type = model.Type> = {
+export type Policy<T extends model.Type = model.Type> = RetrievePolicy<T> | MapperPolicy<T>
+
+type RetrievePolicy<T extends model.Type = model.Type> = {
   readonly entity: T
   readonly selection: boolean | Exclude<retrieve.FromType<T, { select: true }>['select'], null | undefined> //TODO: excluding connected entities?
   readonly restriction?:
@@ -28,11 +30,16 @@ export type Policy<T extends model.Type = model.Type> = {
   readonly filter?: retrieve.FromType<T, { where: true }>['where'] & { AND?: never; OR?: never; NOT?: never }
 }
 
+type MapperPolicy<T extends model.Type = model.Type> = {
+  readonly mapper: (value: model.Infer<model.PartialDeep<T>>) => model.Infer<model.PartialDeep<T>>
+}
+
 /**
  * Represent a set of {@link Policy}
  */
 export type Policies = {
-  readonly list: readonly Policy[]
+  readonly retrievePolicies: ReadonlyMap<model.Type, RetrievePolicy[]>
+  readonly mapperPolicies: ReadonlyMap<model.Type, MapperPolicy[]>
 }
 
 /**
@@ -70,10 +77,72 @@ export type PolicyViolation = model.Infer<typeof PolicyViolation>
  */
 export type PolicyCheckInput = {
   readonly outputType: model.Type
-  readonly policies: Policies
+  readonly policies: ReadonlyMap<model.Type, RetrievePolicy[]>
   readonly retrieve?: retrieve.GenericRetrieve
   readonly capabilities?: retrieve.FunctionCapabilities
   readonly path: path.Path
+}
+
+export type ApplyMapPolicyInput = {
+  readonly outputType: model.Type
+  readonly value: unknown
+  readonly policies: ReadonlyMap<model.Type, MapperPolicy[]>
+}
+
+/**
+ * Entry point of the map policies logic.
+ */
+export function applyMapPolicies({ outputType, policies, value }: ApplyMapPolicyInput): unknown {
+  const typePolicies = policies.get(outputType) ?? []
+  const mappedValue = typePolicies.reduce((v, { mapper }) => mapper(v as never), value)
+
+  return model.match(outputType, {
+    array: ({ wrappedType }) => {
+      if (Array.isArray(mappedValue)) {
+        return mappedValue.map((v) => applyMapPolicies({ outputType: wrappedType, policies, value: v }))
+      } else {
+        return mappedValue //should not happen
+      }
+    },
+    nullable: ({ wrappedType }) => {
+      if (mappedValue === null) {
+        return mappedValue
+      } else {
+        return applyMapPolicies({ outputType: wrappedType, policies, value: mappedValue })
+      }
+    },
+    optional: ({ wrappedType }) => {
+      if (mappedValue === undefined) {
+        return mappedValue
+      } else {
+        return applyMapPolicies({ outputType: wrappedType, policies, value: mappedValue })
+      }
+    },
+    record: ({ fields }) => {
+      if (typeof mappedValue === 'object' && mappedValue !== null) {
+        return Object.fromEntries(
+          Object.entries(fields).flatMap(([key, fieldType]) =>
+            key in mappedValue
+              ? [[key, applyMapPolicies({ outputType: fieldType, policies, value: (mappedValue as any)[key] })]]
+              : [],
+          ),
+        )
+      } else {
+        return mappedValue //should not happen
+      }
+    },
+    union: ({ variants }) => {
+      const variant = Object.values(variants).find(
+        (v) => model.concretise(model.partialDeep(v)).decode(mappedValue).isOk,
+      )
+      if (variant) {
+        return applyMapPolicies({ outputType: variant, policies, value: mappedValue })
+      } else {
+        return mappedValue
+      }
+    },
+    otherwise: () => mappedValue,
+  })
 }
 
 /**
@@ -96,16 +165,16 @@ export function checkPoliciesInternal({
     return result.ok(retrieve)
   }
 
-  const unwrapped = model.concretise(model.unwrap(outputType))
+  const unwrapped = model.concretise(model.unwrapAndConcretize(outputType))
   if (unwrapped.kind !== model.Kind.Entity) {
     throw new Error('Should be an entity')
   }
   const mappedRetrieve = spreadWhereAndOrderByIntoSelection(unwrapped, retrieve)
 
-  const appliedPolicies: Policy[] = []
-  const potentiallyPolicies: { policy: Policy; forbiddenAccess: path.Path[] }[] = []
-  const notSatisfiedPolicies: Policy[] = []
-  const thisPolicies = policies.list.filter((p) => model.areEqual(p.entity, model.unwrap(outputType)))
+  const appliedPolicies: RetrievePolicy[] = []
+  const potentiallyPolicies: { policy: RetrievePolicy; forbiddenAccess: path.Path[] }[] = []
+  const notSatisfiedPolicies: RetrievePolicy[] = []
+  const thisPolicies = policies.get(model.unwrap(outputType)) ?? []
   for (const policy of thisPolicies) {
     if (!isWithinRestriction(policy, retrieve?.where)) {
       notSatisfiedPolicies.push(policy)
@@ -172,12 +241,16 @@ function intersectRetrieveSelection(
     return currenctRetrieve
   }
 
-  const unwrapped = model.unwrap(type)
+  const unwrapped = model.unwrapAndConcretize(type)
   return model.match(unwrapped, {
     entity: ({ fields }) => {
       const selection: Mutable<retrieve.GenericSelect> = {}
       for (const [fieldName, fieldType] of Object.entries(fields)) {
-        if (originalSelect[fieldName] && currentSelect[fieldName] && model.isEntity(model.unwrap(fieldType))) {
+        if (
+          originalSelect[fieldName] &&
+          currentSelect[fieldName] &&
+          model.isEntity(model.unwrapAndConcretize(fieldType))
+        ) {
           selection[fieldName] = intersectRetrieveSelection(
             fieldType,
             originalSelect[fieldName] as any,
@@ -222,7 +295,7 @@ function spreadWhereAndOrderByIntoSelection(
  * This function creates a select with all fields used by the orderBy
  */
 export function orderByToSelection(type: model.Type, orderBy: retrieve.GenericOrderBy): retrieve.GenericSelect {
-  const unwrapped = model.unwrap(type)
+  const unwrapped = model.unwrapAndConcretize(type)
   return (isArray(orderBy) ? orderBy : [orderBy])
     .map((order) => orderByToSelectionInternal(unwrapped, order))
     .reduce((p, c) => retrieve.mergeSelect(unwrapped, p, c)!, {})
@@ -313,7 +386,7 @@ function whereToSelectionInternal(type: model.Type, where: any): any {
  * Checks if selection is included in policy's selection
  */
 export function isSelectionIncluded(
-  policy: Policy,
+  policy: RetrievePolicy,
   selection: retrieve.GenericSelect | undefined,
 ): result.Result<null, path.Path[]> {
   const allowedPaths = selectionToPaths(policy.entity, policy.selection)
@@ -331,13 +404,13 @@ export function isSelectionIncluded(
  * Checks policies recursively for each relations (entity) that is included in the original retrieve.
  */
 function checkForRelations({ outputType, policies, capabilities, ...input }: Required<PolicyCheckInput>): Result {
-  const concreteType = model.concretise(model.unwrap(outputType))
+  const concreteType = model.concretise(model.unwrapAndConcretize(outputType))
   if (!input.retrieve.select || (concreteType.kind !== model.Kind.Object && concreteType.kind !== model.Kind.Entity)) {
     return result.ok(input.retrieve)
   }
   const newRetrieve = { ...input.retrieve, select: { ...input.retrieve.select } }
   for (const [key, value] of Object.entries(input.retrieve.select).filter((v) => v[1])) {
-    const unwrappedField = model.unwrap(concreteType.fields[key])
+    const unwrappedField = model.unwrapAndConcretize(concreteType.fields[key])
     if (unwrappedField.kind === model.Kind.Entity) {
       //TODO: inject input.retrieve.where[key] into relation retrieve
       //Also if the where is contained in AND
@@ -362,7 +435,7 @@ function checkForRelations({ outputType, policies, capabilities, ...input }: Req
 
 function buildSelectForEntity(fields: model.Types): retrieve.GenericSelect {
   //pain point: what if entity inside of object?
-  return flatMapObject(fields, (name, type) => (model.isEntity(model.unwrap(type)) ? [] : [[name, true]]))
+  return flatMapObject(fields, (name, type) => (model.isEntity(model.unwrapAndConcretize(type)) ? [] : [[name, true]]))
 }
 
 /**
@@ -416,7 +489,7 @@ export function selectionToPaths(
  * Checks if policy's where is included in where filter in order to check if the operation is inside the restriction
  * where <= policy.restriction (the where clausole will filter more or equals "value domain" than policy.restriction?)
  */
-export function isWithinRestriction(policy: Policy, where: retrieve.GenericWhere | undefined): boolean {
+export function isWithinRestriction(policy: RetrievePolicy, where: retrieve.GenericWhere | undefined): boolean {
   if (!policy.restriction || Object.keys(policy.restriction).length === 0) {
     return true
   }
@@ -473,26 +546,35 @@ function isValuesIncluded(restrictionField: string, restrictionValues: any[], wh
  * Gets a policies builder for the given entity.
  */
 export function on<T extends model.Type>(entity: T): PoliciesBuilder<T> {
-  return new PoliciesBuilder(entity, []).on(entity)
+  return new PoliciesBuilder(entity, new Map(), new Map()).on(entity)
 }
 
 class PoliciesBuilder<T extends model.Type> implements Policies {
   private readonly entity: T
-  private policies: Policy[]
+  private _retrievePolicies: Map<model.Type, RetrievePolicy[]>
+  private _mapperPolicies: Map<model.Type, MapperPolicy[]>
 
-  constructor(entity: T, policies: Policy[]) {
-    this.policies = policies
+  constructor(
+    entity: T,
+    retrievePolicies: Map<model.Type, RetrievePolicy[]>,
+    mapperPolicies: Map<model.Type, MapperPolicy[]>,
+  ) {
+    this._retrievePolicies = retrievePolicies
+    this._mapperPolicies = mapperPolicies
     this.entity = entity
   }
 
-  get list(): Policy[] {
-    return [...this.policies]
+  get retrievePolicies(): ReadonlyMap<model.Type, RetrievePolicy[]> {
+    return this._retrievePolicies
+  }
+  get mapperPolicies(): ReadonlyMap<model.Type, MapperPolicy[]> {
+    return this._mapperPolicies
   }
 
   /**
-   * Create a new security {@link Policy} for this entity.
+   * Create a new security {@link RetrievePolicy} for this entity.
    */
-  allows(policy: Omit<Policy<T>, 'entity'>): this {
+  allows(policy: Omit<RetrievePolicy<T>, 'entity'>): this {
     if (policy.restriction) {
       const keys = Object.keys(policy.restriction)
       const fields = (model.concretise(this.entity) as model.EntityType<any, model.Types>).fields
@@ -500,12 +582,24 @@ class PoliciesBuilder<T extends model.Type> implements Policies {
         keys.length !== 1 ||
         !(keys[0] in fields) ||
         model.isArray(fields[keys[0]]) ||
-        !model.isScalar(model.unwrap(fields[keys[0]]))
+        !model.isScalar(model.unwrapAndConcretize(fields[keys[0]]))
       ) {
-        throw new Error('Currently on policy restriction it is supported only one (non array) scalar field.')
+        throw new Error('Currently on policy restriction it is supported only on (non array) scalar field.')
       }
     }
-    this.policies.push({ ...policy, entity: this.entity })
+    const policies = this._retrievePolicies.get(this.entity) ?? []
+    policies.push({ ...policy, entity: this.entity })
+    this._retrievePolicies.set(this.entity, policies)
+    return this
+  }
+
+  /**
+   * Create a new security {@link MapperPolicy} for this entity.
+   */
+  map(mapper: (entity: model.Infer<model.PartialDeep<T>>) => model.Infer<model.PartialDeep<T>>): this {
+    const policies = this._mapperPolicies.get(this.entity) ?? []
+    policies.push({ mapper: mapper as any })
+    this._mapperPolicies.set(this.entity, policies)
     return this
   }
 
@@ -517,6 +611,6 @@ class PoliciesBuilder<T extends model.Type> implements Policies {
     if (typeKind !== model.Kind.Entity) {
       throw new Error(`Policies could be defined only on entity types. Got ${typeKind}`)
     }
-    return new PoliciesBuilder(entity, this.policies)
+    return new PoliciesBuilder(entity, this._retrievePolicies, this._mapperPolicies)
   }
 }

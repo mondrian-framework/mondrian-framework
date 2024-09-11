@@ -29,8 +29,8 @@ describe('Utilities', () => {
   })
 
   test('isNullable', () => {
-    expect(model.unwrap(model.string().array().nullable()).kind).toBe(model.Kind.String)
-    expect(model.unwrap(model.string().nullable()).kind).toBe(model.Kind.String)
+    expect(model.unwrapAndConcretize(model.string().array().nullable()).kind).toBe(model.Kind.String)
+    expect(model.unwrapAndConcretize(model.string().nullable()).kind).toBe(model.Kind.String)
   })
 
   test('isScalar', () => {

@@ -398,7 +398,7 @@ function typeToGraphQLObjectField(
       ...internalData,
       defaultName: fieldDefaultName,
     })
-    const unwrappedFieldType = model.unwrap(fieldType)
+    const unwrappedFieldType = model.unwrapAndConcretize(fieldType)
 
     const ignoreRetrieveFields = (objectOptions?.tags ?? {})[IGNORE_RETRIEVE_INPUT_FIELD_GENERATION] === true
     const canBeRetrieved =

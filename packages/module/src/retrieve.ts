@@ -437,7 +437,7 @@ export function mergeSelect(
         if (!rightSelect) {
           return leftSelect
         }
-        const unwrappedFieldType = model.unwrap(fieldType)
+        const unwrappedFieldType = model.unwrapAndConcretize(fieldType)
         if (unwrappedFieldType.kind === model.Kind.Entity) {
           if (leftSelect === true && rightSelect === true) {
             return true
@@ -447,7 +447,7 @@ export function mergeSelect(
               unwrappedFieldType,
               {
                 select: mapObject(unwrappedFieldType.fields, (_, t) =>
-                  model.unwrap(t).kind !== model.Kind.Entity ? true : undefined,
+                  model.unwrapAndConcretize(t).kind !== model.Kind.Entity ? true : undefined,
                 ),
               },
               rightSelect,
@@ -460,7 +460,7 @@ export function mergeSelect(
               leftSelect,
               {
                 select: mapObject(unwrappedFieldType.fields, (_, t) =>
-                  model.unwrap(t).kind !== model.Kind.Entity ? true : undefined,
+                  model.unwrapAndConcretize(t).kind !== model.Kind.Entity ? true : undefined,
                 ),
               },
               options,
@@ -525,7 +525,7 @@ function optionalizeEmbeddedEntities(type: model.Type): model.Type {
     return mapObject(fields, (fieldName, fieldType) => {
       if (fieldName.startsWith('_')) {
         return model.optional(model.partialDeep(fieldType))
-      } else if (model.unwrap(fieldType).kind === model.Kind.Entity) {
+      } else if (model.unwrapAndConcretize(fieldType).kind === model.Kind.Entity) {
         return model.optional(fieldType)
       } else {
         return fieldType
@@ -562,7 +562,7 @@ export function selectionDepth<T extends model.Type>(type: T, retrieve: { select
           if (!retrieve.select) {
             return 1
           }
-          const unwrappedFieldType = model.unwrap(fieldType)
+          const unwrappedFieldType = model.unwrapAndConcretize(fieldType)
           if (unwrappedFieldType.kind === model.Kind.Entity && typeof retrieve.select[fieldName] === 'object') {
             return selectionDepth(fieldType, retrieve.select[fieldName] as GenericRetrieve) + 1
           } else if (unwrappedFieldType.kind === model.Kind.Entity && retrieve.select[fieldName] === true) {

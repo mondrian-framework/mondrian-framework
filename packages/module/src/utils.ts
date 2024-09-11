@@ -18,7 +18,17 @@ export function uniqueTypes(from: model.Type): Set<model.Type> {
  * Retruns a set with all the unique types referenced by the given list of types.
  */
 export function allUniqueTypes(from: model.Type[]): Set<model.Type> {
-  return from.reduce(gatherUniqueTypes, new Set())
+  const types = from.reduce(gatherUniqueTypes, new Set())
+  //checks if some types are on form () => () => type
+  //in that case removes the first level of function
+
+  for (const type of types) {
+    if (typeof type === 'function' && types.has(type()) && typeof type() === 'function') {
+      types.delete(type)
+    }
+  }
+
+  return types
 }
 
 // Returns a set of unique types referenced by the given type. The first argument
@@ -74,23 +84,24 @@ export function hasNestedPromises(value: unknown): boolean {
     return value.some(hasNestedPromises)
   } else if (value && typeof value === 'object') {
     return Object.values(value).some(hasNestedPromises)
+  } else {
+    return false
   }
-  return false
 }
 
 export function reolsveNestedPromises(value: unknown): unknown | Promise<unknown> {
   //TODO: not very efficient but in order to avoid process object like Set, Date, ecc we need to perform this check every time
   if (!hasNestedPromises(value)) {
     return value
-  }
-  if (value instanceof Promise) {
+  } else if (value instanceof Promise) {
     return value.then(reolsveNestedPromises)
   } else if (Array.isArray(value)) {
     return Promise.all(value.map(reolsveNestedPromises))
   } else if (value && typeof value === 'object') {
-    return Promise.all(Object.values(value).map(reolsveNestedPromises)).then((values) => {
-      return Object.fromEntries(Object.keys(value).map((key, index) => [key, values[index]]))
-    })
+    return Promise.all(Object.values(value).map(reolsveNestedPromises)).then((values) =>
+      Object.fromEntries(Object.keys(value).map((key, index) => [key, values[index]])),
+    )
+  } else {
+    return value
   }
-  return value
 }

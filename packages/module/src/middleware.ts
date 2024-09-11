@@ -1,5 +1,5 @@
 import { error, exception, functions, guard, logger, provider, retrieve, security, utils } from '.'
-import { checkPolicies as checkPolicyInternal } from './security'
+import { applyMapPolicies, checkPolicies as checkPolicyInternal } from './security'
 import { result, model, decoding, validation, path } from '@mondrian-framework/model'
 import { buildErrorMessage } from '@mondrian-framework/utils'
 
@@ -132,28 +132,38 @@ export function checkPolicies(
       if (givenPolicies === 'skip') {
         return next(args)
       }
-      const res = checkPolicyInternal({
+      const policyResult = checkPolicyInternal({
         outputType: thisFunction.output,
         retrieve: args.retrieve,
-        policies: givenPolicies,
+        policies: givenPolicies.retrievePolicies,
         capabilities: thisFunction.retrieve,
         path: path.root,
       })
       const policyViolationErrorKey = Object.entries(thisFunction.errors ?? {}).find(
         (v) => v[1] === error.standard.UnauthorizedAccess,
       )?.[0]
-      if (res.isFailure) {
+      if (policyResult.isFailure) {
         if (policyViolationErrorKey !== undefined) {
           const e: model.Infer<(typeof error)['standard']['UnauthorizedAccess']> = {
             message: 'Unauthorized access.',
-            details: res.error,
+            details: policyResult.error,
           }
           return result.fail({ [policyViolationErrorKey]: e }) as never
         } else {
-          throw new exception.UnauthorizedAccess(res.error)
+          throw new exception.UnauthorizedAccess(policyResult.error)
         }
       }
-      return next({ ...args, retrieve: res.value ?? {} })
+      const functionResult = await next({ ...args, retrieve: policyResult.value ?? {} })
+      if (functionResult.isOk && givenPolicies.mapperPolicies.size > 0) {
+        const mappedResult = applyMapPolicies({
+          outputType: thisFunction.output,
+          policies: givenPolicies.mapperPolicies,
+          value: functionResult.value,
+        })
+        return result.ok(mappedResult as never)
+      } else {
+        return functionResult
+      }
     },
   }
 }

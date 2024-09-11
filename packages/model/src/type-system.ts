@@ -258,11 +258,13 @@ export const concretise = memoizeTransformation(concretiseInternal)
 function concretiseInternal<T extends Type>(type: T): Concretise<T> {
   if (typeof type === 'function') {
     let concreteType: Type = type
+    let potentialName: string | undefined = undefined
     while (typeof concreteType === 'function') {
+      potentialName = concreteType.name
       concreteType = concreteType()
     }
-    if (concreteType.options?.name === undefined && type.name) {
-      return concreteType.setName(type.name) as Concretise<T>
+    if (concreteType.options?.name === undefined && potentialName) {
+      return concreteType.setName(potentialName) as Concretise<T>
     } else {
       return concreteType as Concretise<T>
     }
@@ -2290,7 +2292,7 @@ export function isTotalCountArray(type: Type): type is ArrayType<Mutability, Typ
  * @param type the type to unwrap.
  * @returns the unwrapped type.
  */
-export function unwrap(
+export function unwrapAndConcretize(
   type: Type,
 ):
   | NumberType
@@ -2303,11 +2305,22 @@ export function unwrap(
   | EntityType<Mutability, Types>
   | UnionType<Types> {
   const concreteType = concretise(type)
-  return 'wrappedType' in concreteType ? unwrap(concreteType.wrappedType) : concreteType
+  return 'wrappedType' in concreteType ? unwrapAndConcretize(concreteType.wrappedType) : concreteType
 }
 
 /**
- * Checks if the {@link unwrap}ped type is a scalar type.
+ * Unwraps all wrappers around a {@link Type}.
+ * The wrappers are: {@link OptionalType}, {@link NullableType}, {@link ArrayType}
+ * @param type the type to unwrap.
+ * @returns the unwrapped type.
+ */
+export function unwrap(type: Type): Type {
+  const concreteType = concretise(type)
+  return 'wrappedType' in concreteType ? unwrap(concreteType.wrappedType) : type
+}
+
+/**
+ * Checks if the {@link unwrapAndConcretize}ped type is a scalar type.
  * @param type the type to check
  * @returns false only for {@link ObjectType}, {@link UnionType}, {@link ArrayType}
  */
@@ -2319,7 +2332,7 @@ export const isScalar: (type: Type) => boolean = matcher({
 })
 
 /**
- * Checks if the {@link unwrap}ped type is a object type.
+ * Checks if the {@link unwrapAndConcretize}ped type is a object type.
  * @param type the type to check
  * @returns true only for {@link EntityType}
  */
@@ -2331,7 +2344,7 @@ export const isObject: (type: Type) => boolean = matcher({
 })
 
 /**
- * Checks if the {@link unwrap}ped type is a entity type.
+ * Checks if the {@link unwrapAndConcretize}ped type is a entity type.
  * @param type the type to check
  * @returns true only for {@link ObjectType}
  */

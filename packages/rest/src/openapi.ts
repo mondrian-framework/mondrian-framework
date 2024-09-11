@@ -75,7 +75,7 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
       const retrieveParameters: OpenAPIV3_1.ParameterObject[] = []
       if (retrieveType.isOk) {
         for (const [key, value] of Object.entries(retrieveType.value.fields)) {
-          const type = model.unwrap(value)
+          const type = model.unwrapAndConcretize(value)
           const schema = modelToSchema(type, internalData)
           retrieveParameters.push({
             name: key,
@@ -641,7 +641,8 @@ function recordToOpenAPIComponent(
 ): OpenAPIV3_1.NonArraySchemaObject {
   const fields = Object.entries(type.fields).map(([fieldName, fieldType]) => {
     const hasToBeOptional =
-      (model.unwrap(fieldType).kind === model.Kind.Entity || fieldName.startsWith('_')) && !model.isOptional(fieldType)
+      (model.unwrapAndConcretize(fieldType).kind === model.Kind.Entity || fieldName.startsWith('_')) &&
+      !model.isOptional(fieldType)
     const mappedFieldType = fieldName.startsWith('_') ? model.partialDeep(fieldType) : fieldType
     const schema = modelToSchema(hasToBeOptional ? model.optional(mappedFieldType) : mappedFieldType, internalData)
     //here we use the field description, if there is not description then we fallback to the type description

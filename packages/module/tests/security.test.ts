@@ -1,6 +1,7 @@
 import { retrieve, security } from '../src'
 import {
   PolicyViolation,
+  applyMapPolicies,
   checkPolicies,
   isSelectionIncluded,
   isWithinRestriction,
@@ -34,6 +35,31 @@ const post = () =>
     author: user,
   })
 
+test('mapper policies', () => {
+  const policies = security
+    .on(user)
+    .map((u) => ({ ...u, name: '***' }))
+    .on(post)
+    .map((p) => ({ ...p, content: '****' }))
+
+  const res = applyMapPolicies({
+    outputType: user,
+    policies: policies.mapperPolicies,
+    value: {
+      id: 1,
+      name: 'John',
+      friends: [{ name: 'Alice' }],
+      posts: [{ title: 'asd' }],
+    },
+  })
+  expect(res).toEqual({
+    id: 1,
+    name: '***',
+    friends: [{ name: '***' }],
+    posts: [{ title: 'asd', content: '****' }],
+  })
+})
+
 describe('check guest policies', () => {
   const policies = security
     .on(user)
@@ -46,7 +72,7 @@ describe('check guest policies', () => {
       capabilities: {},
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: { select: { age: true } },
     })
     expect(res.isOk).toBe(true)
@@ -57,7 +83,7 @@ describe('check guest policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies: { list: [] },
+      policies: new Map(),
       retrieve: { select: { age: true } },
     })
     expect(res.isFailure && res.error).toEqual({
@@ -71,7 +97,7 @@ describe('check guest policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: { select: { age: true } },
     })
     expect(r1.isFailure && r1.error).toEqual({
@@ -95,7 +121,7 @@ describe('check guest policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: { select: { posts: { select: { content: true } } } },
     })
     expect(r1.isFailure && r1.error).toEqual({
@@ -119,7 +145,7 @@ describe('check guest policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: { select: { name: true, posts: { select: { title: true } } } },
     })
     expect(r1.isOk).toBe(true)
@@ -139,7 +165,7 @@ describe('check logged user policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: { select: {} },
     })
     expect(res.isOk).toEqual(true)
@@ -150,7 +176,7 @@ describe('check logged user policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: { select: { id: true } },
     })
     expect(r1.isFailure && r1.error).toEqual({
@@ -179,7 +205,7 @@ describe('check logged user policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: { select: { id: true }, where: { id: { equals: 1 } } },
     })
     expect(r1.isOk).toEqual(true)
@@ -190,7 +216,7 @@ describe('check logged user policies', () => {
       capabilities: { select: true },
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: {
         select: { id: true, posts: { select: { content: true }, where: { title: { equals: '...' } } } },
         where: { id: { equals: 1 } },
@@ -213,7 +239,7 @@ describe('check logged user policies', () => {
       capabilities: { select: true },
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: {
         select: { id: true, posts: true },
         where: { id: { equals: 1 } },
@@ -237,7 +263,7 @@ describe('check logged user policies', () => {
         capabilities: { select: true },
         outputType: post,
         path: '$',
-        policies,
+        policies: policies.retrievePolicies,
         retrieve: {
           select: { content: true },
         },
@@ -252,7 +278,7 @@ describe('check logged user policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: {
         select: { name: true },
         where: { metadata: { registeredAt: { equals: new Date() } }, posts: { some: { title: { equals: '...' } } } },
@@ -279,7 +305,7 @@ describe('check logged user policies', () => {
       capabilities: retrieve.allCapabilities,
       outputType: user,
       path: '$',
-      policies,
+      policies: policies.retrievePolicies,
       retrieve: {
         select: { name: true },
         orderBy: [{ metadata: { registeredAt: 'asc' } }],
@@ -303,7 +329,11 @@ describe('check logged user policies', () => {
 })
 
 test('isSelectionIncluded', () => {
-  const [p] = security.on(user).allows({ selection: { name: true } }).list
+  const [p] =
+    security
+      .on(user)
+      .allows({ selection: { name: true } })
+      .retrievePolicies.get(user) ?? []
   const r1 = isSelectionIncluded(p, { name: true })
   expect(r1.isOk).toBe(true)
   const r2 = isSelectionIncluded(p, { name: true, friends: true })
@@ -414,19 +444,19 @@ test('policy builder errors', () => {
   expect(() => security.on(model.array(user))).toThrowError('Policies could be defined only on entity types. Got array')
 
   expect(() => security.on(user).allows({ selection: true, restriction: {} })).toThrowError(
-    'Currently on policy restriction it is supported only one (non array) scalar field.',
+    'Currently on policy restriction it is supported only on (non array) scalar field.',
   )
 
   expect(() => security.on(user).allows({ selection: true, restriction: { posts: {} } })).toThrowError(
-    'Currently on policy restriction it is supported only one (non array) scalar field.',
+    'Currently on policy restriction it is supported only on (non array) scalar field.',
   )
 
   expect(() => security.on(user).allows({ selection: true, restriction: { metadata: {} } })).toThrowError(
-    'Currently on policy restriction it is supported only one (non array) scalar field.',
+    'Currently on policy restriction it is supported only on (non array) scalar field.',
   )
 
   expect(() => security.on(user).allows({ selection: true, restriction: { asd: {} } as any })).toThrowError(
-    'Currently on policy restriction it is supported only one (non array) scalar field.',
+    'Currently on policy restriction it is supported only on (non array) scalar field.',
   )
 })
 
@@ -444,21 +474,26 @@ test('isWithinRestriction', () => {
       selection: true,
       restriction: { id: { in: [1, 2, 3] } },
     })
-  expect(isWithinRestriction(policies.list[0], {})).toBe(true)
-  expect(isWithinRestriction(policies.list[0], undefined)).toBe(true)
-  expect(isWithinRestriction(policies.list[1], { id: { equals: 1 } })).toBe(true)
-  expect(isWithinRestriction(policies.list[1], { id: { equals: 2 } })).toBe(false)
-  expect(isWithinRestriction(policies.list[1], {})).toBe(false)
-  expect(isWithinRestriction(policies.list[1], undefined)).toBe(false)
-  expect(isWithinRestriction(policies.list[1], { id: {} })).toBe(false)
-  expect(isWithinRestriction(policies.list[2], { id: { equals: 1 } })).toBe(true)
-  expect(isWithinRestriction(policies.list[2], { id: { equals: 2 } })).toBe(true)
-  expect(isWithinRestriction(policies.list[2], { id: { in: [1, 2] } })).toBe(true)
-  expect(isWithinRestriction(policies.list[2], { id: { in: [1, 2] }, OR: [{ id: { equals: 3 } }] })).toBe(true)
-  expect(isWithinRestriction(policies.list[2], { id: { in: [1, 2] }, OR: [{ id: { equals: 4 } }] })).toBe(false)
-  expect(isWithinRestriction(policies.list[2], { id: { equals: 4 } })).toBe(false)
-  expect(isWithinRestriction(policies.list[2], { id: { equals: 1 }, age: { equals: 2 } })).toBe(true)
+  const retrievePolicies = policies.retrievePolicies.get(user) ?? []
+  expect(isWithinRestriction(retrievePolicies[0], {})).toBe(true)
+  expect(isWithinRestriction(retrievePolicies[0], undefined)).toBe(true)
+  expect(isWithinRestriction(retrievePolicies[1], { id: { equals: 1 } })).toBe(true)
+  expect(isWithinRestriction(retrievePolicies[1], { id: { equals: 2 } })).toBe(false)
+  expect(isWithinRestriction(retrievePolicies[1], {})).toBe(false)
+  expect(isWithinRestriction(retrievePolicies[1], undefined)).toBe(false)
+  expect(isWithinRestriction(retrievePolicies[1], { id: {} })).toBe(false)
+  expect(isWithinRestriction(retrievePolicies[2], { id: { equals: 1 } })).toBe(true)
+  expect(isWithinRestriction(retrievePolicies[2], { id: { equals: 2 } })).toBe(true)
+  expect(isWithinRestriction(retrievePolicies[2], { id: { in: [1, 2] } })).toBe(true)
+  expect(isWithinRestriction(retrievePolicies[2], { id: { in: [1, 2] }, OR: [{ id: { equals: 3 } }] })).toBe(true)
+  expect(isWithinRestriction(retrievePolicies[2], { id: { in: [1, 2] }, OR: [{ id: { equals: 4 } }] })).toBe(false)
+  expect(isWithinRestriction(retrievePolicies[2], { id: { equals: 4 } })).toBe(false)
+  expect(isWithinRestriction(retrievePolicies[2], { id: { equals: 1 }, age: { equals: 2 } })).toBe(true)
   expect(
-    isWithinRestriction(policies.list[2], { id: { equals: 4 }, age: { equals: 2 }, AND: [{ id: { equals: 3 } }] }),
+    isWithinRestriction(retrievePolicies[2], {
+      id: { equals: 4 },
+      age: { equals: 2 },
+      AND: [{ id: { equals: 3 } }],
+    }),
   ).toBe(true)
 })

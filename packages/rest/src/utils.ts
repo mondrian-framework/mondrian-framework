@@ -1,4 +1,4 @@
-import { Api, ApiSpecification, FunctionSpecifications } from './api'
+import { ApiSpecification, FunctionSpecifications } from './api'
 import { model } from '@mondrian-framework/model'
 import { functions, retrieve } from '@mondrian-framework/module'
 import { JSONType, isArray, setTraversingValue, mapObject, http } from '@mondrian-framework/utils'
@@ -127,6 +127,9 @@ export function completeRetrieve(
     }
     if (typeof obj !== 'object' || obj === null) {
       return obj
+    }
+    if (isArray(obj)) {
+      return obj.map((value) => removeUndefinedFields(value)) as T
     }
     return Object.fromEntries(
       Object.entries(obj)

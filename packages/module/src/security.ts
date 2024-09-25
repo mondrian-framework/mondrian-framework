@@ -356,7 +356,7 @@ function whereToSelectionInternal(type: model.Type, where: any): any {
       for (const [fieldName, fieldType] of Object.entries(fields)) {
         const wherePart = where[fieldName]
         if (fieldName in where) {
-          if ('equals' in wherePart) {
+          if ('equals' in wherePart || 'in' in wherePart) {
             selection[fieldName] = true
           } else {
             selection[fieldName] = { select: whereToSelection(fieldType, wherePart) }

@@ -154,7 +154,7 @@ export function completeRetrieveInternal(
           if (unwrapped.kind === model.Kind.Entity) {
             const subRetrieve = (retr.select ?? {})[fieldName]
             if (subRetrieve && subRetrieve !== true) {
-              return completeRetrieve(subRetrieve as retrieve.GenericRetrieve, fieldType)
+              return completeRetrieve({ select: (subRetrieve as retrieve.GenericRetrieve).select }, fieldType)
             } else {
               return undefined
             }

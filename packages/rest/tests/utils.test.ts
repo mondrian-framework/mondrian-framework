@@ -31,6 +31,23 @@ describe('completeRetrieve', () => {
       },
     })
   })
+
+  test('Avoid adding filter multiple times', async () => {
+    const p = completeRetrieve(
+      { select: { friend: { select: { friend: true }, where: { name: { equals: 'asd' } } } } },
+      user,
+    )
+    expect(p).toEqual({
+      select: {
+        name: true,
+        tags: true,
+        friend: {
+          select: { name: true, tags: true, friend: true },
+          where: { name: { equals: 'asd' } },
+        },
+      },
+    })
+  })
 })
 
 test('assertApiValidity', () => {

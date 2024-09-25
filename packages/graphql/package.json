@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/graphql",
-  "version": "2.0.60",
+  "version": "2.0.61",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -17,9 +17,9 @@
     "graphql": "^16.9.0"
   },
   "peerDependencies": {
-    "@mondrian-framework/model": "^2.0.60",
-    "@mondrian-framework/module": "^2.0.60",
-    "@mondrian-framework/utils": "^2.0.60"
+    "@mondrian-framework/model": "^2.0.61",
+    "@mondrian-framework/module": "^2.0.61",
+    "@mondrian-framework/utils": "^2.0.61"
   },
   "devDependencies": {
     "graphql-yoga": "^5.6.3"

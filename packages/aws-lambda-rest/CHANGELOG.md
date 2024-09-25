@@ -1,5 +1,16 @@
 # @mondrian-framework/aws-lambda-rest
 
+## 2.0.61
+
+### Patch Changes
+
+- Minor fix
+- Updated dependencies
+  - @mondrian-framework/model@2.0.61
+  - @mondrian-framework/module@2.0.61
+  - @mondrian-framework/rest@2.0.61
+  - @mondrian-framework/utils@2.0.61
+
 ## 2.0.60
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.62
+
+### Patch Changes
+
+- Add deepLinking to swagger documentation
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.62
+  - @mondrian-framework/cli-commander@2.0.62
+
 ## 2.0.61
 
 ### Patch Changes

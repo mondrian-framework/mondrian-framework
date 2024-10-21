@@ -1,5 +1,16 @@
 # @mondrian-framework/graphql-yoga
 
+## 2.0.62
+
+### Patch Changes
+
+- Add deepLinking to swagger documentation
+- Updated dependencies
+  - @mondrian-framework/graphql@2.0.62
+  - @mondrian-framework/model@2.0.62
+  - @mondrian-framework/module@2.0.62
+  - @mondrian-framework/utils@2.0.62
+
 ## 2.0.61
 
 ### Patch Changes

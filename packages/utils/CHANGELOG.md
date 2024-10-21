@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.62
+
+### Patch Changes
+
+- Add deepLinking to swagger documentation
+
 ## 2.0.61
 
 ### Patch Changes

@@ -41,6 +41,7 @@ export function ui<Fs extends functions.FunctionInterfaces>({
         <script>
           window.onload = () => {
             window.ui = SwaggerUIBundle({
+              deepLinking: true,
               url: '${introspectionPath}v${api.version}/schema.json',
               dom_id: '#swagger-ui',
             });

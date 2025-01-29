@@ -3,15 +3,29 @@ import * as AWS from '@aws-sdk/client-sqs'
 import { exception, functions, logger, module } from '@mondrian-framework/module'
 import { sleep } from '@mondrian-framework/utils'
 
+type ErrorHandler<F extends functions.Functions> = (args: {
+  errorKind: 'invalid-input' | 'function-apply'
+  error: unknown
+  logger: logger.MondrianLogger
+  functionName: keyof F
+  tracer: functions.Tracer
+  sqs: { messageId: string | undefined; url: string; message: string }
+}) =>
+  | Promise<{ action: 'do-not-delete-message' | 'delete-message' } | void>
+  | { action: 'do-not-delete-message' | 'delete-message' }
+  | void
+
 /**
  * Attaches a Mondrian module to some SQS queues.
  */
 export function listen<Fs extends functions.FunctionImplementations>({
   api,
   context,
+  onError,
 }: {
   api: Api<Fs>
   context: (args: { message: AWS.Message }) => Promise<module.FunctionsToContextInput<Fs>>
+  onError: ErrorHandler<Fs>
 }): { close: () => Promise<void> } {
   const client: AWS.SQS = new AWS.SQS(api.options?.config ?? {})
   const promises: Promise<void>[] = []
@@ -34,6 +48,7 @@ export function listen<Fs extends functions.FunctionImplementations>({
       context,
       specifications,
       concurrency,
+      onError,
     })
     promises.push(p)
   }
@@ -56,6 +71,7 @@ type ListenForMessageInput<Fs extends functions.FunctionImplementations> = {
   context: (args: { message: AWS.Message }) => Promise<module.FunctionsToContextInput<Fs>>
   specifications: FunctionSpecifications
   concurrency: number
+  onError: ErrorHandler<Fs>
 }
 
 async function listenForMessage<Fs extends functions.FunctionImplementations>({
@@ -71,12 +87,8 @@ async function listenForMessage<Fs extends functions.FunctionImplementations>({
       const message = await client.receiveMessage({ QueueUrl: queueUrl, MaxNumberOfMessages: 1, WaitTimeSeconds: 20 })
       slots++
       handleMessages({ ...input, messages: message.Messages, client, queueUrl })
-        .then(() => {
-          slots--
-        })
-        .catch(() => {
-          slots--
-        })
+        .then(() => slots--)
+        .catch(() => slots--)
     } catch (error) {
       do {
         await sleep(1000)
@@ -93,6 +105,7 @@ async function handleMessages<Fs extends functions.FunctionImplementations>({
   specifications,
   functionName,
   messages,
+  onError,
 }: Omit<ListenForMessageInput<Fs>, 'alive' | 'concurrency'> & { messages: AWS.Message[] | undefined }) {
   const baseLogger = logger.build({
     moduleName: module.name,
@@ -108,11 +121,21 @@ async function handleMessages<Fs extends functions.FunctionImplementations>({
   let body: unknown
   try {
     body = m.Body === undefined ? undefined : JSON.parse(m.Body)
-  } catch {
-    if (specifications.malformedMessagePolicy === 'delete') {
+  } catch (error) {
+    const onErrorResult = await onError({
+      errorKind: 'invalid-input',
+      error,
+      logger: baseLogger,
+      functionName,
+      tracer: functionBody.tracer,
+      sqs: { messageId: m.MessageId, url: queueUrl, message: m.Body ?? '' },
+    })
+    if (typeof onErrorResult === 'object' && onErrorResult.action === 'do-not-delete-message') {
+      throw error
+    } else {
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
+      return
     }
-    return
   }
   const contextInput = await context({ message: m })
   try {
@@ -124,11 +147,22 @@ async function handleMessages<Fs extends functions.FunctionImplementations>({
       logger: baseLogger,
       decodingOptions: { typeCastingStrategy: 'tryCasting', ...module.options?.preferredDecodingOptions },
     })
-  } catch (e) {
-    if (e instanceof exception.InvalidInput && specifications.malformedMessagePolicy === 'delete') {
+  } catch (error) {
+    if (error instanceof exception.InvalidInput && specifications.malformedMessagePolicy === 'delete') {
       await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
     } else {
-      throw e
+      throw error
+    }
+    const onErrorResult = await onError({
+      errorKind: error instanceof exception.InvalidInput ? 'invalid-input' : 'function-apply',
+      error,
+      logger: baseLogger,
+      functionName,
+      tracer: functionBody.tracer,
+      sqs: { messageId: m.MessageId, url: queueUrl, message: m.Body ?? '' },
+    })
+    if (typeof onErrorResult === 'object' && onErrorResult.action === 'do-not-delete-message') {
+      throw error
     }
   }
   await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })

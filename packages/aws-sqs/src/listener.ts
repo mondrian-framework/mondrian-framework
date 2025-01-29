@@ -148,11 +148,6 @@ async function handleMessages<Fs extends functions.FunctionImplementations>({
       decodingOptions: { typeCastingStrategy: 'tryCasting', ...module.options?.preferredDecodingOptions },
     })
   } catch (error) {
-    if (error instanceof exception.InvalidInput && specifications.malformedMessagePolicy === 'delete') {
-      await client.deleteMessage({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle })
-    } else {
-      throw error
-    }
     const onErrorResult = await onError({
       errorKind: error instanceof exception.InvalidInput ? 'invalid-input' : 'function-apply',
       error,

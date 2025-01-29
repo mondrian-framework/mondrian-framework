@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.67
+
+### Patch Changes
+
+- Improve sqs error handling
+
 ## 2.0.66
 
 ### Patch Changes

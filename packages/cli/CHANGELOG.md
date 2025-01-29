@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.67
+
+### Patch Changes
+
+- Improve sqs error handling
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.67
+  - @mondrian-framework/cli-commander@2.0.67
+
 ## 2.0.66
 
 ### Patch Changes

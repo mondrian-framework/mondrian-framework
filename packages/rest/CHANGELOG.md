@@ -1,5 +1,15 @@
 # @mondrian-framework/rest
 
+## 2.0.67
+
+### Patch Changes
+
+- Improve sqs error handling
+- Updated dependencies
+  - @mondrian-framework/model@2.0.67
+  - @mondrian-framework/module@2.0.67
+  - @mondrian-framework/utils@2.0.67
+
 ## 2.0.66
 
 ### Patch Changes

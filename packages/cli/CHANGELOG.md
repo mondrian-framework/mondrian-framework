@@ -1,5 +1,14 @@
 # @mondrian-framework/cli
 
+## 2.0.69
+
+### Patch Changes
+
+- Fix openapi generation bug in orderBy
+- Updated dependencies
+  - @mondrian-framework/ci-tools@2.0.69
+  - @mondrian-framework/cli-commander@2.0.69
+
 ## 2.0.68
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.69
+
+### Patch Changes
+
+- Fix openapi generation bug in orderBy
+
 ## 2.0.68
 
 ### Patch Changes

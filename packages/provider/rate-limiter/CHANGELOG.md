@@ -1,5 +1,15 @@
 # @mondrian-framework/rate-limiter
 
+## 2.0.69
+
+### Patch Changes
+
+- Fix openapi generation bug in orderBy
+- Updated dependencies
+  - @mondrian-framework/model@2.0.69
+  - @mondrian-framework/module@2.0.69
+  - @mondrian-framework/utils@2.0.69
+
 ## 2.0.68
 
 ### Patch Changes

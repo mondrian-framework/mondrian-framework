@@ -75,8 +75,9 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
       const retrieveParameters: OpenAPIV3_1.ParameterObject[] = []
       if (retrieveType.isOk) {
         for (const [key, value] of Object.entries(retrieveType.value.fields)) {
+          const isArray = model.isArray(value)
           const type = model.unwrapAndConcretize(value)
-          const schema = modelToSchema(type, internalData)
+          const schema = modelToSchema(isArray ? model.array(type) : type, internalData)
           retrieveParameters.push({
             name: key,
             in: 'query',

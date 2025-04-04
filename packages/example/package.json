@@ -21,6 +21,7 @@
     "@mondrian-framework/rest-fastify": "*",
     "@mondrian-framework/graphql-yoga": "*",
     "@mondrian-framework/rate-limiter": "*",
+    "@mondrian-framework/mcp": "*",
     "@prisma/client": "6.3.0",
     "prisma": "6.3.0",
     "jsonwebtoken": "9.0.2",

@@ -1,0 +1,20 @@
+{
+  "name": "@mondrian-framework/mcp",
+  "version": "2.0.69",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc",
+    "coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "@mondrian-framework/model": "^2.0.69",
+    "@mondrian-framework/module": "^2.0.69",
+    "@mondrian-framework/utils": "^2.0.69",
+    "@opentelemetry/sdk-node": "^0.57.1"
+  }
+}

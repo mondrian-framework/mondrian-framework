@@ -26,6 +26,7 @@
       "@mondrian-framework/provider/rate-limiter": ["./packages/provider/rate-limiter"],
       "@mondrian-framework/direct": ["./packages/direct"],
       "@mondrian-framework/rest": ["./packages/rest"],
+      "@mondrian-framework/mcp": ["./packages/mcp"],
       "@mondrian-framework/rest-fastify": ["./packages/rest-fastify"],
       "@mondrian-framework/graphql": ["./packages/graphql"],
       "@mondrian-framework/graphql-yoga": ["./packages/graphql-yoga"],
@@ -56,6 +57,9 @@
     },
     {
       "path": "packages/rest"
+    },
+    {
+      "path": "packages/mcp"
     },
     {
       "path": "packages/direct"

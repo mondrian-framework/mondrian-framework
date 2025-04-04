@@ -39,6 +39,7 @@
     "packages/provider/rate-limiter",
     "packages/direct",
     "packages/rest",
+    "packages/mcp",
     "packages/rest-fastify",
     "packages/graphql",
     "packages/graphql-yoga",

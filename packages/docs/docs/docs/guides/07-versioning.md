@@ -58,11 +58,11 @@ const api = rest.build({
 })
 ```
 
-In this example, if the API is deployed as `v2`:
+In this example, the API will be deployed as `v2` and `v1`:
 
 - `POST /api/v2/subscribe` will map to the `register` function.
-- `PUT /api/v2/user` will **not** be available because its maximum version is 1.
-- `POST /api/v2/login` will map to the `login` function.
+- `PUT /api/v1/user` will map to the `register` function.
+- `POST /api/v2/login` and `POST /api/v1/login` will map to the `login` function.
 
 This provides fine-grained control over endpoint availability across different API versions.
 

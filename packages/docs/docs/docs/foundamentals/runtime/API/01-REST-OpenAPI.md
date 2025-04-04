@@ -225,7 +225,7 @@ API versioning is supported at two levels:
 1.  **API Version**: Set via the `version` field in `rest.build`. This defines the base version for the entire API deployment (e.g., `version: 2`). The runtime usually prefixes routes with `/api/v{version}` (configurable via `pathPrefix`).
 2.  **Function Version Constraints**: Within a function mapping (or an array of mappings), use the `version` option with `min` and/or `max` properties to specify the API versions for which that specific mapping is active.
 
-This allows maintaining backward compatibility or introducing changes in specific versions. See the [Versioning Guide](../../guides/07-versioning.md) for more details.
+This allows maintaining backward compatibility or introducing changes in specific versions. See the [Versioning Guide](../../../guides/07-versioning.md) for more details.
 
 ```ts showLineNumbers
 // ... inside rest.build

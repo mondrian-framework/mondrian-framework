@@ -1,6 +1,6 @@
 # Tracing
 
-Mondrian Framework provides built-in support for distributed tracing, enabling you to monitor the flow of requests across your application and external services. This is seamlessly integrated into the function execution context and adheres to the [OpenTelemetry](https://opentelemetry.io/) standard, a widely adopted specification for observability.
+Mondrian Framework provides built-in support for distributed tracing, enabling you to monitor the flow of requests across your application and external services. This support is seamlessly integrated into the function execution context and adheres to the [OpenTelemetry](https://opentelemetry.io/) standard, a widely adopted specification for observability.
 
 ## Automatic Tracer Injection
 
@@ -60,15 +60,15 @@ async function externalServiceCall(id: string): Promise<void> {
 
 The provided `tracer` instance offers methods based on the OpenTelemetry `Tracer` interface:
 
-- `tracer.startActiveSpan(name, fn)`: Starts a new span, makes it the active span for the duration of the provided synchronous or asynchronous function `fn`, and automatically ends the span when `fn` completes or throws.
+- `tracer.startActiveSpan(name, fn)`: Starts a new span, makes it the active span for the duration of the provided synchronous or asynchronous function `fn`, and automatically ends the span when `fn` completes or throws an error.
 - `tracer.startActiveSpanWithOptions(name, options, fn)`: Similar to `startActiveSpan`, but allows providing additional OpenTelemetry `SpanOptions` (like `kind`, `attributes`, `links`).
 
 Within the function passed to `startActiveSpan` (or `startActiveSpanWithOptions`), you receive the `span` object (which might be `undefined` if tracing is disabled). You can use this `span` object to:
 
-- `span?.setStatus({ code, message? })`: Set the status of the span (e.g., `OK` or `ERROR`).
-- `span?.recordException(error)`: Record an error or exception that occurred during the span's execution.
-- `span?.setAttribute(key, value)` / `span?.setAttributes(attributes)`: Add custom attributes (key-value pairs) to the span for richer context.
-- `span?.end()`: Explicitly end the span (though `startActiveSpan` handles this automatically in most cases).
+- `span?.setStatus({ code, message? })`: Sets the status of the span (e.g., `OK` or `ERROR`).
+- `span?.recordException(error)`: Records an error or exception that occurred during the span's execution.
+- `span?.setAttribute(key, value)` / `span?.setAttributes(attributes)`: Adds custom attributes (key-value pairs) to the span for richer context.
+- `span?.end()`: Explicitly ends the span (though `startActiveSpan` handles this automatically in most cases).
 
 ## Automatic Context
 
@@ -76,6 +76,6 @@ Like the logger, the tracer automatically associates spans with essential contex
 
 - `moduleName`: The name of the Mondrian module.
 - `operationName`: The name of the Mondrian function being executed.
-- Semantic conventions attributes like `code.function` and `code.namespace` are often added automatically.
+- Semantic convention attributes like `code.function` and `code.namespace` are often added automatically.
 
 This built-in context, combined with the spans you create for specific operations, provides a detailed view of request processing within your Mondrian application, integrating smoothly with OpenTelemetry-compatible observability platforms.

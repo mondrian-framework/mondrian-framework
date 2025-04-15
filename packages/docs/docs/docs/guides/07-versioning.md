@@ -28,7 +28,7 @@ const api = rest.build({
 })
 ```
 
-When served (e.g., using `@mondrian-framework/rest-fastify`), the runtime typically prefixes all routes with `/api/v{version}`, so in this case, endpoints would be under `/api/v2`.
+When served (e.g., using `@mondrian-framework/rest-fastify`), the runtime typically prefixes all routes with `/api/v{version}`. In this case, endpoints would be under `/api/v2`.
 
 ### Function Versioning
 
@@ -58,17 +58,18 @@ const api = rest.build({
 })
 ```
 
-In this example, the API will be deployed as `v2` and `v1`:
+In this example, the API will be deployed supporting `v1` and `v2` routes based on these mappings:
 
 - `POST /api/v2/subscribe` will map to the `register` function.
-- `PUT /api/v1/user` will map to the `register` function.
-- `POST /api/v2/login` and `POST /api/v1/login` will map to the `login` function.
+- `PUT /api/v1/user` will map to the `register` function (assuming the API was previously deployed as v1).
+- `POST /api/v2/login` will map to the `login` function (as the base deployment is v2).
+- If the API was also deployed as v1, `POST /api/v1/login` would also map to the `login` function.
 
 This provides fine-grained control over endpoint availability across different API versions.
 
 ## GraphQL API Versioning
 
-GraphQL takes a different approach to evolution compared to REST's explicit versioning. There isn't a built-in mechanism in the GraphQL specification or the `@mondrian-framework/graphql-yoga` runtime for versioned endpoints like `/graphql/v1`, `/graphql/v2`.
+GraphQL takes a different approach to evolution compared to REST's explicit versioning. There isn't a built-in mechanism in the GraphQL specification or the `@mondrian-framework/graphql-yoga` runtime for versioned endpoints like `/graphql/v1` or `/graphql/v2`.
 
 Typically, a single GraphQL endpoint exposes the **latest version** of the schema. Changes are managed through schema evolution:
 

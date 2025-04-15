@@ -38,7 +38,7 @@ The core idea is that the context built for each request determines the set of s
 
 ## Defining Policy Rules
 
-Policies are constructed using the `security` builder from `@mondrian-framework/module`. The primary method is `.on(EntityType)`, which specifies the entity these rules apply to, followed by `.allows(...)` to define permissions.
+Policies are constructed using the `security` builder from `@mondrian-framework/module`. The primary method is `.on(EntityType)`, which specifies the entity these rules apply to, followed by `.allows(...)` to define the permissions.
 
 ```ts showLineNumbers
 import { User, Post } from './model'
@@ -80,13 +80,13 @@ export const policies = {
 }
 ```
 
-### `allows` Parameters
+### The `allows` Method
 
 The `allows` method takes an object with two optional keys:
 
 1.  `selection`: Defines which fields of the entity can be read (projection).
-    - `true`: Allows selection of all fields defined in the entity's model.
-    - `{ field1: true, field2: true, ... }`: Allows selection only of the specified fields. Fields not listed or set to `false` cannot be selected.
+    - `true`: Allows the selection of all fields defined in the entity's model.
+    - `{ field1: true, field2: true, ... }`: Allows the selection of only the specified fields. Fields not listed or set to `false` cannot be selected.
 
 2.  `restriction`: Defines conditions that must be met for the `selection` rule to apply (filtering). The structure mirrors the `where` clause used in `retrieve` capabilities, allowing checks like `{ id: { equals: userId } }` or `{ status: { in: ['published', 'archived'] } }`. If omitted, the `selection` applies unconditionally (within the context of the policy).
 
@@ -99,7 +99,7 @@ When a Mondrian function with `retrieve` capabilities is executed, the framework
 1.  Builds the module context.
 2.  Calls the `policies` function with the context to get the applicable security rules.
 3.  Analyzes the requested `select` and `where` clauses (if provided by the caller).
-4.  Filters and restricts the data access based on the defined policies _before_ returning the result. If a requested selection violates the policy, the framework prevents the data leakage. If a requested item doesn't match any `allows` rule's restriction, it's filtered out.
+4.  Filters and restricts the data access based on the defined policies _before_ returning the result. If a requested selection violates the policy, the framework prevents data leakage. If a requested item doesn't match any `allows` rule's restriction, it's filtered out.
 
 This ensures that regardless of what the client requests via `select` or `where`, the security policies defined at the module level are enforced consistently.
 

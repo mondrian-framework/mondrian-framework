@@ -1,8 +1,8 @@
 # Runtime
 
-The runtime is the component of the architecture that is responsible for **executing one or more modules**. It must cover the gap between the infrastructure of the execution environment and the requirements of the modules.
+The runtime is the architectural component responsible for **executing one or more modules**. It bridges the gap between the infrastructure of the execution environment (e.g., web server, queue listener, cron job) and the requirements of the modules it runs (e.g., providing context input, handling function invocations).
 
-Mondrian offers a number of standard runtimes from which you can draw to run your application. To these you can then add fully customized ones or draw from those produced by the community.
+Mondrian offers several standard runtimes you can use to run your application. You can also create fully customized runtimes or use those developed by the community.
 
 Following a list of the ready-to-use runtimes currently available:
 - [REST API](./API/01-REST-OpenAPI.md)
@@ -16,7 +16,7 @@ Following a list of the ready-to-use runtimes currently available:
 
 ## Example
 
-Each runtime has its own configuration and its own way of being started. In this example we show the use of a runtime that allows serving the functions of a module as a REST API using [Fastify](https://fastify.dev/).
+Each runtime has its own configuration and startup procedure. This example demonstrates using the REST runtime (`@mondrian-framework/rest`) with the Fastify adapter (`@mondrian-framework/rest-fastify`) to serve a module's functions as a REST API.
 
 ```ts showLineNumbers
 import { rest } from '@mondrian-framework/rest'

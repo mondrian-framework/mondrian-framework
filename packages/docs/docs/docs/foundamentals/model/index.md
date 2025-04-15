@@ -5,16 +5,15 @@ sidebar_position: 2.1
 # Model
 
 The first and fundamental feature of the Mondrian Framework is the ability to
-define the **schema** of a domain model. This definition is a requirement to
+define the **schema** of a domain model. This definition is a prerequisite to
 enable data translation into any current and future representations.
-Having a detailed domain model in a formal language is a powerful tool in
-itself to ensure interoperability and longevity.
+Having a detailed domain model defined in a formal language is a powerful tool in
+itself for ensuring interoperability and longevity.
 
-The approach through schema definition entails that the developer does not
-directly write the types representing their domain model, but instead starts with
-defining the schema, which can contain additional information beyond what is
-supported by the target programming language, such as validation rules as an
-example.
+The schema definition approach means that the developer does not
+directly write the TypeScript types representing their domain model. Instead, they start by
+defining the schema, which can contain additional information beyond what is typically
+supported by the target programming language, such as validation rules.
 TypeScript types are then automatically inferred by the framework from the
 schema and provided to the user, ready to use.
 
@@ -22,17 +21,17 @@ Mondrian Framework takes inspiration from various libraries for declaring and
 validating data models, such as [Zod](https://zod.dev/),
 [io-ts](https://github.com/gcanti/io-ts), [Ajv](https://ajv.js.org/),
 [typia](https://typia.io/), and many others.
-It tries to combine their expressiveness, speed, and ease of use adding features
+It tries to combine their expressiveness, speed, and ease of use while adding features
 not only to declare and validate a schema but also to easily visit, process it,
 and work with data projections.
 
-Basically a model schema:
+Essentially, a model schema:
 
 - Represents an entity of the application domain, in terms of data type,
   encoding, decoding, and validation rules.
 - Is defined using a collection of convenient framework functions to declare
   fields and their attributes.
-- Provides generated TypeScript type definition.
+- Provides generated TypeScript type definitions.
 
 ## Example
 
@@ -77,6 +76,6 @@ type Post = model.Infer<typeof Post>
 
 ## TypeScript support
 
-Mondrian Framework is entirely written in TypeScript. The use of typing greatly reduces the error rate and allows for increased productivity thanks to seamless integration with modern IDEs that provide powerful autocomplete features.
+Mondrian Framework is entirely written in TypeScript. The use of strong typing greatly reduces the error rate and increases productivity thanks to seamless integration with modern IDEs that provide powerful autocompletion features.
 
-As shown in the previous example, by importing the `@mondrian-framework/model` module, we have access to a wide range of functions enabling us to describe a model. Furthermore it is possible to automatically generate the TypeScript type of a model based on its schema. As demonstrated in the example, it is sufficient to use the `Infer` utility type.
+As shown in the previous example, by importing the `@mondrian-framework/model` module, we gain access to a wide range of functions enabling us to describe a model. Furthermore, it is possible to automatically generate the TypeScript type of a model based on its schema. As demonstrated in the example, using the `Infer` utility type is sufficient for this purpose.

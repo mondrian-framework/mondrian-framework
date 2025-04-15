@@ -1,10 +1,10 @@
 # Provider
 
-Quite often the implementation of a function requires data, connections, or more generally resources, that do not depend on an input but on the context in which it is executed. To inject these dependencies within a function and be able to use them for the development of application logic, Mondrian offers a construct called 'provider'.
+Quite often, the implementation of a function requires data, connections, or other resources that don't depend on the function's direct input but rather on the context in which it's executed. To inject these dependencies within a function and make them available for the application logic, Mondrian offers a construct called a 'provider'.
 
 ## Definition
 
-To define a provider, you can use a module of the same name available in the `@mondrian-framework/module` package.
+To define a provider, you can use the `provider` builder available in the `@mondrian-framework/module` package.
 
 ```typescript
 import { result } from '@mondrian-framework/model'
@@ -19,11 +19,11 @@ export const prismaProvider = provider.build({
 })
 ```
 
-This example shows how to provide a reference to the singleton instance of [Prisma](https://www.prisma.io/), a well-known TypeScript ORM. Note that a provider is very similar to a function but does not need the definition of input and output types. This is because they do not contribute to the definition of a function or the generation of a specification, but only to the implementation.
+This example shows how to provide a reference to a singleton instance of [Prisma](https://www.prisma.io/), a well-known TypeScript ORM. Note that a provider is similar to a function but doesn't require the definition of input and output types. This is because providers don't contribute to the function's public contract or the generation of API specifications; they only affect the implementation details.
 
-A provider may simply provide a resource that it can create from scratch, but it often requires some **contextual input**. These inputs are not to be confused with those of a function, which come directly from its invocation, but are inputs that the runtime and the module must construct for each invocation. They generally represent data relating to the context of the call, such as the identity of the caller, or data relating to the execution context, such as additonal details about the runtime environment.
+A provider might simply provide a resource it creates from scratch, but it often requires some **contextual input**. These inputs are not the same as a function's inputs (which come directly from the caller). Instead, they are inputs that the runtime and module must construct for each invocation. They generally represent data related to the call context, such as the caller's identity, or data related to the execution environment, such as additional details about the runtime.
 
-A provider may declare these inputs freely, specifying them as parameters of the body function. It will then be the responsibility of the module and the runtime to provide all the data required by all providers.
+A provider can declare these required inputs freely by specifying them as parameters of its `body` function. It then becomes the responsibility of the module and the runtime to provide all the data required by all providers during execution.
 
 ```typescript
 import { result } from '@mondrian-framework/model'
@@ -43,11 +43,11 @@ export const authProvider = provider.build({
 })
 ```
 
-In this example the `authProvider` needs an optional `token` as input, validates it and returns an optional user ID as an additional input for functions that need it.
+In this example, the `authProvider` requires an optional `token` as contextual input, validates it, and returns an optional user ID, which can then be used as an additional input for functions that depend on this provider.
 
 ## Usage
 
-To use one or more providers, you must pass them to the function implementation.
+To use one or more providers, you must declare them in the function implementation using the `use` method.
 
 ```typescript
 const readPosts = readPostDefinition
@@ -64,15 +64,15 @@ const readPosts = readPostDefinition
   })
 ```
 
-Thanks to Mondrian's typing engine, the input parameter to the body function is enriched with the object returned by each provider so that there is strict typing between the declared providers and the resources that can be used in the implementation.
+Thanks to Mondrian's typing engine, the `body` function's parameters are automatically enriched with the outputs returned by each declared provider. This ensures strict type checking between the declared providers and the resources available within the function's implementation.
 
-A provider can be shared by several functions, it is typical that it be so. It is **invoked at each execution** of each function that declares its use. This is important and to be considered when deciding how to construct the resources returned by it. If you wish to define a provider that works as a singleton, i.e. an identical object for each execution of each function, simply implement it as in the first example in this page.
+A provider can be shared by multiple functions, which is a typical use case. It is **invoked once for each execution** of every function that declares its use. This is important to consider when deciding how to construct the resources returned by a provider. If you wish to define a provider that acts as a singleton (i.e., returns the identical object instance for every function execution), implement it as shown in the first example on this page (instantiating the resource outside the provider's body).
 
 ## Dependency
 
-A provider may also depend on other providers, thus forming chains of providers. In this way, useful logic can be reused for a set of functions, but also for other providers, without duplication of code.
+A provider can also depend on other providers, forming chains of dependencies. This allows useful logic to be reused across a set of functions and even other providers, avoiding code duplication.
 
-Similar to what you can do for a function, you can declare a dependency between providers using the `use` method. In this case, the data provided by the parent provider are accessible as part of a second parameter of the `body` function.
+Similar to how dependencies are declared for functions, you can declare dependencies between providers using the `use` method. When a provider depends on another, the data provided by the parent provider(s) are accessible as part of a second parameter to the `body` function.
 
 ```typescript
 import { result } from '@mondrian-framework/model'
@@ -96,7 +96,7 @@ export const customLoggerProvider = provider
 
 ## Errors
 
-A provider may also declare the possibility of returning errors, in the same formalism as a function. And, obviously, it can return them in the body implementation using the `result.fail` utility function.
+A provider can also declare the possibility of returning errors, using the same formalism as functions. Obviously, it can return these errors within its `body` implementation using the `result.fail` utility function.
 
 ```typescript
 import { result } from '@mondrian-framework/model'
@@ -131,20 +131,20 @@ export const authProvider = provider.build({
 ```
 
 :::info
-The errors returned by a provider must also be present in the **declaration of each of the function** that use it. Indeed, at each invocation, these errors may be generated in the execution of the provider, and are automatically returned by the function, which must then declare them in order to produce a consistent specification.
+Errors defined and potentially returned by a provider must also be declared in the **definition of every function** that uses that provider. This is because, during any function invocation, these errors might be generated by the provider's execution. The function must declare these potential errors so that they are part of its contract and are reflected accurately in generated specifications.
 :::
 
 ## Mondrian Providers
 
-Mondrian provides a set of built-in providers that can be used in your functions. These providers are:
+Mondrian provides a set of built-in providers that can be used in your functions:
 
 - `@mondrian-framework/rate-limiter`
 
 ### Rate Limiter
 
-The rate limiter provider allows you to limit the number of requests that can be made to a function in a given time window. This is useful to prevent abuse of your API and to protect your resources.
+The rate limiter provider allows you to limit the number of requests that can be made to a function within a given time window. This is useful for preventing API abuse and protecting your resources.
 
-To use the rate limiter provider, you need to define a rate limiter configuration and pass it to the provider as shown below:
+To use the rate limiter provider, you need to define a rate limiter configuration and pass it to the provider builder as shown below:
 
 ```typescript
 import { rateLimiter } from '@mondrian-framework/rate-limiter'
@@ -178,4 +178,4 @@ export const login = module.functions.login
   })
 ```
 
-The rate-limiter feature comes also in the form of a guard, which can be used to protect a function from being called too many times in a given time window. The guard is used in the same way as the provider, but it is applied to the function using the `guards` field. More on this on the [Guards](./04-guard.md) page.
+The rate-limiter feature also comes in the form of a guard, which can be used to protect a function from being called too many times within a given time window. The guard is used similarly to the provider but is applied to the function definition using the `guards` field. More details can be found on the [Guards](./04-guard.md) page.

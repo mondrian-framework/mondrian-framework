@@ -1,6 +1,6 @@
 # Typing
 
-In the [definition chapter](./01-definition.md) you learned about the Mondrian
+In the [definition chapter](./01-definition.md), you learned about Mondrian
 types and how they can be defined. Consider this example type we've shown before:
 
 ```ts showLineNumbers
@@ -14,19 +14,19 @@ It acts as a _description_ of the structure of users: every value with a type
 that conforms to `User` should have an integer `id` field and a string `username`
 field.
 
-However, this description wouldn't be too useful if there wasn't a way to actually
-create values conforming to the types we define. That's why the Mondrian framework 
-also exposes many utility methods and types to bridge the gap between TypeScript's 
+However, this description wouldn't be very useful if there wasn't a way to actually
+create values conforming to the types we define. That's why the Mondrian framework
+also exposes many utility methods and types to bridge the gap between TypeScript's
 and Mondrian's type systems.
 
 ## Type inference
 
-You may have noticed that all the Mondrian types are closely related to TypeScript
-ones. `model.number()` is related to `number`, `model.string()` to `string` and so on.
-The same applies for complex types like objects, arrays and optional values.
+You may have noticed that all Mondrian types are closely related to TypeScript
+ones. `model.number()` is related to `number`, `model.string()` to `string`, and so on.
+The same applies to complex types like objects, arrays, and optional values.
 
 Thanks to this resemblance, every Mondrian type can be turned into a corresponding
-TypesScript type using the `model.Infer` utility type:
+TypeScript type using the `model.Infer<T>` utility type:
 
 ```ts showLineNumbers
 const Model = model.number()
@@ -37,7 +37,7 @@ const value: Model = 10
 
 ### Inference of primitives
 
-All Mondrian primitive types are turned into the corresponding TypeScript's
+All Mondrian primitive types are turned into the corresponding TypeScript
 primitive type:
 
 | Mondrian type                       | Inferred TypeScript type        |
@@ -53,9 +53,9 @@ primitive type:
 
 ### Inference of wrapper types
 
-Inference for wrapper types works as one may expect: optional and nullable types
-are turned into an untagged union with `undefined` and `null` respectively.
-Arrays are inferred as TypeScript's arrays.
+Inference for wrapper types works as one might expect: optional and nullable types
+are turned into untagged unions with `undefined` and `null` respectively.
+Arrays are inferred as TypeScript arrays (`readonly` by default).
 
 | Mondrian Type       | Inferred TypeScript type                                  |
 | ------------------- | --------------------------------------------------------- |
@@ -82,7 +82,7 @@ const value: OptionalNumber = 10
 
 ### Inference of objects
 
-Mondrian objects can be turned into TypeScript's object types. Let's work through an
+Mondrian objects can be turned into TypeScript object types. Let's work through an
 example and see how it works:
 
 ```ts showLineNumbers
@@ -108,25 +108,25 @@ type Book = model.Infer<typeof Book>
 // }
 ```
 
-As you can see the inferred type is obtained by inferring the type of each of
-the fields of the object's model: `title` is _described_ by a `model.string()`
-so the resulting inferred type for that field is `string`, `author` is itself a
-`model.object({...})` so its type is the inferred type for that object: a record
-with two `string`-typed fields `firstName` and `lastName`.
+As you can see, the inferred type is obtained by inferring the type of each
+field in the object's model: `title` is _described_ by `model.string()`, 
+so the resulting inferred type for that field is `string`; `author` is itself a
+`model.object({...})` optionally wrapped, so its type is the inferred type for that object unioned with `undefined`: a record
+with two `string`-typed fields `firstName` and `lastName`, or `undefined`.
 
-Fields with an optional type are correctly inferred to be optional, so `author`
+Fields with an optional type are correctly inferred as optional properties in the TypeScript type, so `author`
 is inferred as `author?: { ... } | undefined`.
 
-There's one last important thing to point out: every object is inferred to be
-immutable by default, each one of its fields is `readonly`. This may look a bit
-odd at first but is actually a really good default and Mondrian encourages you
+There's one last important thing to point out: every object is inferred with
+`readonly` fields by default. This may look a bit
+odd at first but is actually a good default, and Mondrian encourages you
 to embrace data immutability. If you are interested in the topic and want to go
-deeper into the reason why this is the preferred approach, you can check out
+deeper into the reasons why this is the preferred approach, you can check out
 [_Data-Oriented Programming_](https://www.manning.com/books/data-oriented-programming)
-where Yehonathan Sharvit makes a great case for building systems centered around
+by Yehonathan Sharvit, where he makes a great case for building systems centered around
 immutability.
 
-In the rare case one would need a mutable data structure they can turn the
+In the rare case one needs a mutable data structure, they can turn the
 object type definition into a mutable one like this:
 
 ```ts showLineNumbers
@@ -142,12 +142,12 @@ type MutableBook = model.Infer<typeof MutableBook>
 // }
 ```
 
-Notice how the inner object is still immutable! You'd have to mark that as
+Notice how the inner object (`author`) is still inferred with `readonly` fields! You'd have to mark that object type as
 mutable as well to change its inferred type.
 
 ### Inference of unions
 
-Exactly as typescript a Mondrian union is inferred as a union of two or more types.
+Exactly like TypeScript unions, a Mondrian union is inferred as a union of the inferred types of its variants.
 
 ```ts showLineNumbers
 const Response = model.union({
@@ -169,30 +169,30 @@ type Response = model.Infer<typeof Response>
 
 ### Why bother with Mondrian types?
 
-After working through these examples you may wonder why do we need to jump
-through all these extra hoops to get a TypeScript's type? In the end each of the
-Mondrian models gets inferred as a TypeScript's type so why not write that
+After working through these examples, you may wonder: why do we need to jump
+through all these extra hoops to get a TypeScript type? In the end, each
+Mondrian model gets inferred as a TypeScript type, so why not write that
 directly?
 
-First of all, TypeScript types are only at compile time and they totally desappear
-at runtime. This means that they cannot be used, for example, to validate a piece 
-of data or to provide documentation.
+First of all, TypeScript types exist only at compile time and completely disappear
+at runtime. This means that they cannot be used, for example, to validate a piece
+of data or to provide runtime documentation.
 
-Moreover, having a schema you can navigate it to automatically generate any kind of 
-present or future artifact directly inferred by your domain model. 
+Moreover, having a schema definition allows you to navigate it programmatically to automatically generate any kind of
+present or future artifact directly inferred from your domain model (e.g., API specifications, database schemas, validation functions, etc.).
 
 ## Utility functions
 
-When working with unknown data you may not be sure that it actually conforms
-to a type, hand writing validation code may be tedious and error prone. That's
-why Mondrian already provides two utility functions that allow you to
+When working with unknown data, you may not be sure that it actually conforms
+to a specific type. Hand-writing validation code can be tedious and error-prone. That's
+why Mondrian provides two utility functions that allow you to
 verify this: `model.isType` and `model.assertType`.
 
 ### `model.isType`
 
-This function exposed by the `model` module takes two inputs: a mondrian type
-definition and an unknown value. It returns true if the value actually
-conforms to the mondrian definition:
+This function, exposed by the `model` module, takes two inputs: a Mondrian type
+definition and an unknown value. It returns `true` if the value actually
+conforms to the Mondrian definition, and `false` otherwise:
 
 ```ts
 const Error = model.object({ code: model.number(), message: model.string() })
@@ -205,17 +205,17 @@ model.isType(Error, { code: 418, message: "I'm a teapot" })
 // -> true
 ```
 
-If you check `isType`'s return type you may notice that it is doing something a
+If you check `isType`'s return type, you may notice that it's doing something a
 bit smarter:
 
 ```ts
 export function isType<T extends model.Type>(type: T, value: unknown, ...): value is model.Infer<T>
 ```
 
-It is actually using a
-[type predicate](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates)
-to allow you to use the value given as input as an actual instance of that type
-in case it returns true. This plays nicely used with `if` statements and type
+It's actually using a
+[type predicate](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates).
+This allows you to use the value given as input as an actual instance of the inferred type
+within code blocks where `isType` returns `true`. This plays nicely with `if` statements and type
 narrowing:
 
 ```ts
@@ -234,8 +234,8 @@ if (model.isType(Error, value)) {
 
 ### `model.assertType`
 
-This function works exactly like `isType` but instead of returning a boolean
-value, it throws an exception if the given value does not conform to the given
+This function works similarly to `isType`, but instead of returning a boolean
+value, it throws a detailed exception if the given value does not conform to the given
 type:
 
 ```ts
@@ -247,8 +247,8 @@ model.assertType(Error, { code: 418, message: "I'm a teapot" })
 ```
 
 Once again, this plays nicely with TypeScript's type narrowing: if the assertion
-does not fail, from that point on you can treat the value as if it were of the
-expected type:
+does not throw an exception, from that point onward in the code flow, you can treat the value as if it were of the
+expected inferred type:
 
 ```ts
 const value: unknown = { code: 418, message: "I'm a teapot" }

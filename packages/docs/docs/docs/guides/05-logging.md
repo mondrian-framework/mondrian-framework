@@ -4,7 +4,7 @@ Mondrian Framework provides a built-in, convenient logging mechanism integrated 
 
 ## Automatic Logger Injection
 
-When you implement a Mondrian function, an instance of the `MondrianLogger` is automatically provided as part of the arguments passed to the `body` function. You don't need any special setup to access it; it's always available alongside `input`, `retrieve`, `tracer`, and any context from providers.
+When you implement a Mondrian function, an instance of the `MondrianLogger` is automatically provided as part of the arguments passed to the `body` function. No special setup is required to access it; it's always available alongside `input`, `retrieve`, `tracer`, and any context from providers.
 
 ```ts showLineNumbers
 import { model, result } from '@mondrian-framework/model'
@@ -54,6 +54,6 @@ The logger automatically includes contextual information with each log record, s
 - `moduleName`: The name of the module the function belongs to.
 - `operationName`: The name of the function being executed.
 
-This built-in context helps in filtering and analyzing logs without requiring manual additions in every log statement. You can further enrich the context by providing attributes specific to the log message.
+This built-in context helps filter and analyze logs without requiring manual additions in every log statement. You can further enrich the context by providing attributes specific to the log message.
 
-By integrating OpenTelemetry-based logging directly into the function context, Mondrian simplifies the process of adding effective observability to your applications.
+By integrating OpenTelemetry-based logging directly into the function context, Mondrian simplifies adding effective observability to your applications.

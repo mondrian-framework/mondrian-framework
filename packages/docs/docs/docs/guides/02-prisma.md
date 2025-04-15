@@ -1,6 +1,6 @@
 # Prisma ORM Integration
 
-Mondrian Framework offers seamless integration with [Prisma](https://www.prisma.io/), a popular TypeScript ORM. This integration simplifies exposing your database models through your API, especially when using Mondrian's `retrieve` capabilities for complex data fetching like filtering, sorting, pagination, and field selection.
+Mondrian Framework offers seamless integration with [Prisma](https://www.prisma.io/), a popular TypeScript ORM. This integration simplifies exposing your database models through your API, especially when using Mondrian's `retrieve` capabilities for complex data fetching, including filtering, sorting, pagination, and field selection.
 
 The key benefit is **type safety**: Mondrian automatically generates TypeScript types for the `retrieve` argument in your function implementations that are directly compatible with Prisma's query arguments (like those for `findMany`, `findUnique`, etc.). This eliminates guesswork and reduces runtime errors.
 
@@ -92,21 +92,20 @@ import { result } from '@mondrian-framework/model'
 import { PrismaClient } from '@prisma/client'
 
 // Assuming prisma client instance
-
 const prisma = new PrismaClient() // Replace with your Prisma client instantiation/injection logic
 
 // ... getUsers definition ...
 
+// highlight-start
 const getUsersImpl = getUsers.implement({
-  // highlight-start
   async body({ retrieve }) {
     // The 'retrieve' object type matches Prisma's findMany arguments:
     // { select?: ..., where?: ..., orderBy?: ..., skip?: ..., take?: ... }
     const users = await prisma.user.findMany(retrieve)
     return result.ok(users)
   },
-  // highlight-end
 })
+// highlight-end
 ```
 
 Because `retrieve` is typed correctly according to the `User` entity and the enabled capabilities, you can pass it directly to `prisma.user.findMany()`, ensuring type safety between your API layer and database queries.

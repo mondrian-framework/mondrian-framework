@@ -1,8 +1,8 @@
 # Guard
 
-Guards are specialized constructs in Mondrian designed to run checks or logic _before_ the main body of a function executes. They are ideal for implementing cross-cutting concerns like authentication, authorization, rate limiting, or preliminary input validation that determines if the function should proceed at all.
+Guards are specialized constructs in Mondrian designed to run checks or logic _before_ the main body of a function executes. They are ideal for implementing cross-cutting concerns like authentication, authorization, rate limiting, or preliminary input validation that determines whether the function should proceed at all.
 
-Unlike [Providers](./03-provider.md), which primarily supply resources or context _during_ function execution, Guards act as gatekeepers, potentially preventing the function's core logic from running based on their outcome.
+Unlike [Providers](./03-provider.md), which primarily supply resources or context _during_ function execution, guards act as gatekeepers, potentially preventing the function's core logic from running based on their outcome.
 
 ## Definition
 
@@ -39,14 +39,14 @@ declare function isValidToken(token: string): boolean
 declare function decodeToken(token: string): { userId: string }
 ```
 
-A guard's `body` function receives input derived from the module's context and must return a `result`.
+A guard's `body` function receives input derived from the module's context and must return a `result` (`result.Result<undefined, E>`).
 
-- A `result.fail` indicates the guard check failed, and the main function body **will not** be executed. The error is propagated back to the caller.
-- A `result.ok` indicates the guard check passed, and the function execution proceeds. Unlike providers, successful guards typically return `result.ok()` without a value, signalling permission to proceed without injecting additional data into the function's arguments.
+- A `result.fail(...)` indicates the guard check failed. The main function body **will not** be executed, and the error is propagated back to the caller.
+- A `result.ok()` indicates the guard check passed, and function execution proceeds. Unlike providers, successful guards typically return `result.ok()` (which resolves to `Result<undefined, never>`) without a value, signalling permission to proceed without injecting additional data into the function's arguments.
 
 ## Usage
 
-Guards are applied to a function definition using the `.use()` method, specifically within the `guards` property.
+Guards are applied to a function definition using the `.use()` method, specifically within the `guards` property. You assign a name to each guard being used.
 
 ```ts showLineNumbers
 import { authenticationGuard } from './guards'
@@ -89,13 +89,13 @@ declare function retrieveGeneralSensitiveData(): Promise<{ secret: string }>
 // highlight-end
 ```
 
-In this example, the `authenticationGuard` runs before the `getSensitiveData` function's body. If authentication fails, the guard returns `result.fail({ unauthorized: {} })`, execution stops, and the error is returned. If authentication succeeds, the guard returns `result.ok()`, and the function's `body` is executed without any additional arguments injected from the guard.
+In this example, the `authenticationGuard` runs before the `getSensitiveData` function's `body`. If authentication fails, the guard returns `result.fail({ unauthorized: {} })`, execution stops, and the error is returned to the caller. If authentication succeeds, the guard returns `result.ok()`, and the function's `body` is executed. The `body`'s arguments object will have a key corresponding to the guard's name (`auth` in this case), but its value will be `undefined` because successful guards don't inject values.
 
 ## Dependencies and Errors
 
 Similar to providers, guards can:
 
-- Depend on other providers using the `.use({ providers: { ... } })` method when building the guard.
-- Declare and return specific `errors`. Any errors declared by a guard **must also be declared** in the `errors` definition of the function that uses the guard. This ensures the function's contract accurately reflects all possible failure outcomes.
+- Depend on providers using the `.use({ providers: { ... } })` method when building the guard. The provider outputs will be available in the guard's `body`.
+- Declare and return specific `errors`. Any errors declared by a guard **must also be declared** in the `errors` definition of the function that uses the guard. This ensures the function's contract accurately reflects all possible failure outcomes, including those originating from its guards.
 
 Guards provide a powerful mechanism for enforcing preconditions and security constraints consistently across multiple functions within a module.

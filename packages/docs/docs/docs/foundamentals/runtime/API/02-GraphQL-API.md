@@ -1,20 +1,21 @@
 # GraphQL
 
-This runtime allows a Mondrian module to be served as a GraphQL API. It automatically generates a GraphQL schema based on the module's functions and types, and provides resolvers to execute the corresponding function logic.
+This runtime allows a Mondrian module to be served as a GraphQL API. It automatically generates a GraphQL schema based on the module's functions and underlying model types, and provides resolvers that execute the corresponding function logic.
 
 ## Package
 
-To use this runtime, you need to install the `@mondrian-framework/graphql-yoga` dependency and import the `graphql` namespace from it:
+To use this runtime, you need to install the `@mondrian-framework/graphql-yoga` dependency. This package provides the necessary tools to build and serve the GraphQL API.
 
 ```ts showLineNumbers
 import { graphql } from '@mondrian-framework/graphql-yoga'
+// or import { serveWithFastify } from '@mondrian-framework/graphql-yoga' for the server adapter
 ```
 
-This package builds upon [GraphQL Yoga](https://the-guild.dev/graphql/yoga-server), a popular and fully-featured GraphQL server.
+This package leverages [GraphQL Yoga](https://the-guild.dev/graphql/yoga-server), a popular and fully-featured GraphQL server library.
 
 ## Definition
 
-Similar to the REST runtime, you first define an API component using the `build` function provided by the `graphql` namespace. This function requires the Mondrian module you want to expose.
+Similar to the REST runtime, you first define an API component using the `build` function provided by the `graphql` namespace. This function primarily requires the implemented Mondrian module you want to expose and configuration for how its functions map to GraphQL operations.
 
 ```ts showLineNumbers
 import myModule from './my-module'
@@ -32,14 +33,14 @@ const api = graphql.build({
 })
 ```
 
-## Functions
+## Functions Mapping (`graphql.build`)
 
-When building the GraphQL API, you need to specify how each function from the module should be exposed in the GraphQL schema. This is done via the `functions` field in the `graphql.build` configuration.
+When building the GraphQL API using `graphql.build`, you must specify how each function from the module should be exposed in the GraphQL schema. This is done via the `functions` field in the configuration object.
 
-For each function you want to expose, provide an entry in the `functions` object where the key is the function name from the module, and the value is an object specifying its GraphQL type:
+For each module function you want to expose, provide an entry in the `functions` object. The key should be the function name (as defined in the module), and the value should be an object specifying its GraphQL operation type:
 
-- `type: 'query'`: Exposes the function as a GraphQL query.
-- `type: 'mutation'`: Exposes the function as a GraphQL mutation.
+- `{ type: 'query' }`: Exposes the function as a field under the `Query` type in the GraphQL schema.
+- `{ type: 'mutation' }`: Exposes the function as a field under the `Mutation` type in the GraphQL schema.
 
 ```ts showLineNumbers
 // ... inside graphql.build
@@ -57,49 +58,38 @@ functions: {
 // ...
 ```
 
-The input, output, and error types defined in the Mondrian function definition are automatically translated into corresponding GraphQL types (Input Objects, Object Types, Unions, Enums, Scalars). Functions utilizing the `retrieve` capabilities are translated into queries that accept arguments for filtering, sorting, pagination, and field selection, matching the defined capabilities.
+The input, output, and error types defined in the Mondrian function definitions are automatically translated into corresponding GraphQL types (Input Objects, Object Types, Unions, Enums, Scalars). Functions utilizing `retrieve` capabilities are translated into queries or mutations that accept arguments for filtering (`where`), sorting (`orderBy`), pagination (`skip`, `take`), and field selection (GraphQL selections), matching the capabilities enabled in the function definition.
 
-## Serving
+## Serving (with Fastify)
 
-To serve the defined GraphQL API, you can use integration packages like `@mondrian-framework/graphql-yoga`, which provides utilities for common Node.js servers like Fastify.
+To serve the defined GraphQL API, you can use integration adapters provided by `@mondrian-framework/graphql-yoga`, such as `serveWithFastify` for use with the Fastify web server.
 
-The `serveWithFastify` function takes the Fastify server instance, the built `api` definition, a context builder function, and optional server options.
+This function takes the Fastify server instance, the GraphQL API definition created by `graphql.build`, a context builder function specific to the server environment, and optional server configuration options.
 
 ```ts showLineNumbers
-// highlight-end
-import myModule from './my-module'
-import { graphql } from '@mondrian-framework/graphql-yoga'
-// highlight-start
-import { serveWithFastify } from '@mondrian-framework/graphql-yoga'
-import { fastify } from 'fastify'
-
-// Assuming myModule is defined and implemented
-
-const api = graphql.build({
-  module: myModule,
-  functions: {
-    getUser: { type: 'query' },
-    createUser: { type: 'mutation' },
-  },
-})
+// Assuming imports for graphql, serveWithFastify, fastify, myModule, etc.
 
 // highlight-start
+// ... (graphql.build definition as above)
+
 const server = fastify()
 
-// The context function receives request details and should return the context needed by the module/providers
 serveWithFastify({
-  server,
-  api,
+  server, // The Fastify server instance
+  api,    // The GraphQL API definition from graphql.build
   context: async ({ request }) => {
-    // Example: Extract auth token and build context
-    const authorization = request.headers.get('authorization')
-    // ... potentially validate token and fetch user details ...
-    return { authorization /* ... other context fields */ }
+    // Build the context required by the module.
+    // This function receives the Fastify request object.
+    // It must return the input expected by myModule's context builder.
+    const authorization = request.headers.authorization
+    // ... potentially validate token, fetch user details ...
+    return { authorization /* ... other context properties ... */ }
   },
   options: {
-    // Enable GraphQL Playground/GraphiQL interface
+    // Server-specific options passed to GraphQL Yoga
+    // Enable GraphQL Playground/GraphiQL interface via introspection
     introspection: true,
-    // Configure the endpoint path (defaults to /graphql)
+    // endpoint: '/my-graphql-path' // Configure the endpoint path (defaults to /graphql)
   },
 })
 
@@ -111,15 +101,15 @@ server.listen({ port: 4000 }).then((address) => {
 
 ### Context
 
-The `context` function is crucial. It's executed for each incoming GraphQL request and is responsible for creating the context object that will be passed down through the module and its providers. This is where you typically handle authentication, authorization, and database connection setup based on request headers or other details. The return value of this function must satisfy the context requirements of your Mondrian module implementation.
+The `context` function provided to `serveWithFastify` is crucial. It's executed for each incoming GraphQL request and is responsible for creating the context object required by your Mondrian module's own context builder. This is where you typically handle tasks like extracting authentication details from headers, setting up database connections per request, or gathering other request-specific information. The return value of this function becomes the input to your module's `context` function.
 
 ### Options
 
-The `serveWithFastify` function accepts an `options` object, allowing you to configure the underlying GraphQL Yoga server. Key options include:
+The `serveWithFastify` function accepts an `options` object, which is passed down to configure the underlying GraphQL Yoga server. Key options include:
 
-- `introspection`: Set to `true` (default) to enable schema introspection and tools like GraphQL Playground or GraphiQL, which provide an interactive API explorer at the GraphQL endpoint.
-- `endpoint`: Specifies the URL path for the GraphQL API (defaults to `/graphql`).
-- Other GraphQL Yoga options can be passed here as needed.
+- `introspection`: Set to `true` (default) to enable schema introspection. This allows tools like GraphQL Playground or GraphiQL to fetch the schema and provide an interactive API explorer at the GraphQL endpoint.
+- `endpoint`: A string specifying the URL path for the GraphQL API (defaults to `/graphql`).
+- Other GraphQL Yoga server options can be included here as needed (refer to the GraphQL Yoga documentation).
 
 ## Full Example
 
@@ -173,34 +163,33 @@ const userModule = module.build({
 // 4. Build GraphQL API definition
 const graphQLApi = graphql.build({
   module: userModule,
-  // highlight-start
   functions: {
     getUser: { type: 'query' },
     createUser: { type: 'mutation' },
   },
-  // highlight-end
 })
 
 // 5. Serve the API
 const server = fastify()
 
-// highlight-start
 serveWithFastify({
   server,
   api: graphQLApi,
-  context: async ({ fastify: { request } }) => {
-    // No context needed for this simple example
+  context: async ({ request }) => {
+    // Example context builder for the server adapter
+    // This needs to return the input expected by userModule's context builder (if any)
+    // For this simple example, the module doesn't need context, so we return {}
     return {}
   },
   options: {
     introspection: true, // Enable GraphQL Playground
+    // endpoint: '/graphql' // Default endpoint
   },
 })
-// highlight-end
 
 server.listen({ port: 4000 }).then((address) => {
   console.log(`GraphQL server running at ${address}/graphql`)
 })
 ```
 
-Now you can access `http://localhost:4000/graphql` in your browser to use the GraphQL Playground and interact with your API.
+Now you can access `http://localhost:4000/graphql` (or your configured `endpoint`) in your browser to use the GraphQL Playground and interact with your API.

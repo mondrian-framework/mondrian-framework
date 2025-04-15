@@ -124,7 +124,7 @@ export const authenticatedRestClient = restClient.withHeaders({
 
 ### Using the REST Client
 
-Interacting with the REST client is similar to the Module Client, calling functions via the `functions` property. The client handles the HTTP request details automatically based on the provided API specification.
+Interacting with the REST client is similar to the Module Client: you call functions via the `functions` property. The client handles the HTTP request details automatically based on the provided API specification.
 
 ```ts showLineNumbers
 // api-consumer.ts
@@ -174,14 +174,8 @@ A significant advantage of Mondrian's client system is that you **do not need th
 You can share:
 
 1.  The **Module Interface** (`module.define(...)` result) or just the relevant **Function Interfaces** (`functions.define(...)` results).
-2.  The **REST API Specification** (`rest.define(...)` result).
+2.  The **REST API Specification** (`rest.build(...)` result).
 
-With just these two pieces of information (which define the _contract_ of the API), a separate team (e.g., frontend) can use `import { client } from '@mondrian-framework/rest'` to build a fully type-safe client to interact with the API endpoint.
+With just these two pieces of information (which define the _contract_ of the API), a separate team (e.g., a frontend team) can use `import { client } from '@mondrian-framework/rest/client'` to build a fully type-safe client to interact with the API endpoint.
 
-This promotes strong decoupling:
-
-- Frontend teams can develop against a type-safe contract without waiting for the backend implementation to be complete.
-- Changes to the backend implementation details won't break the client as long as the function and REST API contracts are maintained.
-- Type safety reduces integration errors between frontend and backend.
-
-This makes Mondrian clients a powerful tool for building robust, maintainable, and scalable applications with clear boundaries between services and consumers.
+This makes Mondrian clients a powerful tool for building robust, maintainable, and scalable applications with clear boundaries between services and their consumers.

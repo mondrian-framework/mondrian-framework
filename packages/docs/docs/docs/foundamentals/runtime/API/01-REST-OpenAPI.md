@@ -1,12 +1,12 @@
 # REST (OpenAPI 3.1)
 
-This runtime allows a Mondrian module to be served as a REST API conforming to the **OpenAPI 3.1** specification. Each function can be mapped as a REST service, whose inputs and outputs are configured as query parameters, path variables or raw body content.
+This runtime allows a Mondrian module to be served as a REST API conforming to the **OpenAPI 3.1** specification. Each function within the module can be mapped to a REST endpoint, with its inputs and outputs configured as query parameters, path parameters, or request/response bodies.
 
-The runtime, in addition to exposing a Web server for the API, provides a complete OpenAPI 3.1 specification automatically produced from the definition of the module model and functions.
+The runtime, in addition to exposing a web server for the API, automatically generates a complete OpenAPI 3.1 specification derived from the definitions of the module, its functions, and their underlying models.
 
 ## Package
 
-To use this runtime you need to start adding the `@mondrian-framework/rest` dependency and import the `rest` namespace from it:
+To use this runtime, start by adding the `@mondrian-framework/rest` dependency and importing the `rest` namespace from it:
 
 ```ts showLineNumbers
 import { rest } from '@mondrian-framework/rest'
@@ -14,7 +14,7 @@ import { rest } from '@mondrian-framework/rest'
 
 ## Definition
 
-This runtime first requires the definition of a component typically called `api` and to do this it provides a `build` function that accepts the module and some runtime specific parameters.
+This runtime first requires the definition of an API component, typically created using the `rest.build` function. This function accepts the implemented Mondrian module and several runtime-specific configuration parameters.
 
 ```ts showLineNumbers
 import myModule from './my-module'
@@ -57,58 +57,56 @@ const api = rest.build({
 })
 ```
 
-This definition is common to all runtimes that allow a module to be served as a REST API.
+This API definition structure (`rest.build(...)`) is intended to be portable and can potentially be used by different server adapters (like the Fastify one shown next).
 
-Several libraries exist in the Node.js ecosystem to serve these APIs. One of the most popular is [Fastify](https://fastify.dev/) which combines simplicity with top-level performance. To serve APIs with Fastify, the specific Mondrian runtime `@mondrian-framework/rest-fastify` must be installed and imported. It offers a really simple `serve` function that you can call passing the Fastify server and the API definition.
+Several libraries exist in the Node.js ecosystem to serve REST APIs. One popular choice is [Fastify](https://fastify.dev/), which combines simplicity with excellent performance. To serve Mondrian REST APIs using Fastify, you install the specific adapter package `@mondrian-framework/rest-fastify` and import its `serve` function. This function takes the Fastify server instance, the API definition created by `rest.build`, a context builder function, and optional server options.
 
 ```ts showLineNumbers
-// highlight-end
-import myModule from './my-module'
-import { rest } from '@mondrian-framework/rest'
+// Assuming myModule is an implemented Mondrian Module from ./my-module
+// Assuming api is the result of rest.build({...}) as shown above
+
 // highlight-start
 import { serve } from '@mondrian-framework/rest-fastify'
 import { fastify } from 'fastify'
+// highlight-end
 
-const api = rest.build({
-  module: myModule,
-  version: 1, // API version
-  functions: {
-    // ... function mappings
-  },
-  // ... other api configurations
-})
+// ... (rest.build definition as above)
 
 // highlight-start
 const server = fastify()
+
 serve({
-  server,
-  api,
+  server, // The Fastify server instance
+  api,    // The API definition from rest.build
   context: async ({ request }) => {
-    // Build context needed by the module from the request
+    // Build the context required by the module.
+    // This function receives the Fastify request object.
+    // It must return the input expected by myModule's context builder.
     return { authorization: request.headers.authorization }
   },
   options: {
-    // Enable OpenAPI specification endpoint
+    // Server-specific options (for rest-fastify)
+    // Enable OpenAPI specification endpoint and Swagger UI
     introspection: { path: '/openapi', ui: 'swagger' },
   },
 })
 
 server.listen({ port: 4000 }).then((address) => {
-  console.log(`Server started at address ${address}`)
+  console.log(`Server started at ${address}`)
   console.log(`OpenAPI specification available at ${address}/openapi`)
 })
 // highlight-end
 ```
 
-## Functions
+## Functions Mapping (`rest.build`)
 
-By constructing an API using `rest.build`, you specify which functions from the module are exposed and how they map to REST endpoints using the `functions` field. This field takes an object where keys are function names from the module, and values define their REST mapping(s).
+When constructing an API using `rest.build`, you specify which functions from the module are exposed and how they map to REST endpoints via the `functions` field. This field is an object where keys are the names of functions within the module, and the values define their corresponding REST mapping(s).
 
-For each function, you can specify a single mapping object or an array of mapping objects. Each mapping object configures how the function is exposed as a REST API endpoint and affects its representation in the generated OpenAPI specification.
+For each function, you can provide either a single mapping object or an array of mapping objects (if a function needs to be exposed via multiple endpoints/methods). Each mapping object configures how the function is exposed as a REST API endpoint and influences its representation in the generated OpenAPI specification.
 
 ### Method
 
-Specify the HTTP `method` (e.g., `'get'`, `'post'`, `'put'`, `'delete'`, `'patch'`) for the endpoint. If omitted, Mondrian attempts to infer it based on the function's operation type (e.g., 'query' maps to 'get', 'mutation' maps to 'post').
+Specify the HTTP `method` (e.g., `'get'`, `'post'`, `'put'`, `'delete'`, `'patch'`) for the endpoint. If omitted, Mondrian attempts to infer it based on the function's semantic `operation` type defined in its options (e.g., a function marked as `'query'` typically maps to `GET`, while `'mutation'` often maps to `POST`).
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -122,7 +120,7 @@ functions: {
 
 ### Path
 
-Define the URL `path` for the endpoint relative to the base API path (`/api/v{version}` by default). If omitted, it defaults to `/{functionName}`.
+Define the URL `path` for the endpoint, relative to the base API path (which is `/api/v{version}` by default, but configurable via `pathPrefix`). If `path` is omitted, it defaults to `/{functionName}`.
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -133,7 +131,7 @@ functions: {
 // ...
 ```
 
-You can include path parameters using curly braces (e.g., `{userId}`). These parameter names **must** correspond to fields in the function's input type, and those fields **must** be scalar types (string, number, boolean, etc.).
+You can include path parameters using curly braces (e.g., `{userId}`). These parameter names **must** correspond directly to field names in the function's input type, and those input fields **must** be scalar types (like string, number, boolean).
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -148,15 +146,15 @@ functions: {
 
 ### Input Mapping and `inputName`
 
-How a function's input type is mapped depends on the HTTP method and the presence of path parameters:
+How a function's input type is mapped to the HTTP request depends on the HTTP method and the presence of path parameters:
 
 - **`GET`, `DELETE` Methods:**
 
-  - If the input is an object/entity type, its fields (excluding path parameters) are mapped to **query parameters**. Scalar fields become standard query parameters, while complex fields (objects, arrays) use `deepObject` style (e.g., `?filter[name]=John&filter[age]=30`).
-  - If the input is a scalar or array type and there are **no** path parameters, the entire input is mapped to a single query parameter. By default, this query parameter is named `input`, but you can customize it using the `inputName` option.
+  - If the input type is an object/entity, its fields (excluding any fields used as path parameters) are mapped to **query parameters**. Scalar fields become standard query parameters (e.g., `?limit=10`). Complex fields like nested objects or arrays typically use serialization styles like `deepObject` (e.g., `?filter[name]=John&filter[age]=30`) or potentially JSON encoding, depending on the server adapter and configuration.
+  - If the input type is a scalar (e.g., `string`) or an array (e.g., `string[]`) and there are **no** path parameters, the entire input is mapped to a single query parameter. By default, this parameter is named `input`. You can customize this name using the `inputName` option in the mapping.
 
 - **`POST`, `PUT`, `PATCH` Methods:**
-  - If there are path parameters, only those corresponding fields from the input object are mapped to the path. The **remaining** fields of the input object are expected in the **request body** (typically as JSON).
+  - If path parameters are defined in the `path`, the corresponding fields from the function's input object are taken from the URL path. All **remaining** fields of the input object are expected in the **request body** (usually as JSON).
   - If there are **no** path parameters, the entire function input is expected in the **request body**.
 
 ```ts showLineNumbers
@@ -180,20 +178,20 @@ functions: {
 
 ### OpenAPI Generation
 
-The runtime automatically generates an OpenAPI 3.1 specification based on your module definition and the REST API configuration.
+The runtime automatically generates an OpenAPI 3.1 specification based on your module definition, function definitions, model definitions, and the REST API configuration provided to `rest.build`.
 
-- **Paths & Operations**: Generated from the `functions` mapping, including methods, paths, path parameters, and query parameters.
-- **Schemas**: Mondrian types (input, output, errors) are converted into OpenAPI schemas, including references (`#/components/schemas/`) for named types (entities, named objects, custom types with names). Primitive types, validation rules (min/max length, patterns, etc.), and structures (objects, arrays, unions) are translated accordingly.
-- **Request Bodies**: Generated for methods like `POST`, `PUT`, `PATCH` based on the input mapping.
-- **Responses**: Includes a '200' success response with the output schema and error responses based on the function's declared errors and the configured `errorCodes`.
-- **Security Schemes**: Defined in `rest.build` under `securities` and referenced in operations via the `security` mapping option.
-- **Metadata**: Includes API `version`, `title` (module name), `description` (module description), and server `endpoints`.
+- **Paths & Operations**: Generated from the `functions` mappings, including methods, paths, path parameters, and query parameters.
+- **Schemas**: Mondrian types (used in function inputs, outputs, and errors) are converted into reusable OpenAPI schemas, often placed under `#/components/schemas/`. This includes proper representation of primitives, objects, arrays, unions, enums, literals, and custom types, along with validation constraints (min/max length, patterns, required fields, etc.).
+- **Request Bodies**: Generated for methods like `POST`, `PUT`, `PATCH`, referencing the appropriate input schemas and reflecting the input mapping rules.
+- **Responses**: Includes a default '200 OK' success response referencing the output schema. Error responses are generated based on the function's declared `errors` and the configured `errorCodes` (both function-specific and global).
+- **Security Schemes**: Defined globally in `rest.build` under the `securities` field and referenced within specific operations based on the `security` option in the function mappings.
+- **Metadata**: Includes the API `version`, `title` (module name), `description` (module description), and server `endpoints` defined in the `rest.build` configuration.
 
-You can typically access this specification via an introspection endpoint configured when serving the API (see [Serving](#definition) and `options.introspection`).
+You can typically access this generated OpenAPI specification via an introspection endpoint configured when serving the API (see the [Serving](#serving-the-api-with-fastify) example and the `options.introspection` setting).
 
-### Error codes
+### Error Codes (`errorCodes`)
 
-You can customize the HTTP status code returned for specific function errors. This is done using the `errorCodes` option within a function's mapping object. This mapping overrides any global error code mappings defined in `rest.build`. If an error is not mapped here or globally, it defaults to `400`.
+You can customize the HTTP status code returned for specific, named errors declared by a function. This is configured using the `errorCodes` option within that function's mapping object. This function-specific mapping overrides any global error code mappings defined at the top level of `rest.build`. If a function error is not mapped specifically here or globally, it typically defaults to a `400 Bad Request` status code.
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -222,10 +220,10 @@ functions: {
 
 API versioning is supported at two levels:
 
-1.  **API Version**: Set via the `version` field in `rest.build`. This defines the base version for the entire API deployment (e.g., `version: 2`). The runtime usually prefixes routes with `/api/v{version}` (configurable via `pathPrefix`).
-2.  **Function Version Constraints**: Within a function mapping (or an array of mappings), use the `version` option with `min` and/or `max` properties to specify the API versions for which that specific mapping is active.
+1.  **API Version**: Set globally via the `version` field in `rest.build`. This defines the primary version for the entire API deployment (e.g., `version: 2`). The runtime usually prefixes generated routes with `/api/v{version}` (this base path prefix is configurable via the `pathPrefix` option).
+2.  **Function Version Constraints**: Within a function's mapping object (or for each object in an array of mappings), use the `version` option with `min` and/or `max` properties. This specifies the API versions for which that particular mapping (endpoint) is active.
 
-This allows maintaining backward compatibility or introducing changes in specific versions. See the [Versioning Guide](../../../guides/07-versioning.md) for more details.
+This allows maintaining backward compatibility or introducing breaking changes gradually across different versions. See the [Versioning Guide](../../../guides/07-versioning.md) for more details.
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -240,10 +238,10 @@ functions: {
 
 ### Security
 
-You define security requirements using two options:
+You define security requirements for your API using two related options:
 
-1.  **`securities` (in `rest.build`)**: Defines named security schemes compatible with OpenAPI security schemes (e.g., HTTP Bearer, API Key, OAuth2).
-2.  **`security` (in function mapping)**: Applies one or more defined security schemes to a specific endpoint. It takes an array of security requirement objects.
+1.  **`securities` (Top-level in `rest.build`)**: Defines named security schemes available for use in the API. These definitions must be compatible with OpenAPI security scheme objects (e.g., HTTP Bearer, API Key, OAuth2).
+2.  **`security` (Within a function mapping)**: Applies one or more of the globally defined security schemes to a specific endpoint. It takes an array of security requirement objects, where each object specifies the required scheme(s) for a particular security option (e.g., `[{ bearerAuth: [] }]` requires `bearerAuth`).
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -269,15 +267,15 @@ functions: {
 // ...
 ```
 
-Refer to the OpenAPI specification for details on security requirement objects. Mondrian uses this information for both documentation generation and potentially for integrating with authentication/authorization middleware (depending on the server adapter).
+Refer to the OpenAPI 3.1 specification for details on defining security schemes and security requirement objects. Mondrian uses this information primarily for generating accurate OpenAPI documentation. Integrating with actual authentication/authorization middleware depends on the specific server adapter and how you configure context building.
 
-## Global Options
+## Global Options (`rest.build`)
 
-The `options` field in `rest.build` allows configuring global settings for the API.
+The `options` field at the top level of `rest.build` allows configuring global settings for the API definition.
 
-### Endpoints
+### Endpoints (`options.endpoints`)
 
-The `endpoints` option is an array of strings specifying the base URLs where your API is hosted. This information is used to populate the `servers` field in the generated OpenAPI specification, helping API consumers understand where to send requests.
+This option is an array of strings specifying the base URLs where your API will be hosted. This information populates the `servers` field in the generated OpenAPI specification, helping API consumers and documentation tools know where to send requests.
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -289,9 +287,9 @@ options: {
 // ...
 ```
 
-### Path Prefix
+### Path Prefix (`options.pathPrefix`)
 
-The `pathPrefix` option defines a common prefix added to all routes defined in the `functions` mapping. The default prefix is `/api`. The final route pattern will be `{pathPrefix}/v{version}{functionPath}`.
+This option defines a common prefix string added before the version segment in all generated routes. The default prefix is `/api`. The final route pattern constructed is typically `{pathPrefix}/v{version}{functionPath}`.
 
 ```ts showLineNumbers
 // ... inside rest.build
@@ -304,31 +302,14 @@ options: {
 // ...
 ```
 
-Set `pathPrefix: ''` to have routes directly under `/v{version}/...`.
+Setting `pathPrefix: ''` results in routes directly under the version segment, like `/v{version}/...`.
 
-### Server Options (`@mondrian-framework/rest-fastify`)
+## Server Options (`@mondrian-framework/rest-fastify`)
 
-When using `serve` from `@mondrian-framework/rest-fastify`, the `options` object allows configuring server-specific features:
+When using the `serve` function from the `@mondrian-framework/rest-fastify` adapter, its `options` parameter allows configuring server-specific features:
 
-- **`introspection`**: Controls the OpenAPI specification endpoint.
-  - `path`: The path where the OpenAPI JSON spec is served (e.g., `/openapi`).
-  - `ui`: ('swagger' | 'scalar' | 'redoc' | 'rapidoc'): Optionally serve an interactive documentation UI at the same path. If not specified, only the JSON spec is served.
-  - Set to `undefined` or `false` to disable the introspection endpoint.
-
-```ts showLineNumbers
-// ... when calling serve from @mondrian-framework/rest-fastify
-serve({
-  server,
-  api,
-  context: async () => ({}),
-  options: {
-    // highlight-start
-    introspection: {
-      path: '/docs', // Serve spec and UI at /docs
-      ui: 'swagger', // Use Swagger UI
-    },
-    // highlight-end
-  },
-})
-```
+- **`options.introspection`**: Controls the automatic generation and serving of the OpenAPI specification endpoint.
+  - `path`: (string) The URL path where the OpenAPI JSON specification will be served (e.g., `'/openapi'`).
+  - `ui`: (Optional: `'swagger'` | `'scalar'` | `'redoc'` | `'rapidoc'`): If provided, serves an interactive API documentation UI (like Swagger UI) at the same `path` alongside the JSON spec. If omitted, only the raw JSON specification is served.
+  - Set `introspection` to `undefined` or `false` to completely disable this feature.
 

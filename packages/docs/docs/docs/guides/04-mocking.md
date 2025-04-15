@@ -1,6 +1,6 @@
 # Mocking
 
-Mondrian Framework provides a convenient way to create mock implementations for your functions directly from their definitions. This is particularly useful during development, especially when building APIs where the backend logic might not be fully implemented yet, but you need a functional endpoint for frontend development or API contract validation.
+Mondrian Framework provides a convenient way to create mock implementations for your functions directly from their definitions. This is particularly useful during development, especially when building APIs where the backend logic might not be fully implemented, but you need a functional endpoint for frontend development or API contract validation.
 
 ## Mocking a Function
 
@@ -70,12 +70,12 @@ server.listen({ port: 4000 }).then((address) => {
 The `.mock()` method accepts an optional configuration object:
 
 - `errorProbability` (number, 0 to 1): Specifies the likelihood that the mock function will return one of its defined errors instead of a successful response. Defaults to `0`.
-- `maxDepth` (number): Controls how deeply nested the example data generated for the output type should be. This is useful for complex object structures or recursive types. Defaults to `1`. Be cautious with large values, as it can impact performance for types with many arrays.
+- `maxDepth` (number): Controls how deeply nested the example data generated for the output type should be. This is useful for complex object structures or recursive types. Defaults to `1`. Be cautious with large values, as this can impact performance for types with many arrays.
 
 ## Use Cases
 
 - **API Prototyping**: Quickly stand up API endpoints based on defined contracts without writing backend logic.
-- **Frontend Development**: Allow frontend teams to develop against a working API that returns realistic (though random) data structures.
+- **Frontend Development**: Allow frontend teams to develop against a working API that returns realistic (though randomized) data structures.
 - **Contract Testing**: Verify that clients can interact correctly with the API structure before the full implementation is available.
 - **Component Isolation**: When testing a module that depends on another, you can provide mocked implementations for the dependency's functions.
 

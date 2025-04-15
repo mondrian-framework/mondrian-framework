@@ -1,10 +1,10 @@
 # Implementation
 
-The implementation of a module is basically the union of the implementations of its functions
-and the business logic to give them a context that satisfies their requirements.
+The implementation of a module primarily involves combining the implementations of its functions
+with the business logic required to build the context that satisfies the functions' requirements (e.g., providing resources from providers).
 
 In Mondrian, a module is implemented by starting with its [definition](./01-definition.md) and
-invoking the `implement` method.
+invoking the `implement` method on it.
 
 ```ts showLineNumbers
 import { retrievePosts, createPost, updatePost, deletePost } from '../post-functions'
@@ -29,109 +29,143 @@ const postModule = postModuleDefinition.implement({
 
 ## Context
 
-Each function can require a number of [providers](../function/03-provider.md) in order to fulfill its application logic. As an example a reference to a repository to interact with a data source, or a queue where to put some jobs to be completed.
+Each function within a module can depend on a number of [providers](../function/03-provider.md) to fulfill its application logic. Examples include needing a reference to a repository to interact with a data source, or a client to enqueue jobs in a queue.
 
-While serving a module we must provide all the information requested by all the providers defined in all function. This constraint is enforced by the framework at typing level so there are no risk to fall in mistake.
+When implementing a module, you must provide a `context` builder function capable of supplying all the resources requested by all the providers used by all the functions within that module. This constraint is enforced by the framework at the TypeScript level, minimizing the risk of runtime errors due to missing context.
 
-Let's go with an example:
+The context builder function itself is defined within the `implement` call:
 
 ```ts showLineNumbers
-// ...
+import { module } from '@mondrian-framework/module' // Assuming imports
+import { result } from '@mondrian-framework/model'
+import { Respository, Queue } from './dependencies' // Placeholder types
+import { moduleDefinition, firstFunctionDefinition, secondFunctionDefinition } from './definitions' // Placeholder definitions
 
-type FirstFunctionContext = {
-  repository: Respository
-}
-const firstFunction = fistFunctionDefinition.implement<FirstFunctionContext>({
-  body: async ({ context }) => {
+// Define functions and their context requirements (simplified)
+type FirstFunctionContext = { repository: Respository }
+const firstFunction = firstFunctionDefinition.implement({
+  async body({ /* ... other args ..., */ context }) {
     // context is of type FirstFunctionContext
-    // ...
+    const data = await context.repository.find()
+    return result.ok(data)
   },
 })
 
-type SecondFunctionContext = {
-  queue: Queue
-}
-const secondFunction = secondFunctionDefinition.implement<SecondFunctionContext>({
-  body: async ({ context }) => {
+type SecondFunctionContext = { queue: Queue }
+const secondFunction = secondFunctionDefinition.implement({
+  async body({ /* ... other args ..., */ context }) {
     // context is of type SecondFunctionContext
-    // ...
+    await context.queue.enqueue({ task: 'process' })
+    return result.ok()
   },
 })
 
-const module = moduleDefinition.implement({
+// Implement the module, providing the context builder
+const moduleImplementation = moduleDefinition.implement({
   functions: {
     firstFunction,
     secondFunction,
   },
+  // highlight-start
+  // This function must build a context satisfying ALL function needs
   context: async () => {
-    // must return an object of type FirstFunctionContext & SecondFunctionContext
+    // Initialize or retrieve dependencies
+    const repository = new Respository(/* ... */)
+    const queue = new Queue(/* ... */)
+
+    // Return an object containing all required context properties
+    // The framework checks that { repository: Respository; queue: Queue } is assignable
+    // to FirstFunctionContext & SecondFunctionContext
     return result.ok({
       repository,
       queue,
     })
   },
+  // highlight-end
 })
 ```
 
-The output context is constructed by the module from an input that the module itself can declare, at the typing level, as the function's first parameter. It will then be the runtimes that execute this module that will have to worry about providing this input.
+The context builder function (`context: async (...) => ...`) constructs the necessary context. It can optionally receive input itself, declared as its first parameter type. This input is provided by the specific [Runtime](../runtime/index.md) executing the module. The runtime is responsible for translating external request details (e.g., HTTP headers, authentication tokens) into the input expected by the module's context builder.
 
 ```ts showLineNumbers
-...
-const moduleImplementation = moduleDefinition
-  .implement({
-    // ...
-    context: async (input: ContextInput) => {
-      // use the input to build the context for the functions
-      return result.ok({
-        // a context definition
-      })
-    },
-  })
-```
+import { module } from '@mondrian-framework/module' // Assuming imports
+import { result } from '@mondrian-framework/model'
+import { moduleDefinition } from './definitions' // Placeholder definition
 
-That of context is thus a chain of processing in which each step fulfills its own responsibilities:
+// Define the input type expected by the context builder from the runtime
+type ContextInput = { authorizationHeader?: string; traceId?: string }
 
-&nbsp;
-![Context](/img/context.png)
-
-- the **runtime** is responsible for interpreting the caller's request, since it knows its format, and extrapolating from it the data needed for the form, hiding all the technicalities of the execution environment.
-- the **module** is responsible for processing these inputs from the runtime to create the context required by its functions
-- the **function** uses the context to carry out its application logic
-
-:::warning
-Context creation is an operation that is **invoked at each function execution**; in fact, the module does not have its own permanent state. Therefore, care must be taken with this operation and the implications it may have on performance, connection management, etc.
-:::
-
-## Errors
-
-Note that, as described in the [module definition](./01-definition.md), context creation can also return errors.
-
-```ts showLineNumbers
-// ...
-
-const moduleDefinition = module.define({
-  // ...
+const moduleImplementation = moduleDefinition.implement({
+  functions: { /* ... function implementations ... */ },
   // highlight-start
-  errors: {
-    invalidCredentials: model.string(),
-    unauthorizedError: model.string(),
+  context: async (runtimeInput: ContextInput) => {
+    // Use the runtimeInput to build the context for the functions
+    const userId = await getUserIdFromToken(runtimeInput.authorizationHeader)
+    // ... build other context parts ...
+    return result.ok({
+      userId,
+      traceId: runtimeInput.traceId,
+      // ... other context properties
+    })
   },
   // highlight-end
 })
 
-const moduleImplementation = module.implement({
-  // ...
-  context: async ({ credentials }: { credentials: Credentials }) => {
+declare function getUserIdFromToken(token: string | undefined): Promise<string | undefined>; // Placeholder
+```
+
+Context creation thus forms a chain where each component has specific responsibilities:
+
+&nbsp;
+![Context](/img/context.png)
+
+- The **Runtime** interprets the caller's request (e.g., HTTP, GraphQL query) and extracts the necessary data to form the input for the module's context builder, hiding execution environment details.
+- The **Module's Context Builder** processes the input from the runtime to create the specific context object required by its functions and their providers.
+- The **Function** receives and uses this context object (along with its direct input) to execute its application logic.
+
+:::warning
+The module's context creation logic (`context: async (...) => ...`) is **invoked for each function execution**. Modules themselves do not maintain a permanent state between invocations. Therefore, be mindful of the performance implications of this operation, especially regarding resource initialization (like database connections) and external calls made during context building.
+:::
+
+## Errors
+
+As mentioned in the [module definition](./01-definition.md) section, the context creation process itself can fail and return errors. These errors must be declared in the module's definition.
+
+```ts showLineNumbers
+import { module, error } from '@mondrian-framework/module' // Assuming imports
+import { result, model } from '@mondrian-framework/model'
+
+// Define potential context errors
+const moduleErrors = error.define({
+  invalidCredentials: { message: 'Given credentials are not valid' },
+  unauthorizedError: { message: 'Unauthorized access' },
+})
+
+// Define the module with declared errors
+const moduleDefinition = module.define({
+  name: 'secure-module',
+  functions: { /* ... function definitions ... */ },
+  errors: moduleErrors,
+})
+
+declare function isAuthorized(creds: unknown): boolean; // Placeholder
+
+const moduleImplementation = moduleDefinition.implement({
+  functions: { /* ... function implementations ... */ },
+  context: async (runtimeInput: { credentials?: unknown }) => {
     // highlight-start
-    if (!credentials) {
-      return result.fail({ invalidCredentials: 'Given credentials are not valid' })
+    if (!runtimeInput.credentials) {
+      // Use the key from the defined moduleErrors
+      return result.fail({ invalidCredentials: {} })
     }
-    if (!isAuthorized(credentials)) {
-      return result.fail({ unauthorizedError: 'Unauthorized access' })
+    if (!isAuthorized(runtimeInput.credentials)) {
+      // Use the key from the defined moduleErrors
+      return result.fail({ unauthorizedError: {} })
     }
     // highlight-end
-    result.ok({
-      // ...
+    // If checks pass, build and return the successful context
+    return result.ok({
+      /* ... context properties ... */
     })
   },
 })
@@ -139,46 +173,65 @@ const moduleImplementation = module.implement({
 
 ## Security Policies
 
-The ability to serve APIs that can provide a portion of the domain graph makes the problem of securing data quite complex to manage. This is a typical issue in GraphQL contexts, but also quite common in general when the backend serves dynamic APIs that can satisfy complex data retrieval requests.
+The ability to serve APIs that expose portions of the domain graph (via `retrieve` capabilities) makes securing data access a complex but crucial task. This is particularly relevant in GraphQL but also applies generally when backend APIs allow flexible data retrieval.
 
-To solve this issue, Mondrian offers a ready-to-use security framework that allows you to define resource access policies in a simple but very powerful way.
+Mondrian provides a security framework to address this by allowing you to define resource access policies.
 
 ```ts showLineNumbers
+import { module } from '@mondrian-framework/module' // Assuming imports
+import { policies } from './security-policies' // Assuming policies are defined elsewhere
+import { moduleDefinition } from './definitions' // Placeholder definition
+
 const moduleImplementation = moduleDefinition.implement({
-  // ...
+  functions: { /* ... function implementations ... */ },
+  context: async (/*...*/) => { /* ... context builder ... */ },
+  // highlight-start
   policies(context) {
+    // The context object built by the 'context' function above is passed here
     if (context.userId != null) {
+      // Return policies suitable for an authenticated user
       return policies.loggedUser(context.userId)
     } else {
+      // Return policies suitable for a guest
       return policies.guest
     }
   },
+  // highlight-end
 })
 ```
 
-As you can see from the example, the `policies` function receives as input the module context and, based on it, returns a security policy that will then allow the framework to determine whether or not the call is authorized. Security policies are user-defined and determine what resources the caller may or may not access.
+As shown, the optional `policies` function within `implement` receives the generated module context as input. Based on this context (e.g., user authentication status), it returns a set of security policy rules. The framework uses these rules to authorize data access during function execution, particularly for functions using `retrieve`. User-defined security policies determine precisely which resources and fields the caller is allowed to access.
 
-To further explore this topic you will find all the details in the section on [security policies](../../guides/01-security.md).
+To explore this topic further, please refer to the [Security Policies guide](../../guides/01-security.md).
 
 ## Options
 
-Every module implementation accepts several options that can be used to customize its behavior.
+Every module implementation accepts several options to customize its runtime behavior.
 
 ```ts showLineNumbers
+import { module } from '@mondrian-framework/module' // Assuming imports
+import { moduleDefinition } from './definitions' // Placeholder definition
+
 const moduleImplementation = moduleDefinition.implement({
-  // ...
+  functions: { /* ... function implementations ... */ },
+  context: async (/*...*/) => { /* ... context builder ... */ },
+  // highlight-start
   options: {
-    checkOutputType: 'log',
-    maxSelectionDepth: 3,
-    opentelemetry: true,
+    checkOutputType: 'log', // Default: 'throw'
+    maxSelectionDepth: 5, // Default: undefined (no limit)
+    opentelemetry: true, // Default: true
   },
+  // highlight-end
 })
 ```
 
-Options specifications is not mandatory and each one has a default value:
+Specifying options is not mandatory, and each has a default value:
 
-- `checkOutputType`: checks (at runtime) if the output value of any function is valid, it also checks if the eventual selection is respected. Default is `throw`, so if the check fails an error is thrown. You can also set it to `log` to do the check and just log failures, but without returning an error. With `ignore` the check is skipped (could be useful in a production environment in order to improve performance).
+- `checkOutputType`: Controls runtime checks on function output values.
+  - `'throw'` (Default): Throws an error if a function's return value doesn't conform to its defined output type or violates selection constraints.
+  - `'log'`: Performs the check and logs failures as errors but does not throw, allowing execution to continue.
+  - `'ignore'`: Skips the output type check entirely (potentially improving performance in production, but use with caution).
 
-- `maxSelectionDepth`: maximum selection depth allowed in a request. If the requested selection is deeper than this value an error is thrown. The default is any depth, but in production it is suggested to set a limit (like 5) in order to prevent denial of service attacks.
+- `maxSelectionDepth`: Sets the maximum depth allowed for nested selections in `retrieve` operations. If a request exceeds this depth, an error is thrown. The default is `undefined` (no depth limit). Setting a reasonable limit (e.g., 5 or 10) in production is recommended to help prevent denial-of-service attacks via overly complex queries.
 
-- `opentelemetry`: enables opentelemetry instrumentation, this can be useful for tracing and monitoring the performance of your application. You can find more details about tracing in the [dedicated section](../../guides/05-logging.md).
+- `opentelemetry`: Enables or disables OpenTelemetry instrumentation for the module's functions. Default is `true` (enabled if OpenTelemetry is configured). This is used for distributed tracing and monitoring. See the [Tracing guide](../../guides/06-tracing.md) for more details.

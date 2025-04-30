@@ -3,7 +3,7 @@ sidebar_position: 2
 ---
 
 # Features
-Mondrian Framework provides many features for building modern cloud native applications. Following is an ever-evolving list of the main features made available with almost zero cost to the developer.
+Mondrian Framework provides many features for building modern cloud-native applications. The following is an ever-evolving list of the main features made available with almost zero cost to the developer.
 
 ## Modeling
 - Formal model definition

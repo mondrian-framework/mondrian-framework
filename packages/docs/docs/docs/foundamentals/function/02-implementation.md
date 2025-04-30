@@ -1,10 +1,10 @@
 # Implementation
 
-The implementation of a function is basically the business logic that represents its behavior.
-Given some inputs it generates expected outputs.
+The implementation of a function constitutes the business logic that represents its behavior.
+Given inputs, it generates the expected outputs or defined errors.
 
 In Mondrian, a function is implemented by starting with its [definition](./01-definition.md) and
-invoking the `implement` method on it.
+invoking the `implement` method on that definition.
 
 ```ts showLineNumbers
 import { createPostDefinition } from './definitions'
@@ -18,13 +18,13 @@ const createPost = createPostDefinition.implement({
 })
 ```
 
-This methos has a mandatory `body` parameter where you must define an asynchronous function
-(returning a Promise) containing your implementation. That function has dynamic parameters based
-on its definition.
+This method has a mandatory `body` parameter where you must define an asynchronous function
+(returning a Promise) containing your implementation. The parameters of this `body` function are dynamic, based
+on the function's definition.
 
 ## Input
 
-The input parameter type depends on the respective definition, it's basically an application of
+The input parameter's type depends on the corresponding function definition; it's essentially an application of
 the [`model.Infer`](../model/02-typing.md#type-inference) utility type to the input schema.
 
 ```ts showLineNumbers
@@ -52,19 +52,19 @@ const createPost = createPostDefinition.implement({
 })
 ```
 
-The input of a function is to be considered always valid, that is, conforming to the validation
-rules defined by its Mondrian type. It is the runtime that will invoke the function that will
-take care of this validation and, if it does not conform, return an error to the caller.
+The input to a function should always be considered valid, meaning it conforms to the validation
+rules defined by its Mondrian type. The runtime invoking the function is responsible
+for this validation and, if the input doesn't conform, returning an error to the caller.
 
-Within the function, therefore, no additional checks on the conformity of the input are necessary,
-but you can of course implement as many additional checks and related errors as you want.
+Within the function implementation, therefore, no additional checks on the basic conformity of the input are necessary,
+although you can, of course, implement as many additional business rule checks and related errors as needed.
 
 ## Output
 
-The implementation of a function must have a return value that conforms to what described in its definition,
-be it an output or an error.
+The implementation of a function must return a value that conforms to what is described in its definition,
+whether it be a success output or a defined error.
 
-Mondrian provides an utility module named `result` to facilitate this implementation in functional style,
+Mondrian provides a utility module named `result` to facilitate this implementation in a functional style,
 as shown below.
 
 ```ts showLineNumbers
@@ -82,19 +82,19 @@ const createPost = createPostDefinition.implement({
 })
 ```
 
-You must remember that in Mondrian both errors and results are treated as return values, and no application
-errors are handled using exceptions and `throw`. This approach is freely inspired by many functional languages.
+You must remember that in Mondrian, both successful results and defined errors are treated as return values; application
+errors are not handled using exceptions and `throw`. This approach is inspired by functional programming languages.
 
 :::warning
-A typical error in using the `fail` function is the omission of the `return`. Omitting to return a failure in
-some cases may generate no error at compile time but only at runtime, so it is important to be careful with it.
-It is in general a best practice to **always return the result** of an `ok` or `fail` call.
+A common mistake when using the `fail` function is omitting the `return` keyword. Omitting `return` before `result.fail(...)`
+may not generate a compile-time error but can lead to unexpected runtime behavior, as the function might continue execution.
+It is a best practice to **always return the result** of an `ok` or `fail` call immediately.
 :::
 
 ## Logger
 
-Mondrian provides a ready-to-use, very convenient and configurable logging mechanism that can be used in any function.
-When implementing the body you can simply use an instance of the logger provided as an additional parameter.
+Mondrian provides a ready-to-use, convenient, and configurable logging mechanism available in any function.
+When implementing the `body`, you can simply use the instance of the logger provided as an additional parameter.
 
 ```ts showLineNumbers
 const createPost = createPostDefinition.implement({
@@ -109,17 +109,17 @@ const createPost = createPostDefinition.implement({
 })
 ```
 
-Mondrian's logger is heavily based on [OpenTelemetry](https://opentelemetry.io/), an open source, vendor neutral standard
+Mondrian's logger is heavily based on [OpenTelemetry](https://opentelemetry.io/), an open-source, vendor-neutral standard
 that is extremely popular for observability features.
 
-It offers five simple methods for logging at different levels: `logDebug`, `logInfo`, `logWarn`, `logError`, `logFatal`. Each
-of these functions accepts a free string and, as a second parameter, a key-value object in which to specify additional details (opentelemetry attributes).
+It offers five simple methods for logging at different severity levels: `logDebug`, `logInfo`, `logWarn`, `logError`, `logFatal`. Each
+of these functions accepts a required message string and, as a second optional parameter, a key-value object (attributes) in which to specify additional details (OpenTelemetry attributes).
 
-More details on logging in the [section on this topic](../../guides/05-logging.md).
+More details on logging can be found in the [dedicated guide](../../guides/05-logging.md).
 
 ## Tracer
 
-Just as mentioned for logging capabilities, Mondrian provides ready-to-use support for tracing, again based on [OpenTelemetry](https://opentelemetry.io/). When implementing the body of a function you can use an instance of the tracer provided as an additional parameter.
+Similar to the logging capabilities, Mondrian provides ready-to-use support for tracing, also based on [OpenTelemetry](https://opentelemetry.io/). When implementing the `body` of a function, you can use the instance of the tracer provided as an additional parameter.
 
 ```ts showLineNumbers
 const createPost = createPostDefinition.implement({
@@ -142,4 +142,4 @@ const createPost = createPostDefinition.implement({
 
 You can also specify additional tracing options using the `startActiveSpanWithOptions` method.
 
-More details on tracing in the [section on this topic](../../guides/05-logging.md).
+More details on tracing can be found in the [dedicated guide](../../guides/06-tracing.md).

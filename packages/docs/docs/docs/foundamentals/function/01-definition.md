@@ -1,21 +1,21 @@
 # Definition
 
-In Mondrian you can define a function using the `@mondrian-framework/module` package.
-Everything you may need to do it is enclosed inside the `functions` namespace, so to
-get things started you should import it:
+In Mondrian, you can define a function using the `@mondrian-framework/module` package.
+Everything you may need to do so is enclosed within the `functions` namespace, so to
+get started, you should import it:
 
 ```ts showLineNumbers
 import { functions } from '@mondrian-framework/module'
 ```
 
-The definition of a function contains all and only the information necessary to establish
-the contract between the caller and the developer. It therefore contains
+The definition of a function contains all, and only, the information necessary to establish
+the contract between the caller and the implementer. It therefore contains
 no details about its behavior or where it will be executed.
 
 Anything included in the definition may be subject to publication, so it must not contain
 private details.
 
-The `functions` namespace provides a utility method `define` for this purpose:
+The `functions` namespace provides the `define` utility method for this purpose:
 
 ```ts showLineNumbers
 const createPost = functions.define({
@@ -31,12 +31,12 @@ const createPost = functions.define({
 ## Inputs
 
 The first thing to define in a function is its input. Mondrian provides a single input
-parameter, which can be defined inline as in the example above or taken from a constant
-defined somewhere earlier.
+parameter, which can be defined inline, as in the example above, or taken from a constant
+defined elsewhere.
 
 Any type that can be defined via `@mondrian-framework/model` can be used as input:
-primitives, objects, entities, arrays, and unions. unions can be particularly useful
-in the case of functions that can accept input of different types.
+primitives, objects, entities, arrays, and unions. Unions can be particularly useful
+for functions that can accept input of different types.
 
 ```ts showLineNumbers
 const CustomerUserInput = model.object(...)
@@ -51,7 +51,7 @@ const registerUser = functions.define({
 })
 ```
 
-A function can also receive no input, in which case the `undefined` type can be used, or the input definition can be omitted.
+A function can also receive no input, in which case the `undefined` type can be used, or the `input` definition can simply be omitted.
 
 ```ts showLineNumbers
 const generateRandomString = functions.define({
@@ -62,8 +62,8 @@ const generateRandomString = functions.define({
 ## Outputs
 
 Exactly as with inputs, Mondrian provides a second parameter to define the output
-of a function. Again, the output can be a primitive, an objects, an entity, an
-array or a union.
+of a function. Again, the output can be a primitive, an object, an entity, an
+array, or a union.
 
 ```ts showLineNumbers
 const User = ...
@@ -73,8 +73,8 @@ const getAllUsers = functions.define({
 })
 ```
 
-In the case where the function has no output, i.e. is _void_, the output type must be
-defined as `undefined` or be omitted.
+In cases where the function has no output (i.e., it is _void_), the output type must be
+defined as `undefined`, or the `output` definition can be omitted.
 
 ```ts showLineNumbers
 const setNewPassword = functions.define({
@@ -82,10 +82,10 @@ const setNewPassword = functions.define({
 })
 ```
 
-## Retrieve entities
+## Retrieving Entities
 
-Many times the output of a function is an [entity](../model//01-definition.md#entities) or an
-array of entities. In these cases it is common for one or more inputs to be linked to the expected
+Often, the output of a function is an [entity](../model/01-definition.md#entities) or an
+array of entities. In these cases, it is common for one or more inputs to be linked to the expected
 output.
 
 Assume, for example, a function to retrieve a list of users. It may have as input:
@@ -95,17 +95,17 @@ Assume, for example, a function to retrieve a list of users. It may have as inpu
 - A sorting logic
 - The number of records to be returned or the index / number of the first record to be returned
 
-All of these **inputs are closely related to the output entity** and give additional details
-about how the function should retrieve and output it.
+All of these **inputs are closely related to the output entity** and provide additional details
+about how the function should retrieve and structure the output.
 
-You can freely define these inputs in the standard way, using `mondrian-framework/model`
-and the input parameter. Alternatively, Mondrian framework offers the possibility of defining them
-automatically, with a standard structure, leaving the developer simply to choose whether or
+You can define these inputs manually in the standard way using `@mondrian-framework/model`
+and the `input` parameter. Alternatively, Mondrian offers the possibility of defining them
+automatically with a standard structure, leaving the developer simply to choose whether or
 not to activate them. This option, in addition to convenience, allows these inputs to be treated
-differently, opening up the possibility of creating automatic logic on them, in conjunction with
-the entity model to which they refer. It is possible, for example, to create a security middleware
+differently, opening up the possibility of creating automatic logic based on them, in conjunction with
+the entity model to which they refer. For example, it is possible to create security middleware
 based on access policies defined on the entity that check these inputs for allowance, or to automatically
-translate filters and fields selection to an ORM format. You can also imagine a lot of other scenarios.
+translate filters and field selections to an ORM format. Many other scenarios are also possible.
 
 These inputs can be activated individually through a `retrieve` parameter in the function definition.
 
@@ -130,7 +130,7 @@ const retrieveUsers = functions.define({
 })
 ```
 
-By activating them, the function implementation now can receive an additional `retrieve` parameter
+By activating them, the function implementation can now receive an additional `retrieve` parameter
 which, in the above example, will have the following (simplified) type:
 
 ```ts showLineNumbers
@@ -171,22 +171,22 @@ A more detailed documentation of the semantics of each of these inputs follows.
 #### Where
 
 The `where` parameter identifies a filter on the output entity. The number and type of filters that
-can be created on an entity is extremely large and varied, Mondrian therefore chooses a basic
+can be created on an entity is extremely large and varied; therefore, Mondrian chooses a basic
 subset of them, typically offered by popular ORMs.
 
 #### Select
 
 The `select` parameter identifies a selection of the entity's fields, a projection of its structure.
-It is typical of API contexts where the client can select a subset of the output fields for performance
-issues, e.g. on GraphQL.
+This is typical in API contexts where the client can select a subset of the output fields for performance
+reasons, e.g., in GraphQL.
 
-To select a field you must specify its key and value `true` and conversely `false` to exclude it.
+To select a field, you must specify its key and the value `true`; conversely, use `false` to exclude it.
 
 #### Order By
 
-The `orderBy` parameter is used to indicate a sorting of output records. It generally only makes
-sense if the output is an array of entities. You can define an array of sorts and the direction of
-every item.
+The `orderBy` parameter is used to indicate a sorting order for the output records. It generally only makes
+sense if the output is an array of entities. You can define an array of sort criteria and the direction for
+each item.
 
 #### Take
 
@@ -194,22 +194,22 @@ every item.
 
 #### Skip
 
-`skip` is an integer that indicates the number of records to skip.
+`skip` is an integer that indicates the number of initial records to skip.
 
 :::info
 For all these parameters, instead of designing a completely proprietary syntax, we chose to use the
-same syntax defined by the [Prisma](https://www.prisma.io/).
+same syntax defined by [Prisma](https://www.prisma.io/).
 
-Prisma is an open source ORM written in TypeScript that is extremely popular in the NodeJS ecosystem
-and compatible with both major SQL databases and MongoDB. Given its widespread use, we chose to follow
-its syntax, which is rather agnostic to their product, of way to simplify its use, even make it transparent.
-Nothing precludes that, given a formal definition of the output model and these retrieve inputs, it is
-possible to build a utility function that translates them to other libraries, existing or future.
+Prisma is an open-source ORM written in TypeScript that is extremely popular in the Node.js ecosystem
+and compatible with major SQL databases and MongoDB. Given its widespread use, we chose to follow
+its syntax, which is rather agnostic to their specific product, as a way to simplify its use and potentially make it transparent.
+Nothing precludes building a utility function that translates these retrieve inputs and the formal output model definition
+to other libraries, existing or future.
 :::
 
 #### Narrowing retrieve capabilities
 
-The capabilities of the `retrieve` parameter can be specified in a more detailed way in every entity of the model:
+The capabilities of the `retrieve` parameter can be specified in a more detailed way for every entity in the model:
 
 ```ts showLineNumbers
 const User = model.entity(
@@ -221,10 +221,10 @@ const User = model.entity(
   {
     // highlight-start
     retrieve: {
-      where: { id: true, firstName: true }, //can only be filtered by `id` and `firstName`
-      orderBy: { id: true }, //can obly be sorted by `id`
-      take: { max: 10 }, // or true
-      skip: { max: 1000 }, //or true
+      where: { id: true, firstName: true },
+      orderBy: { id: true },
+      take: { max: 10 },
+      skip: { max: 1000 },
     },
     // highlight-end
   },
@@ -236,13 +236,13 @@ const retrieveUsers = functions.define({
 })
 ```
 
-Every time we encounter a `User` entity in a function return or while traversing the graph, the retrieve capabilities will be limited to the specified ones.
+Every time we encounter a `User` entity in a function return type or while traversing the graph, the retrieve capabilities will be limited to the specified ones.
 
 ## Errors
 
 We believe that the best way to handle errors is to do so in a way that preserves their
-structure and typing, just as with any other output. That is why the framework allows you to define,
-for each function, a map of possible errors and related schema types.
+structure and typing, just like any other output. That is why the framework allows you to define,
+for each function, a map of possible errors and their related schema types.
 
 ```ts showLineNumbers
 const retrieveUser = functions.define({
@@ -260,7 +260,7 @@ const retrieveUser = functions.define({
 ```
 
 The details attached to an error can be as complex as desired to contain
-additional data better explaining it.
+additional data explaining the error.
 
 ```ts showLineNumbers
 const retrieveUser = functions.define({
@@ -270,7 +270,7 @@ const retrieveUser = functions.define({
   output: User,
   errors: {
     userNotFound: model.literal('User not found'),
-    invalidId: model.literal('Given ID is not valid')
+    invalidId: model.literal('Given ID is not valid'),
     // highlight-start
     userNoLongerRegistered: model.object({
       message: model.literal('User no longer registered'),
@@ -281,11 +281,11 @@ const retrieveUser = functions.define({
 })
 ```
 
-This definition will then allow you to [implement the behavior](./02-implementation.md) of the function by
+This definition will then allow you to [implement the behavior](./02-implementation.md) of the function while
 ensuring type checking on the return of any errors as well.
 
 Mondrian also offers a utility method for a more concise definition of errors, which allows fields with default values,
-such as a message, to be added.
+such as a `message`, to be added easily.
 
 ```typescript
 import { error } from '@mondrian-framework/module'
@@ -306,14 +306,14 @@ const retrieveUser = functions.define({
 })
 ```
 
-Using this utility we define a map of errors the function can return, and for some of them we also set default values
-of the field message. The difference between the previous example is that you in this second way, there is no need
-to specify the message every time you want to use the error.
+Using this utility, we define a map of errors the function can return, and for some of them, we also set default values
+for the `message` field. The difference from the previous example is that with this second approach, there is no need
+to specify the message every time you want to return the error.
 
 ## Options
 
-The definition of a function provides a last optional parameter called `options` through which the developer
-can specify additional metadata that may be useful at some runtime. In any case, these options are intrinsically
+The definition of a function provides a final optional parameter called `options`, through which the developer
+can specify additional metadata that may be useful at runtime. In any case, these options are intrinsically
 linked to the nature of the function.
 
 ```ts showLineNumbers
@@ -332,18 +332,18 @@ const getAllUsers = functions.define({
 
 #### Namespace
 
-The `namespace` parameter represent an optional logical subgrouping of a module that can be useful to further subdivide a set of functions.
-This option is used by some runtimes, for example [@mondrian-framework/rest](../runtime//API/01-REST-OpenAPI.md) and [@mondrian-framework/graphql](../runtime/API/02-GraphQL-API.md), where there is a concept of API grouping in the respective specifications.
+The `namespace` parameter represents an optional logical subgrouping within a module that can be useful to further subdivide a set of functions.
+This option is used by some runtimes, for example `@mondrian-framework/rest` ([../runtime/API/01-REST-OpenAPI.md](../runtime/API/01-REST-OpenAPI.md)) and `@mondrian-framework/graphql` ([../runtime/API/02-GraphQL-API.md](../runtime/API/02-GraphQL-API.md)), where there is a concept of API grouping in the respective specifications.
 
 #### Description
 
-The `description` parameter is a simple plain string where you can describe the function business logic and behaviour in natual language. This value is added to API specifications and generally reported on the documentation produced from this definition.
+The `description` parameter is a simple string where you can describe the function's business logic and behavior in natural language. This value is added to API specifications and generally included in the documentation produced from this definition.
 
 #### Operation
 
-The `operation` parameter describes the semantic of the function. It can be one of the following values: `'query'`, `'mutation'`, or an object `{ command: 'create' }`, `{ command: 'update' }`, `{ command: 'delete' }`.
-This information is used by some runtimes to generate the API specification and to provide a more accurate documentation. It can be overridden by the runtime if it is not specified or it's incosistent with the runtime capabilities.
+The `operation` parameter describes the semantics of the function. It can be one of the following values: `'query'`, `'mutation'`, or an object like `{ command: 'create' }`, `{ command: 'update' }`, or `{ command: 'delete' }`.
+This information is used by some runtimes to generate the API specification and provide more accurate documentation. It can be overridden by the runtime if it is not specified or is inconsistent with the runtime capabilities.
 
 #### OpenTelemetry
 
-The `opentelemetry` parameter is a boolean that indicates whether the function should be traced by the OpenTelemetry instrumentation. This option is used by the runtime to enable or disable the tracing of the specific function. By default it is `true`, so if the instrumentation is available it will be traced.
+The `opentelemetry` parameter is a boolean that indicates whether the function should be traced by OpenTelemetry instrumentation. This option is used by the runtime to enable or disable tracing for the specific function. By default, it is `true`, so if instrumentation is available, the function will be traced.

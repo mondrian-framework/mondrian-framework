@@ -1,22 +1,22 @@
 # Function
 
-The second and most important construct of Mondrian is the function.
-A function, produced by the developer, is the fundamental container of application logic.
-Everything contained in a function benefits from the decoupling and reusability
-that the framework provides. Referring to a Clean Architecture model, a function is the
+The second and most important construct in Mondrian is the function.
+A function, written by the developer, is the fundamental container for application logic.
+Everything contained within a function benefits from the decoupling and reusability
+that the framework provides. Referring to the Clean Architecture model, a function is the
 implementation of a use case.
 
-The main responsibility of the developer should be to produce functions.
+The developer's main responsibility should be to produce functions.
 
-Basically a function:
+Essentially, a function:
 
-- has a **definition**, that includes _inputs_, _outputs_ and _errors_ formally defined using
+- Has a **definition** that includes _inputs_, _outputs_, and _errors_ formally defined using
   a [domain model schema](../model/index.md).
-- has an **implementation**, containing the business logic that receive the inputs and must
+- Has an **implementation** containing the business logic that receives the inputs and must
   return the defined outputs.
 
 The clear division between definition and implementation is critical, as it allows only the
-definitions to be published to potential clients, keeping the implementation details private.
+definitions to be published to potential clients, keeping implementation details private.
 In addition to being a good practice for separation of concerns, it allows for multiple
 implementations of the same function to be defined.
 

@@ -241,6 +241,15 @@ describe('merge', () => {
     expect(result7).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
       select: { metadata: { select: { registeredAt: true, loggedInAt: true } } },
     })
+
+    const result8 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: undefined },
+      { select: { metadata: { select: { loggedInAt: true } } } },
+    )
+    expect(result8).toEqual<retrieve.FromType<typeof user, retrieve.AllCapabilities>>({
+      select: { metadata: { select: { loggedInAt: true } } },
+    })
   })
   test('order by', () => {
     const result = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
@@ -593,3 +602,61 @@ function addValidationLogic<K extends string, T extends model.Type>(
     options: { apiType: type },
   })
 }
+
+describe('completeRetrieve', () => {
+  const user = () =>
+    model.entity({
+      name: model.string(),
+      tags: model.string().array(),
+      friend: model.optional(user),
+      _asd: model.string(),
+    })
+  test('works with empty retrieve', async () => {
+    const p = retrieve.completeRetrieve({}, user)
+    expect(p).toEqual({ select: { name: true, tags: true } })
+  })
+  test('Add all non virtual fields to projection recursively', async () => {
+    const p = retrieve.completeRetrieve({ select: { friend: { select: { friend: true } } } }, user)
+    expect(p).toEqual({
+      select: {
+        name: true,
+        tags: true,
+        friend: { select: { name: true, tags: true, friend: true } },
+      },
+    })
+  })
+
+  test('Avoid adding filter multiple times', async () => {
+    const p = retrieve.completeRetrieve(
+      { select: { friend: { select: { friend: true }, where: { name: { equals: 'asd' } } } } },
+      user,
+    )
+    expect(p).toEqual({
+      select: {
+        name: true,
+        tags: true,
+        friend: {
+          select: { name: true, tags: true, friend: true },
+          where: { name: { equals: 'asd' } },
+        },
+      },
+    })
+  })
+
+  test('Handle in filter correctly', async () => {
+    const p = retrieve.completeRetrieve(
+      { select: { friend: { select: { friend: true }, where: { name: { in: ['asd'] } } } } },
+      user,
+    )
+    expect(p).toEqual({
+      select: {
+        name: true,
+        tags: true,
+        friend: {
+          select: { name: true, tags: true, friend: true },
+          where: { name: { in: ['asd'] } },
+        },
+      },
+    })
+  })
+})

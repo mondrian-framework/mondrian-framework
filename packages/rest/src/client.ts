@@ -1,6 +1,6 @@
 import { rest } from '.'
 import { emptyInternalData, generateOpenapiInput } from './openapi'
-import { completeRetrieve, encodeQueryObject, methodFromOptions } from './utils'
+import { encodeQueryObject, methodFromOptions } from './utils'
 import { result, model } from '@mondrian-framework/model'
 import { functions, retrieve, client } from '@mondrian-framework/module'
 
@@ -53,7 +53,7 @@ class RestClientBuilder {
           ),
         )
         const retrieveType = retrieve.fromType(functionBody.output, functionBody.retrieve)
-        const defaultRetrieve = retrieveType.isOk ? completeRetrieve({ select: {} }, functionBody.output) : {}
+        const defaultRetrieve = retrieveType.isOk ? retrieve.completeRetrieve({ select: {} }, functionBody.output) : {}
 
         const lastSpecification = Array.isArray(rest.functions[functionName])
           ? rest.functions[functionName].slice(-1)[0]

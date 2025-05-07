@@ -114,65 +114,6 @@ export function assertApiValidity(api: ApiSpecification<functions.FunctionInterf
   }
 }
 
-/**
- * Adds all non-entity fields that was excluded in the selection.
- */
-export function completeRetrieve(
-  retr: retrieve.GenericRetrieve | undefined,
-  type: model.Type,
-): retrieve.GenericRetrieve | undefined {
-  function removeUndefinedFields<T extends JSONType | undefined>(obj: T): T {
-    if (obj === undefined) {
-      return obj
-    }
-    if (typeof obj !== 'object' || obj === null) {
-      return obj
-    }
-    if (isArray(obj)) {
-      return obj.map((value) => removeUndefinedFields(value)) as T
-    }
-    return Object.fromEntries(
-      Object.entries(obj)
-        .filter(([, value]) => value !== undefined)
-        .map(([field, value]) => [field, removeUndefinedFields(value as any)]),
-    ) as T
-  }
-
-  return removeUndefinedFields(completeRetrieveInternal(retr, type))
-}
-
-export function completeRetrieveInternal(
-  retr: retrieve.GenericRetrieve | undefined,
-  type: model.Type,
-): retrieve.GenericRetrieve | undefined {
-  if (!retr) {
-    return undefined
-  }
-  return model.match(type, {
-    wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
-    record: ({ fields }) =>
-      retrieve.merge(type, retr, {
-        select: mapObject(fields, (fieldName, fieldType) => {
-          const unwrapped = model.unwrapAndConcretize(fieldType)
-          if (unwrapped.kind === model.Kind.Entity) {
-            const subRetrieve = (retr.select ?? {})[fieldName]
-            if (subRetrieve && subRetrieve !== true) {
-              return completeRetrieve({ select: (subRetrieve as retrieve.GenericRetrieve).select }, fieldType)
-            } else {
-              return undefined
-            }
-          }
-          if (fieldName.startsWith('_')) {
-            //avoid adding _count to default selection
-            return undefined
-          }
-          return true
-        }),
-      }) as retrieve.GenericRetrieve,
-    otherwise: () => retr,
-  })
-}
-
 export function methodFromOptions(options?: functions.FunctionOptions): http.Method {
   if (typeof options?.operation === 'object') {
     if (options.operation.command === 'create') {

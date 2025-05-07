@@ -1,6 +1,6 @@
 import { ApiSpecification, ErrorHandler, FunctionSpecifications } from './api'
 import { CustomTypeSpecifications, clearInternalData, emptyInternalData, generateOpenapiInput } from './openapi'
-import { completeRetrieve, decodeQueryObject, methodFromOptions } from './utils'
+import { decodeQueryObject, methodFromOptions } from './utils'
 import { model } from '@mondrian-framework/model'
 import { exception, functions, logger, module, retrieve } from '@mondrian-framework/module'
 import { http, mapObject } from '@mondrian-framework/utils'
@@ -60,7 +60,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
           logger: thisLogger,
           decodingOptions: { ...decodingOptions, typeCastingStrategy: 'tryCasting' },
           retrieveDecodingOptions: { ...decodingOptions, typeCastingStrategy: 'tryCasting' },
-          mapper: { retrieve: (retrieve) => completeRetrieve(retrieve, functionBody.output) },
+          mapper: { retrieve: (r) => retrieve.completeRetrieve(r, functionBody.output) },
         })
 
         //Output processing

@@ -26,7 +26,7 @@ export interface FunctionInterface<
    */
   readonly errors: E
   /**
-   * The type describing the possible errors returned by the function.
+   * The type describing output retrieve capabilities.
    */
   readonly retrieve: C
   /**

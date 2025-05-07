@@ -1,6 +1,5 @@
 import {
   assertApiValidity,
-  completeRetrieve,
   decodeQueryObject,
   encodeQueryObject,
   getPathsFromSpecification,
@@ -8,64 +7,6 @@ import {
 } from '../src/utils'
 import { model } from '@mondrian-framework/model'
 import { describe, expect, test } from 'vitest'
-
-describe('completeRetrieve', () => {
-  const user = () =>
-    model.entity({
-      name: model.string(),
-      tags: model.string().array(),
-      friend: model.optional(user),
-      _asd: model.string(),
-    })
-  test('works with empty retrieve', async () => {
-    const p = completeRetrieve({}, user)
-    expect(p).toEqual({ select: { name: true, tags: true } })
-  })
-  test('Add all non virtual fields to projection recursively', async () => {
-    const p = completeRetrieve({ select: { friend: { select: { friend: true } } } }, user)
-    expect(p).toEqual({
-      select: {
-        name: true,
-        tags: true,
-        friend: { select: { name: true, tags: true, friend: true } },
-      },
-    })
-  })
-
-  test('Avoid adding filter multiple times', async () => {
-    const p = completeRetrieve(
-      { select: { friend: { select: { friend: true }, where: { name: { equals: 'asd' } } } } },
-      user,
-    )
-    expect(p).toEqual({
-      select: {
-        name: true,
-        tags: true,
-        friend: {
-          select: { name: true, tags: true, friend: true },
-          where: { name: { equals: 'asd' } },
-        },
-      },
-    })
-  })
-
-  test('Handle in filter correctly', async () => {
-    const p = completeRetrieve(
-      { select: { friend: { select: { friend: true }, where: { name: { in: ['asd'] } } } } },
-      user,
-    )
-    expect(p).toEqual({
-      select: {
-        name: true,
-        tags: true,
-        friend: {
-          select: { name: true, tags: true, friend: true },
-          where: { name: { in: ['asd'] } },
-        },
-      },
-    })
-  })
-})
 
 test('assertApiValidity', () => {
   assertApiValidity({ module: null as any, version: 1, functions: { f1: { method: 'get' } } })

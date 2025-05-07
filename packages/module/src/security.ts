@@ -276,7 +276,7 @@ function spreadWhereAndOrderByIntoSelection(
   type: model.EntityType<any, model.Types>,
   retr: retrieve.GenericRetrieve,
 ): retrieve.GenericRetrieve {
-  let selection: retrieve.GenericSelect | undefined = retr?.select
+  let selection: retrieve.GenericSelect | undefined = retr?.select ?? retrieve.completeRetrieve({}, type)?.select
   if (retr?.orderBy) {
     const orderBySelection = orderByToSelection(type, retr.orderBy)
     selection = retrieve.mergeSelect(type, selection, orderBySelection)

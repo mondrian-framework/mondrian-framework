@@ -1,5 +1,6 @@
 import { serveDirect } from './api/direct'
 import { serveGraphql } from './api/graphql'
+import { serveMcp } from './api/mcp'
 import { serveRest } from './api/rest'
 import { module } from './core/module'
 import { authProvider } from './core/providers'
@@ -27,11 +28,15 @@ async function main() {
   serveGraphql(server)
   const partialTime2 = new Date().getTime()
   serveDirect(server)
+  const partialTime3 = new Date().getTime()
+  serveMcp(server)
   const finishTime = new Date().getTime()
+
   const address = await server.listen({ port: 4000 })
   console.log(`Rest    server started in ${partialTime1 - startTime}ms -> ${address}/openapi`)
   console.log(`Graphql server started in ${partialTime2 - partialTime1}ms -> ${address}/graphql`)
-  console.log(`Direct  server started in ${finishTime - partialTime2}ms -> ${address}/mondrian`)
+  console.log(`Direct  server started in ${partialTime3 - partialTime2}ms -> ${address}/mondrian`)
+  console.log(`MCP     server started in ${finishTime - partialTime3}ms -> ${address}/mcp`)
 }
 
 main()

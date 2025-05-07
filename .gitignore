@@ -7,8 +7,6 @@ node_modules/**
 coverage
 **/ysconfig.tsbuildinfo
 **/*.generated.ts
-**/.env.*
-**/.env
 .vscode/settings.json
 .npmrc
 packages/api/.env-dev
@@ -19,3 +17,4 @@ packages/api/.env-stage-test
 **/prisma
 !**/prisma/schema.prisma
 **/.DS_Store
+config.bat

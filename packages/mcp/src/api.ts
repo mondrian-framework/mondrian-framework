@@ -1,6 +1,6 @@
 import { assertApiValidity } from './utils'
-import { decoding, model } from '@mondrian-framework/model'
-import { functions, module, retrieve } from '@mondrian-framework/module'
+import { decoding } from '@mondrian-framework/model'
+import { functions, module } from '@mondrian-framework/module'
 
 /**
  * The MCP API specification of a mondrian {@link module.ModuleInterface ModuleInterface}
@@ -12,7 +12,7 @@ export type ApiSpecification<Fs extends functions.FunctionInterfaces> = {
    * Functions specification map.
    */
   functions: {
-    [K in keyof Fs]?: FunctionSpecifications<Fs[K]> | FunctionSpecifications<Fs[K]>[]
+    [K in keyof Fs]?: FunctionSpecifications | FunctionSpecifications[]
   }
   options?: {
     /**
@@ -40,6 +40,16 @@ export type Api<Fs extends functions.FunctionImplementations> = ApiSpecification
    * Module to serve
    */
   module: module.Module<Fs>
+
+  /**
+   * Version of the module
+   */
+  version?: string
+
+  /**
+   * Optional instructions describing how to use the server and its features.
+   */
+  instructions?: string
 }
 
 /**
@@ -58,15 +68,11 @@ export function define<Fs extends functions.FunctionInterfaces>(api: ApiSpecific
 }
 
 //TODO: add support for resources
-export type FunctionSpecifications<F extends functions.FunctionInterface = functions.FunctionInterface> = {
-  /**
-   * How to expose the function.
-   */
-  type: 'tool'
+export type FunctionSpecifications = {
   /**
    * The name of the tool.
    */
-  name: string
+  name?: string
   /**
    * Description that can be useful to describe the tool to the LLM.
    */

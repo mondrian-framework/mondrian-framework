@@ -1,5 +1,5 @@
 import { result, model, utils } from '@mondrian-framework/model'
-import { flatMapObject, mapObject } from '@mondrian-framework/utils'
+import { flatMapObject, isArray, JSONType, mapObject } from '@mondrian-framework/utils'
 import { randomUUID } from 'crypto'
 
 /**
@@ -411,6 +411,59 @@ export function merge<const T extends GenericRetrieve>(
     take: options?.takeOrder === 'right-before' ? (right.take ?? left.take) : (left.take ?? right.take),
     select: mergeSelect(type, left.select, right.select, options),
   } as unknown as T
+}
+
+/**
+ * Adds all non-entity fields that was excluded in the selection.
+ */
+export function completeRetrieve(retr: GenericRetrieve | undefined, type: model.Type): GenericRetrieve | undefined {
+  function removeUndefinedFields<T extends JSONType | undefined>(obj: T): T {
+    if (obj === undefined) {
+      return obj
+    }
+    if (typeof obj !== 'object' || obj === null) {
+      return obj
+    }
+    if (isArray(obj)) {
+      return obj.map((value) => removeUndefinedFields(value)) as T
+    }
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([, value]) => value !== undefined)
+        .map(([field, value]) => [field, removeUndefinedFields(value as any)]),
+    ) as T
+  }
+
+  return removeUndefinedFields(completeRetrieveInternal(retr, type))
+}
+
+function completeRetrieveInternal(retr: GenericRetrieve | undefined, type: model.Type): GenericRetrieve | undefined {
+  if (!retr) {
+    return undefined
+  }
+  return model.match(type, {
+    wrapper: ({ wrappedType }) => completeRetrieve(retr, wrappedType),
+    record: ({ fields }) =>
+      merge(type, retr, {
+        select: mapObject(fields, (fieldName, fieldType) => {
+          const unwrapped = model.unwrapAndConcretize(fieldType)
+          if (unwrapped.kind === model.Kind.Entity) {
+            const subRetrieve = (retr.select ?? {})[fieldName]
+            if (subRetrieve && subRetrieve !== true) {
+              return completeRetrieve({ select: (subRetrieve as GenericRetrieve).select }, fieldType)
+            } else {
+              return undefined
+            }
+          }
+          if (fieldName.startsWith('_')) {
+            //avoid adding _count to default selection
+            return undefined
+          }
+          return true
+        }),
+      }) as GenericRetrieve,
+    otherwise: () => retr,
+  })
 }
 
 export function mergeSelect(

@@ -177,7 +177,11 @@ export class ObjectTypeImpl<M extends model.Mutability, Ts extends model.Types>
     if (errors.length > 0) {
       return decoding.failWithErrors(errors)
     } else {
-      return decoding.succeed(result) as decoding.Result<any>
+      if (this.mutability === model.Mutability.Immutable) {
+        return decoding.succeed(Object.freeze(result)) as decoding.Result<any>
+      } else {
+        return decoding.succeed(result) as decoding.Result<any>
+      }
     }
   }
 

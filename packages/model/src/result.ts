@@ -40,6 +40,7 @@ export class Ok<A> {
   readonly isFailure: false = false
   constructor(value: A) {
     this.value = value
+    Object.freeze(this)
   }
 
   /**
@@ -110,6 +111,7 @@ export class Failure<E> {
   readonly isFailure: true = true
   constructor(error: E) {
     this.error = error
+    Object.freeze(this)
   }
   chain = (): Failure<E> => this
   replace = (): Failure<E> => this

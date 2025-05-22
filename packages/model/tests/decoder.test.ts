@@ -669,6 +669,18 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       checkValue(Model.decodeWithoutValidation(object), object)
     })
 
+    test('result is frozen', () => {
+      const object = { field1: 1 }
+      const result = Model.decodeWithoutValidation(object)
+      expect(Object.isFrozen(result.isOk && result.value)).toBe(true)
+    })
+
+    test('result is not frozen', () => {
+      const object = { field1: 1 }
+      const result = Model.mutable().decodeWithoutValidation(object)
+      expect(Object.isFrozen(result.isOk && result.value)).toBe(false)
+    })
+
     test('works with more than needed fields', () => {
       const object = { field1: 1, field3: 1 }
       checkValue(Model.decodeWithoutValidation(object, { fieldStrictness: 'allowAdditionalFields' }), { field1: 1 })

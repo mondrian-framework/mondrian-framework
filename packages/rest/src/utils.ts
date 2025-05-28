@@ -83,6 +83,11 @@ export function assertApiValidity(api: ApiSpecification<functions.FunctionInterf
   for (const [functionName, specifications] of Object.entries(api.functions)) {
     for (const specification of isArray(specifications) ? specifications : [specifications]) {
       //TODO [Good first issue]: Check path syntax, other checks?
+      if (specification?.path && !specification.path.startsWith('/')) {
+        throw new Error(
+          `Invalid path for function ${functionName}. Path must start with a '/'. Got ${specification.path}`,
+        )
+      }
       if (
         specification?.version?.max != null &&
         (specification.version.max < 1 ||

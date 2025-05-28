@@ -28,12 +28,22 @@ export type Api<
 }
 
 /**
+ * Checks the validity of a Direct API configuration.
+ * @param api The API configuration.
+ */
+function assertApiValidity<Fs extends functions.FunctionInterfaces, Exclusions extends { [K in keyof Fs]?: true }>(
+  api: ApiSpecification<Fs, Exclusions>,
+): void {
+  // TODO: Add actual validation logic if needed in the future
+}
+
+/**
  * Builds a Direct API in order to expose the module.
  */
 export function build<Fs extends functions.FunctionImplementations, Exclusions extends { [K in keyof Fs]?: true }>(
   api: Api<Fs, Exclusions>,
 ): Api<Fs, Exclusions> {
-  //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
+  assertApiValidity(api)
   return api
 }
 
@@ -43,7 +53,7 @@ export function build<Fs extends functions.FunctionImplementations, Exclusions e
 export function define<Fs extends functions.FunctionInterfaces, Exclusions extends { [K in keyof Fs]?: true }>(
   api: ApiSpecification<Fs, Exclusions>,
 ): ApiSpecification<Fs, Exclusions> {
-  //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
+  assertApiValidity(api)
   return api
 }
 

@@ -30,10 +30,18 @@ export type Api<Fs extends functions.FunctionImplementations> = ApiSpecification
 }
 
 /**
+ * Checks the validity of a GraphQL API configuration.
+ * @param api The API configuration.
+ */
+function assertApiValidity<Fs extends functions.FunctionInterfaces>(api: ApiSpecification<Fs>): void {
+  // TODO: Add actual validation logic if needed in the future
+}
+
+/**
  * Builds a GraphQL API in order to expose the module.
  */
 export function build<Fs extends functions.FunctionImplementations>(api: Api<Fs>): Api<Fs> {
-  //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
+  assertApiValidity(api)
   return api
 }
 
@@ -41,7 +49,7 @@ export function build<Fs extends functions.FunctionImplementations>(api: Api<Fs>
  * Defines the GraphQL API with just the module interface.
  */
 export function define<Fs extends functions.FunctionInterfaces>(api: ApiSpecification<Fs>): ApiSpecification<Fs> {
-  //assertApiValidity(api) //TODO [Good first issue]: as rest.assertApiValidity
+  assertApiValidity(api)
   return api
 }
 

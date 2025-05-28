@@ -1,5 +1,6 @@
 import { model } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
+import { isArray } from '@mondrian-framework/utils'
 
 /**
  * The Cron API specification of a mondrian {@link module.ModuleInterface Module Interface}
@@ -38,14 +39,22 @@ type InputGenerator<InputType extends model.Type>
  * Builds a cron API in order to schedule function execution.
  */
 export function build<Fs extends functions.FunctionImplementations>(api: Api<Fs>): Api<Fs> {
-  //TODO [Good first issue]: check validity of api as rest.build
-  return api
+  return { ...define(api), module: api.module }
 }
 
 /**
  * Defines the cron API with just the module interface.
  */
 export function define<const Fs extends functions.FunctionInterfaces>(api: ApiSpecification<Fs>): ApiSpecification<Fs> {
-  //TODO [Good first issue]: check validity of api as rest.define
+  for (const [functionName, specifications] of Object.entries(api.functions)) {
+    for (const specification of isArray(specifications) ? specifications : [specifications]) {
+      // Check for non-empty cron string
+      if (typeof specification?.cron !== 'string' || specification.cron.length === 0) {
+        throw new Error(
+          `Invalid cron specification for function ${String(functionName)}. A non-empty 'cron' string is required.`,
+        )
+      }
+    }
+  }
   return api
 }

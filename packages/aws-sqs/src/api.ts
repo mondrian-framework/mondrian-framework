@@ -33,10 +33,24 @@ export type FunctionSpecifications = {
 }
 
 /**
+ * Checks the validity of an SQS API configuration.
+ * Checks that all functions have a queueUrl.
+ * @param api The API configuration.
+ */
+function assertApiValidity<Fs extends functions.FunctionInterfaces>(api: ApiSpecification<Fs>): void {
+  for (const functionName of Object.keys(api.module.functions)) {
+    const specs = api.functions[functionName as keyof Fs]
+    if (!specs?.queueUrl) {
+      throw new Error(`Missing queueUrl for function ${String(functionName)}`)
+    }
+  }
+}
+
+/**
  * Builds a SQS API in order to attach the module to the queues.
  */
 export function build<Fs extends functions.FunctionImplementations>(api: Api<Fs>): Api<Fs> {
-  //TODO [Good first issue]: check validity of api as rest.build
+  assertApiValidity(api)
   return api
 }
 
@@ -44,6 +58,6 @@ export function build<Fs extends functions.FunctionImplementations>(api: Api<Fs>
  * Defines the SQS API with just the module interface.
  */
 export function define<const Fs extends functions.FunctionInterfaces>(api: ApiSpecification<Fs>): ApiSpecification<Fs> {
-  //TODO [Good first issue]: check validity of api as rest.define
+  assertApiValidity(api)
   return api
 }

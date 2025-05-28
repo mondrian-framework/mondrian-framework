@@ -1007,6 +1007,40 @@ export type LiteralTypeOptions = BaseOptions & {
 /**
  * The model of a union of types in the Mondrian framework.
  * TODO [Good first issue]: add examples (e.g. result/optional/list)
+ * @example // Result example
+ * ```ts
+ * const StringResult = model.union({
+ *   success: model.object({ value: model.string() }),
+ *   failure: model.object({ error: model.string() }),
+ * })
+ * type StringResult = model.Infer<typeof StringResult>
+ * //   { value: string }
+ * // | { error: string }
+ * ```
+ * @example // Optional example
+ * ```ts
+ * const OptionalNumber = model.union({
+ *   some: model.number(),
+ *   none: model.literal(null),
+ * })
+ * type OptionalNumber = model.Infer<typeof OptionalNumber>
+ * //   number | null
+ * ```
+ * @example // List example (recursive)
+ * ```ts
+ * const NumberList = () => model.union({
+ *   cons: model.object({
+ *     head: model.number(),
+ *     tail: NumberList,
+ *   }),
+ *   nil: model.literal(null),
+ * })
+ * type NumberList = model.Infer<typeof NumberList>
+ * // {
+ * //   head: number;
+ * //   tail: NumberList;
+ * // } | null
+ * ```
  */
 export type UnionType<Ts extends Types> = {
   readonly kind: Kind.Union

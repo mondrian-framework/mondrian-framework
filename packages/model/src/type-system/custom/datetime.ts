@@ -16,7 +16,9 @@ export type DateTimeOptions = { minimum?: Date; maximum?: Date }
  * @returns a {@link CustomType `CustomType`} representing a datetime
  */
 export function datetime(options?: model.OptionsOf<DateTimeType>): DateTimeType {
-  //TODO [Good first issue]: check options validity
+  if (options?.minimum && options?.maximum && options.minimum.getTime() > options.maximum.getTime()) {
+    throw new Error('Minimum date cannot be after maximum date.')
+  }
   return model.custom({
     typeName: 'datetime',
     encoder,

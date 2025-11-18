@@ -15,7 +15,7 @@
     "lambda-api": "1.1.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "8.10.147"
+    "@types/aws-lambda": "8.10.159"
   },
   "peerDependencies": {
     "@mondrian-framework/model": "^2.0.69",

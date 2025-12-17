@@ -2,7 +2,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { FastifyInstrumentation } from '@opentelemetry/instrumentation-fastify'
 import { GraphQLInstrumentation } from '@opentelemetry/instrumentation-graphql'
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http'
-import { Resource } from '@opentelemetry/resources'
+import { resourceFromAttributes } from '@opentelemetry/resources'
 import { SimpleLogRecordProcessor, LogRecordExporter } from '@opentelemetry/sdk-logs'
 import * as opentelemetry from '@opentelemetry/sdk-node'
 import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from '@opentelemetry/semantic-conventions'
@@ -30,7 +30,7 @@ const logRecordProcessor = new SimpleLogRecordProcessor(new MyConsoleLogRecordEx
 
 const sdk = new opentelemetry.NodeSDK({
   serviceName: process.env.MODULE_NAME,
-  resource: new Resource({
+  resource: resourceFromAttributes({
     [SEMRESATTRS_SERVICE_NAME]: process.env.MODULE_NAME,
     [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: process.env.ENVIRONMENT,
   }),

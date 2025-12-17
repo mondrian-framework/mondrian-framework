@@ -1,7 +1,6 @@
 import { result } from '../src/index'
 import { assertFailure, assertOk } from './testing-utils'
-import { test } from '@fast-check/vitest'
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 function expectFailure<A, E>(result: result.Result<A, E>, expected: E) {
   const error = assertFailure(result)

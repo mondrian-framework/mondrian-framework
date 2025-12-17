@@ -33,7 +33,7 @@ function validator(
 }
 
 function arbitrary(_maxDepth: number, options?: model.OptionsOf<TimeType>): gen.Arbitrary<Date> {
-  return gen.date().map((t) => {
+  return gen.date({ noInvalidDate: true }).map((t) => {
     const datetimeString = t.toISOString()
     const timeStr = datetimeString.substring(datetimeString.indexOf('T') + 1)
     const currentDateString = new Date(Date.UTC(0, 0, 0)).toISOString()

@@ -44,7 +44,7 @@ function validator(
 
 function arbitrary(_maxDepth: number, options?: model.OptionsOf<DateType>): gen.Arbitrary<Date> {
   return gen
-    .date({ min: options?.minimum, max: options?.maximum })
+    .date({ min: options?.minimum, max: options?.maximum, noInvalidDate: true })
     .map((d) => new Date(Date.parse(d.toISOString().split('T')[0])))
 }
 

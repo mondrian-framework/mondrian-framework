@@ -78,5 +78,5 @@ function validator(
 }
 
 function arbitrary(_maxDepth: number, options?: model.TimestampOptions): gen.Arbitrary<Date> {
-  return gen.date({ min: options?.minimum, max: options?.maximum })
+  return gen.date({ min: options?.minimum, max: options?.maximum, noInvalidDate: true })
 }

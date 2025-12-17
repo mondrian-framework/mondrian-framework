@@ -13,13 +13,15 @@ const config: Config = {
   deploymentBranch: 'docs',
   trailingSlash: false,
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
   },
   markdown: {
     mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
   },
   themes: ['@docusaurus/theme-mermaid'],
   presets: [

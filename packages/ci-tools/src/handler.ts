@@ -1,8 +1,7 @@
 import { module } from './impl/module'
 import { restAPI } from './interface'
-import { handler as h } from '@mondrian-framework/aws-lambda-rest'
+import { handler as h, Request, Response } from '@mondrian-framework/aws-lambda-rest'
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
-import { Response, Request } from 'lambda-api'
 
 export const handler: APIGatewayProxyHandlerV2 = h.build({
   api: { ...restAPI, module },

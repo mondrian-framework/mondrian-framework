@@ -331,8 +331,8 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       })
       test.prop([
         gen.oneof(
-          gen.date(),
-          gen.date().map((d) => d.toISOString()),
+          gen.date({ noInvalidDate: true }),
+          gen.date({ noInvalidDate: true }).map((d) => d.toISOString()),
         ),
       ])('can decode dates', (date) => {
         const result = Model.decodeWithoutValidation(date, options)
@@ -344,10 +344,10 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
       const options = { typeCastingStrategy: 'tryCasting' } as const
       test.prop([
         gen.oneof(
-          gen.date(),
-          gen.date().map((d) => d.toISOString()),
-          gen.date().map((d) => d.getTime().toString()),
-          gen.date().map((d) => d.getTime()),
+          gen.date({ noInvalidDate: true }),
+          gen.date({ noInvalidDate: true }).map((d) => d.toISOString()),
+          gen.date({ noInvalidDate: true }).map((d) => d.getTime().toString()),
+          gen.date({ noInvalidDate: true }).map((d) => d.getTime()),
         ),
       ])('can decode unixtime', (date) => {
         const result = Model.decodeWithoutValidation(date, options)
@@ -379,8 +379,8 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([
         gen.oneof(
-          gen.date(),
-          gen.date().map((d) => d.getTime()),
+          gen.date({ noInvalidDate: true }),
+          gen.date({ noInvalidDate: true }).map((d) => d.getTime()),
         ),
       ])('can decode dates', (date) => {
         const result = Model.decodeWithoutValidation(date, options)
@@ -393,10 +393,10 @@ describe.concurrent('decoding.decodeWithoutValidation', () => {
 
       test.prop([
         gen.oneof(
-          gen.date(),
-          gen.date().map((d) => d.toISOString()),
-          gen.date().map((d) => d.getTime().toString()),
-          gen.date().map((d) => d.getTime()),
+          gen.date({ noInvalidDate: true }),
+          gen.date({ noInvalidDate: true }).map((d) => d.toISOString()),
+          gen.date({ noInvalidDate: true }).map((d) => d.getTime().toString()),
+          gen.date({ noInvalidDate: true }).map((d) => d.getTime()),
         ),
       ])('can decode unixtime', (date) => {
         const result = Model.decodeWithoutValidation(date, options)
@@ -892,7 +892,7 @@ describe.concurrent('decoding.decode', () => {
 
 describe.concurrent('datetime value', () => {
   const Model = model.datetime()
-  test.prop([gen.date()])('can decode date', (date) => {
+  test.prop([gen.date({ noInvalidDate: true })])('can decode date', (date) => {
     checkValue(Model.decodeWithoutValidation(date), date)
   })
 
@@ -903,7 +903,7 @@ describe.concurrent('datetime value', () => {
 
 describe.concurrent('timestamp value', () => {
   const Model = model.timestamp()
-  test.prop([gen.date()])('can decode date', (date) => {
+  test.prop([gen.date({ noInvalidDate: true })])('can decode date', (date) => {
     checkValue(Model.decodeWithoutValidation(date), date)
   })
 

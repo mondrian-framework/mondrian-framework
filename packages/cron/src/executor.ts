@@ -64,11 +64,12 @@ export function start<Fs extends functions.FunctionImplementations>({
         )
       },
       {
-        runOnInit: options.runAtStart ?? false,
-        recoverMissedExecutions: false,
         timezone: options.timezone,
       },
     )
+    if (options.runAtStart) {
+      task.execute()
+    }
     task.start()
     scheduledTasks.push({ task })
   }

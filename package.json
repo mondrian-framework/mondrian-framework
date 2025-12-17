@@ -18,16 +18,17 @@
     "spinup": "npm ci && npm run build --workspaces --if-present && npm run example --workspace=@mondrian-framework/example"
   },
   "devDependencies": {
-    "@changesets/cli": "2.27.12",
-    "@trivago/prettier-plugin-sort-imports": "5.2.1",
-    "@types/node": "22.10.10",
-    "@vitest/coverage-v8": "2.1.8",
-    "fast-check": "^3.23.2",
-    "prettier": "3.4.2",
-    "rimraf": "6.0.1",
-    "typescript": "5.7.3",
-    "vitest": "^2.1.8",
-    "@fast-check/vitest": "^0.1.4"
+    "@changesets/cli": "^2.29.8",
+    "@fast-check/vitest": "^0.2.4",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.0",
+    "@types/aws-lambda": "^8.10.159",
+    "@types/node": "^25.0.3",
+    "@vitest/coverage-v8": "^4.0.16",
+    "fast-check": "^4.4.0",
+    "prettier": "^3.7.4",
+    "rimraf": "^6.1.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   },
   "workspaces": [
     "packages/docs",
@@ -52,5 +53,15 @@
   ],
   "engines": {
     "node": ">=20.9"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.953.0",
+    "@mdx-js/react": "^3.1.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-trace-base": "^2.2.0",
+    "@opentelemetry/semantic-conventions": "^1.38.0",
+    "fastify": "^5.6.2",
+    "jsonwebtoken": "^9.0.3",
+    "lambda-api": "^1.2.0"
   }
 }

@@ -238,7 +238,7 @@ describe.concurrent('validation.validate', () => {
   })
 
   describe.concurrent('on datetime types', () => {
-    test.prop([gen.date()])('always succeeds if given no options', (date) => {
+    test.prop([gen.date({ noInvalidDate: true })])('always succeeds if given no options', (date) => {
       assertOk(model.datetime().validate(date))
     })
 
@@ -246,12 +246,12 @@ describe.concurrent('validation.validate', () => {
       const minimum = new Date()
       const Model = model.datetime({ minimum })
 
-      const validValue = gen.date({ min: minimum })
+      const validValue = gen.date({ noInvalidDate: true, min: minimum })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
 
-      const invalidValue = gen.date({ max: new Date(minimum.getTime() - 1) })
+      const invalidValue = gen.date({ noInvalidDate: true, max: new Date(minimum.getTime() - 1) })
       test.prop([invalidValue])('failing cases', (date) => {
         const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)
@@ -263,12 +263,12 @@ describe.concurrent('validation.validate', () => {
       const maximum = new Date()
       const Model = model.datetime({ maximum })
 
-      const validValue = gen.date({ max: maximum })
+      const validValue = gen.date({ noInvalidDate: true, max: maximum })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
 
-      const invalidValue = gen.date({ min: new Date(maximum.getTime() + 1) })
+      const invalidValue = gen.date({ noInvalidDate: true, min: new Date(maximum.getTime() + 1) })
       test.prop([invalidValue])('failing cases', (date) => {
         const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)
@@ -278,7 +278,7 @@ describe.concurrent('validation.validate', () => {
   })
 
   describe.concurrent('on timestamp types', () => {
-    test.prop([gen.date()])('always succeeds if given no options', (date) => {
+    test.prop([gen.date({ noInvalidDate: true })])('always succeeds if given no options', (date) => {
       assertOk(model.timestamp().validate(date))
     })
 
@@ -286,12 +286,12 @@ describe.concurrent('validation.validate', () => {
       const minimum = new Date()
       const Model = model.timestamp({ minimum })
 
-      const validValue = gen.date({ min: minimum })
+      const validValue = gen.date({ noInvalidDate: true, min: minimum })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
 
-      const invalidValue = gen.date({ max: new Date(minimum.getTime() - 1) })
+      const invalidValue = gen.date({ noInvalidDate: true, max: new Date(minimum.getTime() - 1) })
       test.prop([invalidValue])('failing cases', (date) => {
         const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)
@@ -303,12 +303,12 @@ describe.concurrent('validation.validate', () => {
       const maximum = new Date()
       const Model = model.timestamp({ maximum })
 
-      const validValue = gen.date({ max: maximum })
+      const validValue = gen.date({ noInvalidDate: true, max: maximum })
       test.prop([validValue])('ok cases', (number) => {
         assertOk(Model.validate(number))
       })
 
-      const invalidValue = gen.date({ min: new Date(maximum.getTime() + 1) })
+      const invalidValue = gen.date({ noInvalidDate: true, min: new Date(maximum.getTime() + 1) })
       test.prop([invalidValue])('failing cases', (date) => {
         const expectedError = [{ got: date, path: path.root }]
         checkError(Model.validate(date), expectedError)

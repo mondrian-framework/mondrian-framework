@@ -12,9 +12,9 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.735.0",
-    "@graphql-inspector/core": "6.2.1",
-    "@pb33f/openapi-changes": "0.0.69",
+    "@aws-sdk/client-s3": "^3.953.0",
+    "@graphql-inspector/core": "^7.1.0",
+    "@pb33f/openapi-changes": "^0.0.89",
     "fastify": "^5.2.1"
   },
   "peerDependencies": {

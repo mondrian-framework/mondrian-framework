@@ -113,7 +113,7 @@ const schema = fromModule({
   context: async (_: ServerContext) => ({}),
 })
 
-const yoga = createYoga<ServerContext>({ schema })
+const yoga = createYoga<ServerContext>({ schema, maskedErrors: false })
 
 describe('graphql', () => {
   const server = http.createServer(yoga)

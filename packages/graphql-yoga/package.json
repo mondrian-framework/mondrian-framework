@@ -11,14 +11,17 @@
     "build": "tsc"
   },
   "dependencies": {
-    "graphql-yoga": "^5.10.11"
+    "@graphql-tools/schema": "^10.0.30",
+    "@graphql-tools/utils": "^10.11.0",
+    "graphql": "^16.12.0",
+    "graphql-yoga": "^5.17.1"
   },
   "peerDependencies": {
-    "fastify": "^5.2.1",
+    "@mondrian-framework/graphql": "^2.0.69",
     "@mondrian-framework/model": "^2.0.69",
     "@mondrian-framework/module": "^2.0.69",
     "@mondrian-framework/utils": "^2.0.69",
-    "@mondrian-framework/graphql": "^2.0.69"
+    "fastify": "^5.2.1"
   },
   "peerDependenciesMeta": {
     "fastify": {

@@ -8,7 +8,7 @@ import gen from 'fast-check'
  */
 export function baseOptions(): gen.Arbitrary<model.BaseOptions> {
   return gen.record(baseOptionsGeneratorsRecord(), {
-    withDeletedKeys: true,
+    requiredKeys: [],
   })
 }
 
@@ -26,7 +26,7 @@ export function stringTypeOptions(): gen.Arbitrary<model.StringTypeOptions> {
             minLength: gen.constant(min),
             maxLength: gen.constant(max),
           },
-          { withDeletedKeys: true },
+          { requiredKeys: [] },
         ),
         gen.record(
           {
@@ -36,7 +36,7 @@ export function stringTypeOptions(): gen.Arbitrary<model.StringTypeOptions> {
             // For now this is already enough to cover some test cases
             regex: gen.constantFrom(/.*/, undefined),
           },
-          { withDeletedKeys: true },
+          { requiredKeys: [] },
         ),
       )
     })
@@ -72,7 +72,7 @@ export function numberTypeOptions(): gen.Arbitrary<model.NumberTypeOptions> {
   return gen.boolean().chain((isInteger) => {
     return integerBounds().chain((bounds) => {
       return gen
-        .record({ ...baseOptionsGeneratorsRecord(), isInteger: gen.constant(isInteger) }, { withDeletedKeys: true })
+        .record({ ...baseOptionsGeneratorsRecord(), isInteger: gen.constant(isInteger) }, { requiredKeys: [] })
         .map((opts) => ({ ...opts, ...bounds }))
     })
   })
@@ -204,10 +204,10 @@ export function datetimeTypeOptions(): gen.Arbitrary<model.CustomTypeOptions<mod
     .record(
       {
         ...baseOptionsGeneratorsRecord(),
-        minimum: orUndefined(gen.date()),
-        maximum: orUndefined(gen.date()),
+        minimum: orUndefined(gen.date({ noInvalidDate: true })),
+        maximum: orUndefined(gen.date({ noInvalidDate: true })),
       },
-      { withDeletedKeys: true },
+      { requiredKeys: [] },
     )
     .map((options) => {
       if (options.maximum && options.minimum && options.maximum.getTime() < options.minimum.getTime()) {
@@ -240,10 +240,10 @@ export function timestampTypeOptions(): gen.Arbitrary<model.CustomTypeOptions<mo
     .record(
       {
         ...baseOptionsGeneratorsRecord(),
-        minimum: orUndefined(gen.date()),
-        maximum: orUndefined(gen.date()),
+        minimum: orUndefined(gen.date({ noInvalidDate: true })),
+        maximum: orUndefined(gen.date({ noInvalidDate: true })),
       },
-      { withDeletedKeys: true },
+      { requiredKeys: [] },
     )
     .map((options) => {
       if (options.maximum && options.minimum && options.maximum.getTime() < options.minimum.getTime()) {
@@ -424,7 +424,7 @@ export function arrayTypeOptions(): gen.Arbitrary<model.ArrayTypeOptions> {
           maxItems: gen.constant(max),
         },
         {
-          withDeletedKeys: true,
+          requiredKeys: [],
         },
       )
     })

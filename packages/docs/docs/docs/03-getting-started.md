@@ -103,7 +103,7 @@ const restAPI = rest.build({
   module: echoModule,
   options: { introspection: true },
 })
-serveGraphQL({ server, api: restAPI, context: async ({}) => ({}) })
+serveREST({ server, api: restAPI, context: async ({}) => ({}) })
 
 const graphQLAPI = graphql.build({
   module: echoModule,
@@ -154,7 +154,7 @@ const restAPI = rest.build({
   module: echoModule,
   options: { introspection: true },
 })
-serveGraphQL({ server, api: restAPI, context: async ({}) => ({}) })
+serveREST({ server, api: restAPI, context: async ({}) => ({}) })
 
 const graphQLAPI = graphql.build({
   module: echoModule,

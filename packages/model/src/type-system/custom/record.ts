@@ -51,6 +51,14 @@ function decode<T extends model.Type>(
   const entries: [string, any][] = []
   const errors: decoding.Error[] = []
   for (const [key, v] of Object.entries(value)) {
+    if (forbiddenObjectFields.includes(key)) {
+      const error = decoding.fail('safe key', key)
+      if (decodingOptions.errorReportingStrategy === 'allErrors') {
+        errors.push(...error.error)
+      } else {
+        return error
+      }
+    }
     const result = concreteFieldsType.decodeWithoutValidation(v, decodingOptions)
     if (result.isOk) {
       entries.push([key, result.value])

@@ -23,10 +23,7 @@ describe('Opentelemetry', () => {
         [SemanticResourceAttributes.SERVICE_NAME]: 'test',
         [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
       }),
-      spanProcessors: [
-        new SimpleSpanProcessor(spanExporter),
-        new SimpleSpanProcessor(exporter),
-      ],
+      spanProcessors: [new SimpleSpanProcessor(spanExporter), new SimpleSpanProcessor(exporter)],
     })
     provider.register()
 

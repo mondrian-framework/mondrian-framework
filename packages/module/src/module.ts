@@ -21,8 +21,9 @@ export interface ModuleInterface<Fs extends functions.FunctionInterfaces = funct
  * The Mondrian module type.
  * Contains all the module functions with also the implementation and how to build the context.
  */
-export interface Module<Fs extends functions.FunctionImplementations = functions.FunctionImplementations>
-  extends ModuleInterface {
+export interface Module<
+  Fs extends functions.FunctionImplementations = functions.FunctionImplementations,
+> extends ModuleInterface {
   name: string
   functions: Fs
   policies?: (

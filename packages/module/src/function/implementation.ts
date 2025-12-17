@@ -15,8 +15,7 @@ export class BaseFunction<
   C extends functions.OutputRetrieveCapabilities,
   Pv extends provider.Providers,
   G extends guard.Guards,
-> implements functions.FunctionImplementation<I, O, E, C, Pv, G>
-{
+> implements functions.FunctionImplementation<I, O, E, C, Pv, G> {
   readonly input: I
   readonly output: O
   readonly errors: E

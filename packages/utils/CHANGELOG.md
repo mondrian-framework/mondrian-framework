@@ -1,5 +1,11 @@
 # @mondrian-framework/utils
 
+## 2.0.70
+
+### Patch Changes
+
+- Deps update
+
 ## 2.0.69
 
 ### Patch Changes

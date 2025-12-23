@@ -1,4 +1,4 @@
-import { ErrorHandler, FunctionSpecifications } from '../src/api'
+import { ErrorHandler, FunctionSpecifications, build, define } from '../src/api'
 import { fromFunction } from '../src/handler'
 import { model, result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
@@ -7,6 +7,62 @@ import { describe, expect, test } from 'vitest'
 
 type Request = http.Request
 type Response = http.Response
+
+describe('api', () => {
+  const testModule = module.define({
+    name: 'test',
+    functions: {
+      testFn: functions.define({
+        input: model.string(),
+        output: model.string(),
+      }),
+    },
+  })
+
+  describe('build', () => {
+    test('creates an API with module implementation', () => {
+      const impl = module.build({
+        ...testModule,
+        functions: {
+          testFn: functions.define({ input: model.string(), output: model.string() }).implement({
+            async body({ input }) {
+              return result.ok(input)
+            },
+          }),
+        },
+      })
+      const api = build({
+        version: 1,
+        module: impl,
+        functions: { testFn: { method: 'get' } },
+      })
+      expect(api.version).toBe(1)
+      expect(api.module).toBe(impl)
+    })
+  })
+
+  describe('define', () => {
+    test('creates an API specification', () => {
+      const api = define({
+        version: 1,
+        module: testModule,
+        functions: { testFn: { method: 'get' } },
+      })
+      expect(api.version).toBe(1)
+      expect(api.module).toBe(testModule)
+    })
+
+    test('validates api version', () => {
+      expect(() =>
+        define({
+          version: 1.5,
+          module: testModule,
+          functions: {},
+        }),
+      ).toThrow('Invalid api version')
+    })
+  })
+})
 
 describe('rest handler', () => {
   const f0 = functions
@@ -90,7 +146,44 @@ describe('rest handler', () => {
         return result.ok(a * b.a * b.b)
       },
     })
-  const fs = { f0, f1, f2, f3, f4, f5, f6 } as const
+  const f7 = functions
+    .define({
+      input: model.string(),
+      output: model.array(model.string()),
+    })
+    .implement({
+      async body() {
+        return result.ok(['a', 'b', 'c'])
+      },
+    })
+  const f8 = functions
+    .define({
+      input: model.string(),
+      output: model.string(),
+    })
+    .implement({
+      async body() {
+        throw 'string error'
+      },
+    })
+  const f9 = functions
+    .define({
+      input: model.object({ data: model.string() }),
+      output: model.string(),
+      errors: { badRequest: model.string(), unauthorized: model.string() },
+    })
+    .implement({
+      async body({ input }) {
+        if (input.data === 'bad') {
+          return result.fail({ badRequest: 'Bad request' })
+        }
+        if (input.data === 'unauth') {
+          return result.fail({ unauthorized: 'Unauthorized' })
+        }
+        return result.ok(input.data)
+      },
+    })
+  const fs = { f0, f1, f2, f3, f4, f5, f6, f7, f8, f9 } as const
   const m = module.build({
     functions: fs,
     name: 'example',
@@ -100,6 +193,7 @@ describe('rest handler', () => {
     f: keyof typeof fs,
     specification: FunctionSpecifications,
     onError?: ErrorHandler<functions.Functions, {}>,
+    apiOptions?: { errorCodes?: Record<string, number> },
   ): (request: Partial<Pick<Request, 'body' | 'query' | 'params' | 'headers'>>) => Promise<Response> {
     const handler = fromFunction({
       functionBody: m.functions[f] as functions.FunctionImplementation,
@@ -108,7 +202,7 @@ describe('rest handler', () => {
       specification,
       module: m,
       onError,
-      api: {},
+      api: { errorCodes: apiOptions?.errorCodes },
     })
     return (request) =>
       handler({
@@ -288,5 +382,58 @@ describe('rest handler', () => {
     const response = await handler({ query: { a: '1', 'b[a]': '2', 'b[b]': '3' } })
     expect(response.status).toBe(200)
     expect(response.body).toStrictEqual(6)
+  })
+
+  test('returns array output correctly', async () => {
+    const handler = buildHandler('f7', { method: 'get' })
+    const response = await handler({ query: { input: 'test' } })
+    expect(response.status).toBe(200)
+    expect(response.body).toStrictEqual(['a', 'b', 'c'])
+  })
+
+  test('handles non-Error thrown values', async () => {
+    const handler = buildHandler('f8', { method: 'get' })
+    const response = await handler({ query: { input: 'test' } })
+    expect(response.status).toBe(500)
+    expect(response.body).toBe('Internal server error')
+  })
+
+  test('uses api-level error codes', async () => {
+    const handler = buildHandler('f9', { method: 'post' }, undefined, { errorCodes: { unauthorized: 401 } })
+    const response = await handler({ body: { data: 'unauth' } })
+    expect(response.status).toBe(401)
+    expect(response.body).toStrictEqual({ unauthorized: 'Unauthorized' })
+  })
+
+  test('uses specification-level error codes over api-level', async () => {
+    const handler = buildHandler('f9', { method: 'post', errorCodes: { badRequest: 422 } }, undefined, {
+      errorCodes: { badRequest: 400 },
+    })
+    const response = await handler({ body: { data: 'bad' } })
+    expect(response.status).toBe(422)
+    expect(response.body).toStrictEqual({ badRequest: 'Bad request' })
+  })
+
+  test('onError handler can return undefined to use default', async () => {
+    const handler = buildHandler('f4', { method: 'post', path: '/f4/{ping}' }, async () => undefined)
+    const response = await handler({ params: { ping: 'lol' } })
+    expect(response.status).toBe(500)
+    expect(response.body).toBe('Not a ping!')
+  })
+
+  test('content-type header is set based on specification', async () => {
+    const handler = buildHandler('f0', { method: 'get', contentType: 'text/plain' })
+    const response = await handler({})
+    expect(response.headers!['Content-Type']).toBe('text/plain')
+  })
+
+  test('handles decoding options from specification', async () => {
+    const handler = buildHandler('f1', {
+      method: 'get',
+      decodingOptions: { fieldStrictness: 'allowAdditionalFields' },
+    })
+    const response = await handler({ query: { input: '123' } })
+    expect(response.status).toBe(200)
+    expect(response.body).toBe(123)
   })
 })

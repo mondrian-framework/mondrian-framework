@@ -277,6 +277,7 @@ describe('Response type builder', () => {
       input: model.number(),
       output: model.string(),
       errors: { someError: model.string() },
+      retrieve: { select: true },
     } as functions.FunctionInterface
     const responseType = Response(functionBody)
     expect(responseType).toBeDefined()

@@ -1,4 +1,4 @@
-import { build as buildApi } from '../src/api'
+import { build as buildApi, define } from '../src/api'
 import { model, result } from '@mondrian-framework/model'
 import { functions, module } from '@mondrian-framework/module'
 
@@ -58,6 +58,12 @@ const omitted = functions
 
 const m = module.build({
   name: 'test',
+  functions: { ping, getUsers, divideBy, omitted },
+})
+
+// Export module interface for testing define()
+export const moduleInterface = module.define({
+  name: 'test-interface',
   functions: { ping, getUsers, divideBy, omitted },
 })
 

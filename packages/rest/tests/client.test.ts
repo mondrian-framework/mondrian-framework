@@ -436,4 +436,162 @@ describe('REST client', () => {
       )
     })
   })
+
+  describe('error decoding edge cases', () => {
+    test('handles invalid error type that fails decoding', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 400,
+        statusText: 'Bad Request',
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '{"badRequest": 123}', // badRequest expects string, not number
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      // The error decoding fails silently and then throws a generic error
+      await expect(client.functions.errorFn('input')).rejects.toThrow('Error calling function errorFn')
+    })
+
+    test('handles non-object error response', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 400,
+        statusText: 'Bad Request',
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '"just a string"',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      await expect(client.functions.errorFn('input')).rejects.toThrow('Error calling function errorFn')
+    })
+
+    test('handles invalid JSON in error response', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 400,
+        statusText: 'Bad Request',
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => 'not valid json',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      await expect(client.functions.errorFn('input')).rejects.toThrow('Error calling function errorFn')
+    })
+  })
+
+  describe('retrieve with orderBy and where', () => {
+    test('sends orderBy in query string', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '{"id": "1", "name": "test"}',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      await client.functions.retrieve('1', {
+        retrieve: {
+          select: { id: true },
+          orderBy: [{ name: 'asc' }],
+        },
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('orderBy'), expect.anything())
+    })
+
+    test('sends where filter in query string', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '{"id": "1", "name": "test"}',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      await client.functions.retrieve('1', {
+        retrieve: {
+          select: { id: true },
+          where: { name: { equals: 'test' } },
+        },
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('where'), expect.anything())
+    })
+  })
+
+  describe('function without errors defined', () => {
+    test('returns value directly for function without errors', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '"hello"',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      const result = await client.functions.echo('hello')
+      // Function without errors returns value directly, not wrapped in result
+      expect(result).toBe('hello')
+    })
+
+    test('throws on non-200 for function without errors', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => 'Server error',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      await expect(client.functions.echo('hello')).rejects.toThrow('Error calling function echo')
+    })
+  })
+
+  describe('path with input params', () => {
+    test('handles function with path parameter', async () => {
+      const pathApi = rest.define({
+        version: 1,
+        module: testModule,
+        functions: {
+          echo: { method: 'get', path: '/echo/{id}' },
+        },
+      })
+
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '"result"',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: pathApi,
+      })
+
+      await client.functions.echo('123')
+      expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/api/v1/echo/123', expect.anything())
+    })
+  })
 })

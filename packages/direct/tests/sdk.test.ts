@@ -1,9 +1,10 @@
-import { DEFAULT_SERVE_OPTIONS } from '../src/api'
+import { DEFAULT_SERVE_OPTIONS, define } from '../src/api'
 import { build as buildApi } from '../src/api'
 import { build } from '../src/client'
-import { fromModule } from '../src/handler'
-import { api } from './module.util'
-import { module } from '@mondrian-framework/module'
+import { fromModule, Response } from '../src/handler'
+import { api, moduleInterface } from './module.util'
+import { model } from '@mondrian-framework/model'
+import { functions, module } from '@mondrian-framework/module'
 import http from 'node:http'
 import { expect, test, describe } from 'vitest'
 
@@ -218,5 +219,214 @@ describe('edge cases', () => {
     })
     const r1 = await client.functions.ping(1)
     expect(r1).toBe(1)
+  })
+})
+
+describe('api functions', () => {
+  test('define should return api specification', () => {
+    const apiSpec = define({
+      module: moduleInterface,
+      exclusions: {},
+    })
+    expect(apiSpec.module).toBe(moduleInterface)
+    expect(apiSpec.exclusions).toEqual({})
+  })
+
+  test('define with exclusions should work', () => {
+    const apiSpec = define({
+      module: moduleInterface,
+      exclusions: { omitted: true },
+    })
+    expect(apiSpec.exclusions).toEqual({ omitted: true })
+  })
+
+  test('define with options should preserve options', () => {
+    const apiSpec = define({
+      module: moduleInterface,
+      exclusions: {},
+      options: { path: '/custom-path' },
+    })
+    expect(apiSpec.options?.path).toBe('/custom-path')
+  })
+
+  test('build should return api with module implementation', () => {
+    expect(api.module).toBeDefined()
+    expect(api.exclusions).toEqual({ omitted: true })
+  })
+
+  test('DEFAULT_SERVE_OPTIONS should have correct defaults', () => {
+    expect(DEFAULT_SERVE_OPTIONS.introspection).toBe(false)
+    expect(DEFAULT_SERVE_OPTIONS.decodeOptions.errorReportingStrategy).toBe('stopAtFirstError')
+    expect(DEFAULT_SERVE_OPTIONS.decodeOptions.fieldStrictness).toBe('expectExactFields')
+    expect(DEFAULT_SERVE_OPTIONS.decodeOptions.typeCastingStrategy).toBe('expectExactTypes')
+  })
+})
+
+describe('Response type builder', () => {
+  test('Response should create union type for function', () => {
+    const functionBody = {
+      input: model.number(),
+      output: model.string(),
+    } as functions.FunctionInterface
+    const responseType = Response(functionBody)
+    expect(responseType).toBeDefined()
+  })
+
+  test('Response should handle function with errors', () => {
+    const functionBody = {
+      input: model.number(),
+      output: model.string(),
+      errors: { someError: model.string() },
+    } as functions.FunctionInterface
+    const responseType = Response(functionBody)
+    expect(responseType).toBeDefined()
+  })
+})
+
+describe('client withMetadata', () => {
+  test('withMetadata should create new client with metadata', () => {
+    const clientWithoutMeta = build({ endpoint: handler, api })
+    const clientWithMeta = clientWithoutMeta.withMetadata({ auth: 'ok' })
+    expect(clientWithMeta).toBeDefined()
+    expect(clientWithMeta.functions).toBeDefined()
+  })
+
+  test('chaining withMetadata should work', async () => {
+    const client1 = build({ endpoint: handler, api })
+    const client2 = client1.withMetadata({ auth: 'ok' })
+    const r1 = await client2.functions.ping(123)
+    expect(r1).toBe(123)
+  })
+})
+
+describe('handler metadata and context', () => {
+  test('handler should reject with invalid metadata (auth)', async () => {
+    const clientNoAuth = build({ endpoint: handler, api })
+    await expect(clientNoAuth.functions.ping(1)).rejects.toThrow('Unauthorized')
+  })
+
+  test('handler should accept valid metadata', async () => {
+    const clientWithAuth = build({ endpoint: handler, api }).withMetadata({ auth: 'ok' })
+    const r1 = await clientWithAuth.functions.ping(123)
+    expect(r1).toBe(123)
+  })
+
+  test('function-level metadata override should work', async () => {
+    const clientNoAuth = build({ endpoint: handler, api })
+    const r1 = await clientNoAuth.functions.ping(123, { metadata: { auth: 'ok' } })
+    expect(r1).toBe(123)
+  })
+})
+
+describe('handler error scenarios', () => {
+  test('request with invalid function name should return error', async () => {
+    const r1 = await handler({
+      request: {
+        body: { function: 'nonExistent' },
+        headers: {},
+        method: 'post',
+        params: {},
+        query: {},
+        route: '/',
+      },
+      serverContext: null,
+    })
+    expect(r1.body).toEqual({
+      additionalInfo: {
+        expected: "One of ['ping', 'getUsers', 'divideBy']",
+        path: '$.function',
+        got: 'nonExistent',
+      },
+      reason: 'Error while decoding request',
+      success: false,
+    })
+  })
+
+  test('request with non-string function should return error', async () => {
+    const r1 = await handler({
+      request: {
+        body: { function: 123 },
+        headers: {},
+        method: 'post',
+        params: {},
+        query: {},
+        route: '/',
+      },
+      serverContext: null,
+    })
+    expect(r1.body).toEqual({
+      additionalInfo: {
+        expected: "One of ['ping', 'getUsers', 'divideBy']",
+        path: '$.function',
+        got: 123,
+      },
+      reason: 'Error while decoding request',
+      success: false,
+    })
+  })
+})
+
+describe('real HTTP endpoint tests', () => {
+  test('HTTP server with valid response', async () => {
+    const server = http.createServer({}, async (_, response) => {
+      response.writeHead(200, { 'Content-Type': 'application/json' })
+      response.write(JSON.stringify({ success: true, result: 42 }))
+      response.end()
+    })
+    server.listen(50126)
+
+    const client = build({ endpoint: 'http://localhost:50126', api })
+    const r1 = await client.functions.ping(42)
+    expect(r1).toBe(42)
+
+    server.close()
+  })
+
+  test('HTTP server stringBody error handling', async () => {
+    const server = http.createServer({}, async (_, response) => {
+      response.writeHead(500, { 'Content-Type': 'application/json' })
+      // Write invalid JSON to trigger error in stringBody
+      response.write('server error message')
+      response.end()
+    })
+    server.listen(50127)
+
+    const client = build({ endpoint: 'http://localhost:50127', api })
+    await expect(client.functions.ping(1)).rejects.toThrow('Unexpected status code: 500. server error message')
+
+    server.close()
+  })
+})
+
+describe('client with function-level options', () => {
+  test('function call with custom headers through fetchOptions', async () => {
+    const customHandler = fromModule({
+      api,
+      async context(context, metadata) {
+        return 'ok'
+      },
+      options: { ...DEFAULT_SERVE_OPTIONS },
+    })
+
+    const clientWithHeaders = build({
+      endpoint: customHandler,
+      api,
+      fetchOptions: { headers: { 'X-Custom-Header': 'test-value' } },
+    })
+
+    const r1 = await clientWithHeaders.functions.ping(100)
+    expect(r1).toBe(100)
+  })
+
+  test('function call with undefined header values should be handled', async () => {
+    const clientWithUndefinedHeader = build({
+      endpoint: handler,
+      api,
+      fetchOptions: { headers: { 'X-Optional': undefined } },
+      metadata: { auth: 'ok' },
+    })
+
+    const r1 = await clientWithUndefinedHeader.functions.ping(200)
+    expect(r1).toBe(200)
   })
 })

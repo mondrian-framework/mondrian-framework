@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node --env-file dev.env build/serve.js",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "build": "tsc"
   },
   "dependencies": {

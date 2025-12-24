@@ -436,4 +436,81 @@ describe('rest handler', () => {
     expect(response.status).toBe(200)
     expect(response.body).toBe(123)
   })
+
+  test('returns x-total-count header with TotalCountArray', async () => {
+    const fTotalCount = functions
+      .define({
+        output: model.array(model.string(), { totalCount: true }),
+      })
+      .implement({
+        async body() {
+          const arr = new model.TotalCountArray(100, ['a', 'b', 'c'])
+          return result.ok(arr)
+        },
+      })
+    const mTotalCount = module.build({
+      functions: { fTotalCount },
+      name: 'totalCountExample',
+    })
+    const handlerTotalCount = fromFunction({
+      functionBody: mTotalCount.functions.fTotalCount as any,
+      functionName: 'fTotalCount',
+      context: async () => ({}),
+      specification: { method: 'get' },
+      module: mTotalCount,
+      api: {},
+    })
+    const response = await handlerTotalCount({
+      request: {
+        body: undefined,
+        headers: {},
+        params: {},
+        query: {},
+        method: 'get',
+        route: null as any,
+      },
+      serverContext: {},
+    })
+    expect(response.status).toBe(200)
+    expect(response.headers!['x-total-count']).toBe('100')
+    // Response body is a TotalCountArray, so check elements match
+    expect(Array.from(response.body as unknown[])).toStrictEqual(['a', 'b', 'c'])
+  })
+
+  test('returns x-total-count header with regular array (uses length)', async () => {
+    const fRegularArray = functions
+      .define({
+        output: model.array(model.string(), { totalCount: true }),
+      })
+      .implement({
+        async body() {
+          return result.ok(['a', 'b', 'c'] as any)
+        },
+      })
+    const mRegularArray = module.build({
+      functions: { fRegularArray },
+      name: 'regularArrayExample',
+    })
+    const handlerRegularArray = fromFunction({
+      functionBody: mRegularArray.functions.fRegularArray as any,
+      functionName: 'fRegularArray',
+      context: async () => ({}),
+      specification: { method: 'get' },
+      module: mRegularArray,
+      api: {},
+    })
+    const response = await handlerRegularArray({
+      request: {
+        body: undefined,
+        headers: {},
+        params: {},
+        query: {},
+        method: 'get',
+        route: null as any,
+      },
+      serverContext: {},
+    })
+    expect(response.status).toBe(200)
+    expect(response.headers!['x-total-count']).toBe('3')
+  })
 })

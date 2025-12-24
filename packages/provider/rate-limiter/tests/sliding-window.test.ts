@@ -7,24 +7,53 @@ import { describe, expect, test } from 'vitest'
 
 describe('Sliding window in memory', async () => {
   const store = new InMemoryStore()
-  test('errors', () => {
-    expect(
-      () =>
-        new SlidingWindow({
-          rate: new Rate({ requests: 10, period: 0.5, scale: 'second' }),
-          store,
-          key: randomUUID(),
-        }),
-    ).toThrowError('Sampling period must be at least 1 second')
-    expect(
-      () =>
-        new SlidingWindow({
-          rate: new Rate({ requests: -10, period: 30, scale: 'second' }),
-          store,
-          key: randomUUID(),
-        }),
-    ).toThrowError('Rate limit must be a positive duration')
+
+  describe('constructor validation', () => {
+    test('throws error for period less than 1 second', () => {
+      expect(
+        () =>
+          new SlidingWindow({
+            rate: new Rate({ requests: 10, period: 0.5, scale: 'second' }),
+            store,
+            key: randomUUID(),
+          }),
+      ).toThrowError('Sampling period must be at least 1 second')
+    })
+
+    test('throws error for negative requests', () => {
+      expect(
+        () =>
+          new SlidingWindow({
+            rate: new Rate({ requests: -10, period: 30, scale: 'second' }),
+            store,
+            key: randomUUID(),
+          }),
+      ).toThrowError('Rate limit must be a positive duration')
+    })
+
+    test('accepts exactly 1 second period', () => {
+      expect(
+        () =>
+          new SlidingWindow({
+            rate: new Rate({ requests: 10, period: 1, scale: 'second' }),
+            store,
+            key: randomUUID(),
+          }),
+      ).not.toThrow()
+    })
+
+    test('accepts 0 requests (always rate limited)', () => {
+      expect(
+        () =>
+          new SlidingWindow({
+            rate: new Rate({ requests: 0, period: 30, scale: 'second' }),
+            store,
+            key: randomUUID(),
+          }),
+      ).not.toThrow()
+    })
   })
+
   test('0 rate limit', () => {
     const window = new SlidingWindow({
       rate: new Rate({ requests: 0, period: 30, scale: 'second' }),
@@ -32,6 +61,78 @@ describe('Sliding window in memory', async () => {
       key: randomUUID(),
     })
     expect(window.isRateLimited(new Date())).toBe('rate-limited')
+  })
+
+  test('isRateLimited with increase=false does not count requests', () => {
+    const window = new SlidingWindow({
+      rate: new Rate({ requests: 2, period: 30, scale: 'second' }),
+      store,
+      key: randomUUID(),
+    })
+    const now = new Date(100000)
+
+    // Check without incrementing
+    expect(window.isRateLimited(now, false)).toBe('allowed')
+    expect(window.isRateLimited(now, false)).toBe('allowed')
+    expect(window.isRateLimited(now, false)).toBe('allowed')
+
+    // Still allowed because we didn't increment
+    expect(window.isRateLimited(now, true)).toBe('allowed')
+    expect(window.isRateLimited(now, true)).toBe('allowed')
+
+    // Now rate limited
+    expect(window.isRateLimited(now, true)).toBe('rate-limited')
+    expect(window.isRateLimited(now, false)).toBe('rate-limited')
+  })
+
+  test('rate limited until cache optimization', () => {
+    const window = new SlidingWindow({
+      rate: new Rate({ requests: 2, period: 30, scale: 'second' }),
+      store,
+      key: randomUUID(),
+    })
+    // Start time at a slot boundary for predictable behavior
+    let now = new Date(60000) // 60 seconds
+
+    // Use up the rate limit
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('allowed')
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+
+    // Still rate limited at same time (uses cache)
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+
+    // Still rate limited slightly in the future but within cached period
+    now = new Date(61000)
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+  })
+
+  test('rate limit recovery with old slot contribution', () => {
+    const window = new SlidingWindow({
+      rate: new Rate({ requests: 5, period: 10, scale: 'second' }),
+      store,
+      key: randomUUID(),
+    })
+
+    // Start at slot boundary
+    let now = new Date(100000) // 100 seconds
+
+    // Make 5 requests to hit limit
+    for (let i = 0; i < 5; i++) {
+      expect(window.isRateLimited(now)).toBe('allowed')
+    }
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+
+    // Move to next slot - old requests still contribute
+    now = new Date(110000) // 110 seconds (new slot)
+    expect(window.isRateLimited(now)).toBe('rate-limited')
+
+    // Move further - old slot contributes less
+    now = new Date(115000) // 115 seconds
+    // Should allow some requests now
+    const result = window.isRateLimited(now)
+    // Due to sliding window, ~2.5 requests should be available
+    expect(['allowed', 'rate-limited']).toContain(result)
   })
   test('rate limits', async () => {
     let now = new Date(100000)

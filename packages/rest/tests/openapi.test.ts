@@ -1293,4 +1293,794 @@ describe('additional openapi types', () => {
       requestBody.content['application/json'].schema.properties.level1.properties.level2.properties.value.type,
     ).toBe('string')
   })
+
+  test('throws error for unsupported input type with GET method (union at root)', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          input: model.union({ a: model.string(), b: model.number() }),
+          output: model.string(),
+        }),
+      },
+    })
+
+    expect(() =>
+      rest.openapi.fromModule({
+        version: 1,
+        api: {
+          module: m,
+          version: 1,
+          functions: { test: { method: 'get', path: '/test/{id}' } },
+        },
+      }),
+    ).toThrowError('Error while generating openapi input type. Not supported. Path /test/{id}')
+  })
+
+  test('handles nullable type with ignoreFirstLevelOptionality in path parameter', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          input: model.nullable(model.string()),
+          output: model.string(),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get', path: '/test/{id}' } },
+      },
+    })
+
+    const param = openapi.paths!['/test/{id}']?.get?.parameters?.[0] as any
+    expect(param.name).toBe('id')
+    expect(param.required).toBe(true)
+    // Schema should not have anyOf since ignoreFirstLevelOptionality is true for path params
+    expect(param.schema.type).toBe('string')
+  })
+
+  test('handles optional type with ignoreFirstLevelOptionality in path parameter', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          input: model.optional(model.string()),
+          output: model.string(),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get', path: '/test/{id}' } },
+      },
+    })
+
+    const param = openapi.paths!['/test/{id}']?.get?.parameters?.[0] as any
+    expect(param.name).toBe('id')
+    expect(param.required).toBe(true)
+    expect(param.schema.type).toBe('string')
+  })
+
+  test('handles function description with newlines', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.string(),
+          options: {
+            description: 'First line\nSecond line\nThird line',
+          },
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    expect(openapi.paths!['/test']?.get?.description).toBe('First line</br>Second line</br>Third line')
+  })
+
+  test('handles type descriptions in string type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.string({ description: 'A test string' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A test string')
+  })
+
+  test('handles type descriptions in number type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.number({ description: 'A test number' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A test number')
+  })
+
+  test('handles type descriptions in boolean type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.boolean({ description: 'A test boolean' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A test boolean')
+  })
+
+  test('handles type descriptions in enum type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.enumeration(['A', 'B'], { description: 'A test enum' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A test enum')
+  })
+
+  test('handles type descriptions in literal type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.literal('constant', { description: 'A constant value' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A constant value')
+  })
+
+  test('handles type descriptions in array type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.array(model.string(), { description: 'A list of strings', minItems: 1, maxItems: 10 }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A list of strings')
+    expect(response.content['application/json'].schema.minItems).toBe(1)
+    expect(response.content['application/json'].schema.maxItems).toBe(10)
+  })
+
+  test('handles type descriptions in union type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.union({ a: model.string(), b: model.number() }, { description: 'A union type' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A union type')
+  })
+
+  test('handles type descriptions in optional type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.optional(model.string(), { description: 'An optional string' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('An optional string')
+  })
+
+  test('handles type descriptions in nullable type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.nullable(model.string(), { description: 'A nullable string' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('A nullable string')
+  })
+
+  test('handles string type with regex pattern', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.string({ regex: /^[a-z]+$/ }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.pattern).toBe('^[a-z]+$')
+  })
+
+  test('handles string type with minLength and maxLength', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.string({ minLength: 5, maxLength: 100 }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.minLength).toBe(5)
+    expect(response.content['application/json'].schema.maxLength).toBe(100)
+  })
+
+  test('handles number type with bounds', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.number({ minimum: 0, maximum: 100, exclusiveMinimum: 0, exclusiveMaximum: 100 }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.minimum).toBe(0)
+    expect(response.content['application/json'].schema.maximum).toBe(100)
+    expect(response.content['application/json'].schema.exclusiveMinimum).toBe(0)
+    expect(response.content['application/json'].schema.exclusiveMaximum).toBe(100)
+  })
+
+  test('handles integer type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.integer(),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.type).toBe('integer')
+  })
+
+  test('handles object with field descriptions', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.object({
+            name: model.string({ description: 'The user name' }),
+            age: model.integer({ description: 'The user age' }),
+          }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.properties.name.description).toBe('The user name')
+    expect(response.content['application/json'].schema.properties.age.description).toBe('The user age')
+  })
+
+  test('handles TotalCountArray output type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        list: functions.define({
+          output: model.array(model.string(), { totalCount: true }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { list: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/list']?.get?.responses?.['200'] as any
+    expect(response.headers?.['x-total-count']).toBeDefined()
+    expect(response.headers['x-total-count'].schema.type).toBe('integer')
+  })
+
+  test('handles nullable union with description on inner type', () => {
+    const innerUnion = model.union({ a: model.string({ description: 'string opt' }), b: model.number() })
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.nullable(innerUnion),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    // Should merge anyOf from union with nullable
+    expect(response.content['application/json'].schema.anyOf.length).toBe(3)
+  })
+
+  test('handles optional union with description on inner type', () => {
+    const innerUnion = model.union({ a: model.string({ description: 'string opt' }), b: model.number() })
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.optional(innerUnion),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    // Should merge anyOf from union with optional
+    expect(response.content['application/json'].schema.anyOf.length).toBe(3)
+  })
+
+  test('handles optional type with outer description overriding inner', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.optional(model.union({ a: model.string(), b: model.number() }, { description: 'inner desc' }), {
+            description: 'outer desc',
+          }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('outer desc')
+  })
+
+  test('handles nullable type with outer description overriding inner', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.nullable(model.union({ a: model.string(), b: model.number() }, { description: 'inner desc' }), {
+            description: 'outer desc',
+          }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.description).toBe('outer desc')
+  })
+
+  test('handles entity with _count field', () => {
+    const user = () =>
+      model.entity({
+        id: model.string(),
+        name: model.string(),
+        _postCount: model.optional(model.integer()),
+      })
+
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: user,
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    // Entities may be defined as refs in OpenAPI schema
+    // Just verify the response is properly defined
+    expect(response).toBeDefined()
+    expect(response.content['application/json']).toBeDefined()
+    // The schema may be a $ref or inline object
+    const schema = response.content['application/json'].schema
+    expect(schema).toBeDefined()
+  })
+
+  test('handles record type with complex field type', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.record(model.object({ id: model.string(), value: model.number() })),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.type).toBe('object')
+    expect(response.content['application/json'].schema.additionalProperties.type).toBe('object')
+  })
+
+  test('handles datetime type with description', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.datetime({ description: 'A date and time' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.format).toBe('date-time')
+    expect(response.content['application/json'].schema.description).toBe('A date and time')
+  })
+
+  test('handles timestamp type with description', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.timestamp({ description: 'A timestamp' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.type).toBe('integer')
+    expect(response.content['application/json'].schema.description).toBe('A timestamp')
+  })
+
+  test('handles email type with description', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.email({ description: 'An email address' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.format).toBe('email')
+    expect(response.content['application/json'].schema.description).toBe('An email address')
+  })
+
+  test('handles uuid type with description', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.uuid({ description: 'A unique identifier' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.format).toBe('uuid')
+    expect(response.content['application/json'].schema.description).toBe('A unique identifier')
+  })
+
+  test('handles url type with description', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          output: model.url({ description: 'A URL' }),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { test: { method: 'get' } },
+      },
+    })
+
+    const response = openapi.paths!['/test']?.get?.responses?.['200'] as any
+    expect(response.content['application/json'].schema.format).toBe('url')
+    expect(response.content['application/json'].schema.description).toBe('A URL')
+  })
+
+  test('handles DELETE method with object input in query', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        deleteItem: functions.define({
+          input: model.object({ id: model.string(), force: model.optional(model.boolean()) }),
+          output: model.boolean(),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { deleteItem: { method: 'delete' } },
+      },
+    })
+
+    const params = openapi.paths!['/deleteItem']?.delete?.parameters as any[]
+    expect(params.length).toBe(2)
+    expect(params.find((p: any) => p.name === 'id')).toBeDefined()
+    expect(params.find((p: any) => p.name === 'force')).toBeDefined()
+  })
+
+  test('handles GET method with non-scalar input requiring deepObject style', () => {
+    const m = module.define({
+      name: 'name',
+      functions: {
+        search: functions.define({
+          input: model.object({
+            filter: model.object({ name: model.optional(model.string()), age: model.optional(model.integer()) }),
+          }),
+          output: model.array(model.string()),
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { search: { method: 'get' } },
+      },
+    })
+
+    const param = openapi.paths!['/search']?.get?.parameters?.[0] as any
+    expect(param.style).toBe('deepObject')
+    expect(param.explode).toBe(true)
+  })
 })

@@ -29,7 +29,7 @@ export enum Kind {
  * automatically generate encoders, decoders, and much more
  *
  * @see To learn more about the Mondrian model, read the
- * [online documentation](https://mondrianframework.com/docs/docs/foundamentals/model)
+ * [online documentation](https://mondrianframework.com/docs/docs/fundamentals/model)
  */
 export type Type = ConcreteType | (() => Type)
 

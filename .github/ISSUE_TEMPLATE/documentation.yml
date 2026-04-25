@@ -1,0 +1,29 @@
+name: 📖 Documentation issue
+description: Report a problem in the docs (typo, missing example, unclear explanation, broken link)
+title: "[docs] "
+labels: ["documentation", "needs triage"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or section
+      description: URL on https://mondrianframework.com/ or path under `packages/docs/docs/`.
+      placeholder: https://mondrianframework.com/docs/docs/fundamentals/function/01-definition or packages/docs/docs/docs/03-getting-started.md
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What's wrong / missing?
+      description: Quote or paraphrase the problem. If it's a typo, paste the misspelled phrase.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+      description: Optional — what should it say instead?
+    validations:
+      required: false

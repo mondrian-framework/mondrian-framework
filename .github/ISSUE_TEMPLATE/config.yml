@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & Discussions
+    url: https://github.com/mondrian-framework/mondrian-framework/discussions
+    about: Please use GitHub Discussions for questions, ideas, and general help — not the issue tracker.
+  - name: 🛡️ Security vulnerability
+    url: https://github.com/mondrian-framework/mondrian-framework/security/advisories/new
+    about: Please report security vulnerabilities privately — see SECURITY.md.
+  - name: 📖 Documentation
+    url: https://mondrianframework.com/
+    about: Read the full reference, guides, and API docs.

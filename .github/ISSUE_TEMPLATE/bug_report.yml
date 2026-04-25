@@ -1,0 +1,107 @@
+name: 🐛 Bug report
+description: Report a bug in Mondrian Framework
+title: "[bug] "
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report! Please fill in the sections below — the more we know, the faster we can fix it.
+
+        Before submitting, please confirm there is not already an [open issue](https://github.com/mondrian-framework/mondrian-framework/issues) for this.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the bug.
+      placeholder: When I do X, Y happens — but I expected Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: |
+        The smallest code example that reproduces the bug. A link to a minimal repo or a Stackblitz / CodeSandbox is ideal — inline code also works. Without a reproduction we usually cannot fix the issue.
+      render: typescript
+      placeholder: |
+        import { model, result } from '@mondrian-framework/model'
+        // ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: I expected ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include error messages, stack traces, or screenshots if relevant.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package(s)
+      multiple: true
+      options:
+        - "@mondrian-framework/model"
+        - "@mondrian-framework/module"
+        - "@mondrian-framework/rest"
+        - "@mondrian-framework/rest-fastify"
+        - "@mondrian-framework/graphql"
+        - "@mondrian-framework/graphql-yoga"
+        - "@mondrian-framework/direct"
+        - "@mondrian-framework/aws-sqs"
+        - "@mondrian-framework/aws-lambda-rest"
+        - "@mondrian-framework/aws-lambda-sqs"
+        - "@mondrian-framework/cron"
+        - "@mondrian-framework/cli"
+        - "@mondrian-framework/cli-commander"
+        - "@mondrian-framework/rate-limiter"
+        - "@mondrian-framework/utils"
+        - "Other / not sure"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version(s)
+      description: Versions of the affected Mondrian packages (e.g. from your `package.json` or `npm ls`).
+      placeholder: "@mondrian-framework/model@1.2.3, @mondrian-framework/module@1.2.3"
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: "20.10.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 14.5 / Ubuntu 22.04 / Windows 11"
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else we should know — workarounds you tried, related issues, theories about the cause.
+    validations:
+      required: false

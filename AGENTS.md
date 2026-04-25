@@ -46,7 +46,7 @@ mondrian-framework/        (npm workspaces monorepo, package name: @mondrian-fra
    ├─ docs/                Docusaurus site; canonical docs live in packages/docs/docs/docs
    └─ example/             reference app: User+Post Prisma model, REST+GraphQL+Direct on Fastify:4000
 
-⚠️ `package.json#workspaces` lists `packages/arbitrary` but the directory does **not** exist; arbitrary lives at `packages/model/src/arbitrary/arbitrary.ts` (re-exported as `arbitrary` from `@mondrian-framework/model`). Likely a stale workspace entry.
+Note: `arbitrary` is not a separate workspace package — it lives at `packages/model/src/arbitrary/arbitrary.ts` and is re-exported as `arbitrary` from `@mondrian-framework/model`.
 ```
 
 ## Workspaces, paths, and aliases
@@ -95,7 +95,7 @@ Builders return `model.Type`. All accept `BaseOptions` (`name`, `description`, e
 - **Objects vs entities**: `model.object({...})` for value objects (immutable readonly fields by default); `model.entity({...}, { description, retrieve: { where, orderBy, take, skip } })` for domain concepts with identity. Entities are what `retrieve`, security policies, and ORM mapping target.
 - **Unions**: `model.union({ tagA: TypeA, tagB: TypeB })` — tagged at the model level.
 - **Lazy types**: `const User = () => model.entity({...})`. Required for self/circular references; the function name is the type name (or use `.setName('X')`).
-- **Custom types**: `model.custom<Name, Options, Inferred>(name, encoder, decoder, validator, arbitrary, options?)`. Decoder validates basic shape; validator enforces semantic rules. Both return `decoding.Result` / `validation.Result`. Arbitrary uses `fast-check`. See `packages/docs/docs/docs/foundamentals/model/01-definition.md` for the canonical port-type example.
+- **Custom types**: `model.custom<Name, Options, Inferred>(name, encoder, decoder, validator, arbitrary, options?)`. Decoder validates basic shape; validator enforces semantic rules. Both return `decoding.Result` / `validation.Result`. Arbitrary uses `fast-check`. See `packages/docs/docs/docs/fundamentals/model/01-definition.md` for the canonical port-type example.
 - **Inference**: `type T = model.Infer<typeof T>`. Encoded form via `model.InferEncoded`.
 - **Operations on a Type**: `.encode(value)`, `.decode(unknown)`, `.example()`, `.setName(...)`, `.setOptions(...)`, `.optional()`, `.nullable()`, `.array()`, `.sensitive()` (e.g. for passwords), `.mutable()`, `.immutable()`.
 - **`result` module**: `result.ok(value)`, `result.fail({ errorKey: details })`. Functions never `throw` for application errors — they return `Result`s.
@@ -114,7 +114,7 @@ const impl = def
 - `input`/`output`: any `model.Type` (or omit for void). Single input parameter (compose with objects/unions for many).
 - `errors`: map of error name → schema. Use `error.define({ key: { message, ...detailFields } })` for default-message convenience. `error.standard.UnauthorizedAccess`, `error.standard.BadInput` are built-ins.
 - `retrieve`: enable Prisma-style projections — `{ select?, where?, orderBy?, take?, skip? }`. Uses Prisma syntax. `retrieve.allCapabilities` enables them all. Constraints can be narrowed per-entity in the entity definition (`retrieve: { where: { id: true }, take: { max: 10 }, ... }`).
-- `options`: `namespace` (subgrouping for runtimes), `description`, `operation` (`'query' | 'command' | { command: 'create' | 'update' | 'delete' }`), `opentelemetry: boolean`. NB: the docs at `foundamentals/function/01-definition.md` say `'mutation'` but the actual TS type uses `'command'` — code is the source of truth.
+- `options`: `namespace` (subgrouping for runtimes), `description`, `operation` (`'query' | 'command' | { command: 'create' | 'update' | 'delete' }`), `opentelemetry: boolean`.
 - The `body` receives `{ input, retrieve, logger, tracer }` plus a key per declared provider/guard. Always `return result.ok(...)` / `return result.fail(...)` — missing `return` is a known footgun.
 - `def.mock({ errorProbability, maxDepth })` produces a fully type-correct mock implementation for prototyping/contract use.
 
@@ -258,7 +258,7 @@ Mondrian's native RPC protocol (default mounted at `/mondrian`). Useful when bot
 - `@mondrian-framework/aws-lambda-rest` — REST on Lambda via `lambda-api`.
 - `@mondrian-framework/cron` — scheduled cron execution.
 - `@mondrian-framework/cli` and `@mondrian-framework/cli-commander` — CLI runtimes.
-- **Custom runtime** (`packages/docs/docs/docs/foundamentals/runtime/05-custom-runtime.md`): trigger → decode input → build context → `module.<fn>.apply` (or `rawApply` for raw bytes) → encode result. Pattern for WebSockets, alt brokers, IoT, etc.
+- **Custom runtime** (`packages/docs/docs/docs/fundamentals/runtime/05-custom-runtime.md`): trigger → decode input → build context → `module.<fn>.apply` (or `rawApply` for raw bytes) → encode result. Pattern for WebSockets, alt brokers, IoT, etc.
 
 ### Rate limiter — `@mondrian-framework/rate-limiter`
 
@@ -308,8 +308,6 @@ Prisma: `User` (id, email, password, posts, followers/followeds, givenLikes, reg
 - **`@mondrian-framework/utils`** holds shared TS helpers; check there before writing utility types.
 - **Coverage excludes** `packages/example/**` and `packages/docs/**`.
 - **`module.build` vs `module.define().implement()`**: `build` produces an implemented module from interface+impl in one step; `define` returns just the interface and exposes `.implement(...)` (also goes through `build`). Functions analogously have `.define()` + `.implement()` (no top-level `functions.build`). The example uses the split-interface pattern (`packages/example/src/interface/module.ts` defines, `packages/example/src/core/module.ts` implements) so the interface package is shareable independent of the impl.
-- **Stale doc strings**: a few doc pages diverge from current code (e.g. `operation: 'mutation'`, README's `limit` instead of `take` in retrieve example). Trust types over Markdown.
-- **`packages/arbitrary`** is in `workspaces` but the dir is missing — see warning in repo layout.
 
 ## Common scripts (root)
 
@@ -331,10 +329,10 @@ Per-package: `npm run test --workspace=@mondrian-framework/<pkg>`. Tests use **v
 
 `packages/docs/docs/docs/` is the canonical doc source (Docusaurus site at https://mondrianframework.com/):
 - `01-introduction.md`, `02-features.md`, `03-getting-started.md`
-- `foundamentals/model/{01-definition,02-typing,03-encode,04-decode,05-validation}.md`
-- `foundamentals/function/{01-definition,02-implementation,03-provider,04-guard}.md`
-- `foundamentals/module/{01-definition,02-implementation}.md`
-- `foundamentals/runtime/{index,03-scheduled,04-cli,05-custom-runtime}.md`, `runtime/API/{01-REST-OpenAPI,02-GraphQL-API,03-gRPC-API}.md`, `runtime/queue-consumer/*.md`
+- `fundamentals/model/{01-definition,02-typing,03-encode,04-decode,05-validation}.md`
+- `fundamentals/function/{01-definition,02-implementation,03-provider,04-guard}.md`
+- `fundamentals/module/{01-definition,02-implementation}.md`
+- `fundamentals/runtime/{index,03-scheduled,04-cli,05-custom-runtime}.md`, `runtime/API/{01-REST-OpenAPI,02-GraphQL-API,03-gRPC-API}.md`, `runtime/queue-consumer/*.md`
 - `guides/{01-security,02-prisma,03-testing,04-mocking,05-logging,06-tracing,07-versioning,08-ci,09-clients}.md`
 
 A template starter project lives at https://github.com/mondrian-framework/template.

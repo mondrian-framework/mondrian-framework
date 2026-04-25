@@ -24,6 +24,20 @@ const config: Config = {
     },
   },
   themes: ['@docusaurus/theme-mermaid'],
+  plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        // Keep historical /foundamentals/* URLs alive after the rename to /fundamentals/*.
+        createRedirects(existingPath: string) {
+          if (existingPath.includes('/docs/docs/fundamentals')) {
+            return [existingPath.replace('/docs/docs/fundamentals', '/docs/docs/foundamentals')]
+          }
+          return undefined
+        },
+      },
+    ],
+  ],
   presets: [
     [
       'classic',

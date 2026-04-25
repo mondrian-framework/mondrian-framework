@@ -36,7 +36,7 @@ const Metadata = model.record(model.string()).optional()
  * Mondrian type a the body that will be returned for a specific function and with a specific retrieve value.
  */
 export const Response = (functionBody: functions.FunctionInterface) =>
-  model.union({ success: SuccessResponse(functionBody), failire: FailureResponse })
+  model.union({ success: SuccessResponse(functionBody), failure: FailureResponse })
 export type Response = SuccessResponse | FailureResponse
 
 /**

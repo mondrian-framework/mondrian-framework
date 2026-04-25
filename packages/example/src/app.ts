@@ -10,13 +10,13 @@ import { fastify } from 'fastify'
 async function main() {
   //Closed by default check
   const publicFunctions = ['login', 'register', 'readPosts']
-  for (const [fucntionName, functionBody] of Object.entries(module.functions)) {
-    if (
-      !publicFunctions.includes(fucntionName) &&
-      (!('auth' in functionBody.providers) || functionBody.providers.auth !== authProvider) &&
-      (!('auth' in functionBody.guards) || functionBody.guards.auth !== authProvider)
-    ) {
-      throw new Error(`Function "${fucntionName}" is not public and does not have an auth provider or guard.`)
+  for (const [functionName, functionBody] of Object.entries(module.functions)) {
+    const providers: Record<string, unknown> = functionBody.providers
+    const guards: Record<string, unknown> = functionBody.guards
+    const hasAuthProvider = providers.auth === authProvider
+    const hasAuthGuard = guards.auth != null
+    if (!publicFunctions.includes(functionName) && !hasAuthProvider && !hasAuthGuard) {
+      throw new Error(`Function "${functionName}" is not public and does not have an auth provider or guard.`)
     }
   }
   const server = fastify()

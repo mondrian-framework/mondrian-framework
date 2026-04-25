@@ -35,7 +35,6 @@
     "packages/docs",
     "packages/utils",
     "packages/model",
-    "packages/arbitrary",
     "packages/module",
     "packages/cli-commander",
     "packages/provider/rate-limiter",

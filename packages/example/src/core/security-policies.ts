@@ -56,3 +56,22 @@ export const guest: security.Policies = security
   //On other users i can read only the firstName as a guest
   .on(User)
   .allows({ selection: { firstName: true } })
+
+  //Guests can read PUBLIC posts only, and only a subset of fields
+  .on(Post)
+  .allows({
+    selection: { id: true, title: true, content: true, publishedAt: true, visibility: true },
+    filter: { visibility: { equals: 'PUBLIC' } },
+  })
+
+  //Required to traverse Post.likes for guests
+  .on(Like)
+  .allows({ selection: true })
+
+  //Required to traverse Post.author for guests
+  .on(OwnPost)
+  .allows({ selection: true })
+
+  //Required to traverse User.followers / followeds for guests (handles loops in graph)
+  .on(Follower)
+  .allows({ selection: true })

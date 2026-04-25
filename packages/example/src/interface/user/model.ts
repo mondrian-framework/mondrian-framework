@@ -29,7 +29,7 @@ export const User = () =>
 export const MyUser = () => User
 export type MyUser = User
 
-export type Follower = model.Infer<typeof User>
+export type Follower = model.Infer<typeof Follower>
 export const Follower = () =>
   model.entity({
     id: idType,

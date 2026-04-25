@@ -81,18 +81,25 @@ async function listenForMessage<Fs extends functions.FunctionImplementations>({
   concurrency,
   ...input
 }: ListenForMessageInput<Fs>) {
-  let slots = concurrency
+  let inFlight = 0
   while (alive.yes) {
+    //Wait while at concurrency limit; release happens in the .finally below.
+    while (alive.yes && inFlight >= concurrency) {
+      await sleep(50)
+    }
+    if (!alive.yes) {
+      break
+    }
     try {
       const message = await client.receiveMessage({ QueueUrl: queueUrl, MaxNumberOfMessages: 1, WaitTimeSeconds: 20 })
-      slots++
+      inFlight++
       handleMessages({ ...input, messages: message.Messages, client, queueUrl })
-        .then(() => slots--)
-        .catch(() => slots--)
+        .catch(() => {})
+        .finally(() => {
+          inFlight--
+        })
     } catch (error) {
-      do {
-        await sleep(1000)
-      } while (slots <= 0)
+      await sleep(1000)
     }
   }
 }

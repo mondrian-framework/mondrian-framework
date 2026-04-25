@@ -341,7 +341,7 @@ The `description` parameter is a simple string where you can describe the functi
 
 #### Operation
 
-The `operation` parameter describes the semantics of the function. It can be one of the following values: `'query'`, `'mutation'`, or an object like `{ command: 'create' }`, `{ command: 'update' }`, or `{ command: 'delete' }`.
+The `operation` parameter describes the semantics of the function. It can be one of the following values: `'query'`, `'command'`, or an object like `{ command: 'create' }`, `{ command: 'update' }`, or `{ command: 'delete' }`.
 This information is used by some runtimes to generate the API specification and provide more accurate documentation. It can be overridden by the runtime if it is not specified or is inconsistent with the runtime capabilities.
 
 #### OpenTelemetry

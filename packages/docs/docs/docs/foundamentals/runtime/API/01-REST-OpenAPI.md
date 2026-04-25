@@ -106,7 +106,7 @@ For each function, you can provide either a single mapping object or an array of
 
 ### Method
 
-Specify the HTTP `method` (e.g., `'get'`, `'post'`, `'put'`, `'delete'`, `'patch'`) for the endpoint. If omitted, Mondrian attempts to infer it based on the function's semantic `operation` type defined in its options (e.g., a function marked as `'query'` typically maps to `GET`, while `'mutation'` often maps to `POST`).
+Specify the HTTP `method` (e.g., `'get'`, `'post'`, `'put'`, `'delete'`, `'patch'`) for the endpoint. If omitted, Mondrian attempts to infer it based on the function's semantic `operation` type defined in its options (e.g., `'query'` → `GET`, `{ command: 'create' }` → `POST`, `{ command: 'update' }` → `PUT`, `{ command: 'delete' }` → `DELETE`; everything else falls back to `POST`).
 
 ```ts showLineNumbers
 // ... inside rest.build

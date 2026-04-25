@@ -31,9 +31,9 @@ function validator(value: string): validation.Result {
   const account = emailParts[0]
   const address = emailParts[1]
   if (account.length > 64) {
-    return validation.fail('Invalid email (account is longer than 63 characters)', value)
+    return validation.fail('Invalid email (account is longer than 64 characters)', value)
   } else if (address.length > 255) {
-    return validation.fail('Invalid email (domain is longer than 254 characters)', value)
+    return validation.fail('Invalid email (domain is longer than 255 characters)', value)
   }
   const domainParts = address.split('.')
   if (domainParts.some((part) => part.length > 63) || !EMAIL_REGEX.test(value)) {

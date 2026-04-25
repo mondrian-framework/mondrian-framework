@@ -1,5 +1,4 @@
 import { module } from '../../interface'
-import { PostVisibility } from '../../interface/post'
 import { authProvider, dbProvider, optionalAuthProvider } from '../providers'
 import { result, model } from '@mondrian-framework/model'
 
@@ -7,9 +6,6 @@ export const writePost = module.functions.writePost
   .use({ providers: { auth: authProvider, db: dbProvider } })
   .implement({
     async body({ input, retrieve, db: { prisma }, auth: { userId } }) {
-      if (PostVisibility.decode(input.visibility).isFailure) {
-        throw new Error(`Invalid post visibility. Use one of ${PostVisibility.variants}`)
-      }
       const post = await prisma.post.create({
         data: {
           ...input,
@@ -18,7 +14,7 @@ export const writePost = module.functions.writePost
         },
         select: retrieve.select,
       })
-      return result.ok(post)
+      return result.ok(post as never)
     },
   })
 
@@ -30,7 +26,7 @@ export const readPosts = module.functions.readPosts
         prisma.post.findMany(retrieve),
         prisma.post.count({ where: retrieve.where }),
       ])
-      return result.ok(new model.TotalCountArray(totalCount, posts))
+      return result.ok(new model.TotalCountArray(totalCount, posts) as never)
     },
   })
 
@@ -64,6 +60,6 @@ export const likePost = module.functions.likePost.use({ providers: { auth: authP
       update: {},
     })
     const post = await prisma.post.findFirstOrThrow({ where: { id: input.postId }, select: retrieve.select })
-    return result.ok(post)
+    return result.ok(post as never)
   },
 })

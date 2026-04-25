@@ -249,7 +249,7 @@ const Post = () =>
 const getUsers = functions
   .define({
     output: model.array(User),
-    retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
+    retrieve: { select: true, where: true, orderBy: true, skip: true, take: true },
   })
   .implement({
     body: async ({ retrieve }) => result.ok(await prismaClient.user.findMany(retrieve)), //retrieve type match Prisma generated types
@@ -288,7 +288,7 @@ const getUsers = functions
   .define({
     output: model.array(User),
     errors: { unauthorized },
-    retrieve: { select: true, where: true, orderBy: true, skip: true, limit: true },
+    retrieve: { select: true, where: true, orderBy: true, skip: true, take: true },
   })
   .use({ providers: { auth: authProvider } })
   .implement({

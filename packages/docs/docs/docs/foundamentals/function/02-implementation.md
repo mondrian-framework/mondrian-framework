@@ -73,7 +73,7 @@ import { result } from '@mondrian-framework/model'
 const createPost = createPostDefinition.implement({
   async body({ input, context, logger }) {
     //this could also be checked by the schema (... content: model.string({ minLength: 10 }) ...)
-    if (input.content.lenght < 10) {
+    if (input.content.length < 10) {
       return result.fail({ contentMinLength: 'Content must be at least of 10 characters.' })
     }
     const postId = await context.repository.posts.insertOne(input)

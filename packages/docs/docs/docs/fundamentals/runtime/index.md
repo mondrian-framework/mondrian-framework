@@ -7,12 +7,7 @@ Mondrian offers several standard runtimes you can use to run your application. Y
 Following a list of the ready-to-use runtimes currently available:
 - [REST API](./API/01-REST-OpenAPI.md)
 - [GraphQL API](./API/02-GraphQL-API.md)
-- [gRPC API](./API/03-gRPC-API.md)
-- [Apache Kafka consumer](./queue-consumer/01-Apache%20Kafka.md)
 - [AWS SQS](./queue-consumer/02-AWS%20SQS.md)
-- [AWS SNS](./queue-consumer/03-AWS%20SNS.md)
-- [Scheduled with cron](./03-scheduled.md)
-- [CLI (Command Line Interface)](./04-cli.md)
 
 ## Example
 

@@ -24,7 +24,7 @@ Please do **not** report security vulnerabilities through public GitHub issues. 
 
 Prerequisites:
 
-- Node.js ≥ 20.9 (matches `package.json#engines`)
+- Node.js ≥ 24 (matches `package.json#engines`)
 - npm 10+ (npm workspaces)
 
 ```bash
@@ -35,17 +35,7 @@ npm run build           # tsc across workspaces (uses TS project references)
 npm test                # vitest across all workspaces
 ```
 
-To run the example app end-to-end:
-
-```bash
-npm run spinup          # ci + build all + start example on :4000
-# then open
-#   http://localhost:4000/openapi
-#   http://localhost:4000/graphql
-#   http://localhost:4000/mondrian
-```
-
-The example uses Prisma. `npm run build` invokes `prisma generate` for the example package automatically — if you only want to regenerate the Prisma client run `npm run generate --workspace=@mondrian-framework/example`.
+A runnable reference application (REST + GraphQL + Prisma + security policies) lives in the [template project](https://github.com/mondrian-framework/template) — clone that to try Mondrian end-to-end.
 
 ### Working on a single package
 
@@ -76,22 +66,17 @@ packages/
   rest-fastify/          Fastify adapter for rest
   graphql/               GraphQL schema/resolver generator
   graphql-yoga/          Yoga adapter for graphql
-  direct/                native RPC runtime
   aws-sqs/               SQS consumer
   aws-lambda-{rest,sqs}/ Lambda handlers
   cron/                  scheduled runtime
-  cli-commander/         CLI runtime
-  cli/                   ready-built CLI for schema diffing
-  ci-tools/              CI helpers (build OAS / GraphQL reports, schema diff)
   docs/                  Docusaurus site (canonical docs)
-  example/               reference app (REST + GraphQL + Direct on Fastify)
 ```
 
-When in doubt, look at how `packages/example/` uses the package you are modifying — every public API has at least one usage there.
+When in doubt, look at the per-package `tests/` for a usage example, or check the [template project](https://github.com/mondrian-framework/template) for an end-to-end application.
 
 ## Submitting a change
 
-1. **Fork** the repository and create a branch from `develop` (the default base branch).
+1. **Fork** the repository and create a branch from `main` (the default base branch).
 2. **Make your changes**, keeping commits focused. Follow the [conventional commits](https://www.conventionalcommits.org/) format if possible (`fix:`, `feat:`, `docs:`, `refactor:`, `chore:`).
 3. **Add tests** — every behavioral change should have at least one vitest test. Bug fixes ideally include a regression test that fails before the fix.
 4. **Run the full suite** locally:
@@ -104,8 +89,8 @@ When in doubt, look at how `packages/example/` uses the package you are modifyin
    ```bash
    npx changeset
    ```
-   Pick the appropriate semver bump (`patch` / `minor` / `major`) and write a short user-facing summary. Documentation-only and example-only changes do not need a changeset (those packages are listed in `.changeset/config.json#ignore`).
-6. **Open a pull request** against `develop`. Fill in the PR template — the reviewer will read it. Link any related issues.
+   Pick the appropriate semver bump (`patch` / `minor` / `major`) and write a short user-facing summary. Documentation-only changes do not need a changeset (`@mondrian-framework/docs` is listed in `.changeset/config.json#ignore`).
+6. **Open a pull request** against `main`. Fill in the PR template — the reviewer will read it. Link any related issues.
 
 ## Coding style
 

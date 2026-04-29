@@ -6,15 +6,15 @@
 
 # Mondrian
 
-> **One TypeScript model. REST + GraphQL + RPC out of the box. No code generation.**
+> **One TypeScript model. REST + GraphQL out of the box. No code generation.**
 
 [Homepage](https://mondrianframework.com/) ・ [Documentation](https://mondrianframework.com/docs/docs/introduction) ・ [Discussions](https://github.com/mondrian-framework/mondrian-framework/discussions) ・ [Issues](https://github.com/mondrian-framework/mondrian-framework/issues) ・ [Template project](https://github.com/mondrian-framework/template)
 
-Mondrian is a TypeScript framework for **modular server-side applications**. You define your data model and your functions once; Mondrian serves them simultaneously over **OpenAPI 3.1**, **GraphQL**, and a native **RPC protocol** — and it ships with field-level security, OpenTelemetry, typed errors, and Prisma-style retrieval projections. Type-safety end-to-end without a code-generation step.
+Mondrian is a TypeScript framework for **modular server-side applications**. You define your data model and your functions once; Mondrian serves them simultaneously over **OpenAPI 3.1** and **GraphQL** — and it ships with field-level security, OpenTelemetry, typed errors, and Prisma-style retrieval projections. Type-safety end-to-end without a code-generation step.
 
 ## Highlights
 
-- **One contract, many protocols** — the same module can be exposed as REST, GraphQL, native RPC, an AWS SQS consumer, a cron job, a CLI, or AWS Lambda — without rewriting the contract.
+- **One contract, many protocols** — the same module can be exposed as REST, GraphQL, an AWS SQS consumer, a cron job, or AWS Lambda — without rewriting the contract.
 - **No codegen** — pure TypeScript types, so refactors light up across your codebase immediately.
 - **Typed errors as part of the contract** — functions return `result.ok(...)` / `result.fail(...)`. Errors are part of the API spec (OpenAPI / GraphQL union).
 - **Field- and row-level security policies** — declarative `security.on(Entity).allows({ selection, restriction, filter })` rules applied automatically on every retrieve.
@@ -30,39 +30,28 @@ Mondrian is a TypeScript framework for **modular server-side applications**. You
 | Single source of truth for the data model      |    ✅    |    ✅     |   ✅    |    ⚠️      |     ✅       |
 | Serve the same model as REST                   |    ✅    |    ❌     |   ✅    |    ✅      |     ✅       |
 | Serve the same model as GraphQL                |    ✅    |    ❌     |   ❌    | ⚠️ codegen  |     ❌       |
-| Serve the same model as native RPC             |    ✅    |    ✅     |   ❌    |    ❌      |     ⚠️       |
 | OpenAPI 3.1 spec auto-generated                |    ✅    |    ❌     |   ⚠️    |    ⚠️      |     ❌       |
 | Typed errors as part of the public contract    |    ✅    |    ⚠️     |   ⚠️    |    ❌      |     ✅       |
 | Field/row-level security on retrieve           |    ✅    |    ❌     |   ❌    | ⚠️ DIY      |     ❌       |
 | Built-in OpenTelemetry tracing                 |    ✅    |    ❌     |   ❌    |    ⚠️      |     ⚠️       |
 | Same-process & HTTP clients from the same spec |    ✅    |    ✅     |   ✅    |    ❌      |     ⚠️       |
-| Pluggable runtimes (SQS, cron, Lambda, CLI)    |    ✅    |    ❌     |   ❌    |    ⚠️      |     ⚠️       |
+| Pluggable runtimes (SQS, cron, Lambda)         |    ✅    |    ❌     |   ❌    |    ⚠️      |     ⚠️       |
 
 > ✅ first-class · ⚠️ partial / requires extra work · ❌ not a goal
 
-**Pick Mondrian when** you need to expose the same business logic across multiple protocols (REST for partners, GraphQL for the SPA, RPC for internal services, SQS for async work) without re-implementing the contract or duplicating validation. **Skip Mondrian when** your service is single-protocol and the surface area of a richer framework would slow you down — `tRPC` or `Hono + Zod` will be lighter.
+**Pick Mondrian when** you need to expose the same business logic across multiple protocols (REST for partners, GraphQL for the SPA, SQS for async work) without re-implementing the contract or duplicating validation. **Skip Mondrian when** your service is single-protocol and the surface area of a richer framework would slow you down — `tRPC` or `Hono + Zod` will be lighter.
 
 ## Try it in under 1 minute
 
-Prerequisite: Node ≥ 20.9
+Prerequisite: Node ≥ 24
 
 ```bash
 git clone https://github.com/mondrian-framework/mondrian-framework.git
 cd mondrian-framework
-npm run spinup
+npm ci && npm run build
 ```
 
-- GraphQL playground: <http://localhost:4000/graphql>
-- OpenAPI / Swagger UI: <http://localhost:4000/openapi>
-- Native RPC endpoint: <http://localhost:4000/mondrian>
-
-```bash
-curl --location --globoff 'http://localhost:4000/graphql' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{"query":"mutation register { user { register(input: { email: \"john@domain.com\", password: \"12345\", firstName: \"John\", lastName: \"Wick\" }) { ... on MyUser { id } ... on RegisterFailure { code } } } }"}'
-```
-
-Want a starter? Clone the [template project](https://github.com/mondrian-framework/template).
+Want a runnable starter? Clone the [template project](https://github.com/mondrian-framework/template) — it ships REST + GraphQL on Fastify with Prisma, security policies, and OpenTelemetry pre-wired.
 
 ## How it works
 
@@ -218,7 +207,7 @@ const api = client.build({ endpoint: 'https://api.example.com', rest: restSpec }
 const r = await api.register({ email, password })  // fully typed, including errors
 ```
 
-The pattern is fully demonstrated in `packages/example/src/{interface,core}/`.
+The pattern is fully demonstrated in the [template project](https://github.com/mondrian-framework/template).
 
 ### Prisma integration
 
@@ -327,7 +316,7 @@ const moduleInstance = module.build({
 })
 ```
 
-Filtering happens *before* values are returned to the caller, on every traversed entity. The example app (`packages/example/src/core/security-policies.ts`) demonstrates the richer patterns (followers-only Posts, etc).
+Filtering happens *before* values are returned to the caller, on every traversed entity. The [template project](https://github.com/mondrian-framework/template) demonstrates the richer patterns (followers-only Posts, etc).
 
 ## Runtimes
 
@@ -335,19 +324,17 @@ Filtering happens *before* values are returned to the caller, on every traversed
 | ---------------------------------------- | ---------------------------------------- | ---------------------------------------------- |
 | REST + OpenAPI 3.1                       | `@mondrian-framework/rest-fastify`       | Public APIs, partner integrations              |
 | GraphQL (Yoga)                           | `@mondrian-framework/graphql-yoga`       | Web/mobile frontends, federated graphs         |
-| Native RPC                               | `@mondrian-framework/direct`             | Internal service-to-service                    |
 | AWS SQS consumer                         | `@mondrian-framework/aws-sqs`            | Async background work                          |
 | AWS Lambda — REST                        | `@mondrian-framework/aws-lambda-rest`    | Serverless HTTP                                |
 | AWS Lambda — SQS                         | `@mondrian-framework/aws-lambda-sqs`     | Serverless async                               |
 | Cron / scheduled                         | `@mondrian-framework/cron`               | Recurring jobs                                 |
-| CLI                                      | `@mondrian-framework/cli-commander`      | Operational tools, scripts                     |
-| Custom                                   | (build your own)                         | WebSockets, gRPC, IoT, alt brokers             |
+| Custom                                   | (build your own)                         | WebSockets, gRPC, CLI, IoT, alt brokers        |
 
 The same module can run under any combination simultaneously.
 
 ## Stability and versioning
 
-- Mondrian is currently in the `0.x` line — APIs may evolve. Breaking changes ship via [changesets](./.changeset/) and are documented in package CHANGELOGs.
+- Mondrian is currently on the `3.x` line. Breaking changes ship via [changesets](./.changeset/) and are documented in package CHANGELOGs.
 - Each package is published independently; pin direct dependencies and let `peerDependencies` handle internal compatibility.
 - Releases follow semantic versioning at the package level. Within a single Mondrian release wave, all internal packages are kept in sync.
 

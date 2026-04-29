@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     testTimeout: 10000,
     coverage: {
-      exclude: ['packages/example/**', 'packages/docs/**'],
+      exclude: ['packages/docs/**'],
       include: ['packages/*/src/**'],
     },
   },

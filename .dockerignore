@@ -1,9 +1,0 @@
-.vscode
-packages/docs
-packages/*/build
-packages/*/tests
-packages/*/coverage
-packages/*/node_modules
-packages/*/tsconfig.tsbuildinfo
-packages/*/vite.config.ts
-packages/*/CHANGELOG.md

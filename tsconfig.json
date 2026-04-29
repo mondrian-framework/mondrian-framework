@@ -21,9 +21,7 @@
       "@mondrian-framework/utils": ["./packages/utils"],
       "@mondrian-framework/model": ["./packages/model"],
       "@mondrian-framework/module": ["./packages/module"],
-      "@mondrian-framework/cli-commander": ["./packages/cli-commander"],
       "@mondrian-framework/provider/rate-limiter": ["./packages/provider/rate-limiter"],
-      "@mondrian-framework/direct": ["./packages/direct"],
       "@mondrian-framework/rest": ["./packages/rest"],
       "@mondrian-framework/rest-fastify": ["./packages/rest-fastify"],
       "@mondrian-framework/graphql": ["./packages/graphql"],
@@ -31,10 +29,7 @@
       "@mondrian-framework/aws-sqs": ["./packages/aws-sqs"],
       "@mondrian-framework/aws-lambda-sqs": ["./packages/aws-lambda-sqs"],
       "@mondrian-framework/aws-lambda-rest": ["./packages/aws-lambda-rest"],
-      "@mondrian-framework/cron": ["./packages/cron"],
-      "@mondrian-framework/ci-tools": ["./packages/ci-tools"],
-      "@mondrian-framework/cli": ["./packages/cli"],
-      "@mondrian-framework/example": ["./packages/example"]
+      "@mondrian-framework/cron": ["./packages/cron"]
     }
   },
   "references": [
@@ -48,16 +43,10 @@
       "path": "packages/module"
     },
     {
-      "path": "packages/cli-commander"
-    },
-    {
       "path": "packages/provider/rate-limiter"
     },
     {
       "path": "packages/rest"
-    },
-    {
-      "path": "packages/direct"
     },
     {
       "path": "packages/rest-fastify"
@@ -79,15 +68,6 @@
     },
     {
       "path": "packages/graphql-yoga"
-    },
-    {
-      "path": "packages/ci-tools"
-    },
-    {
-      "path": "packages/cli"
-    },
-    {
-      "path": "packages/example"
     }
   ]
 }

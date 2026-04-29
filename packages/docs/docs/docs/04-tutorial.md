@@ -7,7 +7,7 @@ title: Tutorial — Build a real API in 10 minutes
 
 [Getting started](./03-getting-started.md) showed an `echo` endpoint exposed as REST and GraphQL. This tutorial is the next step: we'll build a tiny user-registration service the way you would actually deploy one — with **typed errors**, **providers** for context (auth, db), **security policies** for the data graph, and **Prisma-style retrieve**.
 
-By the end you'll have one module that runs as REST + GraphQL + native RPC simultaneously, with field-level security applied automatically.
+By the end you'll have one module that runs as REST and GraphQL simultaneously, with field-level security applied automatically.
 
 ## What we'll build
 
@@ -182,14 +182,13 @@ export const userModule = module.build({
 
 The policies block is the powerful part: it runs on *every* `retrieve`-enabled function, *for every entity in the result graph*. You don't have to remember to call it — you can't forget.
 
-## Step 7 — Serve as REST + GraphQL + RPC simultaneously
+## Step 7 — Serve as REST + GraphQL simultaneously
 
 ```ts showLineNumbers
 // app.ts
 import { fastify } from 'fastify'
 import { rest, serve as serveRest } from '@mondrian-framework/rest-fastify'
 import { graphql, serveWithFastify as serveGraphQL } from '@mondrian-framework/graphql-yoga'
-import { direct, serveWithFastify as serveDirect } from '@mondrian-framework/direct'
 import { userModule } from './module'
 
 const server = fastify()
@@ -224,12 +223,6 @@ serveGraphQL({
   options: { introspection: true },
 })
 
-serveDirect({
-  server,
-  api: direct.build({ module: userModule }),
-  context: async ({ request }) => ({ authorization: request.headers.authorization }),
-})
-
 server.listen({ port: 4000 })
 ```
 
@@ -245,14 +238,9 @@ curl -X POST http://localhost:4000/v1/users \
 curl http://localhost:4000/graphql \
   -H 'content-type: application/json' \
   -d '{"query":"mutation{register(input:{email:\"a@b.com\",password:\"correct horse\",displayName:\"Ada\"}){id email}}"}'
-
-# Native RPC
-curl http://localhost:4000/mondrian/v1/user/register \
-  -H 'content-type: application/json' \
-  -d '{"input":{"email":"a@b.com","password":"correct horse","displayName":"Ada"}}'
 ```
 
-All three protocols return the same shape, validate the same schema, and apply the same security policies. The OpenAPI spec lives at `/openapi`, the GraphQL playground at `/graphql`.
+Both protocols return the same shape, validate the same schema, and apply the same security policies. The OpenAPI spec lives at `/openapi`, the GraphQL playground at `/graphql`.
 
 ## What's next
 

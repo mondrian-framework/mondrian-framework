@@ -4,12 +4,12 @@ The Mondrian Framework team takes security seriously. We appreciate responsible 
 
 ## Supported versions
 
-Security fixes are issued for the latest minor version on the `0.x` line. Older minors do not receive backports.
+Security fixes are issued for the latest minor version on the current major (`3.x`). Older majors do not receive backports.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| latest  | :white_check_mark: |
-| < latest minor | :x:         |
+| 3.x     | :white_check_mark: |
+| < 3.x   | :x:                |
 
 ## Reporting a vulnerability
 
@@ -39,7 +39,6 @@ Please include:
 In scope:
 
 - Issues in any package published under `@mondrian-framework/*`
-- Issues in the example app that demonstrate a real risk in framework usage (rather than the example's own setup)
 - Issues in the documentation site (`packages/docs/`) that could mislead users into insecure configurations
 
 Out of scope:
@@ -54,7 +53,7 @@ Out of scope:
 When deploying applications built with Mondrian, please:
 
 - Set `maxSelectionDepth` on your modules in production (default is unlimited; recommend 3–10) to mitigate selection-set abuse on GraphQL/retrieve.
-- Always declare security `policies(...)` for entities exposed via `retrieve` — the example in `packages/example/src/core/security-policies.ts` is the canonical reference.
+- Always declare security `policies(...)` for entities exposed via `retrieve` — the [template project](https://github.com/mondrian-framework/template) has a worked example.
 - Use `model.<type>().sensitive()` for fields like passwords or tokens so they are excluded from logs and traces by default.
 - Configure rate limiting (`@mondrian-framework/rate-limiter`) on public endpoints.
 - Validate and constrain `take` / `skip` to reasonable maxima (the entity-level `retrieve` constraints exist for this).

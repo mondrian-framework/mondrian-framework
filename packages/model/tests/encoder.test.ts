@@ -60,6 +60,10 @@ describe.concurrent('encoder.encodeWithoutValidation', () => {
     )
   })
 
+  test('encodes undefined as null for unknown type', () => {
+    expect(model.unknown().encodeWithoutValidation(undefined)).toBeNull()
+  })
+
   test.prop([gen.anything()])('encodes a never value as JSON', (anything) => {
     expect(() => model.never().encodeWithoutValidation(anything as never)).toThrowError()
   })

@@ -376,4 +376,10 @@ describe('methodFromOptions', () => {
   test('returns post for undefined options', () => {
     expect(methodFromOptions(undefined)).toEqual('post')
   })
+
+  test('returns post for unknown command', () => {
+    // Forces the falsy branch of `command === 'update'` (i.e. command is something
+    // other than create/delete/update). Exercises the fallthrough in methodFromOptions.
+    expect(methodFromOptions({ operation: { command: 'unknown' as any } })).toEqual('post')
+  })
 })

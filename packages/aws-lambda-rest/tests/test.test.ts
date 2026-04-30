@@ -1346,4 +1346,55 @@ describe('attachRestMethods', () => {
     const response = await lambdaHandler(event, createMockContext(), () => {})
     expect(response).toBeDefined()
   })
+
+  test('skips header setup when rest handler returns no headers', async () => {
+    // Exercise the falsy branch of `if (result.headers)` in methods.ts.
+    // We dynamically import attachRestMethods and stub the rest handler so it
+    // returns a response without the `headers` property.
+    const { attachRestMethods } = await import('../src/methods')
+    const restModule = await import('@mondrian-framework/rest')
+
+    const fromFunctionSpy = vi
+      .spyOn(restModule.rest.handler, 'fromFunction')
+      .mockReturnValue(async () => ({ status: 204, body: undefined }) as any)
+
+    const headerSpy = vi.fn()
+    const statusSpy = vi.fn()
+    let registered: ((req: any, res: any) => Promise<any>) | undefined
+    const fakeServer: any = {
+      METHOD: (_method: string, _path: string, h: any) => {
+        registered = h
+      },
+    }
+
+    attachRestMethods({
+      server: fakeServer,
+      api: testApi,
+      context: async () => ({}),
+    })
+
+    expect(registered).toBeDefined()
+
+    const fakeRequest: any = {
+      body: undefined,
+      headers: {},
+      method: 'GET',
+      params: {},
+      query: {},
+      route: '/api/v1/no-input',
+    }
+    const fakeResponse: any = {
+      status: statusSpy,
+      header: headerSpy,
+    }
+
+    const result = await registered!(fakeRequest, fakeResponse)
+
+    expect(statusSpy).toHaveBeenCalledWith(204)
+    // Because the mocked rest handler returns no headers, response.header must NOT be invoked.
+    expect(headerSpy).not.toHaveBeenCalled()
+    expect(result).toBeUndefined()
+
+    fromFunctionSpy.mockRestore()
+  })
 })

@@ -460,6 +460,169 @@ test('policy builder errors', () => {
   )
 })
 
+describe('applyMapPolicies type variants', () => {
+  test('nullable type with null value', () => {
+    const E = model.entity({ id: model.number(), name: model.string() })
+    const NullableE = model.nullable(E)
+    const policies = security.on(E).map((u) => ({ ...u, name: '***' }))
+    const r = applyMapPolicies({
+      outputType: NullableE,
+      policies: policies.mapperPolicies,
+      value: null,
+    })
+    expect(r).toBeNull()
+  })
+
+  test('nullable type with non-null value', () => {
+    const E = model.entity({ id: model.number(), name: model.string() })
+    const NullableE = model.nullable(E)
+    const policies = security.on(E).map((u) => ({ ...u, name: '***' }))
+    const r = applyMapPolicies({
+      outputType: NullableE,
+      policies: policies.mapperPolicies,
+      value: { id: 1, name: 'A' },
+    })
+    expect(r).toEqual({ id: 1, name: '***' })
+  })
+
+  test('optional type with undefined value', () => {
+    const E = model.entity({ id: model.number(), name: model.string() })
+    const OptE = model.optional(E)
+    const policies = security.on(E).map((u) => ({ ...u, name: '***' }))
+    const r = applyMapPolicies({
+      outputType: OptE,
+      policies: policies.mapperPolicies,
+      value: undefined,
+    })
+    expect(r).toBeUndefined()
+  })
+
+  test('optional type with defined value', () => {
+    const E = model.entity({ id: model.number(), name: model.string() })
+    const OptE = model.optional(E)
+    const policies = security.on(E).map((u) => ({ ...u, name: '***' }))
+    const r = applyMapPolicies({
+      outputType: OptE,
+      policies: policies.mapperPolicies,
+      value: { id: 1, name: 'A' },
+    })
+    expect(r).toEqual({ id: 1, name: '***' })
+  })
+
+  test('array type with non-array value (defensive branch)', () => {
+    const E = model.entity({ id: model.number(), name: model.string() })
+    const ArrE = model.array(E)
+    const policies = security.on(E).map((u) => ({ ...u, name: '***' }))
+    const r = applyMapPolicies({
+      outputType: ArrE,
+      policies: policies.mapperPolicies,
+      value: { id: 1, name: 'A' } as any,
+    })
+    // Defensive: returns the non-array value as-is.
+    expect(r).toEqual({ id: 1, name: 'A' })
+  })
+
+  test('record type with non-object value (defensive branch)', () => {
+    // Use an entity with no policies so reduce returns value unchanged.
+    const E = model.entity({ id: model.number(), name: model.string() })
+    const r = applyMapPolicies({
+      outputType: E,
+      policies: new Map(),
+      value: 'not-an-object' as any,
+    })
+    // Defensive: returns the non-object value as-is.
+    expect(r).toBe('not-an-object')
+  })
+
+  test('union type matches a variant', () => {
+    const A = model.entity({ a: model.string() }, { name: 'UnionA' })
+    const B = model.entity({ b: model.number() }, { name: 'UnionB' })
+    const u = model.union({ a: A, b: B }, { name: 'UnionAB' })
+    const policies = security
+      .on(A)
+      .map((va) => ({ ...va, a: '***' }))
+      .on(B)
+      .map((vb) => ({ ...vb, b: 999 }))
+    const r1 = applyMapPolicies({
+      outputType: u,
+      policies: policies.mapperPolicies,
+      value: { a: 'hello' },
+    })
+    expect(r1).toEqual({ a: '***' })
+
+    const r2 = applyMapPolicies({
+      outputType: u,
+      policies: policies.mapperPolicies,
+      value: { b: 1 },
+    })
+    expect(r2).toEqual({ b: 999 })
+  })
+
+  test('union type without matching variant returns as-is', () => {
+    const A = model.entity({ a: model.string() }, { name: 'UnionAa' })
+    const B = model.entity({ b: model.number() }, { name: 'UnionBa' })
+    const u = model.union({ a: A, b: B }, { name: 'UnionABa' })
+    const policies = security.on(A).map((va) => ({ ...va, a: '***' }))
+    const r = applyMapPolicies({
+      outputType: u,
+      policies: policies.mapperPolicies,
+      value: 'no-match' as any,
+    })
+    expect(r).toBe('no-match')
+  })
+})
+
+describe('error throws', () => {
+  test('orderByToSelection on scalar type throws Unreachable', () => {
+    expect(() => orderByToSelection(model.string(), [{ foo: 'asc' as const }])).toThrowError('Unreachable')
+  })
+
+  test('whereToSelection on scalar type throws Unreachable', () => {
+    expect(() => whereToSelection(model.string(), { foo: { equals: 1 } })).toThrowError('Unreachable')
+  })
+
+  test('checkPolicies throws when not an entity', () => {
+    const policies = security.on(user).allows({ selection: true })
+    expect(() =>
+      checkPolicies({
+        capabilities: retrieve.allCapabilities,
+        outputType: model.string() as any,
+        path: '$',
+        policies: policies.retrievePolicies,
+        retrieve: { select: { foo: true } as any },
+      }),
+    ).toThrowError('Should be an entity')
+  })
+})
+
+describe('whereToSelection extra cases', () => {
+  test('whereToSelection follows array wrapper through some/none/every', () => {
+    const selection = whereToSelection(model.concretise(user), {
+      posts: { every: { content: { equals: 'a' } }, none: { author: { id: { equals: 1 } } } },
+    })
+    expect(selection).toEqual({
+      posts: {
+        select: {
+          content: true,
+          author: { select: { id: true } },
+        },
+      },
+    })
+  })
+
+  test('whereToSelection handles AND with single object (not array)', () => {
+    const selection = whereToSelection(model.concretise(user), {
+      AND: { name: { equals: 'a' } } as any,
+    })
+    expect(selection).toEqual({ name: true })
+  })
+
+  test('orderByToSelection with single object orderBy (not array)', () => {
+    const selection = orderByToSelection(model.concretise(user), { name: 'asc' } as any)
+    expect(selection).toEqual({ name: true })
+  })
+})
+
 test('isWithinRestriction', () => {
   const policies = security
     .on(user)

@@ -97,8 +97,14 @@ describe('InMemorySlot', () => {
     const now = new Date()
     const slot = store.getOrCreateSlot({ startingTimeSeconds: 0, durationSeconds: 30, key: 'test' }, now)
 
-    // Directly test the behavior by simulating max value
-    // We'll use a custom store to test this edge case
+    // Force the internal counter to MAX_SAFE_INTEGER and verify inc() does not overflow.
+    // The private `counter` field is set via reflection; this exercises the early-return
+    // branch in InMemorySlot.inc().
+    ;(slot as unknown as { counter: number }).counter = Number.MAX_SAFE_INTEGER
+    slot.inc()
+    expect(slot.value()).toBe(Number.MAX_SAFE_INTEGER)
+    slot.inc()
+    expect(slot.value()).toBe(Number.MAX_SAFE_INTEGER)
   })
 
   test('slot properties are correctly set', () => {

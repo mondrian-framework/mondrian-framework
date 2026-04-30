@@ -130,6 +130,375 @@ describe('selectedType', () => {
     const res2 = model.concretise(type1).decode({ _count: {} })
     expect(res2.isFailure).toBe(true)
   })
+
+  test('select preserves array wrapper around entity', () => {
+    const Author = () => model.entity({ id: model.number(), name: model.string() })
+    const Article = model.entity({ id: model.number(), authors: model.array(Author) }, { name: 'Article' })
+    const type = retrieve.selectedType(Article, {
+      select: { authors: { select: { name: true } } },
+    })
+    const res = model.concretise(type).decode({ authors: [{ name: 'A' }] })
+    expect(res.isOk && res.value).toEqual({ authors: [{ name: 'A' }] })
+  })
+
+  test('select preserves nullable wrapper', () => {
+    const Author = () => model.entity({ id: model.number(), name: model.string() })
+    const Article = model.entity(
+      { id: model.number(), bestAuthor: model.nullable(Author) },
+      { name: 'ArticleNullable' },
+    )
+    const type = retrieve.selectedType(Article, {
+      select: { bestAuthor: { select: { name: true } } },
+    })
+    const res1 = model.concretise(type).decode({ bestAuthor: null })
+    expect(res1.isOk && res1.value).toEqual({ bestAuthor: null })
+    const res2 = model.concretise(type).decode({ bestAuthor: { name: 'A' } })
+    expect(res2.isOk && res2.value).toEqual({ bestAuthor: { name: 'A' } })
+  })
+
+  test('embedded entity is optionalized in object', () => {
+    const Author = () => model.entity({ id: model.number(), name: model.string() })
+    const Wrapper = model.object({ author: Author, value: model.string() }, { name: 'Wrapper' })
+    const type = retrieve.selectedType(Wrapper, undefined)
+    // Author is an entity inside an object, so it should be optional in the resulting type
+    const res = model.concretise(type).decode({ value: 'v' })
+    expect(res.isOk && res.value).toEqual({ value: 'v' })
+  })
+
+  test('union variants are processed by optionalizeEmbeddedEntities', () => {
+    const A = model.entity({ id: model.number() }, { name: 'A' })
+    const B = model.entity({ id: model.number() }, { name: 'B' })
+    const Container = model.entity({ value: model.union({ a: A, b: B }) }, { name: 'Container' })
+    const type = retrieve.selectedType(Container, undefined)
+    const concrete = model.concretise(type)
+    expect(concrete).toBeDefined()
+  })
+
+  test('_-prefixed field becomes optional partial in entity', () => {
+    const Article = model.entity(
+      {
+        id: model.number(),
+        _stats: model.object({ hits: model.number() }),
+      },
+      { name: 'ArticleWithStats' },
+    )
+    const type = retrieve.selectedType(Article, undefined)
+    // _stats should be optional after optionalizeEmbeddedEntities
+    const res = model.concretise(type).decode({ id: 1 })
+    expect(res.isOk).toBe(true)
+  })
+
+  test('nullable selectedType wrapper passthrough', () => {
+    const Article = model.entity({ id: model.number(), name: model.string() }, { name: 'NA' })
+    const Nullable = model.nullable(Article)
+    const type = retrieve.selectedType(Nullable, { select: { id: true } })
+    const res1 = model.concretise(type).decode(null)
+    expect(res1.isOk && res1.value).toEqual(null)
+    const res2 = model.concretise(type).decode({ id: 1 })
+    expect(res2.isOk && res2.value).toEqual({ id: 1 })
+  })
+
+  test('array selectedType wrapper passthrough', () => {
+    const Article = model.entity({ id: model.number(), name: model.string() }, { name: 'NA2' })
+    const Arr = model.array(Article)
+    const type = retrieve.selectedType(Arr, { select: { id: true } })
+    const res = model.concretise(type).decode([{ id: 1 }, { id: 2 }])
+    expect(res.isOk && res.value).toEqual([{ id: 1 }, { id: 2 }])
+  })
+
+  test('optional selectedType wrapper passthrough', () => {
+    const Article = model.entity({ id: model.number(), name: model.string() }, { name: 'NA3' })
+    const Opt = model.optional(Article)
+    const type = retrieve.selectedType(Opt, { select: { id: true } })
+    const res1 = model.concretise(type).decode(undefined)
+    expect(res1.isOk).toBe(true)
+    const res2 = model.concretise(type).decode({ id: 1 })
+    expect(res2.isOk && res2.value).toEqual({ id: 1 })
+  })
+
+  test('object with embedded entity selection follows selection.select', () => {
+    const Author = () => model.entity({ id: model.number(), name: model.string() })
+    const Wrapper = model.object({ author: Author, value: model.string() }, { name: 'WrapperX' })
+    const type = retrieve.selectedType(Wrapper, {
+      select: { author: { select: { name: true } }, value: true },
+    })
+    const res = model.concretise(type).decode({ author: { name: 'A' }, value: 'v' })
+    expect(res.isOk && res.value).toEqual({ author: { name: 'A' }, value: 'v' })
+  })
+
+  test('selectedType otherwise fall-through returns scalar as-is', () => {
+    // Pass a scalar with non-empty select - select falls through to otherwise branch.
+    const type = retrieve.selectedType(model.string(), { select: { foo: true } as any })
+    const res = model.concretise(type).decode('hi')
+    expect(res.isOk && res.value).toBe('hi')
+  })
+
+  test('selectedType passes through union as-is when select is set', () => {
+    const u = model.union({ a: model.string(), b: model.number() })
+    const type = retrieve.selectedType(u, { select: { foo: true } as any })
+    expect(model.concretise(type)).toBeDefined()
+  })
+
+  test('optionalizeEmbeddedEntities follows union variants', () => {
+    const A = model.entity({ id: model.number() }, { name: 'OEU_A' })
+    const B = model.entity({ id: model.number() }, { name: 'OEU_B' })
+    const u = model.union({ a: A, b: B }, { name: 'OEU' })
+    const type = retrieve.selectedType(u, undefined)
+    expect(model.concretise(type)).toBeDefined()
+  })
+
+  test('fromType supports entity with custom field, union field, and optional entity field', () => {
+    const Inner = () =>
+      model.entity(
+        {
+          id: model.number(),
+        },
+        {
+          name: 'WhereInner',
+          retrieve: { where: true, orderBy: true },
+        },
+      )
+    const Outer = () =>
+      model.entity(
+        {
+          c: model.datetime(),
+          u: model.union({ a: model.string(), b: model.number() }),
+          opt: model.optional(Inner),
+          nul: model.nullable(Inner),
+          custom: model.record(model.string()),
+        },
+        {
+          name: 'WhereOuter',
+          retrieve: { where: true, orderBy: true },
+        },
+      )
+    const result = retrieve.fromType(Outer, { where: true, orderBy: true })
+    expect(result.isOk).toBe(true)
+    if (result.isOk) {
+      model.concretise(result.value).decode({ where: {}, orderBy: [] })
+    }
+  })
+
+  test('orderByArray on optional/nullable/scalar wrapped in array', () => {
+    const E = () =>
+      model.entity(
+        {
+          id: model.number(),
+          friendsOpt: model.array(model.optional(E)),
+          friendsNul: model.array(model.nullable(E)),
+          tagsArr: model.array(model.string()),
+        },
+        {
+          name: 'OrderByArrTypes',
+          retrieve: { orderBy: true },
+        },
+      )
+    const r = retrieve.fromType(E, { orderBy: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      model.concretise(r.value).decode({ orderBy: [] })
+    }
+  })
+
+  test('orderBy disabled in entity when capability is undefined or selective', () => {
+    const E = () =>
+      model.entity(
+        {
+          id: model.number(),
+          name: model.string(),
+        },
+        {
+          name: 'OrderBySelective',
+          retrieve: { orderBy: { id: true } as any },
+        },
+      )
+    const r = retrieve.fromType(E, { orderBy: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      model.concretise(r.value).decode({ orderBy: [] })
+    }
+  })
+
+  test('orderBy traverses related entity without retrieve.orderBy capability', () => {
+    const Inner = () =>
+      model.entity(
+        {
+          id: model.number(),
+          name: model.string(),
+        },
+        { name: 'OrderByInnerNoCap' },
+      )
+    const Outer = () =>
+      model.entity(
+        {
+          id: model.number(),
+          inner: Inner,
+        },
+        {
+          name: 'OrderByOuterCap',
+          retrieve: { orderBy: true },
+        },
+      )
+    const r = retrieve.fromType(Outer, { orderBy: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      model.concretise(r.value).decode({ orderBy: [] })
+    }
+  })
+
+  test('whereFieldIsApplicable selective whose entry is missing returns false (line 312)', () => {
+    const Inner = () =>
+      model.entity(
+        {
+          id: model.number(),
+          name: model.string(),
+        },
+        {
+          name: 'WhereSelective',
+          retrieve: { where: { id: true } as any },
+        },
+      )
+    const r = retrieve.fromType(Inner, { where: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      model.concretise(r.value).decode({ where: {} })
+    }
+  })
+
+  test('whereInternal traversed by where on entity field that is wrapped', () => {
+    // When where(entity) is called and the entity contains a field that is optional/nullable
+    // entity, whereField recurses → calls where on the wrapped entity. If the wrapped entity
+    // is itself optional/nullable → triggers whereInternal optional/nullable branches.
+    const A = () =>
+      model.entity(
+        {
+          id: model.number(),
+        },
+        { name: 'WhereWrappedA', retrieve: { where: true } },
+      )
+    const B = () =>
+      model.entity(
+        {
+          a: model.optional(A),
+        },
+        { name: 'WhereWrappedB', retrieve: { where: true } },
+      )
+    const r = retrieve.fromType(B, { where: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      model.concretise(r.value).decode({ where: {} })
+    }
+  })
+
+  test('whereField with custom field, union, optional fields, and array of scalar', () => {
+    const E = () =>
+      model.entity(
+        {
+          id: model.number(),
+          customField: model.datetime(),
+          unionField: model.union({ s: model.string(), n: model.number() }),
+          optScalar: model.optional(model.string()),
+          arrScalar: model.array(model.number()),
+          nullScalar: model.nullable(model.string()),
+        },
+        {
+          name: 'WhereVariety',
+          retrieve: { where: true },
+        },
+      )
+    const r = retrieve.fromType(E, { where: true })
+    expect(r.isOk).toBe(true)
+    // Force concretization to evaluate lazy where types and their field handlers.
+    if (r.isOk) {
+      model.concretise(r.value).decode({ where: { id: { equals: 1 } } })
+    }
+  })
+
+  test('whereFieldArray with optional/nullable/union wrappers', () => {
+    const E = () =>
+      model.entity(
+        {
+          id: model.number(),
+          arrOpt: model.array(model.optional(model.string())),
+          arrNul: model.array(model.nullable(model.string())),
+          arrUnion: model.array(model.union({ s: model.string(), n: model.number() })),
+        },
+        {
+          name: 'WhereArrayVariety',
+          retrieve: { where: true },
+        },
+      )
+    const r = retrieve.fromType(E, { where: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      model.concretise(r.value).decode({ where: {} })
+    }
+  })
+
+  test('where on entity wrapped in optional and nullable', () => {
+    const Inner = () =>
+      model.entity(
+        {
+          id: model.number(),
+        },
+        {
+          name: 'WhereInnerOpt',
+          retrieve: { where: true },
+        },
+      )
+    const Outer = () =>
+      model.entity(
+        {
+          inner: model.optional(Inner),
+          inner2: model.nullable(Inner),
+        },
+        {
+          name: 'WhereOuterOpt',
+          retrieve: { where: true },
+        },
+      )
+    const r = retrieve.fromType(Outer, { where: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      model.concretise(r.value).decode({ where: {} })
+    }
+  })
+
+  test('whereFieldIsApplicable returns false when capabilities.where is undefined (line 307)', () => {
+    // An array-of-entity field whose inner entity has no `where` retrieve capability
+    // forces whereFieldArray → where(entity) → whereInternal → whereFieldIsApplicable(field, retrieve-without-where).
+    // That hits the `if (!capabilities?.where) return false` branch.
+    const Inner = () =>
+      model.entity(
+        {
+          id: model.number(),
+          name: model.string(),
+        },
+        {
+          name: 'WhereNoWhere',
+          // No `where` capability — only orderBy
+          retrieve: { orderBy: true },
+        },
+      )
+    const Outer = () =>
+      model.entity(
+        {
+          items: model.array(Inner),
+        },
+        {
+          name: 'WhereNoWhereOuter',
+          retrieve: { where: true },
+        },
+      )
+    const r = retrieve.fromType(Outer, { where: true })
+    expect(r.isOk).toBe(true)
+    if (r.isOk) {
+      // Force concretization to evaluate the lazy types.
+      const concrete = model.concretise(r.value)
+      // Decoding triggers all the lazy `where` constructions.
+      concrete.decode({ where: { items: { some: {} } } })
+    }
+  })
 })
 
 describe('merge', () => {
@@ -262,6 +631,55 @@ describe('merge', () => {
       orderBy: [{ posts: { _count: 'asc' } }, { name: 'asc', bestFriend: { metadata: { loggedInAt: 'desc' } } }],
     })
   })
+  test('mergeSelect entity branches', () => {
+    // both leftSelect === true and rightSelect === true
+    const r1 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: true } },
+      { select: { posts: true } },
+    )
+    expect(r1).toEqual({ select: { posts: true } })
+
+    // leftSelect === true, rightSelect is object → wraps right with all-non-entity fields
+    const r2 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: true } },
+      { select: { posts: { select: { title: true } } } },
+    )
+    expect(r2?.select?.posts).toBeDefined()
+
+    // rightSelect === true, leftSelect is object → wraps left with all-non-entity fields
+    const r3 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { posts: { select: { title: true } } } },
+      { select: { posts: true } },
+    )
+    expect(r3?.select?.posts).toBeDefined()
+  })
+
+  test('mergeSelect non-entity field with one side true', () => {
+    // metadata is not an Entity, so the non-entity branch runs
+    const r1 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { metadata: true } },
+      { select: { metadata: { select: { loggedInAt: true } } } },
+    )
+    expect(r1?.select?.metadata).toBe(true)
+
+    const r2 = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
+      user,
+      { select: { metadata: { select: { loggedInAt: true } } } },
+      { select: { metadata: true } },
+    )
+    expect(r2?.select?.metadata).toBe(true)
+  })
+
+  test('mergeSelect on scalar type uses otherwise fallback', () => {
+    // mergeSelect for non-record/non-wrapper type goes to otherwise branch
+    const r = retrieve.mergeSelect(model.string(), { foo: true } as any, { bar: true } as any)
+    expect(r).toBeDefined()
+  })
+
   test('skip and take', () => {
     const result = retrieve.merge<retrieve.FromType<typeof user, retrieve.AllCapabilities>>(
       user,

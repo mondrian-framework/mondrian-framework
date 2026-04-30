@@ -22,3 +22,9 @@ test('oversized json', () => {
     { assertion: 'json must be maximum of 5B', got: 18, path: '$' },
   ])
 })
+
+test('json within size limit succeeds validation', () => {
+  const result = model.json({ sizeLimit: 100 }).decode({ a: 'short' })
+  expect(result.isOk).toBe(true)
+  expect(result.isOk && result.value).toEqual({ a: 'short' })
+})

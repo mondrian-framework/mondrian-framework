@@ -176,7 +176,7 @@ export class BaseFunction<
     if (middlewareIndex >= this.middlewares.length) {
       const res = await this.body(args)
       if (this.resolveNestedPromises && res.isOk) {
-        const resolvedValue = await utils.reolsveNestedPromises(res.value)
+        const resolvedValue = await utils.resolveNestedPromises(res.value)
         if (res.value instanceof model.TotalCountArray) {
           return result.ok(new model.TotalCountArray(res.value.totalCount, resolvedValue as any)) as any
         } else {

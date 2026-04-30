@@ -106,8 +106,7 @@ export function fromFunction<Fs extends functions.FunctionImplementations, Serve
         return response
       }
     }
-    const response = await subHandler()
-    return { ...response, headers: { ...response.headers } }
+    return await subHandler()
   }
   return handler
 }

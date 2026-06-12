@@ -16,3 +16,4 @@ coverage
 **/prisma
 !**/prisma/schema.prisma
 **/.DS_Store
+tmp/

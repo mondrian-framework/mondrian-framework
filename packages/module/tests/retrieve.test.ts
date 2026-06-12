@@ -1,4 +1,5 @@
 import { retrieve } from '../src/index'
+import { Account } from './ledger-model'
 import { test } from '@fast-check/vitest'
 import { model, validation } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf } from 'vitest'
@@ -936,25 +937,49 @@ describe('fromType', () => {
   })
 })
 
+describe('fromType ledger model (TS#53614 scenario)', () => {
+  test('decodes retrieve payloads respecting per-field runtime capabilities', () => {
+    // Same type and capabilities as a `getAccounts` function (see ledger-model/account.definitions.ts)
+    const accountRetrieve = retrieve.fromType(Account, { select: true, orderBy: true, skip: true, take: true })
+    expect(accountRetrieve.isOk).toBe(true)
+    if (accountRetrieve.isOk) {
+      const concrete = model.concretise(accountRetrieve.value)
+      // Account allows orderBy only on { id, type } at runtime
+      const res1 = concrete.decode({ orderBy: [{ id: 'asc' }, { type: 'desc' }] })
+      expect(res1.isOk && res1.value.orderBy).toEqual([{ id: 'asc' }, { type: 'desc' }])
+      // `sequence` is not an allowed runtime orderBy field
+      const res2 = concrete.decode({ orderBy: [{ sequence: 'asc' }] })
+      expect(res2.isOk).toBe(false)
+      // nested outgoing (Transfer) allows orderBy on { id, createdAt, signedAt, value } and where on { state, kind }
+      const res3 = concrete.decode({
+        select: { outgoing: { orderBy: [{ createdAt: 'asc' }], where: { state: { equals: 'PENDING' } }, take: 10 } },
+      })
+      expect(res3.isOk).toBe(true)
+      const res4 = concrete.decode({ orderBy: [{ id: 'invalid-direction' }] })
+      expect(res4.isOk).toBe(false)
+    }
+  })
+})
+
 test('retrieve type on custom with apiType', () => {
-  const RegistryItem = addValidationLogic(
-    'RegistryItem',
+  const Organization = addValidationLogic(
+    'Organization',
     model.object(
       {
         id: model.string(),
-        taxId: model.string(),
+        code: model.string(),
         description: model.string(),
       },
       {
-        name: 'RegistryItem',
-        description: 'Basic description of a TeamSystem registry item. Information gathered from Digital',
+        name: 'Organization',
+        description: 'Basic description of an organization.',
       },
     ),
     () => validation.succeed(),
   )
   const entity = model.entity(
     {
-      registryItem: RegistryItem,
+      organization: Organization,
     },
     { name: 'Entity' },
   )
@@ -964,13 +989,13 @@ test('retrieve type on custom with apiType', () => {
     select: model.optional(
       model.object(
         {
-          registryItem: model.optional(
+          organization: model.optional(
             model.union({
               fields: model.object({
                 select: model.optional(
                   model.object({
                     id: model.boolean().optional(),
-                    taxId: model.boolean().optional(),
+                    code: model.boolean().optional(),
                     description: model.boolean().optional(),
                   }),
                 ),

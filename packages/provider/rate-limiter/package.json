@@ -15,7 +15,7 @@
     "@mondrian-framework/model": "^3.0.0",
     "@mondrian-framework/module": "^3.0.0",
     "@mondrian-framework/utils": "^3.0.0",
-    "@opentelemetry/sdk-node": "^0.208.0",
-    "@redis/client": "^1.6.0"
+    "@opentelemetry/sdk-node": "^0.219.0",
+    "@redis/client": "^6.0.0"
   }
 }

@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@graphql-tools/schema": "^10.0.33",
-    "@graphql-tools/utils": "^10.11.0",
-    "graphql": "^16.13.2"
+    "@graphql-tools/utils": "^11.1.0",
+    "graphql": "^16.14.2"
   },
   "peerDependencies": {
     "@mondrian-framework/model": "^3.0.0",
@@ -22,6 +22,6 @@
     "@mondrian-framework/utils": "^3.0.0"
   },
   "devDependencies": {
-    "graphql-yoga": "^5.21.0"
+    "graphql-yoga": "^5.21.2"
   }
 }

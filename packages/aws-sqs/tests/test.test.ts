@@ -1022,6 +1022,172 @@ describe('listen', () => {
     }, 10000)
   })
 
+  describe('message body fallback', () => {
+    test('passes empty string to onError when JSON parsing fails on empty body', async () => {
+      const onErrorMock = vi.fn().mockResolvedValue(undefined)
+
+      const errored = new Promise<void>((resolve) => {
+        let callCount = 0
+        receiveMessageImpl = () => {
+          callCount++
+          if (callCount === 1) {
+            return Promise.resolve({
+              Messages: [
+                {
+                  MessageId: 'msg-empty',
+                  // empty string is defined (not undefined) so JSON.parse will be invoked,
+                  // and JSON.parse('') throws — driving execution into the catch branch
+                  // where `m.Body ?? ''` is exercised with a falsy body.
+                  Body: '',
+                  ReceiptHandle: 'receipt-empty',
+                },
+              ],
+            })
+          }
+          return new Promise(() => {})
+        }
+        deleteMessageImpl = () => {
+          resolve()
+          return Promise.resolve({})
+        }
+      })
+
+      const singleFunctionModule = module.build({
+        name: 'single-function-module',
+        functions: { processMessage: processMessageFunction },
+      })
+
+      const api = sqs.build({
+        module: singleFunctionModule,
+        functions: {
+          processMessage: { queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue' },
+        },
+      })
+
+      const listener = listen({
+        api,
+        context: async () => ({}),
+        onError: onErrorMock,
+      })
+
+      await errored
+
+      expect(onErrorMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorKind: 'invalid-input',
+          sqs: expect.objectContaining({ message: '' }),
+        }),
+      )
+
+      listener.close()
+    }, 10000)
+
+    test('passes empty string to onError when function-apply fails on null body', async () => {
+      const onErrorMock = vi.fn().mockResolvedValue(undefined)
+
+      const errored = new Promise<void>((resolve) => {
+        let callCount = 0
+        receiveMessageImpl = () => {
+          callCount++
+          if (callCount === 1) {
+            return Promise.resolve({
+              Messages: [
+                {
+                  MessageId: 'msg-null',
+                  // `null` is not strictly equal to undefined, so JSON.parse runs and
+                  // returns the JS value `null`; then rawApply fails decoding which
+                  // drives execution into the function-apply error path.
+                  Body: null as any,
+                  ReceiptHandle: 'receipt-null',
+                },
+              ],
+            })
+          }
+          return new Promise(() => {})
+        }
+        deleteMessageImpl = () => {
+          resolve()
+          return Promise.resolve({})
+        }
+      })
+
+      const singleFunctionModule = module.build({
+        name: 'single-function-module',
+        functions: { processMessage: processMessageFunction },
+      })
+
+      const api = sqs.build({
+        module: singleFunctionModule,
+        functions: {
+          processMessage: { queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue' },
+        },
+      })
+
+      const listener = listen({
+        api,
+        context: async () => ({}),
+        onError: onErrorMock,
+      })
+
+      await errored
+
+      expect(onErrorMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sqs: expect.objectContaining({ message: '' }),
+        }),
+      )
+
+      listener.close()
+    }, 10000)
+  })
+
+  describe('skips functions without specifications', () => {
+    test('should skip module functions that are not in api.functions', async () => {
+      // Build an Api object directly (bypassing sqs.build validation) so that
+      // the module has two functions but api.functions only contains one of them.
+      // This exercises the `if (!specifications) continue` branch in listener.ts.
+      let receiveCount = 0
+      receiveMessageImpl = () => {
+        receiveCount++
+        return new Promise((resolve) => setTimeout(() => resolve({ Messages: [] }), 50))
+      }
+
+      const twoFunctionModule = module.build({
+        name: 'two-fn-module',
+        functions: {
+          processMessage: processMessageFunction,
+          numberProcessor: numberFunction,
+        },
+      })
+
+      // Manually craft Api - skipping `numberProcessor` from api.functions
+      const api = {
+        module: twoFunctionModule,
+        functions: {
+          processMessage: { queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue' },
+        },
+      } as any
+
+      const listener = listen({
+        api,
+        context: async () => ({}),
+        onError: () => {},
+      })
+
+      // Wait briefly for the polling loop to start
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      // Only one queue should be receiving messages (the one with a spec).
+      // Each receiveMessage call uses the queueUrl, so verify only the configured queue is called.
+      const calledQueues = mockReceiveMessage.mock.calls.map((c: any[]) => c[0]?.QueueUrl)
+      const uniqueQueues = Array.from(new Set(calledQueues))
+      expect(uniqueQueues).toEqual(['https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'])
+      expect(receiveCount).toBeGreaterThan(0)
+
+      await listener.close()
+    })
+  })
+
   describe('close functionality', () => {
     test('should stop listening when close is called', async () => {
       let receiveCallCount = 0

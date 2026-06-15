@@ -111,7 +111,7 @@ export function fromModule<Fs extends functions.FunctionInterfaces>({
           specification.namespace === null
             ? []
             : (functionBody.options?.namespace ?? specification.namespace)
-              ? [functionBody.options?.namespace ?? specification.namespace ?? '']
+              ? [(functionBody.options?.namespace ?? specification.namespace) as string]
               : [],
         security: specification.security,
       }
@@ -204,8 +204,9 @@ export function generateOpenapiInput({
         return request.params[parametersInPath[0]]
       },
       output: (value) => {
+        // parametersInPath is non-empty only when specification.path is truthy
         return {
-          path: specification.path?.replace(`{${parametersInPath[0]}}`, String(value)) ?? ``,
+          path: (specification.path as string).replace(`{${parametersInPath[0]}}`, String(value)),
           body: undefined,
           params: undefined,
         }
@@ -345,13 +346,11 @@ export function generateOpenapiInput({
         output(value) {
           const object = value as Record<string, JSONType>
           const objectWithoutPath = { ...object }
-          const path = parametersInPath.reduce(
-            (path, parameter) => {
-              delete objectWithoutPath[parameter]
-              return path.replace(`{${parameter}}`, String(object[parameter]))
-            },
-            specification.path ?? `/${functionName}`,
-          )
+          // parametersInPath is non-empty only when specification.path is truthy
+          const path = parametersInPath.reduce((path, parameter) => {
+            delete objectWithoutPath[parameter]
+            return path.replace(`{${parameter}}`, String(object[parameter]))
+          }, specification.path as string)
           return { path, body: objectWithoutPath, params: undefined }
         },
       }

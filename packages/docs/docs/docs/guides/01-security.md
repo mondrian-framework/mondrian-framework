@@ -103,4 +103,4 @@ When a Mondrian function with `retrieve` capabilities is executed, the framework
 
 This ensures that regardless of what the client requests via `select` or `where`, the security policies defined at the module level are enforced consistently.
 
-You can find a more complex example of security policies in the example package within the Mondrian repository (`packages/example/src/core/security-policies.ts`).
+You can find a more complex example of security policies in the [template project](https://github.com/mondrian-framework/template).

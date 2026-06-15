@@ -1,9 +1,9 @@
-import { hasNestedPromises, reolsveNestedPromises } from '../src/utils'
+import { hasNestedPromises, resolveNestedPromises } from '../src/utils'
 import { expect, test } from 'vitest'
 
-test('reolsveNestedPromises', async () => {
+test('resolveNestedPromises', async () => {
   const now = new Date()
-  const r1 = await reolsveNestedPromises({
+  const r1 = await resolveNestedPromises({
     a: Promise.resolve(1),
     b: Promise.resolve([Promise.resolve(2), Promise.resolve(3)]),
     c: Promise.resolve({ d: Promise.resolve(4), e: Promise.resolve(5) }),
@@ -11,10 +11,10 @@ test('reolsveNestedPromises', async () => {
   })
   expect(r1).toEqual({ a: 1, b: [2, 3], c: { d: 4, e: 5 }, d: now })
 
-  const r2 = await reolsveNestedPromises(Promise.resolve(1))
+  const r2 = await resolveNestedPromises(Promise.resolve(1))
   expect(r2).toEqual(1)
 
-  const r3 = await reolsveNestedPromises(Promise.resolve(null))
+  const r3 = await resolveNestedPromises(Promise.resolve(null))
   expect(r3).toEqual(null)
 })
 

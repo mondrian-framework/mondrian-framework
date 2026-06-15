@@ -20,6 +20,9 @@ export class MondrianLogger implements Logger {
       },
     })
   }
+  enabled(options?: Parameters<Logger['enabled']>[0]): boolean {
+    return this.logger.enabled(options)
+  }
   logDebug(message: string, attributes?: LogAttributes): void {
     this.emit({ body: message, severityNumber: SeverityNumber.DEBUG, severityText: 'DEBUG', attributes })
   }

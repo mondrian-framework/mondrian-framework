@@ -469,4 +469,124 @@ describe('serve function', () => {
       expect(response.body).toBe('No input needed')
     })
   })
+
+  describe('handler returns response without headers', () => {
+    test('skips reply.headers when onError returns response without headers', async () => {
+      // Trigger the handler's catch block by sending input that fails decoding
+      // for a function without a BadInput error type — this throws InvalidInput.
+      // Then onError returns a response without headers, exercising the false
+      // branch of `if (result.headers)` in methods.ts.
+      const objectInput = functions.define({
+        input: model.object({ a: model.string() }),
+        output: model.string(),
+      })
+      const moduleInterface = module.define({
+        functions: { objectInput },
+        name: 'on-error-module',
+      })
+      const moduleImpl = moduleInterface.implement({
+        functions: {
+          objectInput: objectInput.implement({
+            async body({ input }) {
+              return result.ok(input.a)
+            },
+          }),
+        },
+      })
+      const api = rest.build({
+        module: moduleImpl,
+        version: 1,
+        functions: { objectInput: { method: 'post', path: '/obj' } },
+      })
+
+      let onErrorCalled = false
+      serve({
+        server,
+        api,
+        context: async () => ({}),
+        onError: async () => {
+          onErrorCalled = true
+          // Return a response without headers to exercise the false branch.
+          return { status: 503, body: 'unavailable' }
+        },
+      })
+      await server.listen({ port: 0 })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/obj',
+        payload: JSON.stringify(123), // wrong type — should fail input decode
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(onErrorCalled).toBe(true)
+      expect(response.statusCode).toBe(503)
+      expect(response.body).toBe('unavailable')
+    })
+  })
+
+  describe('skipping unexposed functions', () => {
+    test('skips functions that have no rest specification', async () => {
+      // Build a module with two functions but register only one in the rest api.
+      // This exercises the `if (!specifications) continue` guard in methods.ts.
+      const exposed = functions.define({
+        input: model.string(),
+        output: model.string(),
+      })
+      const hidden = functions.define({
+        input: model.string(),
+        output: model.string(),
+      })
+      const moduleInterface = module.define({
+        functions: { exposed, hidden },
+        name: 'partialModule',
+      })
+      const moduleImpl = moduleInterface.implement({
+        functions: {
+          exposed: exposed.implement({
+            async body({ input }) {
+              return result.ok(`echo:${input}`)
+            },
+          }),
+          hidden: hidden.implement({
+            async body({ input }) {
+              return result.ok(input)
+            },
+          }),
+        },
+      })
+      const api = rest.build({
+        module: moduleImpl,
+        version: 1,
+        functions: {
+          exposed: { method: 'post', path: '/exposed' },
+          // 'hidden' intentionally omitted
+        },
+      })
+
+      serve({
+        server,
+        api,
+        context: async () => ({}),
+      })
+      await server.listen({ port: 0 })
+
+      const exposedResponse = await server.inject({
+        method: 'POST',
+        url: '/api/v1/exposed',
+        payload: JSON.stringify('hi'),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(exposedResponse.statusCode).toBe(200)
+      expect(exposedResponse.body).toBe('echo:hi')
+
+      // The hidden function should not be exposed.
+      const hiddenResponse = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hidden',
+        payload: JSON.stringify('hi'),
+        headers: { 'content-type': 'application/json' },
+      })
+      expect(hiddenResponse.statusCode).toBe(404)
+    })
+  })
 })

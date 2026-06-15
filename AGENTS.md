@@ -10,18 +10,17 @@ Core ideas (from `packages/docs/docs/docs/01-introduction.md`):
 - **Model**: formal representation of a domain concept/value object (DDD-style entities and value objects).
 - **Function**: named operation with typed inputs, outputs, errors, and side effects.
 - **Module**: named, reusable group of functions sharing a domain.
-- **Runtime**: environment that executes modules (REST, GraphQL, SQS, cron, CLI, custom...).
+- **Runtime**: environment that executes modules (REST, GraphQL, SQS, cron, custom...).
 
-Programming style mixes FP/FRP with PP. Inspired by Clean Architecture (Martin), DDD (Evans), Modern Software Engineering (Farley). 100% TypeScript on Node ≥ 20.9 (Deno/Bun WIP).
+Programming style mixes FP/FRP with PP. Inspired by Clean Architecture (Martin), DDD (Evans), Modern Software Engineering (Farley). 100% TypeScript on Node ≥ 24 (Deno/Bun WIP).
 
 ## Repository layout
 
 ```
 mondrian-framework/        (npm workspaces monorepo, package name: @mondrian-framework/root)
-├─ package.json            workspaces, scripts (build/test/coverage/spinup/release)
+├─ package.json            workspaces, scripts (build/test/coverage/release)
 ├─ tsconfig.json           strict, NodeNext modules, project references, path aliases
-├─ vite.config.ts          vitest config; testTimeout 10s; coverage excludes example & docs
-├─ Dockerfile              AWS Lambda nodejs:22-arm64 image; CMD ci-tools/handler
+├─ vite.config.ts          vitest config; testTimeout 10s; coverage excludes docs
 ├─ .changeset/             changesets-managed releases
 ├─ .github/                CI (ci-checks.yml badge in README)
 ├─ assets/
@@ -35,19 +34,16 @@ mondrian-framework/        (npm workspaces monorepo, package name: @mondrian-fra
    ├─ rest-fastify/        Fastify adapter — exports `serve` and re-exports `rest`
    ├─ graphql/             GraphQL schema/resolver generator (mondrian → GraphQL)
    ├─ graphql-yoga/        GraphQL Yoga adapter — exports `serveWithFastify`, `createServer`, re-exports `graphql`
-   ├─ direct/              Mondrian's native RPC runtime — exports `direct`, `client`, `serveWithFastify` (mounted at /mondrian)
    ├─ aws-sqs/             SQS consumer runtime — exports `sqs`, `listen`
    ├─ aws-lambda-sqs/      SQS handler for AWS Lambda — exports `handler`
    ├─ aws-lambda-rest/     REST handler for AWS Lambda (`lambda-api`) — exports `handler`, `Request`, `Response`
    ├─ cron/                scheduled cron-like runtime — exports `cron`, `start`
-   ├─ cli-commander/       CLI runtime built on commander — exports `cli` (use `cli.fromModule`)
-   ├─ cli/                 ready-built CLI executable (uses ci-tools) for `gql-diff` / `oas-diff` schema diffing
-   ├─ ci-tools/            CI helpers (build OAS / GraphQL reports, schema diff, integration). Module + interface
-   ├─ docs/                Docusaurus site; canonical docs live in packages/docs/docs/docs
-   └─ example/             reference app: User+Post Prisma model, REST+GraphQL+Direct on Fastify:4000
+   └─ docs/                Docusaurus site; canonical docs live in packages/docs/docs/docs
 
 Note: `arbitrary` is not a separate workspace package — it lives at `packages/model/src/arbitrary/arbitrary.ts` and is re-exported as `arbitrary` from `@mondrian-framework/model`.
 ```
+
+A reference application showing the full REST + GraphQL + Prisma + security setup lives in the [template project](https://github.com/mondrian-framework/template) (separate repo).
 
 ## Workspaces, paths, and aliases
 
@@ -70,12 +66,10 @@ import { rest, client, utils } from '@mondrian-framework/rest'   // rest, client
 import { serve, rest } from '@mondrian-framework/rest-fastify'
 import { graphql } from '@mondrian-framework/graphql'
 import { graphql, serveWithFastify, createServer } from '@mondrian-framework/graphql-yoga'
-import { direct, client, serveWithFastify } from '@mondrian-framework/direct'
 import { sqs, listen } from '@mondrian-framework/aws-sqs'
 import { handler, Request, Response } from '@mondrian-framework/aws-lambda-rest'
 import { handler } from '@mondrian-framework/aws-lambda-sqs'
 import { cron, start } from '@mondrian-framework/cron'
-import { cli } from '@mondrian-framework/cli-commander'
 import { rateLimiter, Slot, Store, RedisStore, Rate, parseRate } from '@mondrian-framework/rate-limiter'
 ```
 
@@ -183,7 +177,7 @@ security
 - `selection`: `true` (all fields) or per-field `{ id: true, ... }`.
 - `restriction`/`filter`: Prisma-like `where` predicates. Rules evaluated in order — first matching restriction's selection applies.
 - Applied automatically to functions with `retrieve`. Filters out unauthorized rows/fields _before_ returning. Traversed entities all need `.on(...)` rules to allow graph navigation.
-- Canonical example: `packages/example/src/core/security-policies.ts`.
+- A canonical end-to-end example lives in the [template project](https://github.com/mondrian-framework/template).
 
 ### Logger & Tracer (OpenTelemetry)
 
@@ -247,54 +241,19 @@ serveWithFastify({ server, api, context: async ({ fastify: { request } }) => ({ 
 - Functions with a `namespace` are grouped under that namespace in the schema.
 - No versioning concept (use deprecation/schema evolution).
 
-### Direct — `@mondrian-framework/direct`
-
-Mondrian's native RPC protocol (default mounted at `/mondrian`). Useful when both ends speak Mondrian. `direct.build({ module, exclusions })` + `serveWithFastify({...})`. Supports decode strictness options (`errorReportingStrategy`, `fieldStrictness`, `typeCastingStrategy`).
-
 ### Other runtimes
 
 - `@mondrian-framework/aws-sqs` — SQS consumer.
 - `@mondrian-framework/aws-lambda-sqs` — SQS handler for Lambda.
 - `@mondrian-framework/aws-lambda-rest` — REST on Lambda via `lambda-api`.
 - `@mondrian-framework/cron` — scheduled cron execution.
-- `@mondrian-framework/cli` and `@mondrian-framework/cli-commander` — CLI runtimes.
-- **Custom runtime** (`packages/docs/docs/docs/fundamentals/runtime/05-custom-runtime.md`): trigger → decode input → build context → `module.<fn>.apply` (or `rawApply` for raw bytes) → encode result. Pattern for WebSockets, alt brokers, IoT, etc.
+- **Custom runtime** (`packages/docs/docs/docs/fundamentals/runtime/05-custom-runtime.md`): trigger → decode input → build context → `module.<fn>.apply` (or `rawApply` for raw bytes) → encode result. Pattern for WebSockets, alt brokers, IoT, CLIs, etc.
 
 ### Rate limiter — `@mondrian-framework/rate-limiter`
 
 Sliding-window with optional `RedisStore`. Two flavors:
 - **Provider**: `rateLimiter.buildProvider({ rate: '10 requests in 1 minute', store? })` → `.check(key)`, `.apply(key)` inside the function.
-- **Guard**: `rateLimiter.buildGuard({ errors, key, onLimit, rate, store? })` → automatic gate. See `packages/example/src/core/guards.ts`.
-
-## The example app — `packages/example/`
-
-```
-src/
-├─ app.ts                    entry point; Fastify on :4000; REST + GraphQL + Direct
-├─ opentelemetry.ts          OTLP HTTP exporter setup
-├─ rate-limiter.ts           store wiring
-├─ interface/                pure definitions (shareable contract)
-│  ├─ common/model.ts        idType, error.define for shared errors
-│  ├─ user/{model.ts,actions.ts,index.ts}
-│  ├─ post/{model.ts,actions.ts,index.ts}
-│  ├─ module.ts              moduleInterface = m.define({ name, functions: { ...users.actions, ...posts.actions } })
-│  └─ index.ts
-└─ core/                     implementations
-   ├─ providers.ts           dbProvider (Prisma singleton), optionalAuthProvider, authProvider (depends on optionalAuth)
-   ├─ guards.ts              rateLimitByIpGuard
-   ├─ security-policies.ts   loggedUser(userId) + guest policies
-   ├─ impl/{user.ts,post.ts} module.functions.X.use({...}).implement({ body })
-   ├─ module.ts              moduleInterface.implement({ functions, options, policies })
-   └─ index.ts               re-exports users/posts/module/policies
-```
-
-`app.ts` enforces a "closed-by-default" rule: every function except an allowlist (`login`, `register`, `readPosts`) must declare an `auth` provider or guard or it throws at startup.
-
-`api/{rest,graphql,direct}.ts` build & serve the three protocols against the same `module`.
-
-Run with `npm run example` (after `npm run build`). Or one-shot: `npm run spinup` → http://localhost:4000/{openapi,graphql,mondrian}.
-
-Prisma: `User` (id, email, password, posts, followers/followeds, givenLikes, registeredAt, loginAt) and `Post` (id, title, content, publishedAt, authorId, visibility: PUBLIC|PRIVATE|FOLLOWERS, likes). `npm run build` runs `prisma migrate dev --name init && prisma generate && tsc`.
+- **Guard**: `rateLimiter.buildGuard({ errors, key, onLimit, rate, store? })` → automatic gate.
 
 ## Conventions & gotchas
 
@@ -306,18 +265,16 @@ Prisma: `User` (id, email, password, posts, followers/followeds, givenLikes, reg
 - **Use `model.entity` (not `object`) for domain concepts** — entities are what `retrieve`, security, and ORM bridges target.
 - **Strict TS**: monorepo uses `"strict": true`, `composite: true`, NodeNext modules. Don't break references.
 - **`@mondrian-framework/utils`** holds shared TS helpers; check there before writing utility types.
-- **Coverage excludes** `packages/example/**` and `packages/docs/**`.
-- **`module.build` vs `module.define().implement()`**: `build` produces an implemented module from interface+impl in one step; `define` returns just the interface and exposes `.implement(...)` (also goes through `build`). Functions analogously have `.define()` + `.implement()` (no top-level `functions.build`). The example uses the split-interface pattern (`packages/example/src/interface/module.ts` defines, `packages/example/src/core/module.ts` implements) so the interface package is shareable independent of the impl.
+- **Coverage excludes** `packages/docs/**`.
+- **`module.build` vs `module.define().implement()`**: `build` produces an implemented module from interface+impl in one step; `define` returns just the interface and exposes `.implement(...)` (also goes through `build`). Functions analogously have `.define()` + `.implement()` (no top-level `functions.build`). Splitting interface from implementation lets the interface package be shipped independently of the impl — see the [template project](https://github.com/mondrian-framework/template) for the canonical pattern.
 
 ## Common scripts (root)
 
 ```bash
-npm run spinup      # ci + build all + run example
 npm run build       # tsc across workspaces
 npm test            # vitest across workspaces
 npm run coverage    # v8 coverage
 npm run pretty      # prettier --write **/*.ts
-npm run example     # start the example app
 npm run clear       # remove build artifacts
 npm run release     # changeset add && changeset version
 npm run publish     # changeset publish
@@ -328,12 +285,12 @@ Per-package: `npm run test --workspace=@mondrian-framework/<pkg>`. Tests use **v
 ## Documentation source of truth
 
 `packages/docs/docs/docs/` is the canonical doc source (Docusaurus site at https://mondrianframework.com/):
-- `01-introduction.md`, `02-features.md`, `03-getting-started.md`
+- `01-introduction.md`, `02-features.md`, `03-getting-started.md`, `04-tutorial.md`
 - `fundamentals/model/{01-definition,02-typing,03-encode,04-decode,05-validation}.md`
 - `fundamentals/function/{01-definition,02-implementation,03-provider,04-guard}.md`
 - `fundamentals/module/{01-definition,02-implementation}.md`
-- `fundamentals/runtime/{index,03-scheduled,04-cli,05-custom-runtime}.md`, `runtime/API/{01-REST-OpenAPI,02-GraphQL-API,03-gRPC-API}.md`, `runtime/queue-consumer/*.md`
-- `guides/{01-security,02-prisma,03-testing,04-mocking,05-logging,06-tracing,07-versioning,08-ci,09-clients}.md`
+- `fundamentals/runtime/{index,05-custom-runtime}.md`, `runtime/API/{01-REST-OpenAPI,02-GraphQL-API}.md`, `runtime/queue-consumer/02-AWS SQS.md`
+- `guides/{01-security,02-prisma,03-testing,04-mocking,05-logging,06-tracing,07-versioning,09-clients}.md`
 
 A template starter project lives at https://github.com/mondrian-framework/template.
 

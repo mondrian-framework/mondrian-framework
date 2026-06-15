@@ -513,4 +513,152 @@ describe('rest handler', () => {
     expect(response.status).toBe(200)
     expect(response.headers!['x-total-count']).toBe('3')
   })
+
+  test('falls back to methodFromOptions when specification.method is undefined', async () => {
+    const fNoMethod = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+        options: { operation: 'command' },
+      })
+      .implement({
+        async body({ input }) {
+          return result.ok(input)
+        },
+      })
+    const mNoMethod = module.build({
+      functions: { fNoMethod },
+      name: 'noMethodModule',
+    })
+    const handlerNoMethod = fromFunction({
+      functionBody: mNoMethod.functions.fNoMethod as any,
+      functionName: 'fNoMethod',
+      context: async () => ({}),
+      // method intentionally omitted so the operationType fallback is exercised
+      specification: {},
+      module: mNoMethod,
+      api: {},
+    })
+    const response = await handlerNoMethod({
+      request: {
+        body: 'abc',
+        headers: {},
+        params: {},
+        query: {},
+        method: 'post',
+        route: null as any,
+      },
+      serverContext: {},
+    })
+    expect(response.status).toBe(200)
+    expect(response.body).toBe('abc')
+  })
+
+  test('falls back to status 400 when error key has no registered code', async () => {
+    // f9 returns badRequest/unauthorized errors. We don't register any error codes,
+    // so the `codes[key] ?? 400` fallback branch is exercised.
+    const handler = buildHandler('f9', { method: 'post' })
+    const response = await handler({ body: { data: 'bad' } })
+    expect(response.status).toBe(400)
+    expect(response.body).toStrictEqual({ badRequest: 'Bad request' })
+  })
+
+  test('falls back to status 400 when error has no keys', async () => {
+    // Construct a function whose rawApply returns a failure with an empty error
+    // object — exercises the falsy branch of `key ? ... : 400` in handler.ts.
+    const fEmptyError = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+        errors: { something: model.string() },
+      })
+      .implement({
+        async body() {
+          return result.ok('never')
+        },
+      })
+    const mEmpty = module.build({
+      functions: { fEmptyError },
+      name: 'emptyErrorModule',
+    })
+    // Override rawApply to force a failure with an empty error map.
+    const original = mEmpty.functions.fEmptyError as any
+    const wrapped = {
+      ...original,
+      rawApply: async () => ({ isFailure: true, isOk: false, error: {} }),
+    }
+    const handler = fromFunction({
+      functionBody: wrapped as any,
+      functionName: 'fEmptyError',
+      context: async () => ({}),
+      specification: { method: 'post' },
+      module: mEmpty,
+      api: {},
+    })
+    const response = await handler({
+      request: {
+        body: 'hello',
+        headers: {},
+        params: {},
+        query: {},
+        method: 'post',
+        route: null as any,
+      },
+      serverContext: {},
+    })
+    expect(response.status).toBe(400)
+    expect(response.body).toStrictEqual({})
+  })
+
+  test('handles failure when functionBody.errors is undefined (defensive)', async () => {
+    // Forge a function whose rawApply fails despite having no `errors` declared
+    // — exercises the `(functionBody.errors ?? {})` fallback in handler.ts.
+    const fNoErrors = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+      })
+      .implement({
+        async body({ input }) {
+          return result.ok(input)
+        },
+      })
+    const mNoErrors = module.build({
+      functions: { fNoErrors },
+      name: 'noErrorsModule',
+    })
+    const original = mNoErrors.functions.fNoErrors as any
+    const wrapped = {
+      ...original,
+      errors: undefined,
+      rawApply: async () => ({
+        isFailure: true,
+        isOk: false,
+        // forged failure with a key not present in errors
+        error: { something: 'forced' },
+      }),
+    }
+    const handler = fromFunction({
+      functionBody: wrapped as any,
+      functionName: 'fNoErrors',
+      context: async () => ({}),
+      specification: { method: 'post' },
+      module: mNoErrors,
+      api: {},
+    })
+    const response = await handler({
+      request: {
+        body: 'hello',
+        headers: {},
+        params: {},
+        query: {},
+        method: 'post',
+        route: null as any,
+      },
+      serverContext: {},
+    })
+    // Falls into mapUnknownError because model.concretise(undefined[key]) throws.
+    // The branch we want to exercise is `(functionBody.errors ?? {})[key]`.
+    expect(response.status).toBe(500)
+  })
 })

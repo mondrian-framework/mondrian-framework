@@ -1,3 +1,0 @@
-# gRPC
-
-Work in progress.

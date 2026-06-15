@@ -428,6 +428,44 @@ describe('Middleware - checkPolicies', () => {
     expect(res).toEqual({ id: 1, name: '***' })
   })
 
+  test('falls back to empty retrieve when policyResult.value is undefined (no retrieve)', async () => {
+    // When the function has no retrieve capabilities select, checkPoliciesInternal returns
+    // result.ok(retrieve) where retrieve was undefined. The middleware then uses `?? {}`.
+    const type = () => model.entity({ id: model.number(), name: model.string() })
+    const policies = security.on(type).allows({ selection: true })
+
+    const f = functions
+      .define({
+        input: model.string(),
+        // No retrieve capabilities → checkPoliciesInternal early-returns result.ok(undefined)
+        output: type,
+      })
+      .implement({
+        middlewares: [middleware.checkPolicies(() => policies) as any],
+        body: async ({ input, retrieve: r }) => {
+          // The retrieve passed to body should be {} (the fallback), not undefined
+          expect(r).toEqual({})
+          return result.ok({ id: 1, name: input })
+        },
+      })
+
+    const m = module.build({
+      name: 'test',
+      functions: { f },
+      options: { checkOutputType: 'ignore' },
+    })
+
+    const client = clientBuilder.build({
+      module: m,
+      async context() {
+        return {}
+      },
+    })
+
+    const res = await client.functions.f('John')
+    expect(res).toEqual({ id: 1, name: 'John' })
+  })
+
   test('should work with async policies function', async () => {
     const type = () => model.entity({ id: model.number(), name: model.string() })
     const policies = security.on(type).allows({ selection: true })

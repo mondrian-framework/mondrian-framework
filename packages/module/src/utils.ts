@@ -89,16 +89,16 @@ export function hasNestedPromises(value: unknown): boolean {
   }
 }
 
-export function reolsveNestedPromises(value: unknown): unknown | Promise<unknown> {
+export function resolveNestedPromises(value: unknown): unknown | Promise<unknown> {
   //TODO: not very efficient but in order to avoid process object like Set, Date, ecc we need to perform this check every time
   if (!hasNestedPromises(value)) {
     return value
   } else if (value instanceof Promise) {
-    return value.then(reolsveNestedPromises)
+    return value.then(resolveNestedPromises)
   } else if (Array.isArray(value)) {
-    return Promise.all(value.map(reolsveNestedPromises))
+    return Promise.all(value.map(resolveNestedPromises))
   } else if (value && typeof value === 'object') {
-    return Promise.all(Object.values(value).map(reolsveNestedPromises)).then((values) =>
+    return Promise.all(Object.values(value).map(resolveNestedPromises)).then((values) =>
       Object.fromEntries(Object.keys(value).map((key, index) => [key, values[index]])),
     )
   } else {

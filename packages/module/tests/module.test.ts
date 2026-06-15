@@ -1,4 +1,4 @@
-import { module, functions, client as clientBuilder, security, provider } from '../src'
+import { module, functions, client as clientBuilder, security, provider, guard } from '../src'
 import { result, model } from '@mondrian-framework/model'
 import { describe, expect, expectTypeOf, test } from 'vitest'
 
@@ -510,6 +510,32 @@ test('Errors return', async () => {
   )
 })
 
+test('module.define().implement() builds a module', async () => {
+  const fInterface = functions.define({
+    input: model.string(),
+    output: model.string(),
+  })
+  const moduleInterface = module.define({
+    name: 'test',
+    functions: { f: fInterface },
+  })
+  const fImpl = fInterface.implement({
+    body: async ({ input }) => result.ok(input),
+  })
+  const m = moduleInterface.implement({
+    functions: { f: fImpl },
+  })
+  expect(m.name).toBe('test')
+  const client = clientBuilder.build({
+    module: m,
+    async context() {
+      return {}
+    },
+  })
+  const res = await client.functions.f('hello')
+  expect(res).toBe('hello')
+})
+
 test('Undefiend function error type', async () => {
   expect(() =>
     functions
@@ -524,4 +550,107 @@ test('Undefiend function error type', async () => {
         },
       }),
   ).toThrowError('Function errors cannot be optional. Error "error2" is optional')
+})
+
+describe('module.build assertCorrectErrors', () => {
+  test('throws when a provider declares an error not present in function errors', () => {
+    const mismatchProvider = provider.build({
+      errors: { extraError: model.string() },
+      async body() {
+        return result.ok({})
+      },
+    })
+    const f = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+        errors: { definedError: model.string() },
+      })
+      .use({ providers: { p: mismatchProvider } })
+      .implement({
+        body: async ({ input }) => result.ok(input),
+      })
+    expect(() =>
+      module.build({
+        name: 'test',
+        functions: { f },
+      }),
+    ).toThrowError('Provider "p" use error "extraError" that is not defined in function "f" errors')
+  })
+
+  test('throws when a provider error type does not match the function error type', () => {
+    const mismatchProvider = provider.build({
+      errors: { mismatch: model.string() },
+      async body() {
+        return result.ok({})
+      },
+    })
+    const f = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+        // same key but different type
+        errors: { mismatch: model.number() },
+      })
+      .use({ providers: { p: mismatchProvider } })
+      .implement({
+        body: async ({ input }) => result.ok(input),
+      })
+    expect(() =>
+      module.build({
+        name: 'test',
+        functions: { f },
+      }),
+    ).toThrowError('Provider "p" use error "mismatch" that is not equal to the function "f" error type')
+  })
+
+  test('throws when a guard declares an error not present in function errors', () => {
+    const mismatchGuard = guard.build({
+      errors: { guardOnly: model.string() },
+      async body(_: {}) {
+        return result.fail({ guardOnly: 'nope' })
+      },
+    })
+    const f = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+        errors: { other: model.string() },
+      })
+      .use({ guards: { g: mismatchGuard } })
+      .implement({
+        body: async ({ input }) => result.ok(input),
+      })
+    expect(() =>
+      module.build({
+        name: 'test',
+        functions: { f },
+      }),
+    ).toThrowError('Guard "g" use error "guardOnly" that is not defined in function "f" errors')
+  })
+
+  test('throws when a guard error type does not match the function error type', () => {
+    const mismatchGuard = guard.build({
+      errors: { mismatch: model.string() },
+      async body(_: {}) {
+        return result.fail({ mismatch: 'nope' })
+      },
+    })
+    const f = functions
+      .define({
+        input: model.string(),
+        output: model.string(),
+        errors: { mismatch: model.number() },
+      })
+      .use({ guards: { g: mismatchGuard } })
+      .implement({
+        body: async ({ input }) => result.ok(input),
+      })
+    expect(() =>
+      module.build({
+        name: 'test',
+        functions: { f },
+      }),
+    ).toThrowError('Guard "g" use error "mismatch" that is not equal to the function "f" error type')
+  })
 })

@@ -235,18 +235,36 @@ describe('RedisSlot', () => {
   })
 
   test('does not increment when counter is at MAX_SAFE_INTEGER', async () => {
-    // We can't easily test this without modifying the counter directly
-    // Just verify the slot doesn't crash
-    const client = createMockRedisClient()
+    // Force the private counter to MAX_SAFE_INTEGER so the next inc() hits
+    // the early-return branch without invoking the Redis client.
+    const incrSpy = vi.fn(async () => 1)
+    const client = {
+      async get(): Promise<string | null> {
+        return null
+      },
+      incr: incrSpy,
+      async expireAt(): Promise<boolean> {
+        return true
+      },
+    }
+
     const store = new RedisStore(client as any)
     const now = new Date(100000)
 
     const slot = store.getOrCreateSlot({ startingTimeSeconds: 90, durationSeconds: 30, key: 'test' }, now)
 
-    // Just verify inc doesn't throw
+    // Wait for any initial async read to settle
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    // Override the internal counter via reflection
+    ;(slot as unknown as { counter: number }).counter = Number.MAX_SAFE_INTEGER
+
     slot.inc()
     await new Promise((resolve) => setTimeout(resolve, 10))
-    expect(slot.value()).toBe(1)
+
+    // Counter must remain capped, and incr must not be invoked
+    expect(slot.value()).toBe(Number.MAX_SAFE_INTEGER)
+    expect(incrSpy).not.toHaveBeenCalled()
   })
 
   test('handles NaN value from get gracefully', async () => {

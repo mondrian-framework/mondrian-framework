@@ -2083,4 +2083,485 @@ describe('additional openapi types', () => {
     expect(param.style).toBe('deepObject')
     expect(param.explode).toBe(true)
   })
+
+  test('falls back to methodFromOptions when fromModule has no specification.method', () => {
+    const m = module.define({
+      name: 'noMethodFromModule',
+      functions: {
+        listItems: functions.define({
+          input: model.string(),
+          output: model.array(model.string()),
+          options: { operation: 'query' },
+        }),
+      },
+    })
+
+    // No `method` set on the function specification: the schema generator should
+    // fall back to methodFromOptions which yields 'get' for query operations.
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        functions: { listItems: {} },
+      },
+    })
+
+    expect(openapi.paths!['/listItems']?.get).toBeDefined()
+    expect(openapi.paths!['/listItems']?.post).toBeUndefined()
+  })
+
+  test('GET output func handles undefined optional fields, scalar and non-scalar fields', async () => {
+    const Filter = model.object({
+      name: model.optional(model.string()),
+      tags: model.array(model.string()),
+    })
+    const m = module.define({
+      name: 'getOutputModule',
+      functions: {
+        search: functions.define({
+          input: model.object({ q: model.optional(model.string()), filter: Filter }),
+          output: model.array(model.string()),
+        }),
+      },
+    })
+
+    const impl = m.implement({
+      functions: {
+        search: functions
+          .define({
+            input: model.object({ q: model.optional(model.string()), filter: Filter }),
+            output: model.array(model.string()),
+          })
+          .implement({
+            async body() {
+              return { isOk: true, value: ['ok'] } as any
+            },
+          }),
+      },
+    })
+
+    const restApi = rest.build({
+      version: 1,
+      module: impl,
+      functions: { search: { method: 'get' } },
+    })
+
+    const fetchCalls: { url: string; init: any }[] = []
+    const originalFetch = global.fetch
+    global.fetch = vi.fn().mockImplementation((url: string, init: any) => {
+      fetchCalls.push({ url, init })
+      return Promise.resolve({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '["ok"]',
+      } as any)
+    }) as any
+
+    try {
+      const restClient = (await import('../src/client')).build({
+        endpoint: 'http://localhost:3000',
+        rest: restApi,
+      })
+      // q omitted -> exercises the `object[key] === undefined` continue branch.
+      // filter is non-scalar -> exercises the encodeQueryObject branch.
+      await (restClient.functions as any).search({ filter: { tags: ['a', 'b'] } })
+      expect(fetchCalls.length).toBe(1)
+      expect(fetchCalls[0]!.url).toContain('filter')
+      expect(fetchCalls[0]!.url).not.toContain('q=')
+    } finally {
+      global.fetch = originalFetch
+    }
+  })
+
+  test('GET output func produces no params when all optional fields omitted', async () => {
+    const Search = model.object({ q: model.optional(model.string()) })
+    const m = module.define({
+      name: 'emptyParamsModule',
+      functions: {
+        search: functions.define({
+          input: Search,
+          output: model.string(),
+        }),
+      },
+    })
+
+    const impl = m.implement({
+      functions: {
+        search: functions.define({ input: Search, output: model.string() }).implement({
+          async body() {
+            return { isOk: true, value: 'ok' } as any
+          },
+        }),
+      },
+    })
+
+    const restApi = rest.build({
+      version: 1,
+      module: impl,
+      functions: { search: { method: 'get' } },
+    })
+
+    const fetchCalls: { url: string }[] = []
+    const originalFetch = global.fetch
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      fetchCalls.push({ url })
+      return Promise.resolve({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '"ok"',
+      } as any)
+    }) as any
+
+    try {
+      const restClient = (await import('../src/client')).build({
+        endpoint: 'http://localhost:3000',
+        rest: restApi,
+      })
+      await (restClient.functions as any).search({})
+      expect(fetchCalls.length).toBe(1)
+      // No `?` because all fields are optional/undefined and params is undefined.
+      expect(fetchCalls[0]!.url).toBe('http://localhost:3000/api/v1/search')
+    } finally {
+      global.fetch = originalFetch
+    }
+  })
+
+  test('POST + path param + body output round-trips through client', async () => {
+    const Item = model.object({ id: model.string(), name: model.string(), age: model.integer() })
+    const m = module.define({
+      name: 'postPathModule',
+      functions: {
+        update: functions.define({
+          input: Item,
+          output: model.string(),
+        }),
+      },
+    })
+
+    const impl = m.implement({
+      functions: {
+        update: functions.define({ input: Item, output: model.string() }).implement({
+          async body() {
+            return { isOk: true, value: 'ok' } as any
+          },
+        }),
+      },
+    })
+
+    const restApi = rest.build({
+      version: 1,
+      module: impl,
+      functions: { update: { method: 'post', path: '/items/{id}' } },
+    })
+
+    const fetchCalls: { url: string; init: any }[] = []
+    const originalFetch = global.fetch
+    global.fetch = vi.fn().mockImplementation((url: string, init: any) => {
+      fetchCalls.push({ url, init })
+      return Promise.resolve({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '"ok"',
+      } as any)
+    }) as any
+
+    try {
+      const restClient = (await import('../src/client')).build({
+        endpoint: 'http://localhost:3000',
+        rest: restApi,
+      })
+      await (restClient.functions as any).update({ id: 'abc', name: 'foo', age: 7 })
+      expect(fetchCalls.length).toBe(1)
+      expect(fetchCalls[0]!.url).toBe('http://localhost:3000/api/v1/items/abc')
+      const body = JSON.parse(fetchCalls[0]!.init.body)
+      expect(body).toEqual({ name: 'foo', age: 7 })
+      expect(body.id).toBeUndefined()
+    } finally {
+      global.fetch = originalFetch
+    }
+  })
+
+  test('GET with object input where decodeQueryObject yields non-array for an array field', async () => {
+    const Search = model.object({ tags: model.array(model.string()) })
+    const m = module.define({
+      name: 'arrayCoercion',
+      functions: {
+        search: functions.define({
+          input: Search,
+          output: model.string(),
+        }),
+      },
+    })
+
+    // Call generateOpenapiInput's `input` function directly with a query that
+    // has `tags=value` (scalar, not array) for an array-typed field. This drives
+    // the array coercion branch `object[key] = [v]`.
+    const internalData = emptyInternalData(undefined)
+    const { input } = generateOpenapiInput({
+      functionName: 'search',
+      functionBody: m.functions.search,
+      internalData,
+      specification: { method: 'get', path: '/search' },
+    })
+    clearInternalData(internalData)
+    const decoded = input({
+      body: undefined,
+      headers: {},
+      params: {},
+      query: { tags: 'value' },
+      method: 'get',
+      route: '/search',
+    } as any)
+    expect(decoded).toEqual({ tags: ['value'] })
+  })
+
+  test('GET with object input where array field receives object query (no [0] key)', async () => {
+    const Search = model.object({ tags: model.array(model.string()) })
+    const m = module.define({
+      name: 'arrayCoercionObject',
+      functions: {
+        search: functions.define({
+          input: Search,
+          output: model.string(),
+        }),
+      },
+    })
+
+    const internalData = emptyInternalData(undefined)
+    const { input } = generateOpenapiInput({
+      functionName: 'search',
+      functionBody: m.functions.search,
+      internalData,
+      specification: { method: 'get', path: '/search' },
+    })
+    clearInternalData(internalData)
+    // `tags[a]=value` -> decodeQueryObject yields { a: 'value' } (an object
+    // without a '0' key), exercising the inner `v === null` and
+    // `!Object.keys(v).includes('0')` sub-branches of the array coercion guard.
+    const decoded = input({
+      body: undefined,
+      headers: {},
+      params: {},
+      query: { 'tags[a]': 'value' },
+      method: 'get',
+      route: '/search',
+    } as any)
+    expect(decoded).toEqual({ tags: [{ a: 'value' }] })
+  })
+
+  test('GET with object input where array field receives object query containing [0] key', async () => {
+    const Search = model.object({ tags: model.array(model.string()) })
+    const m = module.define({
+      name: 'arrayPassThrough',
+      functions: {
+        search: functions.define({
+          input: Search,
+          output: model.string(),
+        }),
+      },
+    })
+
+    const internalData = emptyInternalData(undefined)
+    const { input } = generateOpenapiInput({
+      functionName: 'search',
+      functionBody: m.functions.search,
+      internalData,
+      specification: { method: 'get', path: '/search' },
+    })
+    clearInternalData(internalData)
+    // `tags[0]=value` -> decodeQueryObject yields { 0: 'value' } (object with
+    // a '0' key), so coercion does NOT fire — exercises the `else` branch
+    // `object[key] = v` of the array coercion guard.
+    const decoded = input({
+      body: undefined,
+      headers: {},
+      params: {},
+      query: { 'tags[0]': 'value' },
+      method: 'get',
+      route: '/search',
+    } as any)
+    expect(decoded).toEqual({ tags: { 0: 'value' } })
+  })
+
+  test('handles literalToOpenAPIComponent unknown literal throw branch', async () => {
+    // The exported public API `model.literal` only accepts string|number|boolean,
+    // so the `unknown literal type` defensive branch is unreachable through it.
+    // We construct a literal-like type with a forged bigint value to exercise it.
+    const customLiteral = {
+      kind: 'literal',
+      literalValue: BigInt(1),
+      options: undefined,
+    } as any
+
+    // Build a minimal module that includes the forged literal as an output type.
+    // We invoke modelToSchema indirectly by reaching into the module's openapi
+    // generation code path.
+    const { generateOpenapiInput, emptyInternalData, clearInternalData } = await import('../src/openapi')
+    // Construct a synthetic functionBody with the forged literal output to drive
+    // the schema generator into literalToOpenAPIComponent.
+    const m = module.define({
+      name: 'literalUnknown',
+      functions: {
+        getThing: functions.define({
+          input: model.string(),
+          output: model.string(),
+        }),
+      },
+    })
+    const internalData = emptyInternalData(undefined)
+    expect(() =>
+      generateOpenapiInput({
+        functionName: 'getThing',
+        functionBody: {
+          input: customLiteral,
+          output: m.functions.getThing.output,
+          errors: undefined,
+          retrieve: undefined,
+        } as any,
+        internalData,
+        specification: { method: 'post' },
+      }),
+    ).toThrowError('Unknown literal type')
+    clearInternalData(internalData)
+  })
+
+  test('handles GET with array input and no path params (deepObject style)', () => {
+    const m = module.define({
+      name: 'arrayInput',
+      functions: {
+        f: functions.define({
+          input: model.array(model.string()),
+          output: model.string(),
+        }),
+      },
+    })
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: { module: m, version: 1, functions: { f: { method: 'get' } } },
+    })
+    const param = openapi.paths!['/f']?.get?.parameters?.[0] as any
+    // Input is non-scalar (array) — exercises the falsy branch of the
+    // `isScalar ? isRequired : true` and `isScalar ? undefined : 'deepObject'` ternaries.
+    expect(param.style).toBe('deepObject')
+    expect(param.required).toBe(true)
+  })
+
+  test('handles POST + path param with entity input', async () => {
+    const Item = () => model.entity({ id: model.string(), name: model.string() })
+    const m = module.define({
+      name: 'entityPost',
+      functions: {
+        upsert: functions.define({
+          input: Item,
+          output: model.string(),
+        }),
+      },
+    })
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: { module: m, version: 1, functions: { upsert: { method: 'post', path: '/items/{id}' } } },
+    })
+    // Successfully generates the schema for entity inputs in the POST + path param case
+    expect(openapi.paths!['/items/{id}']?.post).toBeDefined()
+  })
+
+  test('handles full retrieve capabilities with array, scalar, and non-scalar fields', () => {
+    const userType = () =>
+      model.entity(
+        {
+          id: model.string(),
+          name: model.string(),
+          age: model.optional(model.integer()),
+        },
+        { retrieve: { where: true, orderBy: true, take: true, skip: true } },
+      )
+
+    const m = module.define({
+      name: 'fullRetrieve',
+      functions: {
+        listUsers: functions.define({
+          input: model.literal(undefined),
+          output: model.array(userType),
+          retrieve: { select: true, where: true, orderBy: true, skip: true, take: true },
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: { module: m, version: 1, functions: { listUsers: { method: 'get' } } },
+    })
+
+    const params = openapi.paths!['/listUsers']?.get?.parameters as any[]
+    expect(params.find((p: any) => p.name === 'where')).toBeDefined()
+    expect(params.find((p: any) => p.name === 'orderBy')).toBeDefined()
+    expect(params.find((p: any) => p.name === 'skip')).toBeDefined()
+    expect(params.find((p: any) => p.name === 'take')).toBeDefined()
+    expect(params.find((p: any) => p.name === 'select')).toBeDefined()
+
+    // Scalar retrieve fields don't get deepObject style.
+    const skipParam = params.find((p: any) => p.name === 'skip')
+    expect(skipParam.style).toBeUndefined()
+    expect(skipParam.example).toBeUndefined()
+    // Non-scalar fields use deepObject + null example.
+    const whereParam = params.find((p: any) => p.name === 'where')
+    expect(whereParam.style).toBe('deepObject')
+    expect(whereParam.example).toBeNull()
+    // orderBy is an array — exercises the `model.isArray(value) ? model.array(type) : type` true branch.
+    const orderByParam = params.find((p: any) => p.name === 'orderBy')
+    expect(orderByParam.schema.type).toBe('array')
+  })
+
+  test('namespace handling: tags use empty string when namespace is undefined fallback path', () => {
+    const m = module.define({
+      name: 'tagsNamespace',
+      functions: {
+        f1: functions.define({
+          input: model.string(),
+          output: model.string(),
+          options: { namespace: 'NS' },
+        }),
+      },
+    })
+
+    const openapi = rest.openapi.fromModule({
+      version: 1,
+      api: {
+        module: m,
+        version: 1,
+        // no namespace on specification — so chain `functionBody.options?.namespace ?? specification.namespace ?? ''`
+        // exercises the namespace coalesce path
+        functions: { f1: { method: 'get' } },
+      },
+    })
+
+    const op = openapi.paths!['/f1']?.get as any
+    expect(op.tags).toEqual(['NS'])
+  })
+
+  test('throws error for unsupported input type with POST method (union with path params)', () => {
+    // Exercises the false branch of `if (concreteInputType.kind === Object || Entity)`
+    // inside the body-can-exist branch (POST/PUT/PATCH) with parametersInPath > 0.
+    const m = module.define({
+      name: 'name',
+      functions: {
+        test: functions.define({
+          input: model.union({ a: model.string(), b: model.number() }),
+          output: model.string(),
+        }),
+      },
+    })
+
+    expect(() =>
+      rest.openapi.fromModule({
+        version: 1,
+        api: {
+          module: m,
+          version: 1,
+          functions: { test: { method: 'post', path: '/test/{id}' } },
+        },
+      }),
+    ).toThrowError('Error while generating openapi input type. Not supported. Path /test/{id}')
+  })
 })

@@ -1,7 +1,7 @@
 import { decoding, encoding, result, model, validation } from '../..'
 import { JSONType } from '@mondrian-framework/utils'
-import gen, { func } from 'fast-check'
-import prand from 'pure-rand'
+import gen from 'fast-check'
+import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus'
 
 export abstract class BaseType<T extends model.Type> {
   readonly options?: model.OptionsOf<T>
@@ -84,7 +84,7 @@ export abstract class BaseType<T extends model.Type> {
 
   example(args?: { maxDepth?: number; seed?: number }): model.Infer<T> {
     const randomSeed = args?.seed ?? Date.now() ^ (Math.random() * 0x100000000)
-    const random = new gen.Random(prand.xoroshiro128plus(randomSeed))
+    const random = new gen.Random(xoroshiro128plus(randomSeed))
     const value = this.arbitrary(args?.maxDepth).generate(random, undefined)
     return value.value
   }

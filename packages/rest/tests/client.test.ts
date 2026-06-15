@@ -594,4 +594,94 @@ describe('REST client', () => {
       expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/api/v1/echo/123', expect.anything())
     })
   })
+
+  describe('method fallback from options', () => {
+    test('uses methodFromOptions when specification has no method', async () => {
+      const queryFn = functions.define({
+        input: model.string(),
+        output: model.string(),
+        options: { operation: 'query' },
+      })
+      const queryModule = module.define({
+        name: 'queryModule',
+        functions: { queryFn },
+      })
+      const queryApi = rest.define({
+        version: 1,
+        module: queryModule,
+        // method omitted so client falls back to methodFromOptions => 'get'
+        functions: { queryFn: { path: '/queryFn' } },
+      })
+
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '"hello"',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: queryApi,
+      })
+
+      await client.functions.queryFn('hello')
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/queryFn'),
+        expect.objectContaining({ method: 'get' }),
+      )
+    })
+  })
+
+  describe('retrieve without select', () => {
+    test('sends retrieve options without select', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '{"id": "1", "name": "test"}',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      // Pass retrieve options that include only orderBy/skip/take/where, but no select.
+      // Exercises the falsy branch of the `select` ternary in client.ts.
+      await client.functions.retrieve('1', {
+        retrieve: {
+          orderBy: [{ name: 'asc' }],
+          skip: 1,
+          take: 2,
+          where: { name: { equals: 'test' } },
+        },
+      })
+
+      const fetchCall = (global.fetch as any).mock.calls[0][0] as string
+      expect(fetchCall).toContain('orderBy')
+      expect(fetchCall).toContain('skip=1')
+      expect(fetchCall).toContain('take=2')
+      expect(fetchCall).toContain('where')
+      expect(fetchCall).not.toContain('select=')
+    })
+  })
+
+  describe('retrieve with default selection', () => {
+    test('uses default retrieve when none provided', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        text: async () => '{"id": "1", "name": "test"}',
+      })
+
+      const client = buildClient({
+        endpoint: 'http://localhost:3000',
+        rest: api,
+      })
+
+      // No options.retrieve passed: client.ts falls back to the defaultRetrieve
+      // when invoking retrieve.selectedType.
+      const result = await client.functions.retrieve('1')
+      expect(result).toEqual({ id: '1', name: 'test' })
+    })
+  })
 })

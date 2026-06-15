@@ -236,6 +236,34 @@ describe('Client', () => {
     })
   })
 
+  describe('unexpected failures', () => {
+    test('throws Unexpected failure when function without errors returns failure (checkOutputType=ignore)', async () => {
+      const f = functions
+        .define({
+          input: model.string(),
+          output: model.string(),
+        })
+        .implement({
+          body: async () => result.fail(undefined as never),
+        })
+
+      const m = module.build({
+        name: 'test',
+        functions: { f },
+        options: { checkOutputType: 'ignore' },
+      })
+
+      const client = clientBuilder.build({
+        module: m,
+        async context() {
+          return {}
+        },
+      })
+
+      await expect(client.functions.f('hi')).rejects.toThrow('Unexpected failure result for function f')
+    })
+  })
+
   describe('rawApply with decodingOptions', () => {
     test('should use module preferredDecodingOptions', async () => {
       const f = functions

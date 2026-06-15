@@ -1,6 +1,6 @@
 {
   "name": "@mondrian-framework/model",
-  "version": "2.0.70",
+  "version": "3.0.0",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -13,12 +13,13 @@
     "prerelease": "tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
-    "@mondrian-framework/utils": "^2.0.70"
+    "@mondrian-framework/utils": "^3.0.0"
   },
   "dependencies": {
-    "bignumber.js": "^9.1.2",
-    "fast-check": "^4.4.0",
-    "jsonwebtoken": "^9.0.2"
+    "bignumber.js": "^11.1.3",
+    "fast-check": "^4.8.0",
+    "jsonwebtoken": "^9.0.2",
+    "pure-rand": "^8.4.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.8"

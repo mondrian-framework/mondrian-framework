@@ -108,6 +108,19 @@ describe('utils', () => {
       // The function should be included and resolved
       expect(types.size).toBeGreaterThan(0)
     })
+
+    test('should delete double-wrapped function entries that wrap other functions', () => {
+      // When a type is () => fnAnotherType where fnAnotherType is also a function,
+      // and both are present in the types set, the double-wrapper is removed.
+      const Inner = (): model.ObjectType<any, any> => model.object({ a: model.string() })
+      // Both Inner and a wrapper around Inner are passed in the same array.
+      const wrappedTwice = () => Inner
+
+      const types = utils.allUniqueTypes([Inner, wrappedTwice])
+      // wrappedTwice wraps Inner (a function), so wrappedTwice is removed.
+      expect(types.has(wrappedTwice as any)).toBe(false)
+      expect(types.has(Inner)).toBe(true)
+    })
   })
 
   describe('decodeFunctionFailure', () => {
@@ -197,24 +210,24 @@ describe('utils', () => {
     })
   })
 
-  describe('reolsveNestedPromises', () => {
+  describe('resolveNestedPromises', () => {
     test('should resolve top-level promises', async () => {
-      const result = await utils.reolsveNestedPromises(Promise.resolve(42))
+      const result = await utils.resolveNestedPromises(Promise.resolve(42))
       expect(result).toBe(42)
     })
 
     test('should return non-promise values as-is', async () => {
-      const result = await utils.reolsveNestedPromises(42)
+      const result = await utils.resolveNestedPromises(42)
       expect(result).toBe(42)
     })
 
     test('should resolve promises in arrays', async () => {
-      const result = await utils.reolsveNestedPromises([Promise.resolve(1), Promise.resolve(2), 3])
+      const result = await utils.resolveNestedPromises([Promise.resolve(1), Promise.resolve(2), 3])
       expect(result).toEqual([1, 2, 3])
     })
 
     test('should resolve promises in objects', async () => {
-      const result = await utils.reolsveNestedPromises({
+      const result = await utils.resolveNestedPromises({
         a: Promise.resolve(1),
         b: Promise.resolve(2),
         c: 3,
@@ -223,7 +236,7 @@ describe('utils', () => {
     })
 
     test('should handle deeply nested promises', async () => {
-      const result = await utils.reolsveNestedPromises({
+      const result = await utils.resolveNestedPromises({
         level1: {
           level2: {
             value: Promise.resolve('deep'),
@@ -234,18 +247,18 @@ describe('utils', () => {
     })
 
     test('should handle null values', async () => {
-      const result = await utils.reolsveNestedPromises(Promise.resolve(null))
+      const result = await utils.resolveNestedPromises(Promise.resolve(null))
       expect(result).toBeNull()
     })
 
     test('should preserve special objects like Date', async () => {
       const now = new Date()
-      const result = await utils.reolsveNestedPromises({ date: now, value: 1 })
+      const result = await utils.resolveNestedPromises({ date: now, value: 1 })
       expect(result).toEqual({ date: now, value: 1 })
     })
 
     test('should handle mixed nested structures', async () => {
-      const result = await utils.reolsveNestedPromises({
+      const result = await utils.resolveNestedPromises({
         arr: [Promise.resolve(1), { nested: Promise.resolve(2) }],
         obj: { arr: [Promise.resolve(3)] },
       })

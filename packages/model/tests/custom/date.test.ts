@@ -17,6 +17,10 @@ const knownInvalidValues = [
   true,
   null,
   undefined,
+  // year with too many digits passes the regex but Date.parse returns NaN -> hits the
+  // `Number.isNaN(date.valueOf())` branch in `decoder` (date.ts:34)
+  '+999999999999999-01-01',
+  '-999999999999999-12-31',
 ]
 const knownValidValues = [
   { raw: '2020-01-01', expected: new Date('2020-01-01') },

@@ -302,6 +302,44 @@ describe('Module interface to schema', () => {
   })
 })
 
+test('Serialize entity types', () => {
+  const User = model.entity({ id: model.number(), name: model.string() }, { name: 'User' })
+  const f = functions.define({
+    input: model.string().setName('Input'),
+    output: User,
+    errors: undefined,
+    retrieve: undefined,
+  })
+  const m = module.define({
+    name: 'test',
+    functions: { f },
+  })
+  const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
+  expect(schema.types.User.type).toBe('entity')
+  expect(schema.types.User.options).toEqual({ name: 'User' })
+  expect(schema.types.User.fields).toBeDefined()
+  expect(schema.types.User.lazy).toBeUndefined()
+  expect(Object.keys(schema.types.User.fields)).toEqual(['id', 'name'])
+})
+
+test('Serialize lazy entity types', () => {
+  const User = () => model.entity({ id: model.number(), name: model.string() }, { name: 'LazyUser' })
+  const f = functions.define({
+    input: model.string().setName('Input'),
+    output: User,
+    errors: undefined,
+    retrieve: undefined,
+  })
+  const m = module.define({
+    name: 'test',
+    functions: { f },
+  })
+  const schema = JSON.parse(JSON.stringify(serialization.serialize(m)))
+  expect(schema.types.LazyUser.type).toBe('entity')
+  expect(schema.types.LazyUser.lazy).toBe(true)
+  expect(schema.types.LazyUser.options).toEqual({ name: 'LazyUser' })
+})
+
 test('Decode schema', () => {
   const result1 = serialization.ModuleSchema.decode({
     name: 'test',
